@@ -82,6 +82,8 @@ function HttpQuery(exec : TdwsProgramExecution;
                    customStates : TdwsCustomStates = nil;
                    certificateInfo : TdwsHttpCertificateInfo = nil) : Integer;
 
+procedure HttpQuerySetConnectionPool(exec : TdwsProgramExecution; const poolName : String);
+
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
@@ -91,6 +93,38 @@ implementation
 // ------------------------------------------------------------------
 
 uses dwsUtils, System.StrUtils;
+
+const
+   cConnectionExpirationMSec = 30*1000;
+
+type
+   TConnectionPoolEntry = class
+      Expire : Int64;
+      Connection : TdwsWinHttpConnection;
+      PoolName : String;
+      Next : TConnectionPoolEntry;
+      destructor Destroy; override;
+   end;
+
+   IWrappedConnection = interface
+      ['{BC5DEAF9-50C6-43AD-BAAC-A2803DACD1E2}']
+      function GetConnection : TdwsWinHttpConnection;
+      function ExtractConnection : TdwsWinHttpConnection;
+      procedure SetPoolName(const name : String);
+   end;
+
+   TWrappedConnection = class (TInterfacedObject, IWrappedConnection)
+      FConnection : TdwsWinHttpConnection;
+      FPoolName : String;
+      destructor Destroy; override;
+      function GetConnection : TdwsWinHttpConnection;
+      function ExtractConnection : TdwsWinHttpConnection;
+      procedure SetPoolName(const name : String);
+   end;
+
+var
+   vConnectionPoolLock : TMultiReadSingleWrite;
+   vConnectionPool : TConnectionPoolEntry;
 
 type
    THttpRequestThread = class (TThread)
@@ -124,6 +158,135 @@ type
       function Completed : Boolean; override;
    end;
 
+// HttpQueryGetConnectionInterface
+//
+procedure HttpQueryGetConnectionInterface(exec : TdwsProgramExecution; var iconn : IWrappedConnection);
+var
+   wrapped : TWrappedConnection;
+begin
+   if exec <> nil then
+      iconn := exec.CustomInterfaces[cWinHttpConnection] as IWrappedConnection;
+   if iconn = nil then begin
+      wrapped := TWrappedConnection.Create;
+      wrapped.FConnection := TdwsWinHttpConnection.Create;
+      iconn := wrapped;
+      if exec <> nil then
+         exec.CustomInterfaces[cWinHttpConnection] := iconn;
+   end;
+end;
+
+// FlushConnectionPool
+//
+procedure FlushConnectionPool;
+begin
+   vConnectionPoolLock.BeginWrite;
+   try
+      while vConnectionPool <> nil do begin
+         var iter := vConnectionPool;
+         vConnectionPool := iter.Next;
+         iter.Free;
+      end;
+   finally
+      vConnectionPoolLock.EndWrite;
+   end;
+end;
+
+// HttpQueryGetConnectionFromPool
+//
+function HttpQueryGetConnectionFromPool(const poolName : String; var iconn : IWrappedConnection) : Boolean;
+var
+   match : TConnectionPoolEntry;
+   ts : Int64;
+   wrapped : TWrappedConnection;
+begin
+   if vConnectionPool = nil then Exit(False);
+   ts := GetSystemMilliseconds;
+   match := nil;
+   vConnectionPoolLock.BeginWrite;
+   try
+      var prev : TConnectionPoolEntry := nil;
+      var next : TConnectionPoolEntry;
+      var iter := vConnectionPool;
+      while iter <> nil do begin
+         next := iter.Next;
+         if ts > iter.Expire then begin
+            if prev <> nil then
+               prev.Next := iter.Next
+            else vConnectionPool := iter.Next;
+            iter.Free;
+            iter := next;
+         end else if (match = nil) and (iter.PoolName = poolName) then begin
+            if prev <> nil then
+               prev.Next := iter.Next
+            else vConnectionPool := iter.Next;
+            match := iter;
+            iter := Next;
+         end else begin
+            prev := iter;
+            iter := next;
+         end;
+      end;
+   finally
+      vConnectionPoolLock.EndWrite;
+   end;
+   if match <> nil then begin
+      wrapped := TWrappedConnection.Create;
+      wrapped.FConnection := match.Connection;
+      wrapped.FPoolName := poolName;
+      match.Connection := nil;
+      iconn := wrapped;
+      match.Free;
+      Result := True;
+   end else Result := False;
+end;
+
+// HttpQueryAddConnectionToPool
+//
+procedure HttpQueryAddConnectionToPool(const poolName : String; var conn : TdwsWinHttpConnection);
+var
+   entry : TConnectionPoolEntry;
+begin
+   if (poolName = '') or (conn = nil) then Exit;
+
+   entry := TConnectionPoolEntry.Create;
+   try
+      entry.Expire := GetSystemMilliseconds + cConnectionExpirationMSec;
+      entry.Connection := conn;
+      conn := nil;
+      entry.PoolName :=  poolName;
+      vConnectionPoolLock.BeginWrite;
+      try
+         entry.Next := vConnectionPool;
+         vConnectionPool := entry;
+         entry := nil;
+      finally
+         vConnectionPoolLock.EndWrite;
+      end;
+   finally
+      entry.Free;
+   end;
+end;
+
+// HttpQuerySetConnectionPool
+//
+procedure HttpQuerySetConnectionPool(exec : TdwsProgramExecution; const poolName : String);
+var
+   iconn : IWrappedConnection;
+begin
+   if exec = nil then Exit;
+
+   iconn := exec.CustomInterfaces[cWinHttpConnection] as IWrappedConnection;
+   if iconn <> nil then begin
+      iconn.SetPoolName(poolName);
+   end else if poolName <> '' then begin
+      if not HttpQueryGetConnectionFromPool(poolName, iconn) then begin
+         HttpQueryGetConnectionInterface(exec, iconn);
+         iconn.SetPoolName(poolName);
+      end;
+      exec.CustomInterfaces[cWinHttpConnection] := iconn;
+   end;
+end;
+
 // HttpQuery
 //
 function HttpQuery(exec : TdwsProgramExecution;
@@ -136,20 +299,14 @@ function HttpQuery(exec : TdwsProgramExecution;
 var
    uri : TURI;
    conn : TdwsWinHttpConnection;
-   iconn : IGetSelf;
+   iconn : IWrappedConnection;
    unassignedVariant : Variant;
    keepAlive : Boolean;
 begin
    if not uri.From(url) then
       raise Exception.CreateFmt('Invalid url "%s"', [url]);
 
-   if exec <> nil then
-      iconn := exec.CustomInterfaces[cWinHttpConnection] as IGetSelf;
-   if iconn = nil then begin
-      iconn := IGetSelf(TdwsWinHttpConnection.Create);
-      if exec <> nil then
-         exec.CustomInterfaces[cWinHttpConnection] := iconn;
-   end;
+   HttpQueryGetConnectionInterface(exec, iconn);
 
    try
       if (customStates = nil) and (exec <> nil) then begin
@@ -157,7 +314,7 @@ begin
             customStates := exec.CustomStates;
       end;
 
-      conn := iconn.GetSelf as TdwsWinHttpConnection;
+      conn := iconn.GetConnection;
       if customStates <> nil then begin
          conn.ConnectServer(uri, customStates.StringStateDef(cWinHttpProxyName, ''),
                             customStates.IntegerStateDef(cWinHttpConnectTimeout, HTTP_DEFAULT_CONNECTTIMEOUT),
@@ -187,11 +344,61 @@ begin
 
    except
       on EWinHTTP do begin
+         if iconn <> nil then
+            iconn.ExtractConnection.Free;
          if exec <> nil then
             exec.CustomInterfaces[cWinHttpConnection] := nil;
          raise;
       end;
    end;
+end;
+
+// ------------------
+// ------------------ TConnectionPoolEntry ------------------
+// ------------------
+
+// Destroy
+//
+destructor TConnectionPoolEntry.Destroy;
+begin
+   inherited;
+   Connection.Free;
+end;
+
+// ------------------
+// ------------------ TWrappedConnection ------------------
+// ------------------
+
+// Destroy
+//
+destructor TWrappedConnection.Destroy;
+begin
+   inherited;
+   if FPoolName <> '' then
+      HttpQueryAddConnectionToPool(FPoolName, FConnection);
+   FConnection.Free;
+end;
+
+// GetConnection
+//
+function TWrappedConnection.GetConnection : TdwsWinHttpConnection;
+begin
+   Result := FConnection;
+end;
+
+// ExtractConnection
+//
+function TWrappedConnection.ExtractConnection : TdwsWinHttpConnection;
+begin
+   Result := FConnection;
+   FConnection := nil;
+end;
+
+// SetPoolName
+//
+procedure TWrappedConnection.SetPoolName(const name : String);
+begin
+   FPoolName := name;
 end;
 
 // ------------------
@@ -462,5 +669,20 @@ class function THttpRequestContainer.CreateSynchronous(exec : TdwsProgramExecuti
 begin
    Result := THttpRequestSynchronousContainer.Create(exec, aRequest);
 end;
+
+// ------------------------------------------------------------------
+// ------------------------------------------------------------------
+// ------------------------------------------------------------------
+initialization
+// ------------------------------------------------------------------
+// ------------------------------------------------------------------
+// ------------------------------------------------------------------
+
+   vConnectionPoolLock := TMultiReadSingleWrite.Create;
+
+finalization
+
+   FlushConnectionPool;
+   FreeAndNil(vConnectionPoolLock);
 
 end.

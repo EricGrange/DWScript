@@ -870,6 +870,18 @@ object dwsWebLib: TdwsWebLib
             OnEval = dwsWebClassesHttpQueryMethodsSetDisableRedirectsEval
             Visibility = cvPrivate
             Kind = mkClassProcedure
+          end
+          item
+            Name = 'SetConnectionPool'
+            Parameters = <
+              item
+                Name = 'poolName'
+                DataType = 'String'
+              end>
+            Attributes = [maClassMethod, maStatic]
+            OnEval = dwsWebClassesHttpQueryMethodsSetConnectionPoolEval
+            Visibility = cvPrivate
+            Kind = mkClassProcedure
           end>
         Properties = <
           item
@@ -888,6 +900,11 @@ object dwsWebLib: TdwsWebLib
             DataType = 'Boolean'
             ReadAccess = 'GetKeepAlive'
             WriteAccess = 'SetKeepAlive'
+          end
+          item
+            Name = 'ConnectionPool'
+            DataType = 'String'
+            WriteAccess = 'SetConnectionPool'
           end
           item
             Name = 'SynchronousRequests'

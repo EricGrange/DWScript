@@ -206,6 +206,8 @@ type
       Info: TProgramInfo; ExtObject: TObject);
     procedure dwsWebClassesHttpQueryMethodsSetDisableRedirectsEval(
       Info: TProgramInfo; ExtObject: TObject);
+    procedure dwsWebClassesHttpQueryMethodsSetConnectionPoolEval(
+      Info: TProgramInfo; ExtObject: TObject);
   private
     { Private declarations }
     FServer :  IWebServerInfo;
@@ -440,6 +442,12 @@ begin
    end;
    obj.ExternalObject := rqc;
    Info.ResultAsVariant := obj;
+end;
+
+procedure TdwsWebLib.dwsWebClassesHttpQueryMethodsSetConnectionPoolEval(
+  Info: TProgramInfo; ExtObject: TObject);
+begin
+   HttpQuerySetConnectionPool(Info.Execution, Info.ParamAsString[0]);
 end;
 
 procedure TdwsWebLib.dwsWebClassesHttpQueryMethodsSetConnectTimeoutMSecEval(
