@@ -48,6 +48,9 @@ procedure SQLiteFunc_HammingDistance(context : TSQLite3FunctionContext; argc : I
 // base64 encoding
 procedure SQLiteFunc_Base64(context : TSQLite3FunctionContext; argc : Integer; var argv : TSQLite3ValueArray); cdecl;
 
+// SHA-1 hashing
+procedure SQLiteFunc_SHA1(context : TSQLite3FunctionContext; argc : Integer; var argv : TSQLite3ValueArray); cdecl;
+
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
@@ -62,7 +65,7 @@ implementation
    {$ifend}
 {$endif}
 
-uses dwsUtils, dwsEncoding
+uses dwsUtils, dwsEncoding, dwsCryptoUtils
    {$ifdef TEST_POPCNT}, System.Math{$endif};
 
 type
@@ -401,6 +404,29 @@ begin
       bytes := Base64EncodeToBytes(sqlite3.value_text(argv[0]), sqlite3.value_bytes(argv[0]), cBase64);
       sqlite3.result_text(context, Pointer(bytes), Length(bytes), SQLITE_TRANSIENT);
    end;
+end;
+
+// SQLiteFunc_SHA1
+//
+procedure SQLiteFunc_SHA1(context : TSQLite3FunctionContext; argc : Integer; var argv : TSQLite3ValueArray); cdecl;
+var
+   digest : TSHA1Digest;
+   hexDigest : RawByteString;
+begin
+   Assert(argc = 1);
+   case sqlite3.value_type(argv[0]) of
+      SQLITE_NULL : begin
+         sqlite3.result_null(context);
+         Exit;
+      end;
+      SQLITE_BLOB : begin
+         HashSHA1p(sqlite3.value_blob(argv[0]), sqlite3.value_bytes(argv[0]), digest);
+      end
+   else
+      HashSHA1p(sqlite3.value_text(argv[0]), sqlite3.value_bytes(argv[0]), digest);
+   end;
+   hexDigest := BinToHexA(@digest, Length(digest));
+   sqlite3.result_text(context, Pointer(hexDigest), Length(hexDigest), SQLITE_TRANSIENT);
 end;
 
 end.
