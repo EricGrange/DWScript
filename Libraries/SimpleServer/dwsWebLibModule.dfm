@@ -1012,6 +1012,17 @@ object dwsWebLib: TdwsWebLib
             OnEval = dwsWebClassesHttpRequestMethodsGetCertificateInfoEval
             Kind = mkFunction
           end>
+        Properties = <
+          item
+            Name = 'Header'
+            DataType = 'String'
+            ReadAccess = 'GetHeader'
+            Parameters = <
+              item
+                Name = 'name'
+                DataType = 'String'
+              end>
+          end>
         OnCleanUp = dwsWebClassesHttpRequestCleanUp
       end
       item
