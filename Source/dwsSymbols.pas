@@ -151,6 +151,8 @@ type
       function Msgs : TdwsCompileMessageList;
       function Optimize : Boolean;
       function BaseSymbols : TdwsBaseSymbolsContext;
+      function GenericSymbol : TSymbol;
+      function GenericSymbolType : TSymbol;
 
       procedure EnterComposite(sym : TCompositeTypeSymbol);
       procedure LeaveComposite;
@@ -802,7 +804,9 @@ type
 
    end;
 
-   TResultSymbol = class(TDataSymbol)
+   TResultSymbol = class sealed (TDataSymbol)
+      public
+         function Specialize(const context : ISpecializationContext) : TSymbol; override;
    end;
 
    TFuncSymbolFlag = (fsfStateless, fsfExternal, fsfType, fsfOverloaded, fsfLambda,
@@ -1911,6 +1915,8 @@ type
          function IsCompatibleWithAnyFuncSymbol : Boolean; override;
 
          procedure InitDataContext(const data : IDataContext; offset : Integer); override;
+
+         function SpecializeType(const context : ISpecializationContext) : TTypeSymbol; override;
    end;
 
    // Element of an enumeration type. E. g. "type DummyEnum = (Elem1, Elem2, Elem3);"
@@ -3687,6 +3693,17 @@ end;
 function TClassVarSymbol.IsVisibleFor(const aVisibility : TdwsVisibility) : Boolean;
 begin
    Result:=(FVisibility>=aVisibility);
+end;
+
+// ------------------
+// ------------------ TResultSymbol ------------------
+// ------------------
+
+// Specialize
+//
+function TResultSymbol.Specialize(const context : ISpecializationContext) : TSymbol;
+begin
+   Result := TResultSymbol.Create(Name, context.SpecializeType(Typ));
 end;
 
 // ------------------
@@ -5798,7 +5815,9 @@ begin
 
       if Parent <> nil then
          specializedClass.InheritFrom( Parent );
-//         specializedClass.InheritFrom( context.Specialize(Parent) as TClassSymbol );  TODO
+
+      if context.GenericSymbolType = Self then
+         context.RegisterSpecialization(Self, specializedClass);
 
       SpecializeMembers(specializedClass, context);
       specializedClass.Initialize(context.Msgs);
@@ -5875,6 +5894,13 @@ end;
 procedure TNilSymbol.InitDataContext(const data : IDataContext; offset : Integer);
 begin
    data.SetNilInterface(offset);
+end;
+
+// SpecializeType
+//
+function TNilSymbol.SpecializeType(const context : ISpecializationContext) : TTypeSymbol;
+begin
+   Result := Self;
 end;
 
 // ------------------

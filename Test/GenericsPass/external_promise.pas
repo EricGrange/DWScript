@@ -12,4 +12,11 @@ type JPromise<T> = class external 'Promise'
     procedure catch(onRejected: TOnRejected);
 end;
 
-var p := JPromise<Integer>;
+var f : TOnFulfilled<Integer>;
+var r : TOnRejected;
+
+var p : JPromise<Integer>;
+if p <> nil then begin
+	var p1 := p.&then(@f, @r);
+	var p2 := p1.&then(nil, nil);
+end;

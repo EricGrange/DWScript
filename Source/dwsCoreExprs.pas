@@ -981,6 +981,7 @@ type
                                left : TDataExpr);
          function RightValue : Variant; override;
          procedure EvalNoResult(exec : TdwsExecution); override;
+         function SpecializeProgramExpr(const context : ISpecializationContext) : TProgramExpr; override;
    end;
 
    // left := nil (class)
@@ -5743,6 +5744,30 @@ end;
 procedure TAssignNilToVarExpr.EvalNoResult(exec : TdwsExecution);
 begin
    TVarExpr(FLeft).AssignValueAsScriptObj(exec, nil);
+end;
+
+// SpecializeProgramExpr
+//
+function TAssignNilToVarExpr.SpecializeProgramExpr(const context : ISpecializationContext) : TProgramExpr;
+var
+   specializedLeft : TDataExpr;
+begin
+   specializedLeft := Left.SpecializeDataExpr(context);
+   if specializedLeft = nil then Exit(nil);
+   if specializedLeft.Typ.IsCompatible(context.BaseSymbols.TypNil) then begin
+      Result := TAssignNilToVarExpr.CreateVal(
+         CompilerContextFromSpecialization(context), ScriptPos,
+         specializedLeft
+      )
+   end else begin
+      context.Msgs.AddCompilerErrorFmt(
+         ScriptPos, CPE_IncompatibleTypes,
+         [ specializedLeft.Typ.Name, context.BaseSymbols.TypNil ]
+      );
+      Result := nil;
+   end;
+   if Result = nil then
+      specializedLeft.Free;
 end;
 
 // ------------------
