@@ -1060,6 +1060,7 @@ type
 function BinToHex(data : Pointer; n : Integer) : UnicodeString; overload;
 function BinToHex(const data; n : Integer) : UnicodeString; overload; inline;
 function BinToHex(const data : RawByteString) : UnicodeString; overload; inline;
+function BinToHexA(data : Pointer; n : Integer) : RawByteString; overload;
 
 function HexToBin(const data : String) : RawByteString; overload;
 procedure HexToBin(src : PChar; dest : PByte; nbBytes : Integer); overload;
@@ -1404,6 +1405,32 @@ begin
       pDest^ := Ord(cHexDigits[p^ shr 4]) + (Ord(cHexDigits[p^ and 15]) shl 16);
       Inc(pDest);
       Inc(p);
+   end;
+end;
+
+// BinToHexA
+//
+function BinToHexA(data : Pointer; n : Integer) : RawByteString; overload;
+const
+   cHexDigits : array [0..15] of AnsiChar = (
+      '0', '1', '2', '3', '4', '5', '6', '7', '8', '9',
+      'a', 'b', 'c', 'd', 'e', 'f'
+   );
+var
+   i : Integer;
+   pSrc : PByte;
+   pDest : PWord;
+begin
+   if n=0 then Exit;
+
+   SetLength(Result, n*2);
+
+   pDest := Pointer(Result);
+   pSrc := data;
+   for i := 1 to n do begin
+      pDest^ := Ord(cHexDigits[pSrc^ shr 4]) + (Ord(cHexDigits[pSrc^ and 15]) shl 8);
+      Inc(pDest);
+      Inc(pSrc);
    end;
 end;
 
