@@ -38,8 +38,8 @@ type
       function GetOSError : Integer;
       function IsValid : Boolean;
 
-      function GetDateTime : TDateTime;
-      procedure SetDateTime(dt : TDateTime);
+      function GetDateTime : TdwsDateTime;
+      procedure SetDateTime(const dt : TdwsDateTime);
 
       function Seek(offset : Int64; origin : Integer) : Int64;
       function Size : Int64;
@@ -67,8 +67,8 @@ type
          function GetOSError : Integer;
          function IsValid : Boolean;
 
-         function GetDateTime : TDateTime;
-         procedure SetDateTime(dt : TDateTime);
+         function GetDateTime : TdwsDateTime;
+         procedure SetDateTime(const dt : TdwsDateTime);
 
          function Seek(offset : Int64; origin : Integer) : Int64;
          function Size : Int64;
@@ -354,16 +354,16 @@ end;
 
 // GetDateTime
 //
-function TdwsFileHandle.GetDateTime : TDateTime;
+function TdwsFileHandle.GetDateTime : TdwsDateTime;
 begin
-   Result := FileDateToDateTime(FileGetDate(FHandle));
+   Result := FileDateTime(FHandle);
 end;
 
 // SetDateTime
 //
-procedure TdwsFileHandle.SetDateTime(dt : TDateTime);
+procedure TdwsFileHandle.SetDateTime(const dt : TdwsDateTime);
 begin
-   FileSetDateTime(FHandle, TdwsDateTime.FromLocalDateTime(dt));
+   FileSetDateTime(FHandle, dt);
 end;
 
 // Seek
@@ -792,7 +792,7 @@ end;
 //
 procedure TFileDateTimeFileFunc.DoEvalAsFloat(const args : TExprBaseListExec; var Result : Double);
 begin
-   Result := GetIdwsFileHandle(args, 0).GetDateTime;
+   Result := GetIdwsFileHandle(args, 0).GetDateTime.AsLocalDateTime;
 end;
 
 // ------------------
@@ -819,7 +819,7 @@ end;
 
 procedure TFileSetDateTimeFileProc.DoEvalProc(const args : TExprBaseListExec);
 begin
-   GetIdwsFileHandle(args, 0).SetDateTime(args.AsFloat[1]);
+   GetIdwsFileHandle(args, 0).SetDateTime(TdwsDateTime.FromLocalDateTime(args.AsFloat[1]));
 end;
 
 // ------------------

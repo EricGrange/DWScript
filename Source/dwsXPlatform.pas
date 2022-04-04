@@ -367,7 +367,8 @@ function FileMove(const existing, new : TFileName) : Boolean;
 function FileDelete(const fileName : TFileName) : Boolean;
 function FileRename(const oldName, newName : TFileName) : Boolean;
 function FileSize(const name : TFileName) : Int64;
-function FileDateTime(const name : TFileName; lastAccess : Boolean = False) : TdwsDateTime;
+function FileDateTime(const name : TFileName; lastAccess : Boolean = False) : TdwsDateTime; overload;
+function FileDateTime(hFile : THandle; lastAccess : Boolean = False) : TdwsDateTime; overload;
 procedure FileSetDateTime(hFile : THandle; const aDateTime : TdwsDateTime);
 function DeleteDirectory(const path : String) : Boolean;
 
@@ -2264,6 +2265,26 @@ begin
    finally
       SysUtils.FindClose(searchRec);
    end;
+end;
+{$endif}
+
+// FileDateTime
+//
+function FileDateTime(hFile : THandle; lastAccess : Boolean = False) : TdwsDateTime; overload;
+{$ifdef WINDOWS}
+var
+   fileTime : TFileTime;
+begin
+   fileTime.dwLowDateTime := 0;
+   fileTime.dwHighDateTime := 0;
+   if lastAccess then
+      GetFileTime(hFile, nil, @fileTime, nil)
+   else GetFileTime(hFile, nil, nil, @fileTime);
+   Result.AsFileTime := fileTime;
+end;
+{$else}
+begin
+   Result.AsLocalDateTime := FileDateToDateTime(FileGetDate(hFile));
 end;
 {$endif}
 
