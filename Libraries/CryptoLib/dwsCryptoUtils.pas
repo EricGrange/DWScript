@@ -32,7 +32,12 @@ function HashSHA3_256(const data : RawByteString) : RawByteString;
 function HashSHA256(const data : RawByteString) : RawByteString;
 function HashSHA512(const data : RawByteString) : RawByteString;
 function HashRIPEMD160(const data : RawByteString) : RawByteString;
+
+type
+   TSHA1Digest = array[0..19] of byte;
+procedure HashSHA1p(p : Pointer; nbBytes : Integer; var digest : TSHA1Digest);
 function HashSHA1(const data : RawByteString) : RawByteString;
+
 function HashMD5(const data : RawByteString) : RawByteString;
 function HashCRC32(const data : RawByteString) : RawByteString;
 
@@ -112,12 +117,18 @@ begin
    System.Move(digest, Result[1], SizeOf(digest));
 end;
 
-function HashSHA1(const data : RawByteString) : RawByteString;
+procedure HashSHA1p(p : Pointer; nbBytes : Integer; var digest : TSHA1Digest);
 var
    SHA : TSHA1;
+begin
+   SHA.Full(p, nbBytes, SynCrypto.TSHA1Digest(digest));
+end;
+
+function HashSHA1(const data : RawByteString) : RawByteString;
+var
    digest : TSHA1Digest;
 begin
-   SHA.Full(Pointer(data), Length(data), digest);
+   HashSHA1p(Pointer(data), Length(data), digest);
    SetLength(Result, SizeOf(digest));
    System.Move(digest, Result[1], SizeOf(digest));
 end;
