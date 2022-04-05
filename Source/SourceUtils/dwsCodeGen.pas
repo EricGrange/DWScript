@@ -206,6 +206,7 @@ type
          procedure SmartLinkFilterSymbolTable(table : TSymbolTable; var changed : Boolean); virtual;
          procedure SmartLinkUnaliasSymbolTable(table : TSymbolTable); virtual;
          procedure SmartLinkFilterStructSymbol(structSymbol : TCompositeTypeSymbol; var changed : Boolean); virtual;
+         procedure SmartLinkFilterHelperSymbol(helperSymbol : THelperSymbol; var changed : Boolean); virtual;
          procedure SmartLinkFilterInterfaceSymbol(intfSymbol : TInterfaceSymbol; var changed : Boolean); virtual;
          procedure SmartLinkFilterMemberFieldSymbol(fieldSymbol : TFieldSymbol; var changed : Boolean); virtual;
 
@@ -1672,8 +1673,11 @@ begin
 
             if sym is TInterfaceSymbol then
                SmartLinkFilterInterfaceSymbol(TInterfaceSymbol(sym), localChanged)
-            else if not (sym is THelperSymbol) then
-               SmartLinkFilterStructSymbol(TStructuredTypeSymbol(sym), localChanged);
+            else SmartLinkFilterStructSymbol(TStructuredTypeSymbol(sym), localChanged);
+
+         end else if sym is THelperSymbol then begin
+
+            SmartLinkFilterHelperSymbol(THelperSymbol(sym), localChanged)
 
          end else begin
 
@@ -1821,6 +1825,97 @@ begin
                or (method.Kind=fkConstructor) then continue;
 
          end else continue;
+
+         if not SmartLink(member) then begin
+            if FSymbolDictionary.FindSymbolPosList(member)<>nil then begin
+               RemoveReferencesInContextMap(member);
+               FSymbolDictionary.Remove(member);
+               localChanged:=True;
+            end;
+         end;
+
+      end;
+      changed:=changed or localChanged;
+   until not localChanged;
+end;
+
+// SmartLinkFilterHelperSymbol
+//
+procedure TdwsCodeGen.SmartLinkFilterHelperSymbol(helperSymbol : THelperSymbol; var changed : Boolean);
+
+   procedure RemoveReferencesInContextMap(symbol : TSymbol);
+   begin
+      if FSourceContextMap=nil then Exit;
+      FSourceContextMap.EnumerateContextsOfSymbol(symbol, SmartLinkFilterOutSourceContext);
+   end;
+
+var
+   i : Integer;
+   member : TSymbol;
+   prop : TPropertySymbol;
+   localChanged : Boolean;
+   symPosList : TSymbolPositionList;
+   symPos : TSymbolPosition;
+   selfReferencedOnly, foundSelf : Boolean;
+   srcContext : TdwsSourceContext;
+begin
+   if FSymbolDictionary=nil then Exit;
+   if helperSymbol.IsExternal then Exit;
+
+   symPosList := FSymbolDictionary.FindSymbolPosList(helperSymbol);
+   if symPosList = nil then Exit;
+
+   // is symbol only referenced by its members?
+   selfReferencedOnly := True;
+   for i := 0 to symPosList.Count-1 do begin
+      symPos := symPosList[i];
+      if suReference in symPos.SymbolUsages then begin
+         srcContext := FSourceContextMap.FindContext(symPos.ScriptPos);
+         foundSelf := False;
+         while srcContext<>nil do begin
+            if srcContext.ParentSym = helperSymbol then begin
+               foundSelf:=True;
+               Break;
+            end;
+            if     (srcContext.ParentSym is TMethodSymbol)
+               and (TMethodSymbol(srcContext.ParentSym).StructSymbol = helperSymbol) then begin
+               foundSelf:=True;
+               Break;
+            end;
+            srcContext:=srcContext.Parent;
+         end;
+         if not foundSelf then begin
+            selfReferencedOnly:=False;
+            Break;
+         end;
+      end;
+   end;
+   if selfReferencedOnly then begin
+      FSymbolDictionary.Remove(helperSymbol);
+      RemoveReferencesInContextMap(helperSymbol);
+      for member in helperSymbol.Members do begin
+         RemoveReferencesInContextMap(member);
+         FSymbolDictionary.Remove(member);
+      end;
+      changed:=True;
+      Exit;
+   end;
+
+   // remove members cross-references
+   repeat
+      localChanged:=False;
+      for member in helperSymbol.Members do begin
+
+         if member is TPropertySymbol then begin
+
+            prop:=TPropertySymbol(member);
+            if prop.Visibility=cvPublished then continue;
+
+         end else if not (member is TMethodSymbol) then begin
+
+            continue;
+
+         end;
 
          if not SmartLink(member) then begin
             if FSymbolDictionary.FindSymbolPosList(member)<>nil then begin
