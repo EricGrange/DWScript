@@ -49,9 +49,14 @@ type
    IdwsFileSystem = interface
       ['{D49F19A9-46C6-43E1-AF29-BDB8602A098C}']
       function FileExists(const fileName : TFilename) : Boolean;
+      function FindFileName(const fileName : TFileName) : TFileName;
       function OpenFileStream(const fileName : TFilename; const mode : TdwsFileOpenMode) : TStream;
       function ValidateFileName(const fileName : TFilename) : TFilename;
       function LoadTextFile(const fileName : TFilename) : UnicodeString;
+
+      function GetSearchPaths : TStrings;
+      procedure SetSearchPaths(const val : TStrings);
+      property SearchPaths : TStrings read GetSearchPaths write SetSearchPaths;
    end;
 
    // TdwsBaseFileSystem
@@ -60,19 +65,26 @@ type
    TdwsBaseFileSystem = class abstract (TInterfacedObject, IdwsFileSystem)
       private
          FOnFileStreamOpened : TFileStreamOpenedEvent;
+         FSearchPaths : TStrings;
 
       protected
+         function GetSearchPaths : TStrings;
+         procedure SetSearchPaths(const val : TStrings);
+
          procedure DoFileStreamOpenedEvent(const fileName : TFilename; const mode : TdwsFileOpenMode); inline;
 
       public
          constructor Create; virtual;
+         destructor Destroy; override;
 
+         function FindFileName(const fileName : TFileName) : TFileName; virtual; abstract;
          function FileExists(const fileName : TFilename) : Boolean; virtual; abstract;
          function OpenFileStream(const fileName : TFilename; const mode : TdwsFileOpenMode) : TStream; virtual; abstract;
          function ValidateFileName(const fileName : TFilename) : TFilename; virtual; abstract;
          function LoadTextFile(const fileName : TFilename) : UnicodeString;
 
          property OnFileStreamOpened : TFileStreamOpenedEvent read FOnFileStreamOpened write FOnFileStreamOpened;
+         property SearchPaths : TStrings read FSearchPaths write SetSearchPaths;
    end;
 
    // TdwsNullFileSystem
@@ -80,6 +92,7 @@ type
    {: Gives access to nothing. }
    TdwsNullFileSystem = class (TdwsBaseFileSystem)
       public
+         function FindFileName(const fileName : TFileName) : TFileName; override;
          function FileExists(const fileName : TFilename) : Boolean; override;
          function OpenFileStream(const fileName : TFilename; const mode : TdwsFileOpenMode) : TStream; override;
          function ValidateFileName(const fileName : TFilename) : TFilename; override;
@@ -92,6 +105,7 @@ type
       public
          function ValidateFileName(const fileName : TFilename) : TFilename; override;
 
+         function FindFileName(const fileName : TFileName) : TFileName; override;
          function FileExists(const fileName : TFilename) : Boolean; override;
          function OpenFileStream(const fileName : TFilename; const mode : TdwsFileOpenMode) : TStream; override;
    end;
@@ -145,10 +159,12 @@ type
    TdwsRestrictedFileSystem = class abstract (TdwsCustomFileSystem)
       private
          FPaths : TStrings;
+         FSearchPaths : TStrings;
          FVariables : TStrings;
 
       protected
          procedure SetPaths(const val : TStrings);
+         procedure SetSearchPaths(const val : TStrings);
          procedure SetVariables(const val : TStrings);
 
       public
@@ -159,6 +175,7 @@ type
 
       published
          property Paths : TStrings read FPaths write SetPaths;
+         property SearchPaths : TStrings read FSearchPaths write SetSearchPaths;
          property Variables : TStrings read FVariables write SetVariables;
    end;
 
@@ -192,6 +209,15 @@ end;
 constructor TdwsBaseFileSystem.Create;
 begin
    inherited Create;
+   FSearchPaths := TStringList.Create;
+end;
+
+// Destroy
+//
+destructor TdwsBaseFileSystem.Destroy;
+begin
+   inherited;
+   FSearchPaths.Free;
 end;
 
 // DoFileStreamOpenedEvent
@@ -216,6 +242,20 @@ begin
          stream.Free;
       end;
    end else Result := '';
+end;
+
+// GetSearchPaths
+//
+function TdwsBaseFileSystem.GetSearchPaths : TStrings;
+begin
+   Result := FSearchPaths;
+end;
+
+// SetSearchPaths
+//
+procedure TdwsBaseFileSystem.SetSearchPaths(const val : TStrings);
+begin
+   FSearchPaths.Assign(val);
 end;
 
 // ------------------
@@ -243,6 +283,13 @@ begin
    Result:='';
 end;
 
+// FindFileName
+//
+function TdwsNullFileSystem.FindFileName(const fileName : TFileName) : TFileName;
+begin
+   Result := '';
+end;
+
 // ------------------
 // ------------------ TdwsOSFileSystem ------------------
 // ------------------
@@ -252,7 +299,28 @@ end;
 function TdwsOSFileSystem.ValidateFileName(const fileName : TFilename) : TFilename;
 begin
    // accept all
-   Result:=ExpandFileName(fileName);
+   Result := ExpandFileName(fileName);
+end;
+
+// FindFileName
+//
+function TdwsOSFileSystem.FindFileName(const fileName : TFileName) : TFileName;
+var
+   i : Integer;
+begin
+   if FileExists(fileName) then
+      Exit(fileName);
+
+   if (DriveDelim <> '') and StrContains(fileName, DriveDelim) then
+      Exit('');
+   if StrBeginsWith(fileName, PathDelim) then
+      Exit('');
+
+   for i := 0 to SearchPaths.Count-1 do begin
+      Result := IncludeTrailingPathDelimiter(SearchPaths[i]) + fileName;
+      if FileExists(Result) then Exit;
+   end;
+   Result := '';
 end;
 
 // FileExists
@@ -261,8 +329,8 @@ function TdwsOSFileSystem.FileExists(const fileName : TFilename) : Boolean;
 var
    validFileName : TFilename;
 begin
-   validFileName:=ValidateFileName(fileName);
-   Result:=SysUtils.FileExists(validFileName);
+   validFileName := ValidateFileName(fileName);
+   Result := SysUtils.FileExists(validFileName);
 end;
 
 // OpenFileStream
@@ -371,7 +439,7 @@ var
    fileName, path : TFileName;
 begin
    fileName := ApplyStringVariables(aFileName, FVariables, '%');
-   if StrContains(fileName, ':') then begin
+   if (DriveDelim <> '') and StrContains(fileName, DriveDelim) then begin
       // validate an absolute path
       Result := ExpandFileName(fileName);
       for i := 0 to FPaths.Count-1 do begin
@@ -409,6 +477,7 @@ constructor TdwsRestrictedFileSystem.Create(Owner : TComponent);
 begin
    inherited;
    FPaths:=TStringList.Create;
+   FSearchPaths:=TStringList.Create;
    FVariables:=TStringList.Create;
 end;
 
@@ -418,6 +487,7 @@ destructor TdwsRestrictedFileSystem.Destroy;
 begin
    inherited;
    FPaths.Free;
+   FSearchPaths.Free;
    FVariables.Free;
 end;
 
@@ -429,6 +499,7 @@ var
 begin
    fs := TdwsRestrictedOSFileSystem.Create;
    fs.Paths := Paths;
+   fs.SearchPaths := SearchPaths;
    fs.Variables := Variables;
    fs.OnFileStreamOpened := OnFileStreamOpened;
    Result:=fs;
@@ -439,6 +510,13 @@ end;
 procedure TdwsRestrictedFileSystem.SetPaths(const val : TStrings);
 begin
    FPaths.Assign(val);
+end;
+
+// SetSearchPaths
+//
+procedure TdwsRestrictedFileSystem.SetSearchPaths(const val : TStrings);
+begin
+   FSearchPaths.Assign(val);
 end;
 
 // SetVariables
