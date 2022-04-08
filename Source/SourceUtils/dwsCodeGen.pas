@@ -1865,42 +1865,6 @@ begin
    symPosList := FSymbolDictionary.FindSymbolPosList(helperSymbol);
    if symPosList = nil then Exit;
 
-   // is symbol only referenced by its members?
-   selfReferencedOnly := True;
-   for i := 0 to symPosList.Count-1 do begin
-      symPos := symPosList[i];
-      if suReference in symPos.SymbolUsages then begin
-         srcContext := FSourceContextMap.FindContext(symPos.ScriptPos);
-         foundSelf := False;
-         while srcContext<>nil do begin
-            if srcContext.ParentSym = helperSymbol then begin
-               foundSelf:=True;
-               Break;
-            end;
-            if     (srcContext.ParentSym is TMethodSymbol)
-               and (TMethodSymbol(srcContext.ParentSym).StructSymbol = helperSymbol) then begin
-               foundSelf:=True;
-               Break;
-            end;
-            srcContext:=srcContext.Parent;
-         end;
-         if not foundSelf then begin
-            selfReferencedOnly:=False;
-            Break;
-         end;
-      end;
-   end;
-   if selfReferencedOnly then begin
-      FSymbolDictionary.Remove(helperSymbol);
-      RemoveReferencesInContextMap(helperSymbol);
-      for member in helperSymbol.Members do begin
-         RemoveReferencesInContextMap(member);
-         FSymbolDictionary.Remove(member);
-      end;
-      changed:=True;
-      Exit;
-   end;
-
    // remove members cross-references
    repeat
       localChanged:=False;
