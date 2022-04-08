@@ -1478,10 +1478,10 @@ begin
    try
       for i:=Low(cJSRTLDependencies) to High(cJSRTLDependencies) do begin
          wobs.WriteString(cJSRTLDependencies[i].Code);
-         wobs.WriteString(#13#10);
+         wobs.WriteString(#10);
       end;
       wobs.WriteString(vTZ_Dependency.Code);
-      wobs.WriteString(#13#10);
+      wobs.WriteString(#10);
       Result:=wobs.ToUnicodeString;
    finally
       wobs.Free;
