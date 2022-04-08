@@ -19,7 +19,7 @@ unit dwsJSCodeGenModule;
 interface
 
 uses
-  SysUtils, Classes, dwsComp, dwsExprs, dwsJScodeGen;
+  SysUtils, Classes, dwsComp, dwsExprs, dwsJSCodeGen;
 
 type
   TDMJSCodeGenModule = class(TDataModule)

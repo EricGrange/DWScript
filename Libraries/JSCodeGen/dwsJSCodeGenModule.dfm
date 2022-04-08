@@ -1,7 +1,5 @@
 object DMJSCodeGenModule: TDMJSCodeGenModule
   OldCreateOrder = False
-  Left = 415
-  Top = 200
   Height = 150
   Width = 215
   object CodeGenLibModule: TdwsUnit
