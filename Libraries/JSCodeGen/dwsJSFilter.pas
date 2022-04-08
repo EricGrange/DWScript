@@ -226,6 +226,7 @@ begin
       Exit(prog.Msgs.AsInfo);
 
    if FCodeGen.Context=nil then begin
+
       FCodeGen.BeginProgramSession(prog);
       FCodeGen.BeforeCompileProgram(prog.Table, (prog.ProgramObject as TdwsMainProgram).SystemTable.SymbolTable,
                                     (prog as TdwsProgram).UnitMains);
@@ -252,7 +253,7 @@ begin
       try
 
          FCodeGen.CompileProgramInSession(prog);
-         Result:=FCodeGen.CompiledOutput(prog);
+         Result := FCodeGen.CompiledOutput(prog);
 
       finally
 
