@@ -999,16 +999,22 @@ begin
       FSymbolDictionary:=nil;
       FSourceContextMap:=nil;
    end;
-
-   p.ResourceStringList.ComputeIndexes;
-
-   BeginProgramSession(prog);
    try
-      BeforeCompileProgram(prog.Table, p.SystemTable.SymbolTable, p.UnitMains);
 
-      CompileProgramInSession(prog);
+      p.ResourceStringList.ComputeIndexes;
+
+      BeginProgramSession(prog);
+      try
+         BeforeCompileProgram(prog.Table, p.SystemTable.SymbolTable, p.UnitMains);
+
+         CompileProgramInSession(prog);
+      finally
+         EndProgramSession;
+      end;
+
    finally
-      EndProgramSession;
+      FSymbolDictionary:=nil;
+      FSourceContextMap:=nil;
    end;
 end;
 
