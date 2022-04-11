@@ -1856,14 +1856,10 @@ procedure TdwsCodeGen.SmartLinkFilterHelperSymbol(helperSymbol : THelperSymbol; 
    end;
 
 var
-   i : Integer;
    member : TSymbol;
    prop : TPropertySymbol;
    localChanged : Boolean;
    symPosList : TSymbolPositionList;
-   symPos : TSymbolPosition;
-   selfReferencedOnly, foundSelf : Boolean;
-   srcContext : TdwsSourceContext;
 begin
    if FSymbolDictionary=nil then Exit;
    if helperSymbol.IsExternal then Exit;
