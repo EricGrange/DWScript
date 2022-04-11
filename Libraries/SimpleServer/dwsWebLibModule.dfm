@@ -522,6 +522,21 @@ object dwsWebLib: TdwsWebLib
             Kind = mkClassProcedure
           end
           item
+            Name = 'SetStatusJSON'
+            Parameters = <
+              item
+                Name = 'status'
+                DataType = 'Integer'
+              end
+              item
+                Name = 'utf16json'
+                DataType = 'String'
+              end>
+            Attributes = [maStatic]
+            OnFastEval = dwsWebClassesWebResponseMethodsSetStatusJSONFastEval
+            Kind = mkClassProcedure
+          end
+          item
             Name = 'SetETag'
             Parameters = <
               item

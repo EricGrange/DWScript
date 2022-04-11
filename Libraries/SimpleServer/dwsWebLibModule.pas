@@ -208,6 +208,8 @@ type
       Info: TProgramInfo; ExtObject: TObject);
     procedure dwsWebClassesHttpQueryMethodsSetConnectionPoolEval(
       Info: TProgramInfo; ExtObject: TObject);
+    function dwsWebClassesWebResponseMethodsSetStatusJSONFastEval(
+      baseExpr: TTypedExpr; const args: TExprBaseListExec): Variant;
   private
     { Private declarations }
     FServer :  IWebServerInfo;
@@ -804,7 +806,7 @@ begin
    if wr <> nil then begin
       args.EvalAsVariant(0, v);
       if (VarType(v) = varUnknown) and (TVarData(v).VUnknown <> nil) then begin
-         wr.ContentJSON := (IUnknown(TVarData(v).VUnknown) as IBoxedJSONValue).Value.ToUnicodeString
+         wr.ContentJSON := (IUnknown(TVarData(v).VUnknown) as IBoxedJSONValue).Value.ToUnicodeString;
       end else begin
          wr.ContentJSON := '';
       end;
@@ -855,6 +857,18 @@ begin
    if wr <> nil then begin
       wr.StatusCode := args.AsInteger[0];
       wr.ContentText['plain'] := args.AsString[1];
+   end;
+end;
+
+function TdwsWebLib.dwsWebClassesWebResponseMethodsSetStatusJSONFastEval(
+  baseExpr: TTypedExpr; const args: TExprBaseListExec): Variant;
+var
+   wr : TWebResponse;
+begin
+   wr := args.WebResponse;
+   if wr <> nil then begin
+      wr.StatusCode := args.AsInteger[0];
+      wr.ContentJSON := args.AsString[1];
    end;
 end;
 
