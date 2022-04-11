@@ -150,6 +150,10 @@ type
       procedure DoEvalProc(const args : TExprBaseListExec); override;
    end;
 
+   TIncrementPrivateVarFunc = class(TInternalMagicIntFunction)
+      function DoEvalAsInteger(const args : TExprBaseListExec) : Int64; override;
+   end;
+
    TCompareExchangePrivateVarFunc = class(TInternalMagicVariantFunction)
       procedure DoEvalAsVariant(const args : TExprBaseListExec; var result : Variant); override;
    end;
@@ -167,7 +171,7 @@ function TryReadGlobalVar(const aName: String; var value: Variant): Boolean;
 function ReadGlobalVarDef(const aName: String; const aDefault: Variant): Variant;
 {: Increments an integer global var. If not an integer, conversion is attempted.<p>
    Returns the value after the incrementation }
-function IncrementGlobalVar(const aName : String; const delta : Int64) : Int64;
+function IncrementGlobalVar(const aName : String; const delta : Int64; const expirationSeconds : Double) : Int64;
 {: Compares aName with comparand, if equal exchanges with value, returns initial value of aName }
 function CompareExchangeGlobalVar(const aName : String; const value, comparand : Variant) : Variant;
 {: Delete specified global var if it exists. }
@@ -317,9 +321,9 @@ end;
 
 // IncrementGlobalVar
 //
-function IncrementGlobalVar(const aName : String; const delta : Int64) : Int64;
+function IncrementGlobalVar(const aName : String; const delta : Int64; const expirationSeconds : Double) : Int64;
 begin
-   Result:=vGlobalVars.Increment(aName, delta);
+   Result:=vGlobalVars.Increment(aName, delta, expirationSeconds);
 end;
 
 // CompareExchangeGlobalVar
@@ -710,15 +714,11 @@ begin
    Result := vGlobalVars.Write(args.AsString[0], v, args.AsFloat[2]);
 end;
 
-// ------------------
-// ------------------ TIncrementGlobalVarFunc ------------------
-// ------------------
+{ TIncrementGlobalVarFunc }
 
-// DoEvalAsInteger
-//
 function TIncrementGlobalVarFunc.DoEvalAsInteger(const args : TExprBaseListExec) : Int64;
 begin
-   Result:=vGlobalVars.Increment(args.AsString[0], args.AsInteger[1]);
+   Result:=vGlobalVars.Increment(args.AsString[0], args.AsInteger[1], args.AsFloat[2]);
 end;
 
 { TCompareExchangeGlobalVarFunc }
@@ -953,6 +953,13 @@ begin
    vPrivateVars.Cleanup(PrivateVarName(args));
 end;
 
+{ TIncrementPrivateVarFunc }
+
+function TIncrementPrivateVarFunc.DoEvalAsInteger(const args : TExprBaseListExec) : Int64;
+begin
+   Result:=vPrivateVars.Increment(args.AsString[0], args.AsInteger[1], args.AsFloat[2]);
+end;
+
 { TCompareExchangePrivateVarFunc }
 
 procedure TCompareExchangePrivateVarFunc.DoEvalAsVariant(const args : TExprBaseListExec; var result : Variant);
@@ -1020,7 +1027,7 @@ initialization
    RegisterInternalBoolFunction(TTryReadGlobalVarFunc, 'TryReadGlobalVar', ['n', SYS_STRING, '@v', SYS_VARIANT]);
    RegisterInternalBoolFunction(TWriteGlobalVarFunc, 'WriteGlobalVar', ['n', SYS_STRING, 'v', SYS_VARIANT], [iffOverloaded]);
    RegisterInternalBoolFunction(TWriteGlobalVarExpireFunc, 'WriteGlobalVar', ['n', SYS_STRING, 'v', SYS_VARIANT, 'e', SYS_FLOAT], [iffOverloaded]);
-   RegisterInternalIntFunction(TIncrementGlobalVarFunc, 'IncrementGlobalVar', ['n', SYS_STRING, 'i=1', SYS_INTEGER]);
+   RegisterInternalIntFunction(TIncrementGlobalVarFunc, 'IncrementGlobalVar', ['n', SYS_STRING, 'i=1', SYS_INTEGER, 'e=0', SYS_FLOAT]);
    RegisterInternalFunction(TCompareExchangeGlobalVarFunc, 'CompareExchangeGlobalVar', ['n', SYS_STRING, 'v', SYS_VARIANT, 'c', SYS_VARIANT], SYS_VARIANT);
    RegisterInternalBoolFunction(TDeleteGlobalVarFunc, 'DeleteGlobalVar', ['n', SYS_STRING]);
    RegisterInternalProcedure(TCleanupGlobalVarsFunc, 'CleanupGlobalVars', ['filter=*', SYS_STRING]);
@@ -1031,6 +1038,7 @@ initialization
 
    RegisterInternalFunction(TReadPrivateVarFunc, 'ReadPrivateVar', ['n', SYS_STRING, 'd=Unassigned', SYS_VARIANT], SYS_VARIANT);
    RegisterInternalBoolFunction(TWritePrivateVarFunc, 'WritePrivateVar', ['n', SYS_STRING, 'v', SYS_VARIANT, 'e=0', SYS_FLOAT]);
+   RegisterInternalIntFunction(TIncrementPrivateVarFunc, 'IncrementPrivateVar', ['n', SYS_STRING, 'i=1', SYS_INTEGER, 'e=0', SYS_FLOAT]);
    RegisterInternalProcedure(TCleanupPrivateVarsFunc, 'CleanupPrivateVars', ['filter=*', SYS_STRING]);
    RegisterInternalFunction(TCompareExchangePrivateVarFunc, 'CompareExchangePrivateVar', ['n', SYS_STRING, 'v', SYS_VARIANT, 'c', SYS_VARIANT], SYS_VARIANT);
    RegisterInternalFunction(TPrivateVarsNamesFunc, 'PrivateVarsNames', ['filter', SYS_STRING], SYS_ARRAY_OF_STRING);

@@ -75,7 +75,7 @@ type
          procedure Finalize;
          function  Initialized : Boolean; inline;
 
-         function Write(const aName : String; const aValue : Variant; expirationSeconds : Double) : Boolean;
+         function Write(const aName : String; const aValue : Variant; const expirationSeconds : Double) : Boolean;
          function TryRead(const aName : String; var value : Variant) : Boolean;
 
          function  Delete(const aName : String) : Boolean;
@@ -88,7 +88,7 @@ type
          procedure SaveToFiler(writer : TWriter);
          procedure LoadFromFiler(reader : TReader);
 
-         function Increment(const aName : String; const delta : Int64) : Int64;
+         function Increment(const aName : String; const delta : Int64; const expirationSeconds : Double) : Int64;
          function CompareExchange(const aName : String; const value, comparand : Variant) : Variant;
 
          procedure Collect;
@@ -365,7 +365,7 @@ end;
 
 // Write
 //
-function TGlobalVars.Write(const aName : String; const aValue : Variant; expirationSeconds : Double) : Boolean;
+function TGlobalVars.Write(const aName : String; const aValue : Variant; const expirationSeconds : Double) : Boolean;
 var
    gv : TGlobalVar;
    t, expire : UInt64;
@@ -589,14 +589,17 @@ end;
 
 // Increment
 //
-function TGlobalVars.Increment(const aName : String; const delta : Int64) : Int64;
+function TGlobalVars.Increment(const aName : String; const delta : Int64; const expirationSeconds : Double) : Int64;
 var
    gv : TGlobalVar;
-   t : UInt64;
+   t, expire : UInt64;
    h : Cardinal;
    map : PGlobalVarsHashMap;
 begin
-   t:=GetSystemMilliseconds;
+   t := GetSystemMilliseconds;
+   if expirationSeconds > 0 then
+      expire := t + UInt64(Round(expirationSeconds*1000))
+   else expire := cNoExpire;
 
    h:=TNameObjectHash.HashName(aName);
    map:=@Maps[h and High(Maps)];
@@ -615,6 +618,7 @@ begin
          else Result:=delta;
       end;
       gv.Value:=Result;
+      gv.Expire:=expire;
    finally
       map.Lock.EndWrite;
    end;
