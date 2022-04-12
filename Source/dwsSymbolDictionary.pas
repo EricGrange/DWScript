@@ -539,7 +539,8 @@ function TSymbolPositionListHash.MatchSymbol(sym : TSymbol) : TSymbolPositionLis
 var
    i : Integer;
 begin
-   if FCount = 0 then Exit(nil);
+   Result := nil;
+   if FCount = 0 then Exit;
 
    i := (SimplePointerHash(sym) and (FCapacity-1));
 
@@ -552,8 +553,6 @@ begin
       end;
       i := (i+1) and (FCapacity-1);
    until False;
-
-   Result := nil;
 end;
 
 // ------------------
