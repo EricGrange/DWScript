@@ -530,7 +530,7 @@ begin
 
    // shortcut for UTF-8 BOM
    if Size >= 3 then begin
-      if (PWord(Base)^ = $BBEF) and (PAnsiChar(Base)[2] = #$00BF) then begin
+      if (PWord(Base)^ = $BBEF) and (Ord(PAnsiChar(Base)[2]) = $BF) then begin
          encoding := TEncoding.UTF8;
          Exit(3);
       end;
