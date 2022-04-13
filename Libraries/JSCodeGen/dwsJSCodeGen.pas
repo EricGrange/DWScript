@@ -18,6 +18,8 @@ unit dwsJSCodeGen;
 
 {$I dws.inc}
 
+{$define USE_LET_FOR_LOOP_VARS}
+
 interface
 
 uses
@@ -3959,6 +3961,11 @@ begin
             end else begin
 
                jsCodeGen.FDeclaredLocalVars.Add(sym);
+
+               {$ifdef USE_LET_FOR_LOOP_VARS}
+               if sym.GetPurpose = sdspLoopIterator then continue;
+               {$endif}
+
                WriteVar;
 
                vpm := IsLocalVarParam(codeGen, sym);
@@ -8002,23 +8009,34 @@ procedure TJSForExpr.CodeGen(codeGen : TdwsCodeGen; expr : TExprBase);
 var
    tmpTo, tmpStep : String;
    e : TForExpr;
+   ownLoopIterator : Boolean;
    nonIncludedEnd : Boolean;
 begin
    e:=TForExpr(expr);
+
+   {$ifdef USE_LET_FOR_LOOP_VARS}
+   ownLoopIterator := (e.VarExpr.DataSymbol.GetPurpose = sdspLoopIterator);
+   {$else}
+   ownLoopIterator := False;
+   {$endif}
 
    // allocate temporary variables to hold bounds
    // in Pascal bounds and step are evaluated before the loop is entered
    if not e.ToExpr.IsConstant then begin
       tmpTo:=codeGen.GetNewTempSymbol;
-      codeGen.WriteString('var ');
-      codeGen.WriteString(tmpTo);
-      codeGen.WriteStatementEnd;
+      if not ownLoopIterator then begin
+         codeGen.WriteString('var ');
+         codeGen.WriteString(tmpTo);
+         codeGen.WriteStatementEnd;
+      end;
    end else tmpTo:='';
    if (e is TForStepExpr) and not (TForStepExpr(e).StepExpr.IsConstant) then begin
       tmpStep:=codeGen.GetNewTempSymbol;
-      codeGen.WriteString('var ');
-      codeGen.WriteString(tmpStep);
-      codeGen.WriteStatementEnd;
+      if not ownLoopIterator then begin
+         codeGen.WriteString('var ');
+         codeGen.WriteString(tmpStep);
+         codeGen.WriteStatementEnd;
+      end;
    end else tmpStep:='';
 
    // trigger special codegen in case of
@@ -8030,6 +8048,9 @@ begin
                        );
 
    codeGen.WriteString('for(');
+
+   if ownLoopIterator then
+      codeGen.WriteString('let ');
 
    // initialize loop variable
    codeGen.Compile(e.VarExpr);

@@ -566,6 +566,11 @@ type
    end;
    TConstSymbolClass = class of TConstSymbol;
 
+   TScriptDataSymbolPurpose = (
+      sdspGeneral,         // general purpose / unspecified use case
+      sdspLoopIterator     // iterator variable in a for loop
+   );
+
    // variable: var x: Integer;
    TDataSymbol = class (TValueSymbol)
       protected
@@ -579,16 +584,12 @@ type
          procedure AllocateStackAddr(generator : TAddrGenerator);
 
          function IsWritable : Boolean; virtual;
+         function GetPurpose : TScriptDataSymbolPurpose; virtual;
 
          property Level : SmallInt read FLevel write FLevel;
          property UsedBySubLevel : Boolean read FUsedBySubLevel write FUsedBySubLevel;
          property StackAddr: Integer read FStackAddr write FStackAddr;
    end;
-
-   TScriptDataSymbolPurpose = (
-      sdspGeneral,         // general purpose / unspecified use case
-      sdspLoopIterator     // iterator variable in a for loop
-   );
 
    // used for script engine internal purposes
    TScriptDataSymbol = class sealed (TDataSymbol)
@@ -599,6 +600,7 @@ type
          constructor Create(const aName : String; aType : TTypeSymbol; aPurpose : TScriptDataSymbolPurpose = sdspGeneral);
          function Specialize(const context : ISpecializationContext) : TSymbol; override;
 
+         function GetPurpose : TScriptDataSymbolPurpose; override;
          property Purpose : TScriptDataSymbolPurpose read FPurpose write FPurpose;
    end;
 
@@ -6313,6 +6315,13 @@ begin
    Result := True;
 end;
 
+// GetPurpose
+//
+function TDataSymbol.GetPurpose : TScriptDataSymbolPurpose;
+begin
+   Result := sdspGeneral;
+end;
+
 // ------------------
 // ------------------ TScriptDataSymbol ------------------
 // ------------------
@@ -6330,6 +6339,13 @@ end;
 function TScriptDataSymbol.Specialize(const context : ISpecializationContext) : TSymbol;
 begin
    Result := TScriptDataSymbol.Create(Name, context.SpecializeType(Typ), Purpose);
+end;
+
+// GetPurpose
+//
+function TScriptDataSymbol.GetPurpose : TScriptDataSymbolPurpose;
+begin
+   Result := Purpose;
 end;
 
 // ------------------
