@@ -1,0 +1,11 @@
+-1: False
+-0.5: False
+0: False
+0.0: False
+1: False
+0.5: False
+"": False
+"hello": False
+Null: True
+nil: True
+Unassigned: True
