@@ -6,7 +6,7 @@ a[3] := 33;
 
 PrintLn(a.Keys.Map(IntToStr).Sort.Join(','));
 
-for var k in a.Keys do
+for var k in a.Keys.Sort do
     PrintLn(a[k]);
 
 a.Clear;
@@ -15,7 +15,7 @@ PrintLn(a.Keys.Map(IntToStr).Sort.Join(','));
 
 var s : array [String] of Boolean;
 
-PrintLn(s.Keys.Join(','));
+PrintLn(s.Keys.Sort.Join(','));
 
 s['a'] := True;
 s['b'] := False;

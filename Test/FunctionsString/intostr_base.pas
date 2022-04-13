@@ -9,7 +9,7 @@ try
    IntToStr(0, b);
 except
    on E: Exception do
-	  PrintLn(E.Message);
+	  PrintLn('Fail zero');
 end;
 
 b := 123;

@@ -10,7 +10,7 @@ for i := 0 to 5 do
 i := 1234567890123456;
 PrintLn(i.PopCount + 3);  
 
-PrintLn(PopCount(-1) + 32);
+PrintLn(PopCount(Unsigned32(-1)) + 32);
 
 {$else}   
 

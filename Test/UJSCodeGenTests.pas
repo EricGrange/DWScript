@@ -81,8 +81,11 @@ begin
 
    CollectFiles(ExtractFilePath(ParamStr(0))+'Algorithms'+PathDelim, pasFilter, FTests);
    CollectFiles(ExtractFilePath(ParamStr(0))+'SimpleScripts'+PathDelim, pasFilter, FTests);
+   CollectFiles(ExtractFilePath(ParamStr(0))+'ArrayPass'+PathDelim, pasFilter, FTests);
+   CollectFiles(ExtractFilePath(ParamStr(0))+'AssociativePass'+PathDelim, pasFilter, FTests);
    CollectFiles(ExtractFilePath(ParamStr(0))+'BuildScripts'+PathDelim, dwsFilter, FTests);
    CollectFiles(ExtractFilePath(ParamStr(0))+'InterfacesPass'+PathDelim, pasFilter, FTests);
+   CollectFiles(ExtractFilePath(ParamStr(0))+'InnerClassesPass'+PathDelim, pasFilter, FTests);
    CollectFiles(ExtractFilePath(ParamStr(0))+'OverloadsPass'+PathDelim, pasFilter, FTests);
    CollectFiles(ExtractFilePath(ParamStr(0))+'HelpersPass'+PathDelim, pasFilter, FTests);
    CollectFiles(ExtractFilePath(ParamStr(0))+'LambdaPass'+PathDelim, pasFilter, FTests);
