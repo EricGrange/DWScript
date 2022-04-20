@@ -1740,6 +1740,8 @@ var
 begin
    if cls.Name='' then Exit;
 
+   WriteSymbolVerbosity(cls);
+
    constructorSymbol:=cls.FindDefaultConstructor(cvPrivate);
 
    WriteString('function ');
@@ -2397,12 +2399,12 @@ begin
 
    if not SmartLink(cls) then Exit;
 
-   WriteSymbolVerbosity(cls);
-
    if cls.IsExternalRooted then begin
       DoCompileExternalRootedClassSymbol(cls);
       Exit;
    end;
+
+   WriteSymbolVerbosity(cls);
 
    WriteString('var ');
    WriteSymbolName(cls);
