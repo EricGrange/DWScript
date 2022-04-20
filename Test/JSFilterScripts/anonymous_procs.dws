@@ -1,0 +1,44 @@
+<script>
+function PrintLn(s) { document.writeln(JSON.stringify(s)+"<br/>") };
+
+<%pas2js
+type
+
+   JExternal = partial class external 'applet'
+
+      class procedure Callback(success : procedure); external 'callback';
+
+   end;
+
+procedure TestHello;
+begin
+   PrintLn('Hello');
+end;
+
+procedure TestWorld;
+begin
+   PrintLn('World');
+end;
+
+var applet external 'applet' = class
+
+   hello = procedure
+   begin
+      JExternal.Callback(lambda
+         TestHello;
+      end);
+   end;
+
+   world = procedure
+   begin
+      TestWorld;
+   end;
+
+end;
+
+Variant(applet).callback := lambda (p : procedure) p(); end;
+
+applet.hello();
+Variant(applet).world();
+%>
+</script>

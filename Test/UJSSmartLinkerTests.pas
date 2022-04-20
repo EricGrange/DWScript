@@ -26,6 +26,7 @@ type
          procedure ClassSimple;
          procedure AliasedRecord;
          procedure UnusedRecord;
+         procedure AnonymousProc;
    end;
 
 // ------------------------------------------------------------------
@@ -171,6 +172,36 @@ begin
    buf:=FJSCodeGen.CompiledOutput(prog);
 
    Check((Pos('TRec', buf)<=0), 'TRec still present');
+end;
+
+// AnonymousProc
+//
+procedure TJSSmartLinkerTests.AnonymousProc;
+var
+   buf : String;
+   prog : IdwsProgram;
+begin
+   prog:=FJSCompiler.Compile(
+       'procedure Marker(i : Integer); begin  end;'#10
+      +'procedure Test1; begin Marker(123); end;'#10
+      +'procedure Test2; begin Marker(456); end;'#10
+      +'procedure Test3; begin Marker(789); end;'#10
+      +'var a external "abc" : Variant := class'#10
+      +'field := procedure begin Test1 end;'#10
+      +'end;'#10
+      +'var b : Variant := class'#10
+      +'field := procedure begin Test3 end;'#10
+      +'end;'#10
+      );
+
+   FJSCodeGen.Clear;
+   FJSCodeGen.CompileProgram(prog);
+
+   buf:=FJSCodeGen.CompiledOutput(prog);
+
+   Check((Pos('123', buf)> 0), 'Test1 missing');
+   Check((Pos('456', buf)<=0), 'Test2 is still present');
+   Check((Pos('789', buf)> 0), 'Test3 missing');
 end;
 
 // ------------------------------------------------------------------

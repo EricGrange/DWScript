@@ -3429,7 +3429,7 @@ begin
             RecordSymbolUse(Result, funcPos, [suDeclaration, suForward])
          else if forwardedSym=nil then begin
             if Result.Name = '' then
-               RecordSymbolUse(Result, funcPos, [suDeclaration, suImplementation, suImplicit])
+               RecordSymbolUse(Result, funcPos, [suDeclaration, suImplementation, suReference, suImplicit])
             else RecordSymbolUse(Result, funcPos, [suDeclaration, suImplementation]);
          end else RecordSymbolUse(Result, funcPos, [suImplementation]);
       except
