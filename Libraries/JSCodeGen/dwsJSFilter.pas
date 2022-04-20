@@ -63,7 +63,8 @@ type
 
          function CompileToJS(var prog : IdwsProgram; const dwsCode : String;
                               const codeFileName : String = '';
-                              returnProg : Boolean = False) : String;
+                              returnProg : Boolean = False;
+                              lastSection : Boolean = False) : String;
 
          property CodeGen : TdwsJSCodeGen read FCodeGen;
          property IndentChar : Char read GetIndentChar write SetIndentChar;
@@ -136,7 +137,7 @@ var
    lineColPos, lineOffset, colOffset : Integer;
    output : TWriteOnlyBlockStream;
    input : String;
-   p, start, stop : Integer;
+   p, nextStart, start, stop : Integer;
 begin
    CheckPatterns;
 
@@ -151,8 +152,9 @@ begin
       output:=TWriteOnlyBlockStream.Create;
       try
          p:=1;
+         nextStart := PosEx(PatternOpen, input, p);
          repeat
-            start:=PosEx(PatternOpen, input, p);
+            start := nextStart;
             if start<=0 then begin
                output.WriteSubString(input, p);
                Break;
@@ -177,8 +179,9 @@ begin
                output.WriteString(CompileToJS(prog, Copy(input, start, MaxInt)));
                Break;
             end else begin
-               output.WriteString(CompileToJS(prog, Copy(input, start, stop-start)));
                p:=stop+Length(PatternClose);
+               nextStart := PosEx(PatternOpen, input, p);
+               output.WriteString(CompileToJS(prog, Copy(input, start, stop-start), '', False, nextStart <= 0));
             end;
             msgs.AddMsgs(prog.Msgs, lineOffset, colOffset);
             output.WriteString(CodeGenPostfix);
@@ -198,7 +201,8 @@ end;
 //
 function TdwsJSFilter.CompileToJS(var prog : IdwsProgram; const dwsCode : String;
                                   const codeFileName : String = '';
-                                  returnProg : Boolean = False) : String;
+                                  returnProg : Boolean = False;
+                                 lastSection : Boolean = False) : String;
 var
    ownProg : Boolean;
    codeGenProg : IdwsProgram;
@@ -251,6 +255,10 @@ begin
       end;
 
       try
+
+         if lastSection and (cgoSmartLink in CodeGenOptions) then begin
+            FCodeGen.SmartLinkProgramInSession(prog);
+         end;
 
          FCodeGen.CompileProgramInSession(prog);
          Result := FCodeGen.CompiledOutput(prog);

@@ -256,6 +256,10 @@ type
          procedure CompileClassSymbol(cls : TClassSymbol);
          procedure CompileClassSymbolIfNeeded(cls : TClassSymbol);
          procedure CompileInterfaceSymbol(intf : TInterfaceSymbol);
+
+         procedure SmartLinkProgramInSession(const prog : IdwsProgram);
+         procedure SmartLinkTables(table, systemTable : TSymbolTable; unitSyms : TUnitMainSymbols);
+
          procedure BeforeCompileProgram(table, systemTable : TSymbolTable; unitSyms : TUnitMainSymbols);
          procedure CompileProgram(const prog : IdwsProgram); virtual;
          procedure CompileProgramInSession(const prog : IdwsProgram); virtual;
@@ -908,12 +912,59 @@ begin
    end;
 end;
 
+// SmartLinkProgramInSession
+//
+procedure TdwsCodeGen.SmartLinkProgramInSession(const prog : IdwsProgram);
+begin
+   Assert(FContext <> nil);
+
+   if (cgoSmartLink in Options) and (prog.SymbolDictionary.Count > 0) then begin
+      FSymbolDictionary:=prog.SymbolDictionary;
+      FSourceContextMap:=prog.SourceContextMap;
+      try
+         SmartLinkTables(
+            prog.Table,
+            prog.ProgramObject.SystemTable.SymbolTable,
+            prog.ProgramObject.UnitMains
+         );
+      finally
+         FSymbolDictionary:=nil;
+         FSourceContextMap:=nil;
+      end;
+   end;
+end;
+
+// SmartLinkTables
+//
+procedure TdwsCodeGen.SmartLinkTables(table, systemTable : TSymbolTable; unitSyms : TUnitMainSymbols);
+var
+   i : Integer;
+   changed : Boolean;
+begin
+   SmartLinkUnaliasSymbolTable(table);
+   for i:=0 to unitSyms.Count-1 do begin
+      SmartLinkUnaliasSymbolTable(unitSyms[i].Table);
+      SmartLinkUnaliasSymbolTable(unitSyms[i].ImplementationTable);
+   end;
+
+   DeVirtualize;
+
+   SmartLinkFilterSymbolTable(table, changed);
+
+   repeat
+      changed:=False;
+      for i:=0 to unitSyms.Count-1 do begin
+         SmartLinkFilterSymbolTable(unitSyms[i].Table, changed);
+         SmartLinkFilterSymbolTable(unitSyms[i].ImplementationTable, changed);
+      end;
+   until not changed;
+end;
+
 // BeforeCompileProgram
 //
 procedure TdwsCodeGen.BeforeCompileProgram(table, systemTable : TSymbolTable; unitSyms : TUnitMainSymbols);
 var
    i : Integer;
-   changed : Boolean;
 begin
    if FRootSymbolMap = nil then
       FRootSymbolMap := CreateSymbolMap(nil, nil);
@@ -922,25 +973,8 @@ begin
    ReserveSymbolNames;
    MapInternalSymbolNames(table, systemTable);
 
-   if FSymbolDictionary<>nil then begin
-
-      SmartLinkUnaliasSymbolTable(table);
-      for i:=0 to unitSyms.Count-1 do begin
-         SmartLinkUnaliasSymbolTable(unitSyms[i].Table);
-         SmartLinkUnaliasSymbolTable(unitSyms[i].ImplementationTable);
-      end;
-
-      DeVirtualize;
-
-      SmartLinkFilterSymbolTable(table, changed);
-
-      repeat
-         changed:=False;
-         for i:=0 to unitSyms.Count-1 do begin
-            SmartLinkFilterSymbolTable(unitSyms[i].Table, changed);
-            SmartLinkFilterSymbolTable(unitSyms[i].ImplementationTable, changed);
-         end;
-      until not changed;
+   if FSymbolDictionary <> nil then begin
+      SmartLinkTables(table, systemTable, unitSyms);
    end;
 
    for i:=0 to unitSyms.Count-1 do
