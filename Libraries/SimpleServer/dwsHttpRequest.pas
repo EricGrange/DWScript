@@ -343,13 +343,11 @@ begin
       );
 
    except
-      on EWinHTTP do begin
-         if iconn <> nil then
-            iconn.ExtractConnection.Free;
-         if exec <> nil then
-            exec.CustomInterfaces[cWinHttpConnection] := nil;
-         raise;
-      end;
+      if iconn <> nil then
+         iconn.ExtractConnection.Free;
+      if exec <> nil then
+         exec.CustomInterfaces[cWinHttpConnection] := nil;
+      raise;
    end;
 end;
 
