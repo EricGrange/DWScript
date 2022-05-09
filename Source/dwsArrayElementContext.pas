@@ -187,7 +187,7 @@ end;
 //
 function TArrayElementDataContext.GetAsBoolean(addr : NativeInt) : Boolean;
 begin
-   Result := FArray.AsBoolean[FIndex];
+   Result := FArray.AsBoolean[ComputeAddr(addr)];
 end;
 
 // SetAsBoolean
