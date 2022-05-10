@@ -331,7 +331,7 @@ begin
          conn.SetCredentials(unassignedVariant);
          conn.SetCustomHeaders(unassignedVariant);
          keepAlive := cWinHttpDefaultKeepAlive;
-         conn.FWinHttp.DisableRedirects := True;
+         conn.FWinHttp.DisableRedirects := False;
       end;
       conn.SetOnProgress(onProgress);
       conn.FWinHttp.CertificateInfo := certificateInfo;
