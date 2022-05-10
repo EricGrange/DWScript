@@ -5,3 +5,5 @@ True
 False
 True
 null
+TObject
+True
