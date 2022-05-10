@@ -1238,7 +1238,6 @@ end;
 procedure TSourceUtilsTests.ConstantsDescription;
 var
    prog : IdwsProgram;
-   constSym : TConstSymbol;
 begin
    prog := FCompiler.Compile(
         'const i : Integer = 123;'#10
