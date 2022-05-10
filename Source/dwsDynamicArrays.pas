@@ -62,7 +62,6 @@ type
 
          procedure SetAsString(index : NativeInt; const v : String);
          procedure EvalAsString(index : NativeInt; var result : String);
-         function  GetAsString(index : NativeInt) : String; inline;
 
          procedure SetAsInterface(index : NativeInt; const v : IUnknown);
          procedure EvalAsInterface(index : NativeInt; var result : IUnknown);
@@ -110,7 +109,7 @@ type
 
          property AsInteger[index : NativeInt] : Int64 read GetAsInteger write SetAsInteger;
          property AsFloat[index : NativeInt] : Double read GetAsFloat write SetAsFloat;
-         property AsString[index : NativeInt] : String read GetAsString write SetAsString;
+         property AsString[index : NativeInt] : String write SetAsString;
    end;
 
    TScriptDynamicValueArray = class (TScriptDynamicDataArray)
@@ -681,13 +680,6 @@ end;
 procedure TScriptDynamicDataArray.EvalAsString(index : NativeInt; var result : String);
 begin
    inherited EvalAsString(index, result);
-end;
-
-// GetAsString
-//
-function TScriptDynamicDataArray.GetAsString(index : NativeInt) : String;
-begin
-   EvalAsString(index, Result);
 end;
 
 // SetAsInterface

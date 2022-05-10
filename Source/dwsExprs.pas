@@ -7338,7 +7338,7 @@ end;
 //
 function TScriptObjInstance.FieldAsString(const fieldName : String) : String;
 begin
-   Result := AsString[FieldAddress(fieldName)];
+   EvalAsString(FieldAddress(fieldName), Result);
 end;
 
 // FieldAsInteger

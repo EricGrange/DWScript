@@ -43,7 +43,6 @@ type
       procedure SetAsFloat(addr : NativeInt; const value : Double);
       function GetAsBoolean(addr : NativeInt) : Boolean;
       procedure SetAsBoolean(addr : NativeInt; const value : Boolean);
-      function GetAsString(addr : NativeInt) : String;
       procedure SetAsString(addr : NativeInt; const value : String);
       function GetAsInterface(addr : NativeInt) : IUnknown;
       procedure SetAsInterface(addr : NativeInt; const value : IUnknown);
@@ -60,7 +59,7 @@ type
       property  AsInteger[addr : NativeInt] : Int64 read GetAsInteger write SetAsInteger;
       property  AsBoolean[addr : NativeInt] : Boolean read GetAsBoolean write SetAsBoolean;
       property  AsFloat[addr : NativeInt] : Double read GetAsFloat write SetAsFloat;
-      property  AsString[addr : NativeInt] : String read GetAsString write SetAsString;
+      property  AsString[addr : NativeInt] : String write SetAsString;
       property  AsInterface[addr : NativeInt] : IUnknown read GetAsInterface write SetAsInterface;
 
       procedure SetZeroInt64(addr : NativeInt);
@@ -134,7 +133,6 @@ type
          procedure SetAsFloat(addr : NativeInt; const value : Double); inline;
          function GetAsBoolean(addr : NativeInt) : Boolean; inline;
          procedure SetAsBoolean(addr : NativeInt; const value : Boolean); inline;
-         function GetAsString(addr : NativeInt) : String; inline;
          procedure SetAsString(addr : NativeInt; const value : String); inline;
          function GetAsInterface(addr : NativeInt) : IUnknown; inline;
          procedure SetAsInterface(addr : NativeInt; const value : IUnknown); inline;
@@ -167,7 +165,7 @@ type
          property  AsInteger[addr : NativeInt] : Int64 read GetAsInteger write SetAsInteger;
          property  AsBoolean[addr : NativeInt] : Boolean read GetAsBoolean write SetAsBoolean;
          property  AsFloat[addr : NativeInt] : Double read GetAsFloat write SetAsFloat;
-         property  AsString[addr : NativeInt] : String read GetAsString write SetAsString;
+         property  AsString[addr : NativeInt] : String write SetAsString;
          property  AsInterface[addr : NativeInt] : IUnknown read GetAsInterface write SetAsInterface;
 
          procedure SetZeroInt64(addr : NativeInt);
@@ -230,7 +228,6 @@ type
          procedure SetAsFloat(addr : NativeInt; const value : Double);
          function GetAsBoolean(addr : NativeInt) : Boolean;
          procedure SetAsBoolean(addr : NativeInt; const value : Boolean);
-         function GetAsString(addr : NativeInt) : String;
          procedure SetAsString(addr : NativeInt; const value : String);
          function GetAsInterface(addr : NativeInt) : IUnknown;
          procedure SetAsInterface(addr : NativeInt; const value : IUnknown);
@@ -722,13 +719,6 @@ begin
    else VarCopySafe(PVariant(p)^, value);
 end;
 
-// GetAsString
-//
-function TDataContext.GetAsString(addr : NativeInt) : String;
-begin
-   EvalAsString(addr, Result);
-end;
-
 // SetAsString
 //
 procedure TDataContext.SetAsString(addr : NativeInt; const value : String);
@@ -1194,13 +1184,6 @@ end;
 procedure TRelativeDataContext.SetAsBoolean(addr : NativeInt; const value : Boolean);
 begin
    VarCopySafe(FGetPData^[FAddr+addr], value);
-end;
-
-// GetAsString
-//
-function TRelativeDataContext.GetAsString(addr : NativeInt) : String;
-begin
-   Result := FGetPData^[FAddr+addr];
 end;
 
 // SetAsString

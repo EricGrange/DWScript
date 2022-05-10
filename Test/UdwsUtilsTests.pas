@@ -1814,6 +1814,7 @@ const
    cDouble : Double = 4.75;
 var
    dc : IDataContext;
+   buf : String;
 begin
    dc := TDataContext.CreateStandalone(1);
 
@@ -1821,53 +1822,62 @@ begin
    CheckEquals(1, dc.AsInteger[0], 'True');
    CheckEquals(1, dc.AsFloat[0], 'True');
    CheckEquals(True, dc.AsBoolean[0], 'True');
-   CheckEquals('True', dc.AsString[0], 'True');
+   dc.EvalAsString(0, buf);
+   CheckEquals('True', buf, 'True');
 
    dc.AsVariant[0] := Int64(2);
    CheckEquals(2, dc.AsInteger[0], '2');
    CheckEquals(2.0, dc.AsFloat[0], '2');
    CheckEquals(True, dc.AsBoolean[0], '2');
-   CheckEquals('2', dc.AsString[0], '2');
+   dc.EvalAsString(0, buf);
+   CheckEquals('2', buf, '2');
 
    dc.AsVariant[0] := cSingle;
    CheckEquals(3, dc.AsInteger[0], '3.25');
    CheckEquals(3.25, dc.AsFloat[0], '3.25');
    CheckEquals(True, dc.AsBoolean[0], '3.25');
-   CheckEquals('3.25', dc.AsString[0], '3.25');
+   dc.EvalAsString(0, buf);
+   CheckEquals('3.25', buf, '3.25');
 
    dc.AsVariant[0] := cDouble;
    CheckEquals(5, dc.AsInteger[0], '4.75');
    CheckEquals(4.75, dc.AsFloat[0], '4.75');
    CheckEquals(True, dc.AsBoolean[0], '4.75');
-   CheckEquals('4.75', dc.AsString[0], '4.75');
+   dc.EvalAsString(0, buf);
+   CheckEquals('4.75', buf, '4.75');
 
    dc.AsVariant[0] := '05';
    CheckEquals(5, dc.AsInteger[0], '05');
    CheckEquals(5.0, dc.AsFloat[0], '05');
    CheckEquals(True, dc.AsBoolean[0], '05');
-   CheckEquals('05', dc.AsString[0], '05');
+   dc.EvalAsString(0, buf);
+   CheckEquals('05', buf, '05');
 
    dc.AsVariant[0] := '1';
    CheckEquals(1, dc.AsInteger[0], '1');
    CheckEquals(1.0, dc.AsFloat[0], '1');
    CheckEquals(True, dc.AsBoolean[0], '1');
-   CheckEquals('1', dc.AsString[0], '1');
+   dc.EvalAsString(0, buf);
+   CheckEquals('1', buf, '1');
 
    dc.AsVariant[0] := '0';
    CheckEquals(0, dc.AsInteger[0], '0');
    CheckEquals(0.0, dc.AsFloat[0], '0');
    CheckEquals(False, dc.AsBoolean[0], '0');
-   CheckEquals('0', dc.AsString[0], '0');
+   dc.EvalAsString(0, buf);
+   CheckEquals('0', buf, '0');
 
    dc.AsVariant[0] := '';
    CheckEquals(False, dc.AsBoolean[0], 'empty string');
-   CheckEquals('', dc.AsString[0], 'empty string');
+   dc.EvalAsString(0, buf);
+   CheckEquals('', buf, 'empty string');
 
    dc.AsVariant[0] := Null;
    CheckEquals(0, dc.AsInteger[0], 'Null');
    CheckEquals(0.0, dc.AsFloat[0], 'Null');
    CheckEquals(False, dc.AsBoolean[0], 'Null');
-   CheckEquals('Null', dc.AsString[0], 'Null');
+   dc.EvalAsString(0, buf);
+   CheckEquals('Null', buf, 'Null');
 end;
 
 // VariantPersist

@@ -240,10 +240,10 @@ var
    dyn : IScriptDynArray;
    buf : String;
 begin
-   buf := obj.AsString[obj.FieldAddress('ID')];
+   obj.EvalAsString(obj.FieldAddress('ID'), buf);
    if buf <> '' then
       Result := 'id: ' + StringToUTF8(buf) + #10;
-   buf := obj.AsString[obj.FieldAddress('Name')];
+   obj.EvalAsString(obj.FieldAddress('Name'), buf);
    if buf <> '' then
       Result := Result + 'event: ' + StringToUTF8(buf) + #10;
    i := obj.AsInteger[obj.FieldAddress('Retry')];

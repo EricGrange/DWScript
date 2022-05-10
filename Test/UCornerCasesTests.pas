@@ -1812,6 +1812,7 @@ var
    prog : IdwsProgram;
    cls : TClassSymbol;
    prop : TPropertySymbol;
+   buf : String;
 begin
    prog:=FCompiler.Compile( 'type tobj = class(Tobject)'#13#10
                            +'Field : String;'#13#10
@@ -1825,7 +1826,9 @@ begin
    prop:=cls.Members.FindSymbol('Prop', cvMagic) as TPropertySymbol;
 
    CheckEquals('String', prop.DefaultSym.Typ.Name);
-   CheckEquals('hello', prop.DefaultSym.DataContext.AsString[0]);
+
+   prop.DefaultSym.DataContext.EvalAsString(0, buf);
+   CheckEquals('hello', buf);
 end;
 
 // SimpleStringListIndexOf

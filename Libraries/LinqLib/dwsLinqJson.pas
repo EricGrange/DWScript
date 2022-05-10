@@ -327,7 +327,7 @@ var
    lElem, rElem: TdwsJsonValue;
    rel: TVariantRelationship;
 begin
-   elemName := filter.DataContext.AsString[0];
+   filter.DataContext.EvalAsString(0, elemName);
    lElem := left.Items[elemName];
    rElem := right.Items[elemName];
    if (lElem = nil) or not lElem.IsImmediateValue then

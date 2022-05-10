@@ -268,29 +268,45 @@ end;
 //
 class procedure JSONScript.StringifyDataContextArray(exec : TdwsExecution;
    writer : TdwsJSONWriter; elemSym : TTypeSymbol; const dataPtr : IDataContext; nb : Integer);
-var
-   i, s : Integer;
-   locData : IDataContext;
-   unaliasedClassType : TClass;
-begin
-   s:=elemSym.Size;
-   writer.BeginArray;
-   unaliasedClassType:=elemSym.UnAliasedType.ClassType;
-   if unaliasedClassType=TBaseIntegerSymbol then begin
-      for i:=0 to nb-1 do
-         writer.WriteInteger(dataPtr.AsInteger[i]);
-   end else if unaliasedClassType=TBaseFloatSymbol then begin
-      for i:=0 to nb-1 do
-         writer.WriteNumber(dataPtr.AsFloat[i]);
-   end else if unaliasedClassType=TBaseStringSymbol then begin
-      for i:=0 to nb-1 do
-         writer.WriteString(dataPtr.AsString[i]);
-   end else begin
+
+   procedure HandleBaseString;
+   var
+      i : Integer;
+      s : String;
+   begin
       for i:=0 to nb-1 do begin
+         dataPtr.EvalAsString(i, s);
+         writer.WriteString(s);
+      end;
+   end;
+
+   procedure HandleDefault;
+   var
+      i, s : Integer;
+      locData : IDataContext;
+   begin
+      s := elemSym.Size;
+      for i := 0 to nb-1 do begin
          dataPtr.CreateOffset(i*s, locData);
          StringifySymbol(exec, writer, elemSym, locData);
       end;
    end;
+
+var
+   i : Integer;
+   unaliasedClassType : TClass;
+begin
+   writer.BeginArray;
+   unaliasedClassType := elemSym.UnAliasedType.ClassType;
+   if unaliasedClassType = TBaseIntegerSymbol then begin
+      for i := 0 to nb-1 do
+         writer.WriteInteger(dataPtr.AsInteger[i]);
+   end else if unaliasedClassType = TBaseFloatSymbol then begin
+      for i := 0 to nb-1 do
+         writer.WriteNumber(dataPtr.AsFloat[i]);
+   end else if unaliasedClassType=TBaseStringSymbol then
+      HandleBaseString
+   else HandleDefault;
    writer.EndArray;
 end;
 

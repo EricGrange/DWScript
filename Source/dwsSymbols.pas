@@ -6269,10 +6269,31 @@ begin
 end;
 
 function TConstSymbol.GetDescription : String;
+
+   function EncodeString : String;
+   var
+      nbApos, nbQuotes : Integer;
+   begin
+      FDataContext.EvalAsString(0, Result);
+      nbApos := StrCountChar(Result, '''');
+      if nbApos = 0 then
+         nbQuotes := 1
+      else nbQuotes := StrCountChar(Result, '"');
+      if nbApos < nbQuotes then begin
+         if nbApos > 0 then
+            Result := '''' + StringReplace(Result, '''', '''''', [ rfReplaceAll ]) + ''''
+         else Result := '''' + Result + '''';
+      end else begin
+         if nbQuotes > 0 then
+            Result := '"' + StringReplace(Result, '"', '""', [ rfReplaceAll ]) + '"'
+         else Result := '"' + Result + '"';
+      end;
+   end;
+
 begin
    Result := 'const ' + inherited GetDescription + ' = ';
    if Typ.Size > 0 then
-      Result := Result + FDataContext.AsString[0]
+      Result := Result + EncodeString
    else Result := Result + '???';
 end;
 
