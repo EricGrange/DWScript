@@ -73,6 +73,7 @@ type
          procedure ParameterSuggest;
          procedure FunctionCaptionDescription;
          procedure PropertiesDescription;
+         procedure ConstantsDescription;
    end;
 
 // ------------------------------------------------------------------
@@ -1230,6 +1231,29 @@ begin
    CheckEquals('property Keys: array of String read', classSymMembers.FindSymbol('Keys', cvMagic).Description, 'Test2');
    CheckEquals('property NameValue: TNameValue read write', classSymMembers.FindSymbol('NameValue', cvMagic).Description, 'Test3');
    CheckEquals('property StringTab: TStringArray read write', classSymMembers.FindSymbol('StringTab', cvMagic).Description, 'Test4');
+end;
+
+// ConstantsDescription
+//
+procedure TSourceUtilsTests.ConstantsDescription;
+var
+   prog : IdwsProgram;
+   constSym : TConstSymbol;
+begin
+   prog := FCompiler.Compile(
+        'const i : Integer = 123;'#10
+      + 'const f = 1.5;'#10
+      + 'const s = ''foobar'';'#10
+      + 'const s2 = "foo''bar";'#10
+      + 'const v : Variant = Null;'#10
+   );
+   CheckFalse(prog.Msgs.HasErrors, prog.Msgs.AsInfo);
+
+   CheckEquals('const i: Integer = 123', (prog.Table.FindLocal('i') as TConstSymbol).Description);
+   CheckEquals('const f: Float = 1.5', (prog.Table.FindLocal('f') as TConstSymbol).Description);
+   CheckEquals('const s: String = ''foobar''', (prog.Table.FindLocal('s') as TConstSymbol).Description);
+   CheckEquals('const s2: String = "foo''bar"', (prog.Table.FindLocal('s2') as TConstSymbol).Description);
+   CheckEquals('const v: Variant = Null', (prog.Table.FindLocal('v') as TConstSymbol).Description);
 end;
 
 // SuggestInBlockWithError

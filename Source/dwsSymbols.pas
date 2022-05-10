@@ -6275,18 +6275,20 @@ function TConstSymbol.GetDescription : String;
       nbApos, nbQuotes : Integer;
    begin
       FDataContext.EvalAsString(0, Result);
-      nbApos := StrCountChar(Result, '''');
-      if nbApos = 0 then
-         nbQuotes := 1
-      else nbQuotes := StrCountChar(Result, '"');
-      if nbApos < nbQuotes then begin
-         if nbApos > 0 then
-            Result := '''' + StringReplace(Result, '''', '''''', [ rfReplaceAll ]) + ''''
-         else Result := '''' + Result + '''';
-      end else begin
-         if nbQuotes > 0 then
-            Result := '"' + StringReplace(Result, '"', '""', [ rfReplaceAll ]) + '"'
-         else Result := '"' + Result + '"';
+      if Typ.UnAliasedTypeIs(TBaseStringSymbol) then begin
+         nbApos := StrCountChar(Result, '''');
+         if nbApos = 0 then
+            nbQuotes := 1
+         else nbQuotes := StrCountChar(Result, '"');
+         if nbApos < nbQuotes then begin
+            if nbApos > 0 then
+               Result := '''' + StringReplace(Result, '''', '''''', [ rfReplaceAll ]) + ''''
+            else Result := '''' + Result + '''';
+         end else begin
+            if nbQuotes > 0 then
+               Result := '"' + StringReplace(Result, '"', '""', [ rfReplaceAll ]) + '"'
+            else Result := '"' + Result + '"';
+         end;
       end;
    end;
 
