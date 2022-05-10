@@ -80,7 +80,7 @@ begin
    FJSFilter.CodeGenPostfix:='';
    FJSFilter.Compiler := FJSCompiler;
 
-   FHtmlFilter :=  TdwsHtmlFilter.Create(nil);
+   FHtmlFilter := TdwsHtmlFilter.Create(nil);
    FHtmlFilter.PatternOpen:='<?pas';
    FHtmlFilter.PatternClose:='?>';
    FHtmlFilter.SubFilter:=FJSFilter;
@@ -90,8 +90,8 @@ begin
 
    FMainCompiler.Config.Filter := FHtmlFilter;
 
-   FASMModule:=TdwsJSLibModule.Create(nil);
-   FASMModule.Script:=FJSCompiler;
+   FASMModule := TdwsJSLibModule.Create(nil);
+   FASMModule.Script := FJSCompiler;
 
    if FChromium = nil then
       FChromium := CreateTestChromium;
