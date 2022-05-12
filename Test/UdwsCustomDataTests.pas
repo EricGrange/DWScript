@@ -30,6 +30,7 @@ type
       published
          procedure VariantStates;
          procedure TypedQueries;
+         procedure CustomInterfaces;
    end;
 
 // ------------------------------------------------------------------
@@ -148,6 +149,29 @@ begin
       CheckEquals('true', states.StringStateDef(cTestID2, 'bar'));
    finally
       states.Free;
+   end;
+end;
+
+// CustomInterfaces
+//
+procedure TdwsCustomDataTests.CustomInterfaces;
+var
+   intfs : TdwsCustomInterfaces;
+   i : IInterface;
+begin
+   i := TInterfacedObject.Create;
+   intfs := TdwsCustomInterfaces.Create;
+   try
+      intfs.Interfaces[cTestID1] := i;
+
+      Check(intfs.Interfaces[cTestID1] = i, 'id1 set');
+      Check(intfs.Interfaces[cTestID2] = nil, 'id2');
+
+      intfs.Interfaces[cTestID1] := nil;
+
+      Check(intfs.Interfaces[cTestID1] = nil, 'id1 clear');
+   finally
+      intfs.Free;
    end;
 end;
 
