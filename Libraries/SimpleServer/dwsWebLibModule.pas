@@ -210,6 +210,8 @@ type
       Info: TProgramInfo; ExtObject: TObject);
     function dwsWebClassesWebResponseMethodsSetStatusJSONFastEval(
       baseExpr: TTypedExpr; const args: TExprBaseListExec): Variant;
+    function dwsWebClassesWebResponseMethodsSetStatusRedirectFastEval(
+      baseExpr: TTypedExpr; const args: TExprBaseListExec): Variant;
   private
     { Private declarations }
     FServer :  IWebServerInfo;
@@ -857,6 +859,22 @@ begin
    if wr <> nil then begin
       wr.StatusCode := args.AsInteger[0];
       wr.ContentText['plain'] := args.AsString[1];
+   end;
+end;
+
+function TdwsWebLib.dwsWebClassesWebResponseMethodsSetStatusRedirectFastEval(
+  baseExpr: TTypedExpr; const args: TExprBaseListExec): Variant;
+var
+   wr : TWebResponse;
+   status : Int64;
+begin
+   wr := args.WebResponse;
+   if wr <> nil then begin
+      status := args.AsInteger[0];
+      if (status < 300) or (status > 399) then
+         raise Exception.CreateFmt('Redirection status code should be in [300-399] range but got %d', [ status ]);
+      wr.StatusCode := status;
+      wr.Headers.Values['Location'] := args.AsString[1];
    end;
 end;
 

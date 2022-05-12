@@ -537,6 +537,21 @@ object dwsWebLib: TdwsWebLib
             Kind = mkClassProcedure
           end
           item
+            Name = 'SetStatusRedirect'
+            Parameters = <
+              item
+                Name = 'status'
+                DataType = 'Integer'
+              end
+              item
+                Name = 'location'
+                DataType = 'String'
+              end>
+            Attributes = [maStatic]
+            OnFastEval = dwsWebClassesWebResponseMethodsSetStatusRedirectFastEval
+            Kind = mkClassProcedure
+          end
+          item
             Name = 'SetETag'
             Parameters = <
               item
