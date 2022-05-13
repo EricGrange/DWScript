@@ -174,7 +174,7 @@ uses dwsJSON, dwsXPlatform, SynZip;
 {$R dwsJSRTL.res}
 
 const
-   cJSRTLDependencies : array [1..315{$ifdef JS_BIGINTEGER} + 16{$endif}] of TJSRTLDependency = (
+   cJSRTLDependencies : array [1..316{$ifdef JS_BIGINTEGER} + 16{$endif}] of TJSRTLDependency = (
       // codegen utility functions
       (Name : '$CheckStep';
        Code : 'function $CheckStep(s,z) { if (s>0) return s; throw Exception.Create($New(Exception),"FOR loop STEP should be strictly positive: "+s.toString()+z); }';
@@ -876,6 +876,11 @@ const
        Code : 'function FindDelimiter(d,s,x) { var n=d.length,r=ns=s.length,i,p; for (i=0;i<n;i++) { p=s.indexOf(d.charAt(i),x-1); if (p>=0&&p<r) r=p; } return (r==ns)?-1:r+1; }'),
       (Name : 'Gcd$_Integer_Integer_';
        Code : 'function Gcd$_Integer_Integer_(a, b) { var r; while (b!=0) { r=a%b; a=b; b=r; } return a }'),
+      (Name : 'Haversine';
+       Code : 'function Haversine(x1,y1,x2,y2,d,r) { var p=Math.PI/180, c=Math.cos, '
+                  + 'k=1-c((x2-x1)*p)+c(x1*p)*c(x2*p)*(1-c((y2-y1)*p));'
+                  + 'return (2*r)*Math.asin(Math.sqrt(.5*k))'
+               + '}'),
       (Name : 'HexToInt';
        Code : 'function HexToInt(v) {'#10
                +#9'var r=parseInt(v,16);'#10
