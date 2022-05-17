@@ -263,6 +263,7 @@ type
 function GetSystemMilliseconds : Int64;
 function UTCDateTime : TDateTime;
 function UnixTime : Int64;
+function EpochTimeStamp : Int64;
 
 function LocalDateTimeToUTCDateTime(t : TDateTime) : TDateTime;
 function UTCDateTimeToLocalDateTime(t : TDateTime) : TDateTime;
@@ -614,6 +615,23 @@ begin
    t.LowPart := ft.dwLowDateTime;
    t.HighPart := ft.dwHighDateTime;
    Result := (t.QuadPart - cUNIX_TIME_START) div cTICKS_PER_SECOND;
+end;
+
+// EpochTimeStamp
+//
+function EpochTimeStamp : Int64;
+const
+   cUNIX_TIME_START : Int64 = $019DB1DED53E8000;
+   cTICKS_PER_SECOND : Int64 = 10000000;  // 100ns
+   cEPOCH_TICKS_PER_SECOND : Int64 = 1000;
+var
+   ft : FILETIME;
+   t : TdwsLargeInteger;
+begin
+   GetSystemTimeAsFileTime(ft);
+   t.LowPart := ft.dwLowDateTime;
+   t.HighPart := ft.dwHighDateTime;
+   Result := (t.QuadPart - cUNIX_TIME_START) div (cTICKS_PER_SECOND div cEPOCH_TICKS_PER_SECOND);
 end;
 
 {$IFNDEF LINUX}

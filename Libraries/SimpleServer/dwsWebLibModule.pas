@@ -895,11 +895,16 @@ procedure TdwsWebLib.dwsWebClassesWebResponseMethodsSetCookie_StringStringFloat_
 var
    cookie : TWebResponseCookie;
    wr : TWebResponse;
+   name, value : String;
 begin
    wr := args.WebResponse;
    if wr <> nil then begin
-      cookie := wr.Cookies.AddCookie(args.AsString[0]);
-      cookie.Value := args.AsString[1];
+      args.EvalAsString(0, name);
+      args.EvalAsString(1, value);
+      if not IsValidRFC6265CookieValue(value) then
+         raise Exception.Create('Cookie value contains characters not allowed by RFC 6265');
+      cookie := wr.Cookies.AddCookie(name);
+      cookie.Value := value;
       cookie.ExpiresGMT := args.AsFloat[2];
    end;
 end;
@@ -909,11 +914,16 @@ procedure TdwsWebLib.dwsWebClassesWebResponseMethodsSetCookie_StringStringFloatS
 var
    cookie : TWebResponseCookie;
    wr : TWebResponse;
+   name, value : String;
 begin
    wr := args.WebResponse;
    if wr <> nil then begin
-      cookie := wr.Cookies.AddCookie(args.AsString[0]);
-      cookie.Value := args.AsString[1];
+      args.EvalAsString(0, name);
+      args.EvalAsString(1, value);
+      if not IsValidRFC6265CookieValue(value) then
+         raise Exception.Create('Cookie value contains characters not allowed by RFC 6265');
+      cookie := wr.Cookies.AddCookie(name);
+      cookie.Value := value;
       cookie.ExpiresGMT := args.AsFloat[2];
       cookie.Path := args.AsString[3];
       cookie.Domain := args.AsString[4];
