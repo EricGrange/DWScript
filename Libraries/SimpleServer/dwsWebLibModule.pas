@@ -216,6 +216,8 @@ type
     { Private declarations }
     FServer :  IWebServerInfo;
     function GetServerEvents : IdwsHTTPServerEvents;
+    procedure CheckCookie(const name, value : String);
+
   public
     { Public declaration }
     property Server : IWebServerInfo read FServer write FServer;
@@ -890,6 +892,16 @@ begin
    end;
 end;
 
+// CheckCookie
+//
+procedure TdwsWebLib.CheckCookie(const name, value : String);
+begin
+   if not IsValidRFC6265CookieValue(name) then
+      raise Exception.Create('Cookie name contains characters not allowed by RFC 6265');
+   if not IsValidRFC6265CookieValue(value) then
+      raise Exception.Create('Cookie value contains characters not allowed by RFC 6265');
+end;
+
 procedure TdwsWebLib.dwsWebClassesWebResponseMethodsSetCookie_StringStringFloat_FastEvalNoResult(
   baseExpr: TTypedExpr; const args: TExprBaseListExec);
 var
@@ -901,8 +913,7 @@ begin
    if wr <> nil then begin
       args.EvalAsString(0, name);
       args.EvalAsString(1, value);
-      if not IsValidRFC6265CookieValue(value) then
-         raise Exception.Create('Cookie value contains characters not allowed by RFC 6265');
+      CheckCookie(name, value);
       cookie := wr.Cookies.AddCookie(name);
       cookie.Value := value;
       cookie.ExpiresGMT := args.AsFloat[2];
@@ -920,8 +931,7 @@ begin
    if wr <> nil then begin
       args.EvalAsString(0, name);
       args.EvalAsString(1, value);
-      if not IsValidRFC6265CookieValue(value) then
-         raise Exception.Create('Cookie value contains characters not allowed by RFC 6265');
+      CheckCookie(name, value);
       cookie := wr.Cookies.AddCookie(name);
       cookie.Value := value;
       cookie.ExpiresGMT := args.AsFloat[2];
