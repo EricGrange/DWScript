@@ -3442,11 +3442,18 @@ end;
 // AcquireUnifier
 //
 function AcquireUnifier : TStringUnifier;
+var
+   p : Pointer;
 begin
+   Result := nil;
    repeat
-      Result := TStringUnifier(InterlockedCompareExchangePointer(vUnifiedStrings[0], nil, vUnifiedStrings[0]));
+      p := vUnifiedStrings[0];
+      if p <> nil then
+         Result := TStringUnifier(InterlockedCompareExchangePointer(vUnifiedStrings[0], nil, p));
       if Result <> nil then Exit;
-      Result := TStringUnifier(InterlockedCompareExchangePointer(vUnifiedStrings[1], nil, vUnifiedStrings[1]));
+      p := vUnifiedStrings[1];
+      if p <> nil then
+         Result := TStringUnifier(InterlockedCompareExchangePointer(vUnifiedStrings[1], nil, p));
       if Result <> nil then Exit;
       Sleep(0);
    until False;
