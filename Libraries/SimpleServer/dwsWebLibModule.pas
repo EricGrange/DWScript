@@ -227,7 +227,8 @@ implementation
 
 {$R *.dfm}
 
-uses dwsHttpRequest, dwsWinHTTP, dwsDynamicArrays, dwsICMP, dwsInfo, dwsStrings;
+uses dwsHttpRequest, dwsWinHTTP, dwsDynamicArrays, dwsICMP,
+   dwsInfo, dwsStrings, dwsWebUtils;
 
 function TdwsWebLib.GetServerEvents : IdwsHTTPServerEvents;
 begin
@@ -896,9 +897,9 @@ end;
 //
 procedure TdwsWebLib.CheckCookie(const name, value : String);
 begin
-   if not IsValidRFC6265CookieValue(name) then
+   if not WebUtils.IsValidCookieName(name) then
       raise Exception.Create('Cookie name contains characters not allowed by RFC 6265');
-   if not IsValidRFC6265CookieValue(value) then
+   if not WebUtils.IsValidCookieValue(value) then
       raise Exception.Create('Cookie value contains characters not allowed by RFC 6265');
 end;
 

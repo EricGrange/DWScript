@@ -297,8 +297,6 @@ type
          property DirectMethod : String read FMethod write FMethod;
    end;
 
-function IsValidRFC6265CookieValue(const s : String) : Boolean;
-
 const
    cWebRequestAuthenticationToString : array [TWebRequestAuthentication] of String = (
       'None', 'Failed', 'Basic', 'Digest', 'NTLM', 'Negotiate', 'Kerberos', 'Header'
@@ -319,27 +317,6 @@ implementation
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
-
-// IsValidRFC6265CookieValue
-//
-function IsValidRFC6265CookieValue(const s : String) : Boolean;
-var
-   p : PChar;
-   i : Integer;
-begin
-   // check for RFC 6265 set
-   p := PChar(s);
-   for i := 0 to Length(s)-1 do begin
-      case p[i] of
-         '0'..'9', 'A'..'Z', 'a'..'z',
-         '!', '#', '$', '%', '&', '''', '*', '+', '-', '.',
-         '^', '_', '`', '|', '~' : ;
-      else
-         Exit(False);
-      end;
-   end;
-   Result := True;
-end;
 
 // ------------------
 // ------------------ TWebEnvironmentHelper ------------------

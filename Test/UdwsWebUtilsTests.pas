@@ -43,6 +43,8 @@ type
          procedure HTMLEncoding;
          procedure CSSEncoding;
          procedure XMLEncoding;
+
+         procedure CookieChecks;
    end;
 
 // ------------------------------------------------------------------
@@ -263,6 +265,21 @@ begin
 
    CheckEquals('&apos;'#$00A0, WebUtils.XMLTextEncode(''''#$00A0), 'encode NBSP apos');
    CheckEquals(#$00A0'''', WebUtils.XMLTextDecode(#$00A0'&apos;'), 'decode NBSP apos');
+end;
+
+// CookieChecks
+//
+procedure TdwsWebUtilsTests.CookieChecks;
+begin
+   CheckFalse(WebUtils.IsValidCookieName(''), 'empty name');
+   CheckTrue(WebUtils.IsValidCookieName('hello'), 'hello name');
+   CheckFalse(WebUtils.IsValidCookieName('hello world'), 'hello world name');
+   CheckFalse(WebUtils.IsValidCookieValue(#13#10), 'CRLF name');
+
+   CheckTrue(WebUtils.IsValidCookieValue(''), 'empty value');
+   CheckTrue(WebUtils.IsValidCookieValue('hello'), 'hello value');
+   CheckFalse(WebUtils.IsValidCookieValue('hello world'), 'hello world value');
+   CheckFalse(WebUtils.IsValidCookieValue(#13#10), 'CRLF value');
 end;
 
 // URLEncodedEncoder

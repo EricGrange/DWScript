@@ -108,6 +108,9 @@ type
 
          class function XMLTextEncode(const s : UnicodeString; unsupportedXML10CharactersMode : Integer = 0) : UnicodeString; static;
          class function XMLTextDecode(const s : UnicodeString) : UnicodeString; static;
+
+         class function IsValidCookieName(const s : String) : Boolean; static;
+         class function IsValidCookieValue(const s : String) : Boolean; static;
    end;
 
    EXMLDecodeError = class (Exception);
@@ -1353,6 +1356,45 @@ begin
    until False;
 
    SetLength(Result, (NativeUInt(pDest)-NativeUInt(Pointer(Result))) div SizeOf(WideChar));
+end;
+
+// IsValidCookieName
+//
+class function WebUtils.IsValidCookieName(const s : String) : Boolean;
+var
+   p : PChar;
+   i : Integer;
+begin
+   if s = '' then Exit(False);
+   // check for RFC 6265 set
+   p := PChar(s);
+   for i := 0 to Length(s)-1 do begin
+      case p[i] of
+         #00..' ', #$007F..#$FFFF,
+         '(', ')', '<', '>', '@', ',', ';', ':', '\', '"',
+         '/', '[', ']', '?', '=', '{', '}' : Exit(False);
+      end;
+   end;
+   Result := True;
+end;
+
+// IsValidCookieValue
+//
+class function WebUtils.IsValidCookieValue(const s : String) : Boolean;
+var
+   p : PChar;
+   i : Integer;
+begin
+   // check for RFC 6265 set
+   p := PChar(s);
+   for i := 0 to Length(s)-1 do begin
+      case Ord(p[i]) of
+         $21, $23..$2B, $2D..$3A, $3C..$5B, $5D..$7E : ;
+      else
+         Exit(False);
+      end;
+   end;
+   Result := True;
 end;
 
 // ------------------
