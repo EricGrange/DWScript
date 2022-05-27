@@ -123,7 +123,7 @@ implementation
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
 
-uses dwsGenericExprs;
+uses dwsGenericExprs, dwsSymbolDictionary;
 
 // NameToArrayMethod
 //
@@ -690,6 +690,8 @@ begin
                          or (not (TMethodSymbol(funcSym).StructSymbol is TRecordSymbol))) then
                context.Msgs.AddCompilerErrorFmt(argPos, CPE_ConstVarParam, [i, paramSymbol.Name]);
          end else context.Msgs.AddCompilerErrorFmt(argPos, CPE_ConstVarParam, [i, paramSymbol.Name]);
+         if coSymbolDictionary in context.Options then
+            context.SymbolDictionary.ChangeUsageAt(argPos, [ suWrite ], []);
       end;
 
    end;
