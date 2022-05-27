@@ -1707,7 +1707,7 @@ begin
       UnIndent;
       WriteString('}');
       if func.Name<>'' then
-         WriteStatementEnd;
+         WriteLineEnd;
       if func.IsExport then begin
          if func.HasExternalName then
             WriteString(func.ExternalName)
@@ -2392,7 +2392,6 @@ var
    i : Integer;
    sym : TSymbol;
    meth : TMethodSymbol;
-   staticAndSealed : Boolean;
    compilerContext : TdwsCompilerContext;
 begin
    inherited;
@@ -2410,8 +2409,6 @@ begin
    WriteSymbolName(cls);
    WriteBlockBegin(' = ');
 
-   staticAndSealed:=cls.IsStatic and cls.IsSealed;
-
    WriteString('$ClassName:');
    WriteLiteralString(cls.Name);
 
@@ -2428,10 +2425,9 @@ begin
         Dependencies.Add('Exception');
       end;
 
-      if not cls.IsStatic then
+      if not cls.IsStatic then begin
          Dependencies.Add('$New');
 
-      if not staticAndSealed then begin
          WriteBlockBegin(',$Init:function ($) ');
          WriteSymbolName(cls.Parent);
          WriteString('.$Init($)');
@@ -2457,7 +2453,7 @@ begin
       meth:=cls.VMTMethod(i);
       if not SmartLinkMethod(meth) then continue;
       if not meth.IsVirtual then continue; // devirtualized
-      if staticAndSealed and (meth.Kind in [fkConstructor, fkDestructor]) then
+      if cls.IsStatic and (meth.Kind in [fkConstructor, fkDestructor]) then
          continue;
       if meth.StructSymbol<>cls then begin
          WriteString(',');
@@ -5608,13 +5604,29 @@ begin
    Assert(not ((valueTyp is TRecordSymbol) or (valueTyp is TStaticArraySymbol)),
           'Associative array record or static array values are not supported yet');
 
-   codeGen.WriteString('(');
-   codeGen.Compile(e.BaseExpr);
-   codeGen.WriteString('[');
-   codeGen.CompileNoWrap(e.KeyExpr);
-   codeGen.WriteString(']||');
-   TdwsJSCodeGen(codeGen).WriteDefaultValue(e.Typ, False);
-   codeGen.WriteString(')');
+   if valueTyp is TDynamicArraySymbol then begin
+      codeGen.Dependencies.Add('$MapDyn');
+      codeGen.WriteString('$MapDyn(');
+      codeGen.CompileNoWrap(e.BaseExpr);
+      codeGen.WriteString(',');
+      codeGen.CompileNoWrap(e.KeyExpr);
+      codeGen.WriteString(')');
+   end else if valueTyp is TAssociativeArraySymbol then begin
+      codeGen.Dependencies.Add('$MapMap');
+      codeGen.WriteString('$MapMap(');
+      codeGen.CompileNoWrap(e.BaseExpr);
+      codeGen.WriteString(',');
+      codeGen.CompileNoWrap(e.KeyExpr);
+      codeGen.WriteString(')');
+   end else begin
+      codeGen.WriteString('(');
+      codeGen.Compile(e.BaseExpr);
+      codeGen.WriteString('[');
+      codeGen.CompileNoWrap(e.KeyExpr);
+      codeGen.WriteString(']||');
+      TdwsJSCodeGen(codeGen).WriteDefaultValue(e.Typ, False);
+      codeGen.WriteString(')');
+   end;
 end;
 
 // ------------------

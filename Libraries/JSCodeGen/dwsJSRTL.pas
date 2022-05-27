@@ -174,7 +174,7 @@ uses dwsJSON, dwsXPlatform, SynZip;
 {$R dwsJSRTL.res}
 
 const
-   cJSRTLDependencies : array [1..316{$ifdef JS_BIGINTEGER} + 16{$endif}] of TJSRTLDependency = (
+   cJSRTLDependencies : array [1..318{$ifdef JS_BIGINTEGER} + 16{$endif}] of TJSRTLDependency = (
       // codegen utility functions
       (Name : '$CheckStep';
        Code : 'function $CheckStep(s,z) { if (s>0) return s; throw Exception.Create($New(Exception),"FOR loop STEP should be strictly positive: "+s.toString()+z); }';
@@ -239,6 +239,10 @@ const
               +#9'return a;'#10
               +'}';
        Dependency : '$Idx' ),
+      (Name : '$MapDyn';
+       Code : 'function $MapDyn(m,k) { var r=m[k]; if (!r) m[k]=r=[]; return r }' ),
+      (Name : '$MapMap';
+       Code : 'function $MapMap(m,k) { var r=m[k]; if (!r) m[k]=r={}; return r }' ),
       (Name : '$CmpNum';
        Code : 'function $CmpNum(a,b) { return a-b }' ),
       (Name : '$Check';
@@ -418,6 +422,7 @@ const
        Code : 'function $Remove(a,i,f) {'#10
                +#9'var j = a.indexOf(i,f);'#10
                +#9'if (j>=0) a.splice(j,1);'#10
+               +#9'return j;'#10
                +'}'),
       (Name : '$StrSet';
        Code : 'function $StrSet(s,i,v,z) {'#10
@@ -534,15 +539,15 @@ const
       (Name : '$SetIn';
        code : 'function $SetIn(s,v,m,n) { v-=m; return (v<0 && v>=n)?false:(s[v>>5]&(1<<(v&31)))!=0 }'),
       (Name : '$SetEqual';
-       code : 'function $SetEqual(a,b) { for(var i=0;i<a.length;i++) if (a[i]!==b[i]) return false; return true }'),
+       code : 'function $SetEqual(a,b) { for(var i=0;i<a.length;i++) if (a[i]!==b[i]) return !1; return !0 }'),
       (Name : '$SetLiR';
-       code : 'function $SetLiR(a,b) { for(var i=0;i<a.length;i++) if ((a[i]&b[i])!=a[i]) return false; return true }'),
+       code : 'function $SetLiR(a,b) { for(var i=0;i<a.length;i++) if ((a[i]&b[i])!=a[i]) return !1; return !0 }'),
       (Name : '$SetAdd';
-       code : 'function $SetAdd(a,b) { var r=[]; for(var i=0;i<a.length;i++) r.push(a[i]|b[i]); return r }'),
+       code : 'function $SetAdd(a,b) { var r=[],i=0; for(;i<a.length;i++) r.push(a[i]|b[i]); return r }'),
       (Name : '$SetSub';
-       code : 'function $SetSub(a,b) { var r=[]; for(var i=0;i<a.length;i++) r.push(a[i]&(~b[i])); return r }'),
+       code : 'function $SetSub(a,b) { var r=[],i=0; for(;i<a.length;i++) r.push(a[i]&(~b[i])); return r }'),
       (Name : '$SetMul';
-       code : 'function $SetMul(a,b) { var r=[]; for(var i=0;i<a.length;i++) r.push(a[i]&b[i]); return r }'),
+       code : 'function $SetMul(a,b) { var r=[],i=0; for(;i<a.length;i++) r.push(a[i]&b[i]); return r }'),
 
       // RTL classes
 
@@ -975,7 +980,7 @@ const
       (Name : 'LowerCase';
        Code : 'function LowerCase(v) { return v.toLowerCase() }'),
       (Name : 'MaxInt$_';
-       Code : 'function MaxInt$_() { return 9007199254740991 };'),
+       Code : 'function MaxInt$_() { return 9007199254740991 }'),
       (Name : 'Max$_Float_Float_';
        Code : 'function Max$_Float_Float_(a,b) { return (a>b)?a:b }'),
       (Name : 'Max$_Integer_Integer_';
