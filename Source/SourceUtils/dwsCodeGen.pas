@@ -20,12 +20,12 @@ unit dwsCodeGen;
 interface
 
 uses
-   Classes, SysUtils,
+   Classes, SysUtils,     dwsXPlatform,
    dwsUtils, dwsSymbols, dwsExprs, dwsCoreExprs, dwsDataContext, dwsConstExprs,
    dwsStrings, dwsUnitSymbols, dwsErrors, dwsRTTIFunctions, dwsSymbolDictionary,
    dwsContextMap, dwsCompilerContext;
 
-   // experimental codegen support classes for DWScipt
+   // experimental codegen support classes for DWScript
 
 type
 
@@ -1040,7 +1040,6 @@ begin
       BeginProgramSession(prog);
       try
          BeforeCompileProgram(prog.Table, p.SystemTable.SymbolTable, p.UnitMains);
-
          CompileProgramInSession(prog);
       finally
          EndProgramSession;
@@ -1622,7 +1621,7 @@ function TdwsCodeGen.SmartLink(symbol : TSymbol): Boolean;
    end;
 
 begin
-   Result:=(FSymbolDictionary=nil) or IsReferenced(symbol);
+   Result := (FSymbolDictionary=nil) or IsReferenced(symbol);
 end;
 
 // SmartLinkMethod
@@ -1917,7 +1916,7 @@ begin
 
          end;
 
-         if not SmartLink(member) then begin
+         if not SmartLinkMethod(TMethodSymbol(member)) then begin
             if FSymbolDictionary.FindSymbolPosList(member)<>nil then begin
                RemoveReferencesInContextMap(member);
                FSymbolDictionary.Remove(member);
