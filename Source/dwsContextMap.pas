@@ -109,6 +109,7 @@ type
          procedure EnumerateContextsOfSymbol(aParentSymbol : TSymbol; const callBack : TdwsSourceContextCallBack);
 
          procedure WriteToJSON(writer : TdwsJSONWriter);
+         function ToJSON : String;
 
          property Contexts : TTightList read FScriptContexts;
          property Context[index : Integer] : TdwsSourceContext read GetContext;
@@ -240,6 +241,9 @@ begin
       SubContext[i].WriteToJSON(writer);
    writer.EndArray;
 
+   writer.WriteString('Start', FStartPos.AsInfo);
+   writer.WriteString('End', FEndPos.AsInfo);
+
    writer.EndObject;
 end;
 
@@ -340,6 +344,21 @@ begin
    for sc in FScriptContexts do
       TdwsSourceContext(sc).WriteToJSON(writer);
    writer.EndArray;
+end;
+
+// ToJSON
+//
+function TdwsSourceContextMap.ToJSON : String;
+var
+   wr : TdwsJSONWriter;
+begin
+   wr := TdwsJSONWriter.Create;
+   try
+      WriteToJSON(wr);
+      Result := wr.ToString;
+   finally
+      wr.Free;
+   end;
 end;
 
 // FindContext
