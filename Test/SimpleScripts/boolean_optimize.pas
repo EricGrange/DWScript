@@ -1,28 +1,33 @@
+procedure PrintBool(v : Variant);
+begin
+	PrintLn(if v then 'True' else 'False');
+end;
+
 var v : Variant := 1;
 
-PrintLn(True and v);
-PrintLn(v and True);
+PrintBool(True and v);
+PrintBool(v and True);
 
-PrintLn(False and v);
-PrintLn(v and False);
+PrintBool(False and v);
+PrintBool(v and False);
 
-PrintLn(True or v);
-PrintLn(v or True);
+PrintBool(True or v);
+PrintBool(v or True);
 
-PrintLn(False or v);
-PrintLn(v or False);
+PrintBool(False or v);
+PrintBool(v or False);
 
 v := 0;
 PrintLn(v);
 
-PrintLn(True and v);
-PrintLn(v and True);
+PrintBool(True and v);
+PrintBool(v and True);
 
-PrintLn(False and v);
-PrintLn(v and False);
+PrintBool(False and v);
+PrintBool(v and False);
 
-PrintLn(True or v);
-PrintLn(v or True);
+PrintBool(True or v);
+PrintBool(v or True);
 
-PrintLn(False or v);
-PrintLn(v or False);
+PrintBool(False or v);
+PrintBool(v or False);
