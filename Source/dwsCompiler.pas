@@ -3776,7 +3776,7 @@ begin
          ttBEGIN, ttREQUIRE : begin
             // inline declaration
             if coContextMap in FOptions then
-               FSourceContextMap.OpenContext(FTok.HotPos, funcResult, bodyToken);
+               FSourceContextMap.OpenContext(hotPos, funcResult, bodyToken);
             ReadProcBody(funcResult);
             ReadSemiColon;
          end;
