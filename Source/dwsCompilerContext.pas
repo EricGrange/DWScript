@@ -20,7 +20,8 @@ interface
 
 uses
    dwsUtils, dwsSymbols, dwsErrors, dwsScriptSource, dwsXPlatform,
-   dwsUnitSymbols, dwsStrings, dwsTokenizer, dwsCustomData, dwsSpecialKeywords;
+   dwsUnitSymbols, dwsStrings, dwsTokenizer, dwsCustomData, dwsSpecialKeywords,
+   dwsSymbolDictionary;
 
 type
    TCompilerOption = (
@@ -70,6 +71,7 @@ type
       protected
          procedure SetSystemTable(const val : TSystemSymbolTable);
          procedure SetProg(aProg : TObject);
+         function GetSymbolDictionary : TdwsSymbolDictionary;
 
       public
          constructor Create;
@@ -98,6 +100,7 @@ type
          property UnifiedConstants : TObject read FUnifiedConstants write FUnifiedConstants;
          property UnitList : TIdwsUnitList read FUnitList write FUnitList;
          property HelperMemberNames : TSimpleStringHash read FHelperMemberNames;
+         property SymbolDictionary : TdwsSymbolDictionary read GetSymbolDictionary;
 
          property Execution : TdwsExecution read FExecution write FExecution;
          property Options : TCompilerOptions read FOptions write FOptions;
@@ -355,6 +358,13 @@ end;
 procedure TdwsCompilerContext.SetProg(aProg : TObject);
 begin
    FProg := aProg as TdwsProgram;
+end;
+
+// GetSymbolDictionary
+//
+function TdwsCompilerContext.GetSymbolDictionary : TdwsSymbolDictionary;
+begin
+   Result := TdwsProgram(FProg).Root.SymbolDictionary;
 end;
 
 // CustomStateGet
