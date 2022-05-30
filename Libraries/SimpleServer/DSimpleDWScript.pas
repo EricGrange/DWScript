@@ -561,9 +561,9 @@ begin
          if prog = nil then begin
             code := FJSCompiler.Config.CompileFileSystem.AllocateFileSystem.LoadTextFile(fileName);
             FHotPath := ExtractFilePath(fileName);
-            js := FJSFilter.CompileToJS(prog, code, '', True);
+            js := FJSFilter.CompileToJS(prog, code, '', True, True);
          end else begin
-            js := FJSFilter.CompileToJS(prog, '');
+            js := FJSFilter.CompileToJS(prog, '', '', False, True);
          end;
       finally
          FCodeGenLock.Leave;
@@ -589,8 +589,13 @@ begin
    if (prog<>nil) and prog.Msgs.HasErrors then
       Handle500(response, prog.Msgs)
    else begin
-      response.ContentData := '(function(){'#10 + UTF8Encode(js) + '})();'#13;
-      response.ContentType := 'text/javascript; charset=UTF-8';
+      if js <> '' then begin
+         response.ContentData := '(function(){'#10 + UTF8Encode(js) + '})();'#10;
+         response.ContentType := 'text/javascript; charset=UTF-8';
+      end else begin
+         response.ContentData := '';
+         response.ContentType := 'text/javascript';
+      end;
       if prog <> nil then begin
          prog.DropMapAndDictionary;
          prog.ProgramObject.TagInterface := TWebStaticCacheEntry.Create(response);
