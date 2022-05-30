@@ -202,7 +202,7 @@ end;
 function TdwsJSFilter.CompileToJS(var prog : IdwsProgram; const dwsCode : String;
                                   const codeFileName : String = '';
                                   returnProg : Boolean = False;
-                                 lastSection : Boolean = False) : String;
+                                  lastSection : Boolean = False) : String;
 var
    ownProg : Boolean;
    codeGenProg : IdwsProgram;
@@ -255,14 +255,21 @@ begin
       end;
 
       try
+         if ownProg and lastSection then begin
 
-         if lastSection and (cgoSmartLink in CodeGenOptions) then begin
-            FCodeGen.SmartLinkProgramInSession(prog);
+            FCodeGen.CompileProgram(prog);
+            Result := FCodeGen.CompiledOutput(prog);
+
+         end else begin
+
+            if lastSection and (cgoSmartLink in CodeGenOptions) then begin
+               FCodeGen.SmartLinkProgramInSession(prog);
+            end;
+
+            FCodeGen.CompileProgramInSession(prog);
+            Result := FCodeGen.CompiledOutput(prog);
+
          end;
-
-         FCodeGen.CompileProgramInSession(prog);
-         Result := FCodeGen.CompiledOutput(prog);
-
       finally
 
          if codeGenExec<>nil then begin
