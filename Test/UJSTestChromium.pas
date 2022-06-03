@@ -178,7 +178,7 @@ begin
    while retry < 2 do begin
       ExecuteJavaScript(js, url);
       for k := 1 to 300 do begin
-         if prevResult <> LastResult then Exit;
+         if (prevResult <> LastResult) and (prevResult <> '') then Exit;
          Application.ProcessMessages;
          GlobalCEFApp.RunMessageLoop;
          case k of
