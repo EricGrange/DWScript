@@ -2734,6 +2734,7 @@ begin
             varDouble : Exit(CompareDoubles(TVarData(left).VDouble, TVarData(right).VDouble));
             varInt64 : Exit(CompareDoubles(TVarData(left).VDouble, TVarData(right).VInt64));
             varUString : Exit(CompareDoubleToString(TVarData(left).VDouble, String(TVarData(right).VUString)));
+            varDate : Exit(CompareDoubles(TVarData(left).VDouble, TVarData(right).VDate));
          end;
          if VarIsArray(right) then
             Exit(vrNotEqual)
@@ -2746,10 +2747,22 @@ begin
             varDouble : Exit(CompareStringToDouble(String(TVarData(left).VUString), TVarData(right).VDouble));
             varInt64 : Exit(CompareStringToInt64(String(TVarData(left).VUString), TVarData(right).VInt64));
             varUString : Exit(CompareStrings(String(TVarData(left).VUString), String(TVarData(right).VUString)));
+            varDate : Exit(CompareStringToDouble(String(TVarData(left).VUString), TVarData(right).VDate));
          end;
          if VarIsArray(right) then
             Exit(vrNotEqual)
          else Exit(VarCompareValue(left, right));
+      end;
+      varDate : begin
+         case VarType(right) of
+            varDouble : Exit(CompareDoubles(TVarData(left).VDate, TVarData(right).VDouble));
+            varInt64 : Exit(CompareDoubles(TVarData(left).VDate, TVarData(right).VInt64));
+            varUString : Exit(CompareDoubleToString(TVarData(left).VDate, String(TVarData(right).VUString)));
+         else
+            if VarIsArray(right) then
+               Exit(vrNotEqual)
+            else Exit(VarCompareValue(left, right));
+         end;
       end;
    else
       if VarIsArray(left) then begin
