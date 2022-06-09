@@ -57,7 +57,7 @@ type
 
    // TODO : split between Complex & Fast classes
    // (has structual implication because of the late binding)
-   TConnectorCallExpr = class(TBaseConnectorCallExpr)
+   TConnectorCallExpr = class sealed (TBaseConnectorCallExpr)
       private
          FConnectorArgsCall : IConnectorArgsCall;
          FConnectorFastCall : IConnectorFastCall;

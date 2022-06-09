@@ -1736,7 +1736,7 @@ type
          procedure EvalNoResult(exec : TdwsExecution); override;
    end;
 
-   TStringArraySetExpr = class(TNoResultExpr)
+   TStringArraySetExpr = class (TNoResultExpr)
       private
          FStringExpr: TDataExpr;
          FIndexExpr: TTypedExpr;

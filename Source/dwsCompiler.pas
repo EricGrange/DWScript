@@ -4569,7 +4569,7 @@ begin
 
             end else begin
 
-               if locExpr.InheritsFrom(TDataExpr) then begin
+               if locExprClass.InheritsFrom(TDataExpr) then begin
                   funcSym := locExpr.Typ.AsFuncSymbol;
                   if funcSym <> nil then begin
                      locExpr := ReadFunc(funcSym, locExpr as TDataExpr);
@@ -4577,23 +4577,23 @@ begin
                   end;
                end;
 
-               if locExpr.InheritsFrom(TAssignExpr) then
+               if locExprClass.InheritsFrom(TAssignExpr) then
 
                   Result := locExpr
 
-               else if    (locExpr is TFuncExprBase)
-                       or (locExpr is TConnectorCallExpr) then begin
-                  Result:=locExpr;
+               else if    locExprClass.InheritsFrom(TFuncExprBase)
+                       or (locExprClass = TConnectorCallExpr) then begin
+                  Result := locExpr;
                   if locExpr.IsConstant then begin
-                     if FMsgs.Count=msgsCount then   // avoid hint on calls with issues
+                     if FMsgs.Count = msgsCount then   // avoid hint on calls with issues
                         FMsgs.AddCompilerHint(hotPos, CPE_ConstantInstruction);
                   end;
-               end else if    locExpr.InheritsFrom(TConnectorWriteExpr)
-                           or locExpr.InheritsFrom(TDynamicArraySetExpr)
-                           or locExpr.InheritsFrom(TStringArraySetExpr)
-                           or locExpr.InheritsFrom(TArrayPseudoMethodExpr) then
+               end else if    (locExprClass = TConnectorWriteExpr)
+                           or locExprClass.InheritsFrom(TDynamicArraySetExpr)
+                           or locExprClass.InheritsFrom(TStringArraySetExpr)
+                           or locExprClass.InheritsFrom(TArrayPseudoMethodExpr) then
                   Result := locExpr
-               else if locExpr.InheritsFrom(TConstExpr) then begin
+               else if locExprClass.InheritsFrom(TConstExpr) then begin
                   OrphanAndNil(locExpr);
                   Result := TNullExpr.Create(hotPos);
                   if FMsgs.Count = msgsCount then   // avoid hint on expression with issues
