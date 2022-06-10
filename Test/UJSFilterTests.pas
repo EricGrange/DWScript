@@ -158,7 +158,7 @@ begin
 
    FChromium.ClearLastResult;
 
-   FChromium.LoadAndWait(src+'<script>console.log(document.body ? document.body.innerText : "!done")</script>', 'http://localhost');
+   FChromium.LoadAndWait(src+'<script>console.log(document.body ? document.body.innerText : "!done")</script>', 'http://localhost', '');
 
    Result := FChromium.LastResult;
    if Result = '!done' then

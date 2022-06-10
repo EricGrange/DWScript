@@ -68,7 +68,7 @@ type
 
    // TConstNilExpr
    //
-   TConstNilExpr = class(TConstExpr)
+   TConstNilExpr = class sealed (TConstExpr)
       public
          constructor Create(const scriptPos : TScriptPos; aTyp : TTypeSymbol);
 

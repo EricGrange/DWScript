@@ -863,6 +863,10 @@ type
          procedure CodeGenNoWrap(codeGen : TdwsCodeGen; expr : TTypedExpr); override;
    end;
 
+   TJSObjCmpEqualExpr = class (TJSBinOpExpr)
+      procedure CodeGenNoWrap(codeGen : TdwsCodeGen; expr : TTypedExpr); override;
+   end;
+
    TJSAppendStringVarExpr = class(TJSExprCodeGen)
       public
          procedure CodeGen(codeGen : TdwsCodeGen; expr : TExprBase); override;
@@ -1231,13 +1235,13 @@ begin
    RegisterCodeGen(TNotVariantExpr,    TdwsExprGenericCodeGen.Create(['(', '!', 0, ')']));
 
    RegisterCodeGen(TAssignedInstanceExpr,
-      TdwsExprGenericCodeGen.Create(['(', 0, '!==null', ')']));
+      TdwsExprGenericCodeGen.Create(['!!', 0]));
    RegisterCodeGen(TAssignedInterfaceExpr,
-      TdwsExprGenericCodeGen.Create(['(', 0, '!==null', ')']));
+      TdwsExprGenericCodeGen.Create(['!!', 0]));
    RegisterCodeGen(TAssignedMetaClassExpr,
-      TdwsExprGenericCodeGen.Create(['(', 0, '!==null', ')']));
+      TdwsExprGenericCodeGen.Create(['!!', 0]));
    RegisterCodeGen(TAssignedFuncPtrExpr,
-      TdwsExprGenericCodeGen.Create(['(', 0, '!==null', ')']));
+      TdwsExprGenericCodeGen.Create(['!!', 0]));
 
    RegisterCodeGen(TDebugBreakExpr, TJSDebugBreakExpr.Create);
 
@@ -1254,8 +1258,8 @@ begin
    RegisterCodeGen(TConstStringInVarStringExpr,
       TdwsExprGenericCodeGen.Create(['(', 1, '.indexOf', '(', 0, ')', '>=0)']));
 
-   RegisterCodeGen(TObjCmpEqualExpr,         TJSBinOpExpr.Create('===', 10, [associativeLeft]));
-   RegisterCodeGen(TObjCmpNotEqualExpr,      TJSBinOpExpr.Create('!==', 10, [associativeLeft]));
+   RegisterCodeGen(TObjCmpEqualExpr,         TJSObjCmpEqualExpr.Create('===', 10, [associativeLeft]));
+   RegisterCodeGen(TObjCmpNotEqualExpr,      TJSObjCmpEqualExpr.Create('!==', 10, [associativeLeft]));
 
    RegisterCodeGen(TRelEqualIntExpr,         TJSBinOpExpr.Create('==', 10, [associativeLeft]));
    RegisterCodeGen(TRelNotEqualIntExpr,      TJSBinOpExpr.Create('!=', 10, [associativeLeft]));
@@ -1402,7 +1406,7 @@ begin
    RegisterCodeGen(TAssociativeArrayValueSetExpr,     TJSAssociativeArraySetExpr.Create);
    RegisterCodeGen(TAssociativeArrayLengthExpr,       TdwsExprGenericCodeGen.Create(['Object.keys', '(', 0, ')', '.length']));
    RegisterCodeGen(TAssociativeArrayClearExpr,        TdwsExprGenericCodeGen.Create(['$Delete', '(', 0, ')'], gcgStatement, '$Delete'));
-   RegisterCodeGen(TAssociativeArrayDeleteExpr,       TdwsExprGenericCodeGen.Create(['(delete ', 0, '[', 1, ']', ')']));
+   RegisterCodeGen(TAssociativeArrayDeleteExpr,       TdwsExprGenericCodeGen.Create(['$DeleteV', '(', 0, ',', 1, ')'], gcgExpression, '$DeleteV'));
    RegisterCodeGen(TAssociativeArrayKeysExpr,         TJSAssociativeArrayKeysExpr.Create);
    RegisterCodeGen(TAssociativeArrayContainsKeyExpr, TJSAssociativeArrayContainsKeyExpr.Create);
 
@@ -6236,6 +6240,32 @@ begin
 
    end;
    codeGen.WriteString(')');
+end;
+
+// ------------------
+// ------------------ TJSObjCmpEqualExpr ------------------
+// ------------------
+
+// CodeGen
+//
+procedure TJSObjCmpEqualExpr.CodeGenNoWrap(codeGen : TdwsCodeGen; expr : TTypedExpr);
+var
+   e : TBooleanBinOpExpr;
+   opVal : TTypedExpr;
+begin
+   e := TBooleanBinOpExpr(expr);
+   if e.Right.ClassType = TConstNilExpr then
+      opVal := e.Left
+   else if e.Left.ClassType = TConstNilExpr then
+      opVal := e.Right
+   else begin
+      inherited;
+      Exit;
+   end;
+   if FOp = '===' then
+      codeGen.WriteString('!')
+   else codeGen.WriteString('!!');
+   codeGen.CompileNoWrap(opVal);
 end;
 
 // ------------------

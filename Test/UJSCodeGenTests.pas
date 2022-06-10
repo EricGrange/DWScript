@@ -365,7 +365,7 @@ begin
             }
 
             // execute via chromium
-            FChromium.ExecuteAndWait(jsCode, 'about:blank');
+            FChromium.ExecuteAndWait(jsCode, 'about:blank', 'HF7dGrJxgqfa7VPz');
             {
             FChromium.ExecuteJavaScript(jsCode, 'about:blank');
             for k := 1 to 300 do begin

@@ -174,7 +174,7 @@ uses dwsJSON, dwsXPlatform, SynZip;
 {$R dwsJSRTL.res}
 
 const
-   cJSRTLDependencies : array [1..318{$ifdef JS_BIGINTEGER} + 16{$endif}] of TJSRTLDependency = (
+   cJSRTLDependencies : array [1..319{$ifdef JS_BIGINTEGER} + 16{$endif}] of TJSRTLDependency = (
       // codegen utility functions
       (Name : '$CheckStep';
        Code : 'function $CheckStep(s,z) { if (s>0) return s; throw Exception.Create($New(Exception),"FOR loop STEP should be strictly positive: "+s.toString()+z); }';
@@ -262,6 +262,8 @@ const
        Dependency : 'EAssertionFailed' ),
       (Name : '$Delete';
        Code : 'function $Delete(o) { for (var m in o) delete o[m]; }' ),
+      (Name : '$DeleteV';
+       Code : 'function $DeleteV(o,v) { var r=o.hasOwnProperty(v); if (r) delete o[v]; return r }' ),
       (Name : '$Inh';
        Code : 'function $Inh(s,c) {'#10
                +#9'if (s===null) return false;'#10
@@ -1214,9 +1216,9 @@ const
        Code : 'function StrToXML(v) { return v.replace(/[&<>"'']/g, StrToXML.e) }'#10
               +'StrToXML.e = function(c) { return { "&":"&amp;", "<":"&lt;", ">":"&gt;", ''"'':"&quot;", "''":"&apos;" }[c] }' ),
       (Name : 'SubStr';
-       Code : 'function SubStr(s,f) { return s.substr(f-1) }'),
+       Code : 'function SubStr(s,f,n) { return s.substr(f-1,n) }'),
       (Name : 'SubString';
-       Code : 'function SubString(s,f,t) { return s.substr(f-1, t-2) }'),
+       Code : 'function SubString(s,f,t) { return t >= f ? s.substring(f-1, t-1) : "" }'),
       (Name : 'Sqr$_Integer_';
        Code : 'function Sqr$_Integer_(v) { return v*v }'),
       (Name : 'Sqr$_Float_';
@@ -1617,7 +1619,7 @@ begin
    FMagicCodeGens.AddObject('StrToInt$_String_Integer_', TdwsExprGenericCodeGen.Create(['parseInt', '(', 0, ',', 1, ')']));
    FMagicCodeGens.AddObject('StrToJSON', TdwsExprGenericCodeGen.Create(['JSON.stringify', '(', 0, ')']));
    FMagicCodeGens.AddObject('SubStr', TJSStrCopyFuncExpr.Create);
-   FMagicCodeGens.AddObject('SubString', TdwsExprGenericCodeGen.Create(['(', 0, ')', '.substr(', '(', 1, ')', '-1,', '(', 2, ')', '-2)']));
+   //FMagicCodeGens.AddObject('SubString', TdwsExprGenericCodeGen.Create(['(', 0, ')', '.substring(', '(', 1, ')', '-1,', '(', 2, ')', '-1)']));
    FMagicCodeGens.AddObject('Tan', TdwsExprGenericCodeGen.Create(['Math.tan', '(', 0, ')']));
    FMagicCodeGens.AddObject('TypeOf$_TClass_', TdwsExprGenericCodeGen.Create([0]));
    FMagicCodeGens.AddObject('UnixTime', TdwsExprGenericCodeGen.Create(['Math.trunc(Date.now()*1e-3)']));

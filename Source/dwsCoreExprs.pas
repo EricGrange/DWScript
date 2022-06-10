@@ -449,22 +449,22 @@ type
    TAssignedExpr = class(TUnaryOpBoolExpr)
    end;
 
-   TAssignedInstanceExpr = class(TAssignedExpr)
+   TAssignedInstanceExpr = class sealed (TAssignedExpr)
    public
      function EvalAsBoolean(exec : TdwsExecution) : Boolean; override;
    end;
 
-   TAssignedInterfaceExpr = class(TAssignedExpr)
+   TAssignedInterfaceExpr = class sealed (TAssignedExpr)
    public
      function EvalAsBoolean(exec : TdwsExecution) : Boolean; override;
    end;
 
-   TAssignedMetaClassExpr = class(TAssignedExpr)
+   TAssignedMetaClassExpr = class sealed (TAssignedExpr)
    public
      function EvalAsBoolean(exec : TdwsExecution) : Boolean; override;
    end;
 
-   TAssignedFuncPtrExpr = class(TAssignedExpr)
+   TAssignedFuncPtrExpr = class sealed (TAssignedExpr)
    public
      function EvalAsBoolean(exec : TdwsExecution) : Boolean; override;
    end;

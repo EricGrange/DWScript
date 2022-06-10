@@ -42,7 +42,7 @@ type
       protected
          function GetSubExpr(i : Integer) : TExprBase; override;
          function GetSubExprCount : Integer; override;
-         function GetBaseExpr : TTypedExpr; inline;
+         function GetBaseExpr : TTypedExpr;
          procedure SetBaseExpr(expr : TTypedExpr);
 
       public
