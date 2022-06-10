@@ -2402,6 +2402,14 @@ begin
 
    if not SmartLink(cls) then Exit;
 
+   if cls.Members.HasClassSymbols then begin
+      for i:=0 to cls.Members.Count-1 do begin
+         sym := cls.Members[i];
+         if sym.ClassType = TClassSymbol then
+            DoCompileClassSymbol(TClassSymbol(sym));
+      end;
+   end;
+
    if cls.IsExternalRooted then begin
       DoCompileExternalRootedClassSymbol(cls);
       Exit;

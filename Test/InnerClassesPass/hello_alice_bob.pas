@@ -20,8 +20,15 @@ type
             sub.Hello;
       end;
    end;
+	
+type
+	TSub = class
+		class procedure Byebye; begin PrintLn('ByeBye') end;
+	end;
 
 var t := new TTest;
 t.Add('Alice');
 t.Add('Bob');
 t.Print;
+
+TSub.Byebye;
