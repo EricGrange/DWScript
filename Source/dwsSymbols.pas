@@ -386,7 +386,7 @@ type
    TSymbolTableFlag = (stfSorted,
                        stfHasChildTables, stfHasHelpers,
                        stfHasLocalOperators, stfHasParentOperators, stfHasOperators,
-                       stfHasTypeSymbols);
+                       stfHasClassSymbols);
    TSymbolTableFlags = set of TSymbolTableFlag;
 
    TSimpleSymbolList = TSimpleList<TSymbol>;
@@ -458,6 +458,7 @@ type
          function HasClass(const aClass : TSymbolClass) : Boolean;
          function HasSymbol(sym : TSymbol) : Boolean;
          function HasMethods : Boolean;
+         function HasClassSymbols : Boolean;
          class function IsUnitTable : Boolean; virtual;
 
          procedure Initialize(const msgs : TdwsCompileMessageList); virtual;
@@ -7092,6 +7093,13 @@ begin
    Result:=False;
 end;
 
+// HasClassSymbols
+//
+function TSymbolTable.HasClassSymbols : Boolean;
+begin
+   Result := stfHasClassSymbols in FFlags;
+end;
+
 // IsUnitTable
 //
 class function TSymbolTable.IsUnitTable : Boolean;
@@ -7112,11 +7120,10 @@ begin
          TDataSymbol(sym).AllocateStackAddr(FAddrGenerator);
    end else if ct = TOperatorSymbol then
       FFlags := FFlags + [ stfHasOperators, stfHasLocalOperators ]
-   else if ct.InheritsFrom(TTypeSymbol) then begin
-      Include(FFlags, stfHasTypeSymbols);
-      if ct = THelperSymbol then
-         Include(FFlags, stfHasHelpers);
-   end;
+   else if ct = TClassSymbol then
+      Include(FFlags, stfHasClassSymbols)
+   else if ct = THelperSymbol then
+      Include(FFlags, stfHasHelpers);
 end;
 
 // AddSymbolDirect
