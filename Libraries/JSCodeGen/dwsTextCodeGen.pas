@@ -52,6 +52,12 @@ type
 
    TdwsGenericCodeGenType = (gcgExpression, gcgStatement);
 
+const
+   cgcgIndexMask    = $FF;
+   cgcgOffsetMinus1 = $100;   // apply -1 to the operand
+
+type
+
    TdwsExprGenericCodeGen = class(TdwsExprCodeGen)
       private
          FTemplate : array of TVarRec;
@@ -234,7 +240,8 @@ procedure TdwsExprGenericCodeGen.DoCodeGen(codeGen : TdwsCodeGen; expr : TExprBa
    end;
 
 var
-   i, idx : Integer;
+   v : Int64;
+   i, idx, offset : Integer;
    c : Char;
    item : TExprBase;
    noWrap : Boolean;
@@ -244,22 +251,33 @@ begin
    for i:=start to stop do begin
       case FTemplate[i].VType of
          vtInteger : begin
-            idx:=FTemplate[i].VInteger;
-            if idx>=0 then begin
-               item:=expr.SubExpr[idx];
-               noWrap:=(item is TVarExpr) or (item is TFieldExpr);
+            idx := FTemplate[i].VInteger;
+            if idx >= 0 then begin
+               item := expr.SubExpr[idx and cgcgIndexMask];
+               noWrap := (item is TVarExpr) or (item is TFieldExpr);
+               offset := -Ord((cgcgOffsetMinus1 and idx) <> 0);
                if not noWrap then begin
-                  noWrap:=    (i>start) and IsBoundaryChar(FTemplate[i-1])
-                          and (i<stop) and IsBoundaryChar(FTemplate[i+1])
-                          and (item is TTypedExpr);
+                  noWrap :=    (i>start) and IsBoundaryChar(FTemplate[i-1])
+                           and (i<stop) and IsBoundaryChar(FTemplate[i+1])
+                           and (item is TTypedExpr);
                end;
             end else begin
-               item:=expr.SubExpr[-idx];
-               noWrap:=True;
+               item := expr.SubExpr[-idx];
+               noWrap := True;
             end;
-            if noWrap then
-               codeGen.CompileNoWrap(TTypedExpr(item))
-            else codeGen.Compile(item);
+            if noWrap then begin
+               if (offset <> 0) and item.IsConstant then begin
+                  v := TTypedExpr(item).EvalAsInteger(codeGen.CompilerContext.Execution);
+                  codeGen.WriteInteger(v + offset);
+               end else if offset = 0 then begin
+                  codeGen.CompileNoWrap(TTypedExpr(item));
+               end else begin
+                  codeGen.Compile(item);
+                  if offset > 0 then
+                     codeGen.WriteString('+');
+                  codeGen.WriteInteger(offset);
+               end;
+            end else codeGen.Compile(item);
          end;
          vtUnicodeString :
             codeGen.WriteString(String(FTemplate[i].VUnicodeString));
