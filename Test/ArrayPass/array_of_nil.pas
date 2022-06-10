@@ -1,10 +1,10 @@
 var a : array of TObject = [nil];
 
 PrintLn(a.Length);
-PrintLn(a[0]);
+PrintLn(if a[0] = nil then 'nil');
 
 var s := [nil, TObject.Create];
 
 PrintLn(s.Length);
-PrintLn(s[0]);
+PrintLn(if s[0] = nil then 'nil');
 PrintLn(s[1].ClassName);

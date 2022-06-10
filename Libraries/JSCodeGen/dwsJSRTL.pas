@@ -545,11 +545,11 @@ const
       (Name : '$SetLiR';
        code : 'function $SetLiR(a,b) { for(var i=0;i<a.length;i++) if ((a[i]&b[i])!=a[i]) return !1; return !0 }'),
       (Name : '$SetAdd';
-       code : 'function $SetAdd(a,b) { var r=[],i=0; for(;i<a.length;i++) r.push(a[i]|b[i]); return r }'),
+       code : 'function $SetAdd(a,b) { for(var r=[],i=0;i<a.length;i++) r.push(a[i]|b[i]); return r }'),
       (Name : '$SetSub';
-       code : 'function $SetSub(a,b) { var r=[],i=0; for(;i<a.length;i++) r.push(a[i]&(~b[i])); return r }'),
+       code : 'function $SetSub(a,b) { for(var r=[],i=0;i<a.length;i++) r.push(a[i]&(~b[i])); return r }'),
       (Name : '$SetMul';
-       code : 'function $SetMul(a,b) { var r=[],i=0; for(;i<a.length;i++) r.push(a[i]&b[i]); return r }'),
+       code : 'function $SetMul(a,b) { for(var r=[],i=0;i<a.length;i++) r.push(a[i]&b[i]); return r }'),
 
       // RTL classes
 
@@ -943,9 +943,9 @@ const
       (Name : 'IntToStr$_Integer_';
        Code : 'function IntToStr$_Integer_(i) { return i.toString() }'),
       (Name : 'IntToStr$_Integer_Integer_';
-       Code : 'function IntToStr$_Integer_Integer_(i) { return i.toString() }'),
+       Code : 'function IntToStr$_Integer_Integer_(i,b) { return i.toString(b) }'),
       (Name : 'IsDelimiter';
-       Code : 'function IsDelimiter(d,s,i) { if ((i<=0)||(i>s.length)) return false; else return d.indexOf(s.charAt(i-1))>=0 }'),
+       Code : 'function IsDelimiter(d,s,i) { if (i<=0||i>s.length) return false; else return d.indexOf(s.charAt(i-1))>=0 }'),
       (Name : 'IsLeapYear';
        Code : 'function IsLeapYear(y) { return !(y % 4) && (y % 100) || !(y % 400) ? true : false }'),
       (Name : 'IsPrime$_Integer_';
@@ -1103,7 +1103,7 @@ const
       (Name : 'Sinh';
        Code : 'function Sinh(v) { return (v==0)?0:(0.5*(Math.exp(v)-Math.exp(-v))) }'),
       (Name : 'Sleep';
-       Code : 'function Sleep(v) { for(v+=Date.now();Date.now()>v;) }'),
+       Code : 'function Sleep(v) { for(v+=Date.now();Date.now()>v;); }'),
       (Name : 'StrAfter';
        Code : 'function StrAfter(s,d) { if (!d) return ""; var p=s.indexOf(d); return (p<0)?"":s.substr(p+d.length) }'),
       (Name : 'StrAfterLast';
@@ -1116,7 +1116,7 @@ const
        Code : 'function StrBetween(s,d,f) { return StrBefore(StrAfter(s, d), f) }';
        Dependency: 'StrAfter'; Dependency2: 'StrBefore'),
       (Name : 'StrBeginsWith';
-       Code : 'function StrBeginsWith(s,b) { return (b.length > 0) ? s.substr(0, b.length)==b : false }'),
+       Code : 'function StrBeginsWith(s,b) { return b.length ? s.substr(0, b.length)==b : false }'),
       (Name : 'StrContains';
        Code : 'function StrContains(s,b) { return s.indexOf(b)>=0 }'),
       (Name : 'StrDeleteLeft';
@@ -1610,7 +1610,7 @@ begin
    FMagicCodeGens.AddObject('StrDeleteLeft', TdwsExprGenericCodeGen.Create(['(', 0, ')', '.substring', '(', 1, ')']));
    // slice not very efficient in browsers right now
    // FMagicCodeGens.AddObject('StrDeleteRight', TdwsExprGenericCodeGen.Create(['(', 0, ')', '.slice', '(0,-', '(', 1, ')', ')']));
-   FMagicCodeGens.AddObject('StrContains', TdwsExprGenericCodeGen.Create(['(', '(', 0, ')', '.indexOf', '(', 1, ')', '>=0)']));
+   FMagicCodeGens.AddObject('StrContains', TdwsExprGenericCodeGen.Create(['(', '(', 0, ')', '.indexOf', '(', 1, ')', '>=0', ')']));
    FMagicCodeGens.AddObject('StrFind', TJSStrFindExpr.Create);
    FMagicCodeGens.AddObject('StrJoin', TJSGenericSimpleMethodExpr.Create('.join(', ')'));
    FMagicCodeGens.AddObject('StrMatches', TJSStrMatchesFuncExpr.Create);

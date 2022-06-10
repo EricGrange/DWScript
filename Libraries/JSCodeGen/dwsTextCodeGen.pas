@@ -264,6 +264,7 @@ begin
             end else begin
                item := expr.SubExpr[-idx];
                noWrap := True;
+               offset := 0;
             end;
             if noWrap then begin
                if (offset <> 0) and item.IsConstant then begin
