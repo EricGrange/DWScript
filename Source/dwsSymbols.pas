@@ -385,7 +385,8 @@ type
 
    TSymbolTableFlag = (stfSorted,
                        stfHasChildTables, stfHasHelpers,
-                       stfHasLocalOperators, stfHasParentOperators, stfHasOperators);
+                       stfHasLocalOperators, stfHasParentOperators, stfHasOperators,
+                       stfHasTypeSymbols);
    TSymbolTableFlags = set of TSymbolTableFlag;
 
    TSimpleSymbolList = TSimpleList<TSymbol>;
@@ -7105,13 +7106,17 @@ var
    ct : TClass;
 begin
    Result:=AddSymbolDirect(sym);
-   ct:=sym.ClassType;
-   if ct=THelperSymbol then
-      Include(FFlags, stfHasHelpers)
-   else if ct=TOperatorSymbol then
-      FFlags:=FFlags+[stfHasOperators, stfHasLocalOperators]
-   else if (FAddrGenerator<>nil) and sym.InheritsFrom(TDataSymbol) then
-      TDataSymbol(sym).AllocateStackAddr(FAddrGenerator);
+   ct := sym.ClassType;
+   if ct.InheritsFrom(TDataSymbol) then begin
+      if FAddrGenerator <> nil then
+         TDataSymbol(sym).AllocateStackAddr(FAddrGenerator);
+   end else if ct = TOperatorSymbol then
+      FFlags := FFlags + [ stfHasOperators, stfHasLocalOperators ]
+   else if ct.InheritsFrom(TTypeSymbol) then begin
+      Include(FFlags, stfHasTypeSymbols);
+      if ct = THelperSymbol then
+         Include(FFlags, stfHasHelpers);
+   end;
 end;
 
 // AddSymbolDirect
