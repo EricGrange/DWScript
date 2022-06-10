@@ -3841,8 +3841,11 @@ begin
                AdaptParametersSymPos(Result, overloadedMeth, [suReference], posArray);
                Result:=overloadedMeth;
             end;
-         end else if explicitParams then
+         end else if explicitParams then begin
+            if Result.IsStatic then
+               tmpMeth.SetIsStatic;
             CompareFuncSymbolParams(Result, tmpMeth);
+         end;
       finally
          OrphanObject(tmpMeth);
       end;
@@ -14577,11 +14580,13 @@ begin
    if progMeth<>nil then begin
       if progMeth.IsStatic then begin
          structSym:=progMeth.StructSymbol;
-         selfExpr:=TConstExpr.CreateValue(namePos, structSym.MetaSymbol, Int64(structSym));
-      end else if progMeth.SelfSym is TConstByRefParamSymbol then
-         selfExpr:=GetConstParamExpr(namePos, TConstByRefParamSymbol(progMeth.SelfSym))
-      else if progMeth.SelfSym=nil then
+         if structSym.MetaSymbol = nil then
+            Exit(nil)
+         else selfExpr := TConstExpr.CreateValue(namePos, structSym.MetaSymbol, Int64(structSym));
+      end else if progMeth.SelfSym=nil then
          Exit(nil)
+      else if progMeth.SelfSym.ClassType = TConstByRefParamSymbol then
+         selfExpr:=GetConstParamExpr(namePos, TConstByRefParamSymbol(progMeth.SelfSym))
       else selfExpr:=GetSelfParamExpr(namePos, progMeth.SelfSym);
       Result:=ReadTypeHelper(selfExpr, name.AsString, namePos, expecting, False, True);
       if Result=nil then
