@@ -1439,9 +1439,10 @@ initialization
    RegisterInternalStringFunction(TUpperCaseFunc, 'AnsiUpperCase', ['str', SYS_STRING], [iffStateLess], 'ToUpper');
    RegisterInternalStringFunction(TASCIIUpperCaseFunc, 'ASCIIUpperCase', ['str', SYS_STRING], [iffStateLess]);
 
-   RegisterInternalIntFunction(TPosFunc, 'Pos', ['subStr', SYS_STRING, 'str', SYS_STRING], [iffStateLess]);
-   RegisterInternalIntFunction(TPosExFunc, 'PosEx', ['subStr', SYS_STRING, 'str', SYS_STRING, 'offset', SYS_INTEGER], [iffStateLess]);
-   RegisterInternalIntFunction(TRevPosFunc, 'RevPos', ['subStr', SYS_STRING, 'str', SYS_STRING], [iffStateLess]);
+   RegisterInternalIntFunction(TPosFunc, 'Pos', ['needle', SYS_STRING, 'haystack', SYS_STRING], [ iffStateLess, iffOverloaded ]);
+   RegisterInternalIntFunction(TPosExFunc, 'Pos', ['needle', SYS_STRING, 'haystack', SYS_STRING, 'offset', SYS_INTEGER], [ iffStateLess, iffOverloaded ]);
+   RegisterInternalIntFunction(TPosExFunc, 'PosEx', ['needle', SYS_STRING, 'haystack', SYS_STRING, 'offset', SYS_INTEGER], [iffStateLess]);
+   RegisterInternalIntFunction(TRevPosFunc, 'RevPos', ['needle', SYS_STRING, 'haystack', SYS_STRING], [iffStateLess]);
 
    RegisterInternalFunction(TSetLengthFunc, 'SetLength', ['@S', SYS_STRING, 'NewLength', SYS_INTEGER], '');
 
