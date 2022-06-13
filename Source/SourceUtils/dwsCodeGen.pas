@@ -538,7 +538,7 @@ begin
    end else if sym is TDataSymbol then begin
       if TDataSymbol(sym).HasExternalName then
          Exit(TDataSymbol(sym).ExternalName);
-   end else if sym is TClassSymbol then begin
+   end else if sym.IsClassSymbol then begin
       if TClassSymbol(sym).ExternalRoot<>nil then
          Exit(TClassSymbol(sym).ExternalName);
    end else if sym is TFieldSymbol then begin
@@ -736,7 +736,7 @@ begin
          CompileEnumerationSymbol(TEnumerationSymbol(sym))
       else if sym is TRecordSymbol then
          CompileRecordSymbol(TRecordSymbol(sym))
-      else if sym is TClassSymbol then begin
+      else if sym.IsClassSymbol then begin
          if FCompiledClasses.IndexOf(sym)<0 then
             CompileClassSymbol(TClassSymbol(sym));
       end else if sym is THelperSymbol then begin
@@ -1159,7 +1159,7 @@ procedure TdwsCodeGen.MapInternalSymbolNames(progTable, systemTable : TSymbolTab
       for i:=0 to table.Count-1 do begin
          sym:=table.Symbols[i];
          if sym is TStructuredTypeSymbol then begin
-            if (sym is TClassSymbol) or (sym is TRecordSymbol) then begin
+            if sym.IsClassSymbol or (sym is TRecordSymbol) then begin
                MapStructuredSymbol(TStructuredTypeSymbol(sym), False);
             end else if sym is TInterfaceSymbol then
                FSymbolMap.MapSymbol(sym, cgssGlobal, False)
@@ -1199,7 +1199,7 @@ begin
          unitSym:=TUnitSymbol(sym);
          if unitSym.Table is TStaticSymbolTable then
             MapPrioritySymbolNames(unitSym.Table);
-      end else if sym is TClassSymbol then begin
+      end else if sym.IsClassSymbol then begin
          if TClassSymbol(sym).IsExternal then begin
             FSymbolMap.ReserveExternalName(sym);
          end;
@@ -1233,7 +1233,7 @@ begin
                MapNormalSymbolNames(unitSym.ImplementationTable);
             end;
          end;
-      end else if (sym is TClassSymbol) or (sym is TRecordSymbol) then begin
+      end else if sym.IsClassSymbol or (sym is TRecordSymbol) then begin
          MapStructuredSymbol(TStructuredTypeSymbol(sym), True);
       end else if sym is TInterfaceSymbol then begin
          FSymbolMap.MapSymbol(sym, cgssGlobal, True);

@@ -216,7 +216,7 @@ begin
 
    FDeclareSQL := 'CREATE TABLE dummy ('#13#10#9'_Index INTEGER HIDDEN';
    elemSymbol := dynArray.ElementType.UnAliasedType;
-   if (elemSymbol is TRecordSymbol) or (elemSymbol is TClassSymbol) then begin
+   if (elemSymbol is TRecordSymbol) or elemSymbol.IsClassSymbol then begin
       if elemSymbol is TRecordSymbol then
          FCursorClass := TdwsSQLiteVTRecordArrayCursor
       else FCursorClass := TdwsSQLiteVTClassArrayCursor;

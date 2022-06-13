@@ -198,7 +198,7 @@ begin
                if leftTyp.ClassType=TClassOfSymbol then begin
                   Result:=TAssignClassOfExpr.Create(context, scriptPos, left, right);
                end else if leftTyp.ClassType=TInterfaceSymbol then begin
-                  if right.Typ is TClassSymbol then begin
+                  if right.Typ.IsClassSymbol then begin
                      classSymbol:=TClassSymbol(right.Typ);
                      intfSymbol:=TInterfaceSymbol(left.Typ);
                      if not classSymbol.ImplementsInterface(intfSymbol) then
@@ -262,7 +262,7 @@ begin
             end;
          end;
          ttPLUS_ASSIGN, ttMINUS_ASSIGN, ttTIMES_ASSIGN, ttDIVIDE_ASSIGN, ttCARET_ASSIGN : begin
-            if left.Typ is TClassSymbol then begin
+            if left.Typ.IsClassSymbol then begin
 
                classOpSymbol:=(left.Typ as TClassSymbol).FindClassOperator(token, right.Typ);
                if classOpSymbol=nil then
@@ -455,7 +455,7 @@ begin
          Result:=TMethodInterfaceAnonymousExpr.Create(context, scriptPos, meth, expr);
       end;
 
-   end else if meth.StructSymbol is TClassSymbol then begin
+   end else if meth.StructSymbol.IsClassSymbol then begin
 
       if meth.IsStatic then begin
 
@@ -717,7 +717,7 @@ begin
    utyp := typ.UnAliasedType;
    if       (utyp.Size = 1)
       and (    (utyp is TBaseSymbol)
-            or (utyp is TClassSymbol)
+            or utyp.IsClassSymbol
             or (utyp is TDynamicArraySymbol)
             or (utyp is TInterfaceSymbol)
             ) then

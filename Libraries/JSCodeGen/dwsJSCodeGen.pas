@@ -2197,7 +2197,7 @@ begin
       field:=activeFields[i];
       fieldTyp:=field.Typ.UnAliasedType;
       if    (fieldTyp is TBaseSymbol)
-         or (fieldTyp is TClassSymbol)
+         or fieldTyp.IsClassSymbol
          or (fieldTyp is TInterfaceSymbol)
          or (fieldTyp.AsFuncSymbol<>nil)
          or (fieldTyp is TDynamicArraySymbol)
@@ -2259,7 +2259,7 @@ begin
 
       WriteString(':');
       if    (fieldTyp is TBaseSymbol)
-         or (fieldTyp is TClassSymbol)
+         or fieldTyp.IsClassSymbol
          or (fieldTyp is TInterfaceSymbol)
          or (fieldTyp.AsFuncSymbol<>nil)
          or (fieldTyp is TDynamicArraySymbol)
@@ -2535,7 +2535,7 @@ begin
             WriteString(' = ');
             flds[j]:=nil;
             // records, static arrays and other value types can't be assigned together
-            if not ((fld1.Typ is TBaseSymbol) or (fld1.Typ is TClassSymbol) or (fld1.Typ is TInterfaceSymbol)) then Break;
+            if not ((fld1.Typ is TBaseSymbol) or fld1.Typ.IsClassSymbol or (fld1.Typ is TInterfaceSymbol)) then Break;
          end;
       end;
       if fld1.DefaultValue=nil then
@@ -2902,7 +2902,7 @@ procedure TdwsJSCodeGen.WriteSymbolVerbosity(sym : TSymbol);
       if sym.Name='' then begin
          WriteString('/// anonymous ');
          WriteStringLn(sym.ClassName);
-      end else if sym is TClassSymbol then begin
+      end else if sym.IsClassSymbol then begin
          WriteString('/// ');
          WriteString(sym.QualifiedName);
          WriteString(' = class (');
@@ -3166,8 +3166,8 @@ end;
 function TdwsJSCodeGen.SameDefaultValue(typ1, typ2 : TTypeSymbol) : Boolean;
 begin
    Result:=   (typ1=typ2)
-           or (    ((typ1 is TClassSymbol) or (typ1.AsFuncSymbol<>nil) or (typ1 is TInterfaceSymbol))
-               and ((typ2 is TClassSymbol) or (typ2.AsFuncSymbol<>nil) or (typ2 is TInterfaceSymbol)) );
+           or (    (typ1.IsClassSymbol or (typ1.AsFuncSymbol<>nil) or (typ1 is TInterfaceSymbol))
+               and (typ2.IsClassSymbol or (typ2.AsFuncSymbol<>nil) or (typ2 is TInterfaceSymbol)) );
 end;
 
 // SameDefaultValue
@@ -4670,7 +4670,7 @@ begin
    // TODO: deep copy of records & static arrays
    e:=TAssignClassOfExpr(expr);
    codeGen.CompileNoWrap(e.Right);
-   if e.Right.Typ is TClassSymbol then
+   if e.Right.Typ.IsClassSymbol then
       codeGen.WriteStringLn('.ClassType');
 end;
 
@@ -4783,7 +4783,7 @@ var
 begin
    if funcSym is TMethodSymbol then begin
       meth:=TMethodSymbol(funcSym);
-      if meth.IsStatic and (meth.StructSymbol is TClassSymbol) then begin
+      if meth.IsStatic and meth.StructSymbol.IsClassSymbol then begin
          codeGen.WriteSymbolName(meth.StructSymbol);
          codeGen.WriteString('.');
       end;
@@ -5092,7 +5092,7 @@ begin
       WriteLocationString(codeGen, expr);
       codeGen.WriteString(')');
    end;
-   if e.BaseExpr.Typ is TClassSymbol then
+   if e.BaseExpr.Typ.IsClassSymbol then
       codeGen.WriteString('.ClassType');
 
    if e.FuncSym.Params.Count>0 then
@@ -5136,7 +5136,7 @@ begin
       WriteLocationString(codeGen, expr);
       codeGen.WriteString(')');
    end;
-   if e.BaseExpr.Typ is TClassSymbol then
+   if e.BaseExpr.Typ.IsClassSymbol then
       codeGen.WriteString('.ClassType');
 
    if e.FuncSym.Params.Count>0 then
@@ -5269,7 +5269,7 @@ begin
       codeGen.WriteString('$NewDyn(');
    end;
    codeGen.Compile(e.BaseExpr);
-   if e.BaseExpr.Typ is TClassSymbol then
+   if e.BaseExpr.Typ.IsClassSymbol then
       codeGen.WriteString('.ClassType');
    if not (e.BaseExpr is TConstExpr) then begin
       codeGen.WriteString(',');
@@ -5533,7 +5533,7 @@ begin
          codeGen.WriteInteger(methSym.VMTIndex);
          codeGen.WriteString(']');
       end else if methExpr is TMethodStaticExpr then begin
-         if methSym.IsClassMethod and (methExpr.BaseExpr.Typ.UnAliasedType is TClassSymbol) then
+         if methSym.IsClassMethod and methExpr.BaseExpr.Typ.UnAliasedType.IsClassSymbol then
             codeGen.WriteString('.ClassType');
          codeGen.WriteString(',');
          codeGen.WriteSymbolName(methSym.StructSymbol);

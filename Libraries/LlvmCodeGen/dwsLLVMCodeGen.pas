@@ -1716,7 +1716,7 @@ begin
       end;
    end
    else
-   if TypeSymbol is TClassSymbol then
+   if TypeSymbol.IsClassSymbol then
    begin
       // yet todo
       classSym := TClassSymbol(TypeSymbol);

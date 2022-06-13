@@ -318,6 +318,14 @@ type
    TdwsVisibility = (cvMagic, cvPrivate, cvProtected, cvPublic, cvPublished);
    TdwsVisibilities = set of TdwsVisibility;
 
+   TdwsSymbolTaxonomy = set of (
+      stValueSymbol,
+         stConstSymbol,
+         stDataSymbol,
+      stTypeSymbol,
+         stClassSymbol
+   );
+
    // TSymbol
    //
    // Named item in the script
@@ -337,6 +345,9 @@ type
          function GetIsGeneric : Boolean; virtual;
          function GetExternalName : String;
 
+         function GetIsClassSymbol : Boolean; virtual;
+         function GetIsDataSymbol : Boolean; virtual;
+
       public
          constructor Create(const aName : String; aType : TTypeSymbol);
 
@@ -347,6 +358,11 @@ type
          class function IsBaseType : Boolean; virtual;
          function IsType : Boolean; virtual;
          function IsPointerType : Boolean; virtual;
+
+         function Taxonomy : TdwsSymbolTaxonomy; virtual;
+         function IsClassSymbol : Boolean; inline;
+         function IsDataSymbol : Boolean; inline;
+
          function AsFuncSymbol : TFuncSymbol; overload;
          function AsFuncSymbol(var funcSym : TFuncSymbol) : Boolean; overload;
          function IsGeneric : Boolean;
@@ -542,6 +558,8 @@ type
 
       public
          constructor Create(const aName : String; aType : TTypeSymbol);
+
+         function Taxonomy : TdwsSymbolTaxonomy; override;
    end;
 
    // named constant: const x = 123;
@@ -558,6 +576,8 @@ type
          constructor Create(const name : String; typ : TTypeSymbol);
          constructor CreateValue(const name : String; typ : TTypeSymbol; const value : Variant); overload;
          constructor CreateData(const name : String; typ : TTypeSymbol; const data : IDataContext); overload;
+
+         function Taxonomy : TdwsSymbolTaxonomy; override;
 
          procedure Initialize(const msgs : TdwsCompileMessageList); override;
 
@@ -584,6 +604,9 @@ type
 
       public
          procedure AllocateStackAddr(generator : TAddrGenerator);
+
+         function Taxonomy : TdwsSymbolTaxonomy; override;
+         function GetIsDataSymbol : Boolean; override; final;
 
          function IsWritable : Boolean; virtual;
          function GetPurpose : TScriptDataSymbolPurpose; virtual;
@@ -725,6 +748,8 @@ type
          function IsCompatible(typSym : TTypeSymbol) : Boolean; virtual;
          function CanExpectAnyFuncSymbol : Boolean; virtual;
          function IsCompatibleWithAnyFuncSymbol : Boolean; virtual;
+
+         function  Taxonomy : TdwsSymbolTaxonomy; override;
 
          function DistanceTo(typeSym : TTypeSymbol) : Integer; virtual;
          // doesn't treat aliases of a type as the the same type,
@@ -1796,6 +1821,8 @@ type
          function GetIsInternal : Boolean; inline;
          procedure SetIsInternal(const val : Boolean); inline;
 
+         function GetIsClassSymbol : Boolean; override; final;
+
          function DoIsOfType(typSym : TTypeSymbol) : Boolean; override;
 
          function  ProcessOverriddenInterfaceCallback(const item : TResolvedInterface) : TSimpleHashAction;
@@ -1825,6 +1852,7 @@ type
          function  IsCompatible(typSym : TTypeSymbol) : Boolean; override;
          function  IsPointerType : Boolean; override;
          function  HasMetaSymbol : Boolean; override;
+         function  Taxonomy : TdwsSymbolTaxonomy; override;
 
          function CommonAncestor(otherClass : TTypeSymbol) : TClassSymbol;
 
@@ -2659,6 +2687,27 @@ begin
    Result:=False;
 end;
 
+// Taxonomy
+//
+function TSymbol.Taxonomy : TdwsSymbolTaxonomy;
+begin
+   Result := [];
+end;
+
+// IsClassSymbol
+//
+function TSymbol.IsClassSymbol : Boolean;
+begin
+   Result := (Self <> nil) and Self.GetIsClassSymbol;
+end;
+
+// IsDataSymbol
+//
+function TSymbol.IsDataSymbol : Boolean;
+begin
+   Result := (Self <> nil) and Self.GetIsDataSymbol;
+end;
+
 // GetAsFuncSymbol
 //
 function TSymbol.GetAsFuncSymbol : TFuncSymbol;
@@ -2682,6 +2731,20 @@ begin
    if FExternalName <> '' then
       Result := FExternalName
    else Result := FName;
+end;
+
+// GetIsClassSymbol
+//
+function TSymbol.GetIsClassSymbol : Boolean;
+begin
+   Result := False;
+end;
+
+// GetIsDataSymbol
+//
+function TSymbol.GetIsDataSymbol : Boolean;
+begin
+   Result := False;
 end;
 
 // AsFuncSymbol
@@ -5562,10 +5625,24 @@ begin
       typSym:=typSym.UnAliasedType;
       if typSym is TNilSymbol then
          Result:=True
-      else if typSym is TClassSymbol then
+      else if typSym.IsClassSymbol then
          Result:=(NthParentOf(TClassSymbol(typSym))>=0)
       else Result:=False;
    end;
+end;
+
+// GetIsClassSymbol
+//
+function TClassSymbol.GetIsClassSymbol : Boolean;
+begin
+   Result := True;
+end;
+
+// Taxonomy
+//
+function TClassSymbol.Taxonomy : TdwsSymbolTaxonomy;
+begin
+   Result := [ stTypeSymbol, stClassSymbol ];
 end;
 
 // IsPointerType
@@ -5883,7 +5960,7 @@ end;
 function TNilSymbol.IsCompatible(typSym : TTypeSymbol) : Boolean;
 begin
   typSym := typSym.BaseType;
-  Result := (TypSym is TClassSymbol) or (TypSym is TNilSymbol);
+  Result := typSym.IsClassSymbol or (typSym is TNilSymbol);
 end;
 
 // IsCompatibleWithAnyFuncSymbol
@@ -6223,6 +6300,13 @@ begin
    FSize:=aType.Size;
 end;
 
+// Taxonomy
+//
+function TValueSymbol.Taxonomy : TdwsSymbolTaxonomy;
+begin
+   Result := [ stValueSymbol ];
+end;
+
 function TValueSymbol.GetCaption : String;
 begin
   Result := Name + ': ' + Typ.Caption;
@@ -6261,6 +6345,13 @@ constructor TConstSymbol.CreateData(const Name: String; Typ: TTypeSymbol; const 
 begin
    inherited Create(Name, Typ);
    FDataContext := data;
+end;
+
+// Taxonomy
+//
+function TConstSymbol.Taxonomy : TdwsSymbolTaxonomy;
+begin
+   Result := [ stValueSymbol, stConstSymbol ];
 end;
 
 // GetCaption
@@ -6331,6 +6422,20 @@ procedure TDataSymbol.AllocateStackAddr(generator : TAddrGenerator);
 begin
    FLevel := generator.Level;
    FStackAddr := generator.GetStackAddr(Size);
+end;
+
+// Taxonomy
+//
+function TDataSymbol.Taxonomy : TdwsSymbolTaxonomy;
+begin
+   Result := [ stValueSymbol, stDataSymbol ];
+end;
+
+// GetIsDataSymbol
+//
+function TDataSymbol.GetIsDataSymbol : Boolean;
+begin
+   Result := True;
 end;
 
 // IsWritable
@@ -7113,17 +7218,19 @@ function TSymbolTable.AddSymbol(sym : TSymbol) : Integer;
 var
    ct : TClass;
 begin
-   Result:=AddSymbolDirect(sym);
-   ct := sym.ClassType;
-   if ct.InheritsFrom(TDataSymbol) then begin
+   Result := AddSymbolDirect(sym);
+   if sym.IsDataSymbol then begin
       if FAddrGenerator <> nil then
          TDataSymbol(sym).AllocateStackAddr(FAddrGenerator);
-   end else if ct = TOperatorSymbol then
-      FFlags := FFlags + [ stfHasOperators, stfHasLocalOperators ]
-   else if ct = TClassSymbol then
-      Include(FFlags, stfHasClassSymbols)
-   else if ct = THelperSymbol then
-      Include(FFlags, stfHasHelpers);
+   end else begin
+      ct := sym.ClassType;
+      if ct = TOperatorSymbol then
+         FFlags := FFlags + [ stfHasOperators, stfHasLocalOperators ]
+      else if ct = TClassSymbol then
+         Include(FFlags, stfHasClassSymbols)
+      else if ct = THelperSymbol then
+         Include(FFlags, stfHasHelpers);
+   end;
 end;
 
 // AddSymbolDirect
@@ -8455,6 +8562,13 @@ begin
    Result := False;
 end;
 
+// Taxonomy
+//
+function TTypeSymbol.Taxonomy : TdwsSymbolTaxonomy;
+begin
+   Result := [ stTypeSymbol ];
+end;
+
 // DistanceTo
 //
 function TTypeSymbol.DistanceTo(typeSym : TTypeSymbol) : Integer;
@@ -9286,7 +9400,7 @@ begin
          else Result:=nil;
       end else Result:=nil
    end else begin
-      if    (ForType is TClassSymbol) or (ForType is TInterfaceSymbol)
+      if    ForType.IsClassSymbol or (ForType is TInterfaceSymbol)
          or (ForType is TDynamicArraySymbol) then
          Result:=TParamSymbol.Create(SYS_SELF, ForType)
       else Result := CreateConstParamSymbol(SYS_SELF, ForType);

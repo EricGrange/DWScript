@@ -72,9 +72,12 @@ type
    //
    // Uses Monitor hidden field to store refcount, so not compatible with monitor use
    // (but Monitor is buggy, so no great loss)
+   {$ifndef FPC}
+      {$define USE_MONITOR_FOR_REFCOUNT}
+   {$endif}
    TRefCountedObject = class
       private
-         {$ifdef FPC}
+         {$ifndef USE_MONITOR_FOR_REFCOUNT}
          FRefCount : Integer;
          {$endif}
          {$ifdef DOUBLE_FREE_PROTECTOR}
@@ -6506,30 +6509,35 @@ end;
 // GetRefCount
 //
 function TRefCountedObject.GetRefCount : Integer;
+ {$ifdef USE_MONITOR_FOR_REFCOUNT}
 var
    p : PInteger;
 begin
-   {$ifdef FPC}
-   p:=@FRefCount;
-   {$else}
    p:=PInteger(NativeInt(Self)+InstanceSize-hfFieldSize+hfMonitorOffset);
-   {$endif}
    Result:=p^;
 end;
+{$else}
+begin
+   Result := FRefCount;
+end;
+{$endif}
 
 // SetRefCount
 //
 procedure TRefCountedObject.SetRefCount(n : Integer);
+{$ifdef USE_MONITOR_FOR_REFCOUNT}
 var
    p : PInteger;
 begin
-   {$ifdef FPC}
-   p:=@FRefCount;
-   {$else}
    p:=PInteger(NativeInt(Self)+InstanceSize-hfFieldSize+hfMonitorOffset);
-   {$endif}
    p^:=n;
 end;
+{$else}
+begin
+   FRefCount := n;
+end;
+{$endif}
+
 
 // ------------------
 // ------------------ TSimpleObjectObjectHash<T1, T2> ------------------

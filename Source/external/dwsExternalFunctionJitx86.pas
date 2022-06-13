@@ -129,7 +129,7 @@ function Tx86RegisterJit.typeSize(value: TTypeSymbol): integer;
 begin
    if value = FCompilerContext.TypFloat then
       result := 2
-   else if (value is TClassSymbol) or (value is TDynamicArraySymbol) then
+   else if value.IsClassSymbol or (value is TDynamicArraySymbol) then
       result := 2
    else result := 1;
 end;
@@ -148,7 +148,7 @@ begin
       paramDepth := 0;
       for i := 0 to params.Count - 1 do
          inc(paramDepth, typeSize(params[i].typ));
-      if assigned(FReturnValue) and (FReturnValue is TClassSymbol) then
+      if assigned(FReturnValue) and FReturnValue.IsClassSymbol then
          inc(paramDepth);
       if paramDepth > 0 then
       begin
@@ -282,7 +282,7 @@ begin
       result := vmt_TExprBase_EvalAsFloat;
       resultStyle := rsFloat;
    end
-   else if pType is TClassSymbol then
+   else if pType.IsClassSymbol then
    begin
       result := vmt_TExprBase_EvalAsScriptObj;
       resultStyle := rsObj;
@@ -413,7 +413,7 @@ begin
    else if FReturnValue = FCompilerContext.TypString then
    else if FReturnValue = FCompilerContext.TypFloat then
 }   
-   else if FReturnValue is TClassSymbol then
+   else if FReturnValue.IsClassSymbol then
       WriteStoreObjResult
    else raise Exception.CreateFmt('Unsupported result type: %s', [FReturnValue.Name]);
 end;
@@ -463,7 +463,7 @@ begin
          WriteCall(func_ustr_clear)
       else if item.typ = FCompilerContext.TypVariant then
          WriteCall(func_var_clr)
-      else if (item.typ is TClassSymbol) or (item.typ = FCompilerContext.TypInterface) then
+      else if item.typ.IsClassSymbol or (item.typ = FCompilerContext.TypInterface) then
          WriteCall(func_intf_clear)
       else if item.typ is TDynamicArraySymbol then
       begin
@@ -489,7 +489,7 @@ const
 begin
    if FTryFrame[0] <> 0 then
       WriteCleanup;
-   if (FParams > 0) or (assigned(FReturnValue) and (FReturnValue is TClassSymbol)) then
+   if (FParams > 0) or (assigned(FReturnValue) and FReturnValue.IsClassSymbol) then
       FStream.WriteBytes(RESTORE_STACK);
    FStream.WriteByte($5D); //pop ebp
    FStream.WriteByte($C3); //ret

@@ -6474,7 +6474,7 @@ procedure TProgramInfo.GetSymbolInfo(sym : TSymbol; var info : IInfo);
    begin
       SetLength(dat, sym.Typ.Size);
       extVDM := TExternalVarDataMaster.Create(Execution, TExternalVarSymbol(sym));
-      if sym.Typ is TClassSymbol then
+      if sym.Typ.IsClassSymbol then
          extVDM.Read(Execution, dat); // initialize 'Self'-Object
       Execution.DataContext_Create(dat, 0, locData);
       TInfo.SetChild(Result, Self, sym.Typ, locData, extVDM);
@@ -6484,7 +6484,7 @@ procedure TProgramInfo.GetSymbolInfo(sym : TSymbol; var info : IInfo);
    var
       locData : IDataContext;
    begin
-      if sym.BaseType is TClassSymbol then begin
+      if sym.BaseType.IsClassSymbol then begin
          Execution.DataContext_CreateEmpty(1, locData);
          Result := TInfoClassObj.Create(Self, sym, locData);
       end else Result:=nil;
@@ -7050,7 +7050,7 @@ begin
     // Check current class type. If not found cycle object ancestry
     typeSym := FindSymbolInUnits(unitList, AObject.ClassName);
     // If no exact match found then look for supported ancestors
-    if Assigned(typeSym) and (typeSym is TClassSymbol) then
+    if typeSym.IsClassSymbol then
       Result := TClassSymbol(typeSym);
 
     // Allowed to look through ancestor types
@@ -7061,7 +7061,7 @@ begin
         ParentRTTI := GetTypeData(AObject.ClassInfo).ParentInfo;
         repeat
           typeSym := FindSymbolInUnits(unitList, String(ParentRTTI^.Name));
-          if Assigned(typeSym) and (typeSym is TClassSymbol) then       // match found, stop searching
+          if typeSym.IsClassSymbol then       // match found, stop searching
           begin
             Result := TClassSymbol(typeSym);
             Break;

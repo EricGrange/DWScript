@@ -349,7 +349,7 @@ begin
    else if sym is TAliasSymbol then
       result := stAlias
    else if sym is TCompositeTypeSymbol then begin
-      if sym is TClassSymbol then
+      if sym.IsClassSymbol then
          result := stClass
       else if sym is TInterfaceSymbol then
          result := stInterface
@@ -454,7 +454,7 @@ var
    sym : TSymbol;
 begin
    sym := TSymbols(ExtObject).CurrentSymbol;
-   if sym is TClassSymbol then
+   if sym.IsClassSymbol then
       sym := TClassSymbol(sym).Parent
    else if sym is TInterfaceSymbol then
       sym := TInterfaceSymbol(sym).Parent

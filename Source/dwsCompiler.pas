@@ -2806,7 +2806,7 @@ begin
       // keep going in case of error
       if typ=nil then
          typ:=FCompilerContext.TypVariant
-      else if (typ is TClassSymbol) and TClassSymbol(typ).IsStatic then
+      else if (typ.ClassType = TClassSymbol) and TClassSymbol(typ).IsStatic then
          FMsgs.AddCompilerErrorFmt(hotPos, CPE_ClassIsStaticNoInstances, [typ.Name]);
 
       for x:=0 to names.Count-1 do begin
@@ -4763,6 +4763,7 @@ var
    baseTypeClass : TClass;
    sk : TSpecialKeywordKind;
    symClassType : TClass;
+   symTaxonomy : TdwsSymbolTaxonomy;
 begin
    if (FSourcePostConditionsIndex<>0) and FTok.TestDelete(ttOLD) then
       Exit(ReadNameOld(isWrite));
@@ -4851,16 +4852,17 @@ begin
       end;
 
       symClassType := sym.ClassType;
+      symTaxonomy := sym.Taxonomy;
 
-      if symClassType.InheritsFrom(TValueSymbol) then begin
+      if stValueSymbol in symTaxonomy then begin // symClassType.InheritsFrom(TValueSymbol) then begin
 
          // value symbols
 
-         if symClassType.InheritsFrom(TConstSymbol) then begin
+         if stConstSymbol in symTaxonomy then begin  // symClassType.InheritsFrom(TConstSymbol)
 
             Result := ReadConstName(namePos, TConstSymbol(sym), IsWrite);
 
-         end else if symClassType.InheritsFrom(TDataSymbol) then begin
+         end else if stDataSymbol in symTaxonomy then begin // symClassType.InheritsFrom(TDataSymbol) then begin
 
             if symClassType = TLazyParamSymbol then begin
 
@@ -4880,7 +4882,7 @@ begin
 
             end;
 
-         end else if symClassType.InheritsFrom(TFieldSymbol) then begin
+         end else if symClassType = TFieldSymbol then begin
 
             if TdwsProcedure(CurrentProg).Func is TMethodSymbol then begin
                progMeth:=CurrentProg.ContextMethodSymbol;
@@ -4901,7 +4903,7 @@ begin
             end;
             Result:=ReadImplicitCall(fieldExpr, IsWrite, expecting);
 
-         end else if symClassType.InheritsFrom(TPropertySymbol) then begin
+         end else if symClassType = TPropertySymbol then begin
 
             progMeth:=CurrentProg.ContextMethodSymbol;
             selfSym:=progMeth.SelfSym;
@@ -4932,7 +4934,7 @@ begin
 
          end;
 
-      end else if symClassType.InheritsFrom(TTypeSymbol) then begin
+      end else if stTypeSymbol in symTaxonomy then begin // symClassType.InheritsFrom(TTypeSymbol) then begin
 
          // type symbols
 
@@ -5105,7 +5107,7 @@ begin
             if castedExprTyp <> FCompilerContext.TypNil then begin
                if castedExprTyp <> nil then
                   castedExprTyp := castedExprTyp.UnAliasedType;
-               if    (not (castedExprTyp is TClassSymbol))
+               if    (not castedExprTyp.IsClassSymbol)
                   or (
                             (not TClassSymbol(castedExprTyp).IsOfType(baseType))
                         and (not baseType.IsOfType(castedExprTyp))
@@ -6052,7 +6054,7 @@ begin
             // Transform a := b into a(b)
             Result := TFuncSimpleExpr.Create(FCompilerContext, FTok.HotPos, Sym.WriteFunc);
             Result.AddArg(ReadExpr);
-         end else if (Sym.Typ is TClassSymbol) or (Sym.Typ is TClassOfSymbol) or (Sym.Typ is TConnectorSymbol) then begin
+         end else if Sym.Typ.IsClassSymbol or (Sym.Typ is TClassOfSymbol) or (Sym.Typ is TConnectorSymbol) then begin
             if not Assigned(Sym.ReadFunc) then
                FMsgs.AddCompilerStop(FTok.HotPos,CPE_RightSideNeedsReturnType);
             Result := TFuncSimpleExpr.Create(FCompilerContext, FTok.HotPos, Sym.ReadFunc)
@@ -7223,7 +7225,7 @@ begin
 
                if funcExprParamType.Typ.IsOfType(matchParamType.Typ) then begin
 
-                  if (funcExprParamType.Typ is TClassSymbol) or (funcExprParamType.Typ is TInterfaceSymbol) then begin
+                  if funcExprParamType.Typ.IsClassSymbol or (funcExprParamType.Typ is TInterfaceSymbol) then begin
 
                      Inc(matchDistance, (matchParamType.Typ as TStructuredTypeSymbol).NthParentOf(TStructuredTypeSymbol(funcExprParamType.Typ)));
 
@@ -7241,7 +7243,7 @@ begin
 
                end else if    (TStaticArraySymbol(funcExprParamType).ElementCount=0)
                            or (    (funcExprParamType.Typ=FCompilerContext.TypNil)
-                               and (   (matchParamType.Typ is TClassSymbol)
+                               and (   matchParamType.Typ.IsClassSymbol
                                     or (matchParamType.Typ is TInterfaceSymbol))) then begin
 
                   Inc(matchDistance, 1);
@@ -7264,7 +7266,7 @@ begin
 
             end else begin
 
-               if (funcExprParamType is TClassSymbol) or (funcExprParamType is TInterfaceSymbol) then begin
+               if funcExprParamType.IsClassSymbol or (funcExprParamType is TInterfaceSymbol) then begin
 
                   if matchParamType is TStructuredTypeSymbol then
                      Inc(matchDistance, (matchParamType as TStructuredTypeSymbol).NthParentOf(TStructuredTypeSymbol(funcExprParamType)))
@@ -8590,7 +8592,7 @@ function TdwsCompiler.ReadNew(restrictTo : TClassSymbol; asAttribute : Boolean) 
    begin
       Result:=table.FindSymbol(name+'Attribute', cvPrivate);
       if Result<>nil then begin
-         if (Result is TClassSymbol) and TClassSymbol(Result).IsAttribute then
+         if Result.IsClassSymbol and TClassSymbol(Result).IsAttribute then
             exit
          else Result:=nil;
       end;
@@ -8685,9 +8687,9 @@ begin
             sym := FCompilerContext.TypTObject;
          end;
 
-         if sym is TClassSymbol then begin
+         if sym.IsClassSymbol then begin
 
-            classSym:=TClassSymbol(sym);
+            classSym := TClassSymbol(sym);
             RecordSymbolUse(classSym, hotPos, [suReference]);
 
          end else if (sym is TDataSymbol) and (sym.Typ is TClassOfSymbol) then begin
@@ -8711,7 +8713,7 @@ begin
 
       end;
 
-      if sym is TClassSymbol then
+      if sym.IsClassSymbol then
          baseExpr := TConstExpr.CreateValue(hotPos, classSym.MetaSymbol, Int64(classSym))
       else baseExpr := TVarExpr.CreateTyped(FCompilerContext, hotPos, TDataSymbol(sym));
    end;
@@ -8862,7 +8864,7 @@ var
 begin
    sym:=ReadNameSymbol(namePos);
 
-   if not (sym is TClassSymbol) then begin
+   if not sym.IsClassSymbol then begin
       if Assigned(sym) then
          FMsgs.AddCompilerErrorFmt(namePos, CPE_NotAClass, [sym.Name]);
       Result:=FCompilerContext.TypTObject; // keep compiling
@@ -8925,7 +8927,7 @@ begin
       else sym:=CurrentProg.Table.FindTypeLocal(typeName);
 
       if Assigned(sym) then begin
-         if sym is TClassSymbol then begin
+         if sym.IsClassSymbol then begin
             Result := TClassSymbol(sym);
             if not (Result.IsForwarded or Result.IsPartial) then begin
                FMsgs.AddCompilerErrorFmt(FTok.HotPos, CPE_ClassAlreadyDefined, [sym.Name]);
@@ -9006,7 +9008,7 @@ begin
             if typ is  TGenericSymbol then
                typ := ReadSpecializedType(TGenericSymbol(typ));
 
-            if not (typ is TClassSymbol) then begin
+            if not typ.IsClassSymbol then begin
                if typ is TInterfaceSymbol then
                   interfaces.Add(typ)
                else if typ<>nil then
@@ -10154,7 +10156,7 @@ begin
    case qualifierToken of
       ttNone : ;
       ttCLASS :
-         if not ((forType is TClassSymbol) or (forType is TClassOfSymbol)) then
+         if not (forType.IsClassSymbol or (forType is TClassOfSymbol)) then
             FMsgs.AddCompilerError(hotPos, CPE_ClassRefExpected);
       ttRECORD :
          if not ((forType is TRecordSymbol) or (forType is TBaseSymbol)) then
@@ -10295,7 +10297,7 @@ begin
             FMsgs.AddCompilerStop(FTok.HotPos, CPE_ColonExpected);
 
          classSym := ReadType('', tcExceptionClass);
-         if not (classSym.BaseType is TClassSymbol) then
+         if not classSym.BaseType.IsClassSymbol then
             FMsgs.AddCompilerError(FTok.HotPos, CPE_ClassRefExpected);
 
          if not FTok.TestDelete(ttDO) then
@@ -10467,7 +10469,7 @@ begin
    else begin
       exceptExpr:=ReadExpr;
       exceptObjTyp:=exceptExpr.Typ;
-      if not (    (exceptObjTyp is TClassSymbol)
+      if not (    exceptObjTyp.IsClassSymbol
               and TClassSymbol(exceptObjTyp).IsOfType(FCompilerContext.TypException)) then
          FMsgs.AddCompilerError(FTok.HotPos, CPE_ExceptionObjectExpected);
       Result:=TRaiseExpr.Create(FCompilerContext, FTok.HotPos, exceptExpr);
@@ -10870,7 +10872,7 @@ begin
                      if opExpr <> nil then begin
                         Result := opExpr
                      end else begin
-                        if not (Result.Typ is TClassSymbol) then
+                        if not Result.Typ.IsClassSymbol then
                            FMsgs.AddCompilerError(hotPos, CPE_ObjectExpected)
                         else if not (rightTyp is TClassOfSymbol) then
                            FMsgs.AddCompilerError(hotPos, CPE_ClassRefExpected)
@@ -10888,7 +10890,7 @@ begin
                      if Result.Typ is TClassOfSymbol then
                         Result:=TClassImplementsIntfOpExpr.Create(FCompilerContext, hotPos, tt, Result, right)
                      else begin
-                        if not (Result.Typ is TClassSymbol) then
+                        if not Result.Typ.IsClassSymbol then
                            FMsgs.AddCompilerError(hotPos, CPE_ObjectExpected);
                         Result:=TImplementsIntfOpExpr.Create(FCompilerContext, hotPos, tt, Result, right);
                      end;
@@ -10901,19 +10903,19 @@ begin
                      if     (tt in [ ttEQ, ttNOT_EQ, ttEQ_EQ, ttEXCL_EQ ])
                         and (rightTyp<>nil)
                         and (
-                                (resultTyp is TClassSymbol)
+                                resultTyp.IsClassSymbol
                              or (resultTyp is TInterfaceSymbol)
                              or (resultTyp is TClassOfSymbol)
                              or (resultTyp=FCompilerContext.TypNil)
                              ) then begin
                         if not ((rightTyp.ClassType=Result.Typ.ClassType) or (rightTyp=FCompilerContext.TypNil)) then begin
-                           if resultTyp is TClassSymbol then
+                           if resultTyp.IsClassSymbol then
                               FMsgs.AddCompilerError(hotPos, CPE_ObjectExpected)
                            else if resultTyp is TClassOfSymbol then
                               FMsgs.AddCompilerError(hotPos, CPE_ClassRefExpected)
                            else FMsgs.AddCompilerError(hotPos, CPE_InterfaceExpected);
                         end;
-                        if resultTyp is TClassSymbol then
+                        if resultTyp.IsClassSymbol then
                            if tt in [ ttNOT_EQ, ttEXCL_EQ ] then
                               Result:=TObjCmpNotEqualExpr.Create(FCompilerContext, hotPos, tt, Result, right)
                            else Result:=TObjCmpEqualExpr.Create(FCompilerContext, hotPos, tt, Result, right)
@@ -11248,7 +11250,7 @@ begin
 
          end else begin
 
-            if setExpr.Typ is TClassSymbol then begin
+            if setExpr.Typ.IsClassSymbol then begin
                classOpSymbol:=(setExpr.Typ as TClassSymbol).FindClassOperator(ttIN, left.Typ);
                if classOpSymbol<>nil then begin
                   classOpExpr:=GetMethodExpr(classOpSymbol.UsesSym, (setExpr as TDataExpr),
@@ -12143,9 +12145,9 @@ begin
                   try
                      typScriptPos:=FTok.HotPos;
 
-                     if (paramSemantics<>pssConst) and (typ is TOpenArraySymbol) then
+                     if (paramSemantics <> pssConst) and (typ <> nil) and (typ.ClassType = TOpenArraySymbol) then
                         FMsgs.AddCompilerError(FTok.HotPos, CPE_OpenArrayParamMustBeConst);
-                     if (paramSemantics=pssLazy) and (typ.AsFuncSymbol<>nil) then
+                     if (paramSemantics = pssLazy) and (typ.AsFuncSymbol <> nil) then
                         FMsgs.AddCompilerError(FTok.HotPos, CPE_LazyParamCantBeFunctionPointer);
 
                      if FTok.TestDelete(ttEQ) then begin
@@ -13086,7 +13088,7 @@ begin
 
    for param in funcSym.Params do begin
       if not (param is TByRefParamSymbol) then continue;
-      if not (param.Typ is TClassSymbol) then continue;
+      if not param.Typ.IsClassSymbol then continue;
 
       paramPos:=FSymbolDictionary.FindSymbolUsage(param, suDeclaration);
       if paramPos=nil then continue;
@@ -13953,7 +13955,7 @@ begin
             end;
          end;
          skAssigned : begin
-            if argTyp is TClassSymbol then
+            if argTyp.IsClassSymbol then
                Result:=TAssignedInstanceExpr.Create(FCompilerContext, namePos, argExpr)
             else if argTyp is TInterfaceSymbol then
                Result:=TAssignedInterfaceExpr.Create(FCompilerContext, namePos, argExpr)
@@ -14318,7 +14320,7 @@ begin
       else if typeSym is TClassOfSymbol then begin
 
          // Cast Class(...)
-         if argTyp is TClassSymbol then
+         if argTyp.IsClassSymbol then
             Result:=TObjAsClassExpr.Create(FCompilerContext, hotPos, argExpr, typeSym)
          else if argTyp is TClassOfSymbol then
             Result:=TClassAsClassExpr.Create(FCompilerContext, hotPos, argExpr, typeSym)

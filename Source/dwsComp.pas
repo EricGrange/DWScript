@@ -2087,7 +2087,7 @@ begin
    if Assigned(FScript) then begin
       sysTable:=FScript.Config.SystemSymbols.SymbolTable;
       for x:=0 to sysTable.Count - 1 do begin
-         if sysTable[x] is TClassSymbol then
+         if sysTable[x].IsClassSymbol then
             List.Add(sysTable[x].Name);
       end;
    end;
@@ -2477,7 +2477,7 @@ begin
       begin
         { Return property value for property GetXXX function }
         // Class
-        if Info.FuncSym.Typ is TClassSymbol then   // don't free the object instance returned
+        if Info.FuncSym.Typ.IsClassSymbol then   // don't free the object instance returned
           Info.ResultAsVariant := Info.RegisterExternalObject(GetObjectProp(ExtObject, propName), False, False)  // wrap as best we can (find a match)
         // Boolean
         else if ASCIISameText(Info.FuncSym.Typ.Name, SYS_BOOLEAN) then
@@ -2495,7 +2495,7 @@ begin
           // fetch param value by name
           VarCopy(setValue, Info.Data[ param.Name ][0]);
           // Class
-          if param.Typ is TClassSymbol then
+          if param.Typ.IsClassSymbol then
             SetObjectProp(ExtObject, propName, Info.GetExternalObjForVar(param.Name))
           // Boolean
           else if VarType(setValue) = varBoolean then
@@ -2714,7 +2714,7 @@ begin
   if not (typSym is TTypeSymbol) then
     raise Exception.CreateFmt(UNT_DatatypeUnknown, [AClassType]);
 
-  if typSym is TClassSymbol then
+  if typSym.IsClassSymbol then
   begin
     funcSym := TFuncSymbol.Create('', fkFunction, 1);
     funcSym.Typ := typSym;
@@ -4246,7 +4246,7 @@ begin
    sym := GetUnit.Table.FindSymbol(Name, cvMagic);
 
    if Assigned(sym) then begin
-      if sym is TClassSymbol then begin
+      if sym.IsClassSymbol then begin
          classSym:=TClassSymbol(sym);
          if not classSym.IsForwarded then
             raise Exception.Create(UNT_ClassAlreadyDefined);
@@ -5664,7 +5664,7 @@ begin
   // Get the type symbol of this variable
   typSym := GetDataType(systemTable, Table, DataType);
 
-  if typSym is TClassSymbol then
+  if typSym.IsClassSymbol then
   begin
     funcSym := TFuncSymbol.Create('', fkFunction, 1);
     funcSym.Typ := typSym;

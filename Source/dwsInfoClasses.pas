@@ -775,7 +775,7 @@ function TInfoClass.GetMethod(const s: String): IInfo;
 var
   sym: TSymbol;
 begin
-  if not (FTypeSym is TClassSymbol) then
+  if not FTypeSym.IsClassSymbol then
     raise Exception.CreateFmt(RTE_NoClassNoMethod, [FTypeSym.Caption, s]);
 
   sym := TClassSymbol(FTypeSym).Members.FindSymbol(s, cvMagic);

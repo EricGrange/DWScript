@@ -1197,7 +1197,7 @@ begin
    scope:=ScopeStruct(from);
    visibility:=ScopeVisiblity(scope, struc);
    first:=True;
-   allowConstructors:=(struc is TClassSymbol) and not TClassSymbol(struc).IsStatic;
+   allowConstructors := struc.IsClassSymbol and not TClassSymbol(struc).IsStatic;
 
    repeat
       for sym in struc.Members do begin

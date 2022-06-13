@@ -331,7 +331,7 @@ function TSystemOperators.AsCastInstanceSymbol(
             const scriptPos : TScriptPos
             ) : TTypedExpr;
 begin
-   if operand.Typ is TClassSymbol then begin
+   if operand.Typ.IsClassSymbol then begin
       if castType is TInterfaceSymbol then
          Result := TObjAsIntfExpr.Create(compilerContext, scriptPos, operand, TInterfaceSymbol(castType))
       else begin
