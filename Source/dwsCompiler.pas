@@ -619,6 +619,7 @@ type
          procedure ReadPropertyDecl(ownerSym : TCompositeTypeSymbol; aVisibility : TdwsVisibility;
                                     classProperty : Boolean);
          procedure ReadPropertyDeclAutoField(propSym : TPropertySymbol; classProperty : Boolean);
+         function ReadPropertyExternalField(propSym : TPropertySymbol) : TFieldSymbol;
          function ReadPropertyDeclGetter(propSym : TPropertySymbol; var scriptPos : TScriptPos;
                                          classProperty : Boolean) : TSymbol;
          function ReadPropertyDeclSetter(propSym : TPropertySymbol; var scriptPos : TScriptPos;
@@ -9693,6 +9694,35 @@ begin
    propSym.WriteSym:=sym;
 end;
 
+// ReadPropertyExternalField
+//
+function TdwsCompiler.ReadPropertyExternalField(propSym : TPropertySymbol) : TFieldSymbol;
+var
+   i : Integer;
+   members : TMembersSymbolTable;
+   sym : TSymbol;
+   externalName : String;
+begin
+   if not FTok.Test(ttStrVal) then
+      FMsgs.AddCompilerError(FTok.HotPos, CPE_StringExpected)
+   else begin
+      externalName := FTok.GetToken.AsString;
+      FTok.KillToken;
+   end;
+
+   members := propSym.OwnerSymbol.Members;
+   for i := 0 to members.Count-1 do begin
+      sym := members.Symbols[i];
+      if (sym.ClassType = TFieldSymbol) and (sym.ExternalName = externalName) then
+         Exit(TFieldSymbol(sym));
+   end;
+
+   Result := TFieldSymbol.Create('', propSym.Typ, cvPrivate);
+   Result.ExternalName := externalName;
+
+   propSym.OwnerSymbol.AddField(Result);
+end;
+
 // ReadPropertyDeclGetter
 //
 function TdwsCompiler.ReadPropertyDeclGetter(
@@ -9705,7 +9735,11 @@ var
    oldProg : TdwsProgram;
    proc : TdwsProcedure;
 begin
-   if not FTok.TestDelete(ttBLEFT) then begin
+   if propSym.OwnerSymbol.IsExternal and FTok.TestDelete(ttEXTERNAL) then begin
+
+      Result := ReadPropertyExternalField(propSym);
+
+   end else if not FTok.TestDelete(ttBLEFT) then begin
 
       if not FTok.TestDeleteNamePos(name, scriptPos) then
          FMsgs.AddCompilerStop(FTok.HotPos, CPE_NameExpected);
@@ -9773,7 +9807,11 @@ var
    oldProg : TdwsProgram;
    proc : TdwsProcedure;
 begin
-   if not FTok.TestDelete(ttBLEFT) then begin
+   if propSym.OwnerSymbol.IsExternal and FTok.TestDelete(ttEXTERNAL) then begin
+
+      Result := ReadPropertyExternalField(propSym);
+
+   end else if not FTok.TestDelete(ttBLEFT) then begin
 
       if not FTok.TestDeleteNamePos(name, scriptPos) then
          FMsgs.AddCompilerStop(FTok.HotPos, CPE_NameExpected);

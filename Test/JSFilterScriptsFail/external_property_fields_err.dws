@@ -1,0 +1,11 @@
+<script>
+function PrintLn(v) { document.writeln(JSON.stringify(v), "<br />") };
+<%pas2js
+type
+   JExternal = class external
+      property FieldR : Integer read external;
+      property FieldW : Integer write external 123;
+   end;
+%>
+
+</script>

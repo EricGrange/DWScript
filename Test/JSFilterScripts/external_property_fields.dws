@@ -1,0 +1,28 @@
+<script>
+function PrintLn(v) { document.writeln(JSON.stringify(v), "<br />") };
+
+var vExt = { "hello": 123, "world": "foobar" };
+
+<%pas2js
+type
+   JExternal = class external
+      property FieldR : Integer read external 'hello';
+      property FieldW : Integer write external 'hello';
+      property FieldRW : String read external 'world' write external 'world';
+   end;
+
+var v external 'vExt' : JExternal;
+
+PrintLn(v);
+PrintLn(v.FieldR);
+PrintLn(v.FieldRW);
+
+v.FieldW := 456;
+PrintLn(v);
+
+v.FieldRW := 'booh';
+PrintLn(v);
+
+%>
+
+</script>
