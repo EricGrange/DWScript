@@ -2113,10 +2113,24 @@ end;
 // OpenFileForSequentialWriteOnly
 //
 function OpenFileForSequentialWriteOnly(const fileName : TFileName) : THandle;
+var
+   attributes : Cardinal;
 begin
    {$ifdef WINDOWS}
-   Result:=CreateFile(PChar(fileName), GENERIC_WRITE, 0, nil, CREATE_ALWAYS,
-                      FILE_ATTRIBUTE_NORMAL+FILE_FLAG_SEQUENTIAL_SCAN, 0);
+   Result:=CreateFile(
+      PChar(fileName), GENERIC_WRITE, 0, nil, CREATE_ALWAYS,
+      FILE_ATTRIBUTE_NORMAL or FILE_FLAG_SEQUENTIAL_SCAN, 0
+   );
+   if (Result = INVALID_HANDLE_VALUE) and (GetLastError = ERROR_ACCESS_DENIED) then begin
+      // could be a file with non-normal attributes, try again after reading attributes
+      attributes := GetFileAttributes(PChar(fileName));
+      if attributes <> INVALID_FILE_ATTRIBUTES then begin
+         Result := CreateFile(
+            PChar(fileName), GENERIC_WRITE, 0, nil, CREATE_ALWAYS,
+            attributes or FILE_FLAG_SEQUENTIAL_SCAN, 0
+         );
+      end;
+   end;
    {$else}
    Result := SysUtils.FileCreate(fileName, fmOpenWrite, $007);
    {$endif}
