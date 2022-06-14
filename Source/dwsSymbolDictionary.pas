@@ -595,6 +595,7 @@ constructor TdwsSymbolDictionary.Create;
 begin
    inherited;
    FHash := TSymbolPositionListHash.Create;
+   FHash.PreallocateCapacity(1024);
    FSymPosAllocator.Initialize;
 end;
 
@@ -836,7 +837,8 @@ var
 begin
    if startPos.SourceFile<>endPos.SourceFile then Exit;
 
-   for i:=0 to FHash.Capacity-1 do begin
+//   for i := 0 to FHash.Capacity-1 do begin
+   for i := FHash.Capacity-1 downto 0 do begin
       if FHash.HashBucketValue(i, symPosList) then
          symPosList.RemoveInRange(startPos, endPos);
    end;

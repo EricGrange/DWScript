@@ -20,7 +20,6 @@ unit dwsUtils;
 {$R-}
 {$Q-}
 
-
 {.$define DOUBLE_FREE_PROTECTOR}
 
 interface
@@ -519,8 +518,9 @@ type
          function Contains(const anItem : T) : Boolean;
          function Match(var anItem : T) : Boolean;
          function Remove(const anItem : T) : Boolean; // true if removed
-         procedure Enumerate(callBack : TSimpleHashFunc<T>);
+         procedure Enumerate(const callBack : TSimpleHashFunc<T>);
          procedure Clear(resetCapacity : Boolean = True);
+         procedure PreallocateCapacity(newCapacity : Integer);
 
          function HashBucketValue(index : Integer; var anItem : T) : Boolean; inline;
          procedure Delete(index : Integer);
@@ -1164,6 +1164,8 @@ function PopCount(p : PByte; n : Integer) : Integer;
 procedure SwapInt64(var a, b : Int64); inline;
 procedure SwapDoubles(var a, b : Double); inline;
 procedure SwapPointers(var a, b : Pointer); inline;
+
+procedure TransferSimpleHashBuckets(const src, dest; nbSrcBuckets, nbDestBuckets, bucketSize : Integer);
 
 type
    EISO8601Exception = class (Exception);
@@ -5558,17 +5560,58 @@ end;
 // ------------------ TSimpleHash<T> ------------------
 // ------------------
 
+// TransferSimpleHashBuckets
+//
+procedure TransferSimpleHashBuckets(const src, dest; nbSrcBuckets, nbDestBuckets, bucketSize : Integer);
+var
+   ptrOld, ptrNew : IntPtr;
+   destMask : Integer;
+   i, j : Integer;
+begin
+   ptrOld := IntPtr(@src);
+   destMask := nbDestBuckets - 1;
+   for i := nbSrcBuckets downto 1 do begin
+      if PCardinal(ptrOld)^ <> 0 then begin
+         j := PCardinal(ptrOld)^ and destMask;
+         ptrNew := IntPtr(@dest) + j * bucketSize;
+         while PCardinal(ptrNew)^ <> 0 do begin
+            if j = destMask then begin
+               j := 0;
+               ptrNew := IntPtr(@dest);
+            end else begin
+               Inc(j);
+               Inc(ptrNew, bucketSize);
+            end;
+         end;
+         j := bucketSize;
+         while j >= 8 do begin
+            PUInt64(ptrNew)^ := PUInt64(ptrOld)^;
+            PUInt64(ptrOld)^ := 0;
+            Inc(ptrNew, 8);
+            Inc(ptrOld, 8);
+            Dec(j, 8);
+         end;
+         if j = 4 then begin
+            PUInt32(ptrNew)^ := PUInt32(ptrOld)^;
+            PUInt32(ptrOld)^ := 0;
+            Inc(ptrOld, 4);
+         end;
+      end else Inc(ptrOld, bucketSize);
+   end;
+end;
+
 // Grow
 //
 procedure TSimpleHash<T>.Grow(capacityPreAdjusted : Boolean);
 var
    i, j, n : Integer;
-   hashCode : Integer;
+   h : Cardinal;
    {$IFDEF DELPHI_XE3}
    oldBuckets : array of TSimpleHashBucket<T>;
    {$ELSE}
    oldBuckets : TSimpleHashBucketArray<T>;
    {$ENDIF}
+   ptrOld, ptrNew, p : IntPtr;
 begin
    if not capacityPreAdjusted then begin
       if FCapacity = 0 then
@@ -5576,6 +5619,11 @@ begin
       else FCapacity := FCapacity*2;
    end;
    FGrowth := (FCapacity*11) div 16;
+
+   if FBuckets = nil then begin
+      SetLength(FBuckets, FCapacity);
+      Exit;
+   end;
 
    {$IFDEF DELPHI_XE3}
    SetLength(oldBuckets, Length(FBuckets));
@@ -5588,14 +5636,11 @@ begin
    FBuckets := nil;
    SetLength(FBuckets, FCapacity);
 
-   n:=FCapacity-1;
-   for i:=0 to High(oldBuckets) do begin
-      if oldBuckets[i].HashCode=0 then continue;
-      j:=(oldBuckets[i].HashCode and (FCapacity-1));
-      while FBuckets[j].HashCode<>0 do
-         j:=(j+1) and n;
-      FBuckets[j]:=oldBuckets[i];
-   end;
+   TransferSimpleHashBuckets(
+      oldBuckets[0], FBuckets[0],
+      Length(oldBuckets), FCapacity,
+      SizeOf(TSimpleHashBucket<T>)
+   );
 end;
 
 // LinearFind
@@ -5718,18 +5763,18 @@ end;
 
 // Enumerate
 //
-procedure TSimpleHash<T>.Enumerate(callBack : TSimpleHashFunc<T>);
+procedure TSimpleHash<T>.Enumerate(const callBack : TSimpleHashFunc<T>);
 var
    i, initialCount : Integer;
 begin
    if FCount = 0 then Exit;
    initialCount := FCount;
-   for i:=0 to High(FBuckets) do begin
-      if FBuckets[i].HashCode<>0 then begin
-         case callBack(FBuckets[i].Value) of
+   for i := 0 to High(FBuckets) do begin
+      with FBuckets[i] do if HashCode <> 0 then begin
+         case callBack(Value) of
             shaRemove : begin
-               FBuckets[i].HashCode:=0;
-               FBuckets[i].Value:=Default(T);
+               HashCode := 0;
+               Value := Default(T);
                Dec(FCount);
             end;
             shaAbort : break;
@@ -5776,14 +5821,31 @@ begin
    end;
 end;
 
+// PreallocateCapacity
+//
+procedure TSimpleHash<T>.PreallocateCapacity(newCapacity : Integer);
+var
+   cap : Integer;
+begin
+   cap := FCapacity;
+   if cap = 0 then
+      cap := cSimpleHashMinCapacity;
+   while cap < newCapacity do
+      cap := 2*cap;
+   FCapacity := cap;
+   Grow(True);
+end;
+
 // HashBucketValue
 //
 function TSimpleHash<T>.HashBucketValue(index : Integer; var anItem : T) : Boolean;
 begin
-   if FBuckets[index].HashCode <> 0 then begin
-      anItem := FBuckets[index].Value;
-      Result := True;
-   end else Result := False;
+   with FBuckets[index] do begin
+      if HashCode <> 0 then begin
+         anItem := Value;
+         Result := True;
+      end else Result := False;
+   end;
 end;
 
 // ------------------

@@ -2132,6 +2132,7 @@ begin
       FLevel := TFuncSymbol(aSymbol).Level;
 
    FHash := TdwsMappedSymbolHash.Create;
+   FHash.PreallocateCapacity(512);
    FNames := TSimpleNameObjectHash<TSymbol>.Create;
 
    if aParent = nil then begin

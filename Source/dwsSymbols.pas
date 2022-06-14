@@ -437,7 +437,8 @@ type
 
          function AddSymbol(sym : TSymbol): Integer;
          function AddSymbolDirect(sym : TSymbol) : Integer;
-         function FindLocal(const aName : String; ofClass : TSymbolClass = nil) : TSymbol; virtual;
+         function FindLocal(const aName : String) : TSymbol; virtual;
+         function FindLocalOfClass(const aName : String; ofClass : TSymbolClass) : TSymbol;
          function FindTypeLocal(const aName : String) : TTypeSymbol;
          function FindSymbolAtStackAddr(const stackAddr, level : Integer) : TDataSymbol;
          function Remove(sym : TSymbol): Integer;
@@ -502,7 +503,7 @@ type
    //
    TUnSortedSymbolTable = class (TSymbolTable)
       public
-         function FindLocal(const aName : String; ofClass : TSymbolClass = nil) : TSymbol; override;
+         function FindLocal(const aName : String) : TSymbol; override;
          function IndexOf(sym : TSymbol) : Integer;
    end;
 
@@ -6805,7 +6806,7 @@ end;
 
 // FindLocal
 //
-function TSymbolTable.FindLocal(const aName : String; ofClass : TSymbolClass = nil) : TSymbol;
+function TSymbolTable.FindLocal(const aName : String) : TSymbol;
 var
    lo, hi, mid, cmpResult : Integer;
    ptrList : PObjectTightList;
@@ -6829,8 +6830,6 @@ begin
          lo := mid+1
       else begin
          if cmpResult = 0 then begin
-            if (ofClass <> nil) and not Result.InheritsFrom(ofClass) then
-               Result := nil;
             Exit;
          end else hi := mid-1;
       end;
@@ -6838,11 +6837,25 @@ begin
    Result := nil;
 end;
 
+// FindLocalOfClass
+//
+function TSymbolTable.FindLocalOfClass(const aName : String; ofClass : TSymbolClass) : TSymbol;
+begin
+   Result := FindLocal(aName);
+   if (Result <> nil) and (ofClass <> nil) and not Result.InheritsFrom(ofClass) then
+      Result := nil;
+end;
+
 // FindTypeLocal
 //
 function TSymbolTable.FindTypeLocal(const aName : String) : TTypeSymbol;
+var
+   sym : TSymbol;
 begin
-   Result:=TTypeSymbol(FindLocal(aName, TTypeSymbol));
+   sym := FindLocal(aName);
+   if (sym <> nil) and (stTypeSymbol in sym.Taxonomy) then
+      Result := TTypeSymbol(sym)
+   else Result := nil;
 end;
 
 // FindSymbolAtStackAddr
@@ -6912,7 +6925,7 @@ var
    i : Integer;
 begin
    // Find Symbol in the local List
-   Result := FindLocal(aName, ofClass);
+   Result := FindLocalOfClass(aName, ofClass);
    if Assigned(Result) then begin
       if Result.IsVisibleFor(minVisibility) then
          Exit
@@ -7384,7 +7397,7 @@ var
    i : Integer;
 begin
    // Find Symbol in the local List
-   Result := FindLocal(aName, ofClass);
+   Result := FindLocalOfClass(aName, ofClass);
    if Assigned(Result) then begin
       if Result.IsVisibleFor(minVisibility) then Exit;
       // try harder in case of overload with different visibility
@@ -7452,7 +7465,7 @@ end;
 
 // FindLocal
 //
-function TUnSortedSymbolTable.FindLocal(const aName : String; ofClass : TSymbolClass = nil) : TSymbol;
+function TUnSortedSymbolTable.FindLocal(const aName : String) : TSymbol;
 var
    n : Integer;
    ptrList : PPointer;
@@ -7463,8 +7476,6 @@ begin
       repeat
          Result := TSymbol(ptrList^);
          if UnicodeCompareText(Result.Name, aName) = 0 then begin
-            if (ofClass<>nil) and not Result.InheritsFrom(ofClass) then
-               Result := nil;
             Exit;
          end;
          Inc(ptrList);

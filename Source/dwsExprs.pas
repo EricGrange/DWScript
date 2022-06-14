@@ -7322,11 +7322,16 @@ function TScriptObjInstance.FieldAddress(const fieldName : String) : Integer;
 var
    clsSym : TClassSymbol;
    field : TFieldSymbol;
+   sym : TSymbol;
 begin
+   field := nil;
    clsSym := FClassSym;
    repeat
-      field := TFieldSymbol(clsSym.Members.FindLocal(fieldName, TFieldSymbol));
-      if field <> nil then break;
+      sym := clsSym.Members.FindLocal(fieldName);
+      if (sym <> nil) and (sym.ClassType = TFieldSymbol) then begin
+         field := TFieldSymbol(sym);
+         Break;
+      end;
       clsSym := clsSym.Parent;
    until clsSym = nil;
    if field = nil then

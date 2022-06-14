@@ -369,14 +369,15 @@ var
    entity : TNamedEntity;
 begin
    vAllNamedEntities := TNamedEntities.Create;
+   vAllNamedEntities.PreallocateCapacity(4096);
 
    s := cAllNamedEntities;
    i := 1;
    repeat
-      p := StrUtils.PosEx(',', s, i);
+      p := Pos(',', s, i);
       if p <= 0 then
          p := Length(s)+1;
-      e := StrUtils.PosEx('=', s, i);
+      e := Pos('=', s, i);
       entity.Name := Copy(s, i, e-i);
       entity.Code := StrToInt('$' + Copy(s, e+1, p-e-1));
       vAllNamedEntities.Add(entity);

@@ -1667,6 +1667,7 @@ begin
       FExternalRoutinesManager.BeginCompilation(Self);
 
    FCompilerContext.HelperMemberNames.Clear;
+   FCompilerContext.HelperMemberNames.PreallocateCapacity(256);
    dwsInternalUnit.EnumerateHelperMemberNames(FCompilerContext.HelperMemberNames);
 
    try
@@ -1789,7 +1790,7 @@ begin
       if UnicodeSameText(FUnitsFromStack.Items[i], unitName) then
          FMsgs.AddCompilerStop(scriptPos, CPE_UnitCircularReference);
 
-   Result:=TUnitSymbol(CurrentProg.Table.FindLocal(unitName, TUnitSymbol));
+   Result:=TUnitSymbol(CurrentProg.Table.FindLocalOfClass(unitName, TUnitSymbol));
    if (Result<>nil) and (Result.Main<>nil) then begin
       // ignore multiple requests (for now)
       Exit;
@@ -11446,8 +11447,8 @@ function TdwsCompiler.ReadTerm(isWrite : Boolean = False; expecting : TTypeSymbo
       funcSym := ReadProcDecl(funcType, hotPos, [pdoAnonymous], expectingParams);
       CurrentProg.Table.AddSymbol(funcSym);
 
-      if (funcSym.Typ=nil) and (expectingFuncSym<>nil) then
-         if not (expectedType is TAnyTypeSymbol) then
+      if (funcSym.Typ = nil) and (expectingFuncSym <> nil) then
+         if ((expectedType = nil) or (expectedType.ClassType <> TAnyTypeSymbol)) then
             funcSym.Typ := expectedType;
 
       if FTok.TestDelete(ttEQ_GTR) then begin
@@ -13424,7 +13425,7 @@ begin
       end else rt:=CurrentProg.Root.RootTable;
       for x:=0 to names.Count-1 do begin
          if rtInterface<>nil then begin
-            unitSymbol:=TUnitSymbol(rtInterface.FindLocal(names[x], TUnitSymbol));
+            unitSymbol:=TUnitSymbol(rtInterface.FindLocalOfClass(names[x], TUnitSymbol));
             if (unitSymbol<>nil) and not unitSymbol.Implicit then
                FMsgs.AddCompilerHintFmt(posArray[x], CPH_UnitAlreadyReferredInInterface, [names[x]]);
          end;
