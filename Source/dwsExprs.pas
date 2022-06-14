@@ -6798,15 +6798,14 @@ var
    stackAddr : Integer;
    exec : TdwsExecution;
 begin
-   sym:=FuncSym.Result;
-   if sym=nil then
+   sym := FuncSym.Result;
+   if sym = nil then
       RaiseVariableNotFound(SYS_RESULT);
-   Assert(sym.InheritsFrom(TDataSymbol));
-   exec:=Execution;
-   if sym.Level=FLevel then
-      stackAddr:=sym.StackAddr+exec.Stack.BasePointer
-   else stackAddr:=sym.StackAddr+exec.Stack.GetSavedBp(Level);
-   Result:=@exec.Stack.Data[stackAddr];
+   exec := Execution;
+   if sym.Level = FLevel then
+      stackAddr := sym.StackAddr + exec.Stack.BasePointer
+   else stackAddr := sym.StackAddr + exec.Stack.GetSavedBp(Level);
+   Result := @exec.Stack.Data[stackAddr];
 end;
 
 procedure TProgramInfo.SetResultAsVariant(const Value: Variant);
@@ -6882,22 +6881,24 @@ end;
 function TProgramInfo.GetParamDataContext(index : Integer) : IDataContext;
 var
    ip : TSymbolTable;
-   sym : TDataSymbol;
+   sym : TSymbol;
+   dataSym : TDataSymbol;
    stackAddr : Integer;
    exec : TdwsExecution;
 begin
-   ip:=FuncSym.Params;
-   if Cardinal(index)>=Cardinal(ip.Count) then begin
+   ip := FuncSym.Params;
+   if Cardinal(index) >= Cardinal(ip.Count) then begin
       RaiseIncorrectParameterIndex(index);
-      Result:=nil;
+      Result := nil;
    end else begin
-      sym:=TDataSymbol(ip[index]);
-      Assert(sym.InheritsFrom(TDataSymbol));
-      exec:=Execution;
-      if sym.Level=FLevel then
-         stackAddr:=sym.StackAddr+exec.Stack.BasePointer
-      else stackAddr:=sym.StackAddr+exec.Stack.GetSavedBp(Level);
-      if sym.InheritsFrom(TByRefParamSymbol) then begin
+      sym := ip[index];
+      Assert(sym.IsDataSymbol);
+      dataSym := TDataSymbol(sym);
+      exec := Execution;
+      if dataSym.Level = FLevel then
+         stackAddr := dataSym.StackAddr+exec.Stack.BasePointer
+      else stackAddr := dataSym.StackAddr+exec.Stack.GetSavedBp(Level);
+      if dataSym.InheritsFrom(TByRefParamSymbol) then begin
          Result := IDataContext(IUnknown(Execution.Stack.Data[stackAddr]))
       end else Result := exec.Stack.CreateDataContext(exec.Stack.Data, stackAddr);
    end;

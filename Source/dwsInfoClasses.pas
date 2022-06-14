@@ -92,7 +92,7 @@ type
          property ProgramInfo : TProgramInfo read FProgramInfo;
 
          class procedure SetChild(out result : IInfo; programInfo : TProgramInfo; childTypeSym : TSymbol;
-                                  const childDataPtr : IDataContext; const childDataMaster : IDataMaster = nil);
+                                  const childDataPtr : IDataContext; const childDataMaster : IDataMaster = nil); static;
       end;
 
   TInfoConst = class(TInfo)
@@ -520,43 +520,43 @@ begin
    baseType := childTypeSym.baseType;
    baseTypeClass := baseType.ClassType;
 
-   if    (baseType is TBaseSymbol)
-      or (baseTypeClass=TEnumerationSymbol)
-      or (baseTypeClass=TSetOfSymbol) then
+   if    baseType.IsBaseType
+      or (baseTypeClass = TEnumerationSymbol)
+      or (baseTypeClass = TSetOfSymbol) then
          result := TInfoData.Create(programInfo, childTypeSym, childDataPtr,
                                     childDataMaster)
    else if childTypeSym.AsFuncSymbol<>nil then
       result := TInfoFunc.Create(programInfo, childTypeSym, childDataPtr,
                                  childDataMaster, nil, nil)
-   else if baseTypeClass=TRecordSymbol then
+   else if baseTypeClass = TRecordSymbol then
       result := TInfoRecord.Create(programInfo, childTypeSym, childDataPtr,
                                    childDataMaster)
+   else if baseTypeClass = TDynamicArraySymbol then
+      result := TInfoDynamicArray.Create(programInfo, childTypeSym, childDataPtr,
+                                          childDataMaster)
+   else if baseTypeClass = TClassSymbol then
+      result := TInfoClassObj.Create(programInfo, childTypeSym, childDataPtr,
+                                      childDataMaster)
+   else if baseTypeClass = TClassOfSymbol then
+      result := TInfoClassOf.Create(programInfo, childTypeSym, childDataPtr,
+                                     childDataMaster)
+   else if baseTypeClass = TAssociativeArraySymbol then
+      Result := TInfoAssociativeArray.Create(programInfo, childTypeSym, childDataPtr,
+                                             childDataMaster)
+   else if baseTypeClass = TInterfaceSymbol then
+      Result := TInfoInterfaceObj.Create(ProgramInfo, ChildTypeSym, childDataPtr,
+                                     ChildDataMaster)
    else if baseType is TStaticArraySymbol then begin
-      if baseType is TOpenArraySymbol then begin
+      if baseTypeClass = TOpenArraySymbol then begin
          result := TInfoOpenArray.Create(programInfo, childTypeSym, childDataPtr,
                                           childDataMaster);
       end else begin
          result := TInfoStaticArray.Create(programInfo, childTypeSym, childDataPtr,
                                             childDataMaster);
       end;
-   end else if baseTypeClass=TDynamicArraySymbol then
-      result := TInfoDynamicArray.Create(programInfo, childTypeSym, childDataPtr,
-                                          childDataMaster)
-   else if baseTypeClass=TClassSymbol then
-      result := TInfoClassObj.Create(programInfo, childTypeSym, childDataPtr,
-                                      childDataMaster)
-   else if baseTypeClass=TClassOfSymbol then
-      result := TInfoClassOf.Create(programInfo, childTypeSym, childDataPtr,
-                                     childDataMaster)
-   else if baseTypeClass = TAssociativeArraySymbol then
-      Result := TInfoAssociativeArray.Create(programInfo, childTypeSym, childDataPtr,
-                                             childDataMaster)
-   else if baseType is TConnectorSymbol then
+   end else if baseType is TConnectorSymbol then
       result := TInfoData.Create(programInfo, childTypeSym, childDataPtr,
                                     ChildDataMaster)
-   else if baseType is TInterfaceSymbol then
-      Result := TInfoInterfaceObj.Create(ProgramInfo, ChildTypeSym, childDataPtr,
-                                     ChildDataMaster)
    else Assert(False); // Shouldn't be ever executed
 end;
 

@@ -1159,7 +1159,7 @@ type
          constructor Create(const name : String);
 
          function IsCompatible(typSym : TTypeSymbol) : Boolean; override;
-         class function IsBaseType : Boolean; override;
+         class function IsBaseType : Boolean; override; final;
 
          function SpecializeType(const context : ISpecializationContext) : TTypeSymbol; override;
    end;
