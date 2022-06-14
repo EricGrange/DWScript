@@ -709,11 +709,12 @@ var
    scriptDyn : IScriptDynArray;
    ids : IdwsDataSet;
    dbo : TScriptDataBase;
-   dataSetInfo : IInfo;
+   dataSetScript : TScriptObjInstance;
+   dataSetSymbol : TClassSymbol;
    dataSet : TDataSet;
    dsID : NativeUInt;
 begin
-   scriptDyn:=Info.ParamAsScriptDynArray[1];
+   scriptDyn := Info.ParamAsScriptDynArray[1];
 
    dbo := (ExtObject as TScriptDataBase);
 
@@ -728,16 +729,16 @@ begin
    end;
    ids.ID := dsID;
 
-   dataSetInfo := Info.Vars['DataSet'].Method['Create'].Call;
+   dataSetSymbol := Info.FuncSym.Typ as TClassSymbol;
+   dataSetScript := TScriptObjInstance.Create(dataSetSymbol, Info.Execution);
 
-   dataSet:=TDataSet.Create;
+   dataSet := TDataSet.Create;
    dataSet.Intf := ids;
    if dbo.LowerCaseStringify then
       dataSet.WriterOptions := [woLowerCaseNames];
 
-   dataSetInfo.ExternalObject := dataSet;
-
-   Info.ResultAsVariant := dataSetInfo.Value;
+   dataSetScript.ExternalObject := dataSet;
+   Info.ResultAsVariant := dataSetScript as IScriptObj;
 end;
 
 procedure TdwsDatabaseLib.dwsDatabaseClassesDataBaseMethodsGetOptionEval(
