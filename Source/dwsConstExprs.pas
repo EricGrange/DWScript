@@ -154,7 +154,6 @@ type
    TArrayConstantExpr = class sealed (TDataExpr)
       protected
          FElementExprs : TTightList;
-         FArrayData : IDataContext;
 
          function GetSubExpr(i : Integer) : TExprBase; override;
          function GetSubExprCount : Integer; override;

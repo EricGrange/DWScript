@@ -522,16 +522,39 @@ end;
 procedure TConvStaticArrayToDynamicExpr.EvalAsScriptDynArray(exec : TdwsExecution; var result : IScriptDynArray);
 var
    arr : TArrayConstantExpr;
-   data : IDataContext;
-begin
-   arr:=TArrayConstantExpr(Expr);
 
-   result := CreateNewDynamicArray(TDynamicArraySymbol(Typ).Typ);
-   if arr.ElementCount > 0 then begin
-      result.ArrayLength := arr.ElementCount;
+   procedure ConvThroughDataContext;
+   var
+      data : IDataContext;
+   begin
       exec.DataContext_CreateEmpty(result.ElementSize * arr.ElementCount, data);
       arr.EvalToDataContext(exec, data, 0);
       result.WriteData(0, data, 0, data.DataLength);
+   end;
+
+   procedure ConvDirectly;
+   var
+      i : Integer;
+      buf : Variant;
+   begin
+      for i := 0 to arr.ElementCount-1 do begin
+         arr.Elements[i].EvalAsVariant(exec, buf);
+         result.AsVariant[i] := buf;
+      end;
+   end;
+
+var
+   elementTyp : TTypeSymbol;
+begin
+   arr := TArrayConstantExpr(Expr);
+
+   elementTyp := TDynamicArraySymbol(Typ).Typ;
+   result := CreateNewDynamicArray(elementTyp);
+   if arr.ElementCount > 0 then begin
+      result.ArrayLength := arr.ElementCount;
+      if elementTyp.Size = 1 then
+         ConvDirectly
+      else ConvThroughDataContext;
    end;
 end;
 
