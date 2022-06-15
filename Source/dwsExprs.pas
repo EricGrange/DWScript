@@ -7233,18 +7233,18 @@ begin
    SetDataLength(aClassSym.ScriptInstanceSize);
 
    // initialize fields
-   fieldIter:=aClassSym.FirstField;
-   while fieldIter<>nil do begin
+   fieldIter := aClassSym.FirstField;
+   while fieldIter <> nil do begin
       fieldIter.InitDataContext(Self, 0);
-      fieldIter:=fieldIter.NextField;
+      fieldIter := fieldIter.NextField;
    end;
 
    // initialize OnObjectDestroy
-   externalClass:=aClassSym;
-   while (externalClass<>nil) and not Assigned(externalClass.OnObjectDestroy) do
-      externalClass:=externalClass.Parent;
-   if externalClass<>nil then
-      FOnObjectDestroy:=externalClass.OnObjectDestroy;
+   externalClass := aClassSym;
+   while (externalClass <> nil) and not Assigned(externalClass.OnObjectDestroy) do
+      externalClass := externalClass.Parent;
+   if externalClass <> nil then
+      FOnObjectDestroy := externalClass.OnObjectDestroy;
 end;
 
 // Destroy
