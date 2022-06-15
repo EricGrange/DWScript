@@ -701,7 +701,7 @@ begin
       dsID := TdwsDataSet.NotifyCreate(args.Expr)
    else dsID := 0;
    try
-      dbo.Intf.Exec(sql, scriptDyn, args.Exec.CallStackLastExpr);
+      dbo.Intf.Exec(sql, scriptDyn, args.Expr);
    finally
       TdwsDataSet.NotifyDestroy(dsID);
    end;
@@ -712,7 +712,6 @@ function TdwsDatabaseLib.dwsDatabaseClassesDataBaseMethodsQueryFastEval(
 var
    scriptObj : IScriptObj;
    scriptDyn : IScriptDynArray;
-   ids : IdwsDataSet;
    dbo : TScriptDataBase;
    dataSetScript : TScriptObjInstance;
    dataSetSymbol : TClassSymbol;
@@ -729,19 +728,20 @@ begin
    if TdwsDataSet.CallbacksRegistered then
       dsID := TdwsDataSet.NotifyCreate(args.Expr)
    else dsID := 0;
+   dataSet := TDataSet.Create;
    try
-      ids := dbo.Intf.Query(sql, scriptDyn, args.Exec.CallStackLastExpr);
+      dataSet.Intf := dbo.Intf.Query(sql, scriptDyn, args.Expr);
    except
       TdwsDataSet.NotifyDestroy(dsID);
+      dataSet.Free;
       raise;
    end;
-   ids.ID := dsID;
+   if dsID <> 0 then
+      dataSet.Intf.ID := dsID;
 
-   dataSetSymbol := TFuncExprBase(args.Expr).FuncSym.Typ as TClassSymbol;
+   dataSetSymbol := TClassSymbol(TFuncExprBase(args.Expr).Typ);
    dataSetScript := TScriptObjInstance.Create(dataSetSymbol, TdwsProgramExecution(args.Exec));
 
-   dataSet := TDataSet.Create;
-   dataSet.Intf := ids;
    if dbo.LowerCaseStringify then
       dataSet.WriterOptions := [ woLowerCaseNames ];
 
