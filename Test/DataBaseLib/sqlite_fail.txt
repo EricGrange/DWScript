@@ -1,5 +1,5 @@
-Empty query
-Error SQLITE_ERROR (1) [bug] near "bug": syntax error, extended_errcode=1
-Empty query
-Error SQLITE_ERROR (1) [nope] near "nope": syntax error, extended_errcode=1
-Unsupported parameter type (VarType 13) at index 1
+Empty query [line: 9, column: 5]
+Error SQLITE_ERROR (1) [bug] near "bug": syntax error, extended_errcode=1 [line: 16, column: 5]
+Empty query [line: 23, column: 5]
+Error SQLITE_ERROR (1) [nope] near "nope": syntax error, extended_errcode=1 [line: 30, column: 5]
+Unsupported parameter type (VarType 13) at index 1 [line: 37, column: 5]

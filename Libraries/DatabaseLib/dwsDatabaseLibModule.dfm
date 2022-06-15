@@ -81,7 +81,7 @@ object dwsDatabaseLib: TdwsDatabaseLib
                 HasDefaultValue = True
                 DefaultValue = Null
               end>
-            OnEval = dwsDatabaseClassesDataBaseMethodsExecEval
+            OnFastEvalNoResult = dwsDatabaseClassesDataBaseMethodsExecFastEvalNoResult
             Kind = mkProcedure
           end
           item
@@ -99,7 +99,7 @@ object dwsDatabaseLib: TdwsDatabaseLib
                 DefaultValue = Null
               end>
             ResultType = 'DataSet'
-            OnEval = dwsDatabaseClassesDataBaseMethodsQueryEval
+            OnFastEval = dwsDatabaseClassesDataBaseMethodsQueryFastEval
             Kind = mkFunction
           end
           item

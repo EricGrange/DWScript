@@ -17,11 +17,6 @@ type
     procedure dwsDatabaseClassesDataBaseConstructorsCreateEval(
       Info: TProgramInfo; var ExtObject: TObject);
     procedure dwsDatabaseClassesDataBaseCleanUp(ExternalObject: TObject);
-
-    procedure dwsDatabaseClassesDataBaseMethodsExecEval(
-      Info: TProgramInfo; ExtObject: TObject);
-    procedure dwsDatabaseClassesDataBaseMethodsQueryEval(
-      Info: TProgramInfo; ExtObject: TObject);
     procedure dwsDatabaseClassesDataSetMethodsGetFieldEval(
       Info: TProgramInfo; ExtObject: TObject);
     procedure dwsDatabaseClassesDataSetMethodsFieldByNameEval(
@@ -118,6 +113,10 @@ type
       baseExpr: TTypedExpr; const args: TExprBaseListExec): Int64;
     procedure dwsDatabaseClassesDataSetMethodsToSeparatedFastEvalString(
       baseExpr: TTypedExpr; const args: TExprBaseListExec; var result: string);
+    function dwsDatabaseClassesDataBaseMethodsQueryFastEval(
+      baseExpr: TTypedExpr; const args: TExprBaseListExec): Variant;
+    procedure dwsDatabaseClassesDataBaseMethodsExecFastEvalNoResult(
+      baseExpr: TTypedExpr; const args: TExprBaseListExec);
   private
     { Private declarations }
     FFileSystem : IdwsFileSystem;
@@ -185,7 +184,7 @@ var
 //
 function NotifyDataSetCreate(info : TProgramInfo) : NativeUInt;
 begin
-   Result := TdwsDataSet.NotifyCreate(Info.Execution.CallStackLastExpr.ScriptPos.AsInfo);
+   Result := TdwsDataSet.NotifyCreate(Info.Execution.CallStackLastExpr);
 end;
 
 // IndexOfField
@@ -683,29 +682,35 @@ begin
    Result := (obj.ExternalObject as TScriptDataBase).Intf.InTransaction;
 end;
 
-procedure TdwsDatabaseLib.dwsDatabaseClassesDataBaseMethodsExecEval(
-  Info: TProgramInfo; ExtObject: TObject);
+procedure TdwsDatabaseLib.dwsDatabaseClassesDataBaseMethodsExecFastEvalNoResult(
+  baseExpr: TTypedExpr; const args: TExprBaseListExec);
 var
+   scriptObj : IScriptObj;
+   dbo : TScriptDataBase;
    scriptDyn : IScriptDynArray;
-   db : IdwsDataBase;
    dsID : NativeUInt;
+   sql : String;
 begin
-   scriptDyn := Info.ParamAsScriptDynArray[1];
+   baseExpr.EvalAsSafeScriptObj(args.Exec, scriptObj);
+   dbo := (scriptObj.ExternalObject as TScriptDataBase);
+
+   args.EvalAsString(0, sql);
+   args.EvalAsDynArray(1, scriptDyn);
 
    if TdwsDataSet.CallbacksRegistered then
-      dsID := NotifyDataSetCreate(Info)
+      dsID := TdwsDataSet.NotifyCreate(args.Expr)
    else dsID := 0;
    try
-      db := (ExtObject as TScriptDataBase).Intf;
-      db.Exec(Info.ParamAsString[0], scriptDyn, Info.Execution.CallStackLastExpr);
+      dbo.Intf.Exec(sql, scriptDyn, args.Exec.CallStackLastExpr);
    finally
       TdwsDataSet.NotifyDestroy(dsID);
    end;
 end;
 
-procedure TdwsDatabaseLib.dwsDatabaseClassesDataBaseMethodsQueryEval(
-  Info: TProgramInfo; ExtObject: TObject);
+function TdwsDatabaseLib.dwsDatabaseClassesDataBaseMethodsQueryFastEval(
+  baseExpr: TTypedExpr; const args: TExprBaseListExec): Variant;
 var
+   scriptObj : IScriptObj;
    scriptDyn : IScriptDynArray;
    ids : IdwsDataSet;
    dbo : TScriptDataBase;
@@ -713,32 +718,35 @@ var
    dataSetSymbol : TClassSymbol;
    dataSet : TDataSet;
    dsID : NativeUInt;
+   sql : String;
 begin
-   scriptDyn := Info.ParamAsScriptDynArray[1];
+   baseExpr.EvalAsSafeScriptObj(args.Exec, scriptObj);
+   dbo := (scriptObj.ExternalObject as TScriptDataBase);
 
-   dbo := (ExtObject as TScriptDataBase);
+   args.EvalAsString(0, sql);
+   args.EvalAsDynArray(1, scriptDyn);
 
    if TdwsDataSet.CallbacksRegistered then
-      dsID := NotifyDataSetCreate(Info)
+      dsID := TdwsDataSet.NotifyCreate(args.Expr)
    else dsID := 0;
    try
-      ids := dbo.Intf.Query(Info.ParamAsString[0], scriptDyn, Info.Execution.CallStackLastExpr);
+      ids := dbo.Intf.Query(sql, scriptDyn, args.Exec.CallStackLastExpr);
    except
       TdwsDataSet.NotifyDestroy(dsID);
       raise;
    end;
    ids.ID := dsID;
 
-   dataSetSymbol := Info.FuncSym.Typ as TClassSymbol;
-   dataSetScript := TScriptObjInstance.Create(dataSetSymbol, Info.Execution);
+   dataSetSymbol := TFuncExprBase(args.Expr).FuncSym.Typ as TClassSymbol;
+   dataSetScript := TScriptObjInstance.Create(dataSetSymbol, TdwsProgramExecution(args.Exec));
 
    dataSet := TDataSet.Create;
    dataSet.Intf := ids;
    if dbo.LowerCaseStringify then
-      dataSet.WriterOptions := [woLowerCaseNames];
+      dataSet.WriterOptions := [ woLowerCaseNames ];
 
    dataSetScript.ExternalObject := dataSet;
-   Info.ResultAsVariant := dataSetScript as IScriptObj;
+   Result := dataSetScript as IScriptObj;
 end;
 
 procedure TdwsDatabaseLib.dwsDatabaseClassesDataBaseMethodsGetOptionEval(

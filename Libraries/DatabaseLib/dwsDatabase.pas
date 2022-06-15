@@ -20,7 +20,8 @@ interface
 
 uses
    SysUtils,
-   dwsSymbols, dwsUtils, dwsExprs, dwsStack, dwsXPlatform, dwsDataContext, dwsFileSystem;
+   dwsSymbols, dwsUtils, dwsExprs, dwsStack, dwsXPlatform, dwsDataContext,
+   dwsFileSystem, dwsScriptSource;
 
 // Simple database abstraction interfaces and optional base classes for DWS
 // exposes transaction & forward-only cursor, which are all one really needs :p
@@ -170,14 +171,14 @@ type
          function GetField(index : Integer) : IdwsDataField;
          function FieldCount : Integer; virtual;
 
-         function GetIsNullField(index : Integer) : Boolean;
-         procedure GetStringField(index : Integer; var result : String);
+         function GetIsNullField(index : Integer) : Boolean; virtual;
+         procedure GetStringField(index : Integer; var result : String); virtual;
          function GetIntegerField(index : Integer) : Int64; virtual;
-         function GetFloatField(index : Integer) : Double;
-         function GetBooleanField(index : Integer) : Boolean;
-         function GetBlobField(index : Integer) : RawByteString;
+         function GetFloatField(index : Integer) : Double; virtual;
+         function GetBooleanField(index : Integer) : Boolean; virtual;
+         function GetBlobField(index : Integer) : RawByteString; virtual;
 
-         class function  NotifyCreate(const location : String) : NativeUInt; static;
+         class function  NotifyCreate(const locationExpr : TExprBase) : NativeUInt; static;
          class procedure NotifyDestroy(id : NativeUInt); inline; static;
 
          class procedure RegisterCallbacks(const onCreate : TdwsDataSetCreateEvent;
@@ -442,11 +443,11 @@ end;
 
 // NotifyCreate
 //
-class function TdwsDataSet.NotifyCreate(const location : String) : NativeUInt;
+class function TdwsDataSet.NotifyCreate(const locationExpr : TExprBase) : NativeUInt;
 begin
    Result := AtomicIncrement(vNextID);
    if Assigned(vOnDataSetCreate) then
-      vOnDataSetCreate(location, Result);
+      vOnDataSetCreate(locationExpr.ScriptPos.AsInfo, Result);
 end;
 
 // NotifyDestroy
