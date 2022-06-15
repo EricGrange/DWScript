@@ -1575,11 +1575,11 @@ type
 
    TScriptObjInstance = class (TScriptObj, IScriptObj)
       private
-         FClassSym : TClassSymbol;
          FExternalObject : TObject;
+         FDestroyed : Boolean;
+         FClassSym : TClassSymbol;
          FExecutionContext : TdwsProgramExecution;
          FOnObjectDestroy : TObjectDestroyEvent;
-         FDestroyed : Boolean;
 
       protected
          function GetClassSym: TClassSymbol;
