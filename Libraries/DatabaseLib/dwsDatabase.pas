@@ -155,6 +155,7 @@ type
          property DataBase : IdwsDataBase read FDataBase;
 
          class procedure RaiseInvalidFieldIndex(index : Integer); static;
+         class procedure RaiseNoActiveRecord; static;
 
          procedure SetID(const id : Int64); inline;
          function GetID : Int64; inline;
@@ -171,7 +172,7 @@ type
 
          function GetIsNullField(index : Integer) : Boolean;
          procedure GetStringField(index : Integer; var result : String);
-         function GetIntegerField(index : Integer) : Int64;
+         function GetIntegerField(index : Integer) : Int64; virtual;
          function GetFloatField(index : Integer) : Double;
          function GetBooleanField(index : Integer) : Boolean;
          function GetBlobField(index : Integer) : RawByteString;
@@ -198,7 +199,7 @@ type
          function GetDataType : TdwsDataFieldType; virtual; abstract;
          function GetDeclaredType : String; virtual; abstract;
 
-         procedure RaiseNoActiveRecord;
+         class procedure RaiseNoActiveRecord; static;
 
       public
          constructor Create(const dataSet : IdwsDataSet; fieldIndex : Integer);
@@ -322,6 +323,13 @@ end;
 class procedure TdwsDataSet.RaiseInvalidFieldIndex(index : Integer);
 begin
    raise Exception.CreateFmt('Invalid field index %d', [index]);
+end;
+
+// RaiseNoActiveRecord
+//
+class procedure TdwsDataSet.RaiseNoActiveRecord;
+begin
+   raise EDWSDataBase.Create('No active record');
 end;
 
 // SetID
@@ -560,9 +568,9 @@ end;
 
 // RaiseNoActiveRecord
 //
-procedure TdwsDataField.RaiseNoActiveRecord;
+class procedure TdwsDataField.RaiseNoActiveRecord;
 begin
-   raise EDWSDataBase.Create('No active record');
+   TdwsDataSet.RaiseNoActiveRecord;
 end;
 
 // ------------------
