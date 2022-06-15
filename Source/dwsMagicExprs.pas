@@ -303,6 +303,8 @@ type
          function EvalAsFloat(exec : TdwsExecution) : Double; override;
          function EvalAsBoolean(exec : TdwsExecution) : Boolean; override;
          procedure EvalAsString(exec : TdwsExecution; var result : String); override;
+         procedure EvalAsInterface(exec : TdwsExecution; var result : IUnknown); override;
+         procedure EvalAsScriptObj(exec : TdwsExecution; var Result : IScriptObj); override;
    end;
 
    TMagicMethodIntegerExpr = class (TMagicMethodExpr)
@@ -925,6 +927,28 @@ var
 begin
    EvalAsVariant(exec, v);
    VariantToString(v, Result);
+end;
+
+// EvalAsInterface
+//
+procedure TMagicMethodExpr.EvalAsInterface(exec : TdwsExecution; var result : IUnknown);
+var
+   v : Variant;
+begin
+   EvalAsVariant(exec, v);
+   Assert(TVarData(v).VType = varUnknown);
+   result := IUnknown(TVarData(v).VUnknown);
+end;
+
+// EvalAsScriptObj
+//
+procedure TMagicMethodExpr.EvalAsScriptObj(exec : TdwsExecution; var Result : IScriptObj);
+var
+   v : Variant;
+begin
+   EvalAsVariant(exec, v);
+   Assert(TVarData(v).VType = varUnknown);
+   result := IUnknown(TVarData(v).VUnknown) as IScriptObj;
 end;
 
 // ------------------
