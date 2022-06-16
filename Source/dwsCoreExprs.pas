@@ -5495,7 +5495,7 @@ begin
       FLeft.EvalAsScriptDynArray(exec, dynIntf);
       if dynIntf=nil then begin
          // first init
-         dynObj := CreateNewDynamicArray(TDynamicArraySymbol(FLeft.Typ).Typ);
+         CreateNewDynamicArray(TDynamicArraySymbol(FLeft.Typ).Typ, dynObj);
          FLeft.AssignValueAsScriptDynArray(exec, dynObj);
       end else begin
          dynObj := dynIntf;

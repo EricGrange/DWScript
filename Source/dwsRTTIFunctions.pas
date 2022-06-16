@@ -230,7 +230,7 @@ var
    buf : Variant;
 begin
    typRawAttribute:=info.Execution.Prog.Table.FindTypeSymbol(SYS_TRTTIRAWATTRIBUTE, cvPublic) as TRecordSymbol;
-   scriptDynArray := CreateNewDynamicArray(typRawAttribute);
+   CreateNewDynamicArray(typRawAttribute, scriptDynArray);
    info.Execution.RTTIRawAttributes := scriptDynArray;
 
    rttiPropertyAttributeCreate:=Info.Vars[SYS_RTTIPROPERTYATTRIBUTE].Method[SYS_TOBJECT_CREATE];

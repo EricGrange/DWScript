@@ -718,7 +718,7 @@ var
    i, i0, n : NativeInt;
 begin
    fileName := args.AsFileName[0];
-   dyn := CreateNewDynamicArray((args.Exec as TdwsProgramExecution).CompilerContext.TypString);
+   CreateNewDynamicArray((args.Exec as TdwsProgramExecution).CompilerContext.TypString, dyn);
    VarCopySafe(result, dyn);
 
    bytes := LoadDataFromFile(fileName);
@@ -1019,7 +1019,7 @@ begin
    sl := TStringList.Create;
    try
       CollectFiles(args.AsFileName[0], args.AsString[1], sl, args.AsBoolean[2]);
-      base := CreateNewDynamicArray((args.Exec as TdwsProgramExecution).CompilerContext.TypString);
+      CreateNewDynamicArray((args.Exec as TdwsProgramExecution).CompilerContext.TypString, base);
       VarCopySafe(result, base);
       base.AddStrings(sl);
    finally
@@ -1041,8 +1041,8 @@ begin
    sl := TStringList.Create;
    try
       CollectSubDirs(args.AsFileName[0], sl);
-      newArray := CreateNewDynamicArray((args.Exec as TdwsProgramExecution).CompilerContext.TypString);
-      Result := newArray;
+      CreateNewDynamicArray((args.Exec as TdwsProgramExecution).CompilerContext.TypString, newArray);
+      VarCopySafe(Result, newArray);
       newArray.AddStrings(sl);
    finally
       sl.Free;

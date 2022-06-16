@@ -549,7 +549,7 @@ begin
    arr := TArrayConstantExpr(Expr);
 
    elementTyp := TDynamicArraySymbol(Typ).Typ;
-   result := CreateNewDynamicArray(elementTyp);
+   CreateNewDynamicArray(elementTyp, result);
    if arr.ElementCount > 0 then begin
       result.ArrayLength := arr.ElementCount;
       if elementTyp.Size = 1 then

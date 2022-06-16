@@ -746,7 +746,7 @@ begin
       dataSet.WriterOptions := [ woLowerCaseNames ];
 
    dataSetScript.ExternalObject := dataSet;
-   Result := dataSetScript as IScriptObj;
+   VarCopySafe(Result, dataSetScript as IScriptObj);
 end;
 
 procedure TdwsDatabaseLib.dwsDatabaseClassesDataBaseMethodsGetOptionEval(

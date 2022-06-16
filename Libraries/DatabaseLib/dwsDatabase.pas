@@ -139,9 +139,9 @@ type
       private
          FDataBase : IdwsDataBase;
          FFieldCount : Integer;
-         FID : NativeUInt;
+         FID : Int64;
 
-         class var vNextID : NativeUInt;
+         class var vNextID : Int64;
          class var vOnDataSetCreate : TdwsDataSetCreateEvent;
          class var vOnDataSetDestroy : TdwsDataSetDestroyEvent;
 

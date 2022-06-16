@@ -670,7 +670,7 @@ end;
 procedure TConstructorStaticExpr.PostCall(exec : TdwsExecution; var Result : Variant);
 begin
    Assert(FResultAddr=-1);
-   Result:=exec.SelfScriptObject^;
+   VarCopySafe(Result, exec.SelfScriptObject^);
 end;
 
 // ------------------

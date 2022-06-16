@@ -496,7 +496,7 @@ var
    v : Variant;
 begin
    FAssign.EvalNoResult(exec);
-   dyn := CreateNewDynamicArray(FTyp);
+   CreateNewDynamicArray(FTyp, dyn);
    n := 0;
 
    while FStep.EvalAsBoolean(exec) do
@@ -506,7 +506,7 @@ begin
       dyn.SetAsVariant(n, v);
       inc(n);
    end;
-   result := IScriptDynArray(dyn);
+   VarCopySafe(result, dyn);
    FFree.EvalNoResult(exec);
 end;
 

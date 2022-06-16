@@ -761,7 +761,7 @@ begin
    sl := TStringList.Create;
    try
       vGlobalVars.EnumerateNamesToStrings(args.AsString[0], sl);
-      newArray := CreateNewDynamicArray((args.Exec as TdwsProgramExecution).CompilerContext.TypString);
+      CreateNewDynamicArray((args.Exec as TdwsProgramExecution).CompilerContext.TypString, newArray);
       result := newArray;
       newArray.AddStrings(sl);
    finally
@@ -915,7 +915,7 @@ var
    elementType : TTypeSymbol;
 begin
    elementType := (args.Expr as TTypedExpr).Typ.Typ;
-   result := CreateNewDynamicArray(elementType);
+   CreateNewDynamicArray(elementType, result);
    GlobalQueueSnapshot(args.AsString[0], Result);
 end;
 
@@ -1001,8 +1001,8 @@ begin
       enum.FOffset := Length(prefix)+1;
       vPrivateVars.EnumerateNames(prefix + filter, enum.Add);
 
-      dynArray := CreateNewDynamicArray(typString);
-      result := dynArray;
+      CreateNewDynamicArray(typString, dynArray);
+      VarCopySafe(result, dynArray);
       dynArray.AddStrings(enum);
    finally
       enum.Free;

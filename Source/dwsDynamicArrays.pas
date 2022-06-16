@@ -492,7 +492,7 @@ type
          procedure WriteToJSON(writer : TdwsJSONWriter);
    end;
 
-function CreateNewDynamicArray(elemTyp : TTypeSymbol) : IScriptDynArray;
+procedure CreateNewDynamicArray(elemTyp : TTypeSymbol; var result : IScriptDynArray);
 
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
@@ -537,7 +537,7 @@ end;
 
 // CreateNewDynamicArray
 //
-function CreateNewDynamicArray(elemTyp : TTypeSymbol) : IScriptDynArray;
+procedure CreateNewDynamicArray(elemTyp : TTypeSymbol; var result : IScriptDynArray);
 var
    size : Integer;
    ct : TClass;
@@ -2669,7 +2669,7 @@ procedure TScriptDynamicNativeDynArrayArray.SetArrayLength(n : NativeInt);
    begin
       subElemTyp := ElementTyp.UnAliasedType.Typ;
       for i := FArrayLength to n-1 do
-         FData[i] := CreateNewDynamicArray(subElemTyp)
+         CreateNewDynamicArray(subElemTyp, IScriptDynArray(FData[i]))
    end;
 
 begin
@@ -2684,7 +2684,7 @@ end;
 procedure TScriptDynamicNativeDynArrayArray.Insert(index : NativeInt);
 begin
    inherited Insert(index);
-   FData[index] := CreateNewDynamicArray(ElementTyp.UnAliasedType.Typ);
+   CreateNewDynamicArray(ElementTyp.UnAliasedType.Typ, IScriptDynArray(FData[index]));
 end;
 
 // SetFromExpr

@@ -676,9 +676,13 @@ end;
 //
 procedure TArrayConstantExpr.EvalAsVariant(exec : TdwsExecution; var Result : Variant);
 begin
-   if FElementExprs.Count = 0 then
-      VarCopySafe(Result, CreateNewDynamicArray(Typ))
-   else TTypedExpr(FElementExprs.List[0]).EvalAsVariant(exec, Result);
+   if FElementExprs.Count = 0 then begin
+      if TVarData(result).VType <> varUnknown then begin
+         VarClearSafe(result);
+         TVarData(result).VType := varUnknown;
+      end;
+      CreateNewDynamicArray(Typ, IScriptDynArray(TVarData(result).VUnknown));
+   end else TTypedExpr(FElementExprs.List[0]).EvalAsVariant(exec, Result);
 end;
 
 // EvalToDataContext

@@ -1638,7 +1638,7 @@ begin
    try
       tokenizer.ParseIntegerArray(values, args.AsInteger[1]);
 
-      newArray := CreateNewDynamicArray((args.Exec as TdwsProgramExecution).CompilerContext.TypInteger);
+      CreateNewDynamicArray((args.Exec as TdwsProgramExecution).CompilerContext.TypInteger, newArray);
       VarCopySafe(result, newArray);
       newArray.ArrayLength := values.Count;
 
@@ -1670,7 +1670,7 @@ begin
    try
       tokenizer.ParseNumberArray(values);
 
-      newArray := CreateNewDynamicArray((args.Exec as TdwsProgramExecution).CompilerContext.TypFloat);
+      CreateNewDynamicArray((args.Exec as TdwsProgramExecution).CompilerContext.TypFloat, newArray);
       VarCopySafe(result, newArray);
       newArray.ArrayLength := values.Count;
 
@@ -1703,7 +1703,7 @@ begin
    try
       tokenizer.ParseStringArray(values);
 
-      newArray := CreateNewDynamicArray((args.Exec as TdwsProgramExecution).CompilerContext.TypString);
+      CreateNewDynamicArray((args.Exec as TdwsProgramExecution).CompilerContext.TypString, newArray);
       VarCopySafe(result, newArray);
       newArray.ArrayLength := values.Count;
 

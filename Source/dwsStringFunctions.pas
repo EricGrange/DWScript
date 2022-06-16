@@ -1231,7 +1231,7 @@ begin
    args.EvalAsString(0, str);
    args.EvalAsString(1, delim);
 
-   dyn := CreateNewDynamicArray((args.ExprBase[0] as TTypedExpr).Typ);
+   CreateNewDynamicArray((args.ExprBase[0] as TTypedExpr).Typ, dyn);
 
    if delim='' then begin
 

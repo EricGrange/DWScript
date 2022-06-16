@@ -938,27 +938,30 @@ end;
 //
 procedure TNewArrayExpr.EvalAsScriptDynArray(exec : TdwsExecution; var result : IScriptDynArray);
 
-   function CreateDimension(d : Integer) : IScriptDynArray;
+   procedure CreateDimension(d : Integer; var result : IScriptDynArray);
    var
       i : Integer;
       n : Int64;
+      sub : IScriptDynArray;
    begin
       n:=LengthExpr[d].EvalAsInteger(exec);
       if n<0 then
          RaiseScriptError(exec, EScriptOutOfBounds.CreatePosFmt(ScriptPos, RTE_ArrayLengthIncorrectForDimension, [n, d]));
-      Result := CreateNewDynamicArray(TDynamicArraySymbol(FTyps.List[FTyps.Count-1-d]).Typ);
+      CreateNewDynamicArray(TDynamicArraySymbol(FTyps.List[FTyps.Count-1-d]).Typ, Result);
       Result.ArrayLength:=n;
       Inc(d);
       if d<LengthExprCount then begin
-         for i:=0 to n-1 do
-            Result.SetAsInterface(i, CreateDimension(d));
+         for i:=0 to n-1 do begin
+            CreateDimension(d, sub);
+            Result.SetAsInterface(i, sub);
+         end;
       end;
    end;
 
 begin
    if LengthExprCount>0 then
-      result:=CreateDimension(0)
-   else result := CreateNewDynamicArray(Typ.Typ);
+      CreateDimension(0, result)
+   else CreateNewDynamicArray(Typ.Typ, result);
 end;
 
 // AddLengthExpr
@@ -2233,7 +2236,7 @@ begin
    BaseExpr.EvalAsScriptDynArray(exec, base);
    MapFuncExpr.EvalAsFuncPointer(exec, funcPointer);
 
-   result := CreateNewDynamicArray(Typ.Typ);
+   CreateNewDynamicArray(Typ.Typ, result);
    n := base.ArrayLength;
    result.ArrayLength := n;
 
@@ -2439,7 +2442,7 @@ begin
    BaseExpr.EvalAsScriptDynArray(exec, base);
    FilterFuncExpr.EvalAsFuncPointer(exec, funcPointer);
 
-   result := CreateNewDynamicArray(base.ElementType);
+   CreateNewDynamicArray(base.ElementType, result);
    n := base.ArrayLength;
    result.ArrayLength := n;
    elementSize := result.ElementSize;
@@ -2979,7 +2982,7 @@ begin
          RaiseScriptError(exec, EScriptError.CreateFmt(RTE_PositiveCountExpected, [count]));
    end else count := MaxInt;
 
-   result := CreateNewDynamicArray(base.ElementType);
+   CreateNewDynamicArray(base.ElementType, result);
    result.Concat(base, index, count);
 end;
 
@@ -3319,7 +3322,7 @@ var
    a : IScriptAssociativeArray;
 begin
    Expr.EvalAsScriptAssociativeArray(exec, a);
-   result := CreateNewDynamicArray(Typ.Typ);
+   CreateNewDynamicArray(Typ.Typ, result);
    if a <> nil then
       (a.GetSelf as TScriptAssociativeArray).CopyKeys(result);
 end;

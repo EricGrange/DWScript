@@ -9007,7 +9007,7 @@ begin
    info.Parameter['exprClass'].Value := expr.ClassName;
    info.Parameter['qualifiedName'].Value := expr.FuncSymQualifiedName;
 
-   dynArray := CreateNewDynamicArray(Environment.CodeGen.Context.Root.CompilerContext.TypVariant);
+   CreateNewDynamicArray(Environment.CodeGen.Context.Root.CompilerContext.TypVariant, dynArray);
    dynArray.ArrayLength := expr.SubExprCount;
 
    exec := Environment.Exec.ExecutionObject;
