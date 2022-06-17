@@ -605,7 +605,7 @@ type
          procedure AdaptParametersSymPos(guess, actual : TFuncSymbol; const useTypes : TSymbolUsages;
                                          var posArray : TScriptPosArray);
          function ReadProcDeclAsync(const hotPos : TScriptPos) : TFuncSymbol;
-         function ReadProcDeclProperty(funcSymbol : TFuncSymbol; const hotPos : TScriptPos) : TFuncSymbol;
+         procedure ReadProcDeclProperty(funcSymbol : TFuncSymbol; const hotPos : TScriptPos);
          function ReadProcDecl(funcToken : TTokenType; const hotPos : TScriptPos;
                                declOptions : TdwsReadProcDeclOptions = [];
                                expectedLambdaParams : TParamsSymbolTable = nil) : TFuncSymbol;
@@ -3510,7 +3510,7 @@ end;
 
 // ReadProcDeclProperty
 //
-function TdwsCompiler.ReadProcDeclProperty(funcSymbol : TFuncSymbol; const hotPos : TScriptPos) : TFuncSymbol;
+procedure TdwsCompiler.ReadProcDeclProperty(funcSymbol : TFuncSymbol; const hotPos : TScriptPos);
 begin
    funcSymbol.IsProperty := True;
    if funcSymbol.Typ = nil then
