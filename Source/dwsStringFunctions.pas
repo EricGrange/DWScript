@@ -1222,69 +1222,87 @@ end;
 { TStrSplitFunc }
 
 procedure TStrSplitFunc.DoEvalAsVariant(const args : TExprBaseListExec; var result : Variant);
-var
-   str, delim : String;
-   dyn : IScriptDynArray;
-   p, pn, nDelim, k, n : Integer;
-   c : WideChar;
-begin
-   args.EvalAsString(0, str);
-   args.EvalAsString(1, delim);
 
-   CreateNewDynamicArray((args.ExprBase[0] as TTypedExpr).Typ, dyn);
+   procedure SplitAllCharacters(const dyn : IScriptDynArray; const str : String);
+   var
+      n, k : Integer;
+      p : PChar;
+   begin
+      n := Length(str);
+      dyn.ArrayLength := n;
+      p := PChar(str);
+      for k := 0 to n-1 do
+         dyn.AsString[k] := p[k];
+   end;
 
-   if delim='' then begin
-
-      // special case, split separates all characters
-      pn:=Length(str);
-      dyn.ArrayLength:=pn;
-      for k:=1 to pn do
-         dyn.AsString[k-1] := str[k];
-
-   end else if Length(delim)=1 then begin
-
-      // special case of a single-character delimiter
-      c:=delim[1];
-      n:=0;
-      for k:=1 to Length(str) do
-         if str[k]=c then Inc(n);
-      dyn.ArrayLength:=n+1;
-      if n=0 then
-         dyn.AsString[0]:=str
+   procedure SplitByCharacter(const dyn : IScriptDynArray; const str : String; c : Char);
+   var
+      p, n, k : Integer;
+      ps : PChar;
+   begin
+      n := 0;
+      ps := PChar(str);
+      for k := 0 to Length(str)-1 do
+         if ps[k] = c then
+            Inc(n);
+      dyn.ArrayLength := n + 1;
+      if n = 0 then
+         dyn.AsString[0] := str
       else begin
-         n:=0;
-         p:=1;
-         for k:=1 to Length(str) do begin
-            if str[k]=c then begin
-               dyn.AsString[n]:=Copy(str, p, k-p);
+         n := 0;
+         p := 1;
+         for k := 0 to Length(str)-1 do begin
+            if ps[k] = c then begin
+               dyn.AsString[n] := Copy(str, p, k+1-p);
                Inc(n);
-               p:=k+1;
+               p := k+2;
             end;
          end;
-         dyn.AsString[n]:=Copy(str, p);
+         dyn.AsString[n] := Copy(str, p);
       end;
+   end;
 
-   end else begin
-
-      // general case of string delimiter
+   procedure SplitByString(const dyn : IScriptDynArray; const str, delim : String);
+   var
+      p, pn, nDelim, k : Integer;
+   begin
       nDelim:=Length(delim);
       p:=1;
       k:=0;
       while True do begin
-         pn:=PosEx(delim, str, p);
-         if pn>0 then begin
+         pn := PosEx(delim, str, p);
+         if pn > 0 then begin
             dyn.Insert(k);
-            dyn.AsString[k]:=Copy(str, p, pn-p);
+            dyn.AsString[k] := Copy(str, p, pn-p);
             Inc(k);
-            p:=pn+nDelim;
+            p := pn + nDelim;
          end else break;
       end;
       dyn.Insert(k);
-      dyn.AsString[k]:=Copy(str, p, Length(str)+1-p);
-
+      dyn.AsString[k] := Copy(str, p, Length(str)+1-p);
    end;
 
-   Result := dyn;
+var
+   str, delim : String;
+   pdyn : PIScriptDynArray;
+begin
+   args.EvalAsString(0, str);
+   args.EvalAsString(1, delim);
+
+   if TVarData(Result).VType <> varUnknown then begin
+      VarClearSafe(Result);
+      TVarData(Result).VType := varUnknown;
+   end;
+   pdyn := @TVarData(Result).VUnknown;
+
+   CreateNewDynamicArray(TTypedExpr(args.ExprBase[0]).Typ, pdyn^);
+
+   if delim = '' then begin
+      if str <> '' then
+         SplitAllCharacters(pdyn^, str);
+   end else if Length(delim) = 1 then
+      SplitByCharacter(pdyn^, str, delim[1])
+   else SplitByString(pdyn^, str, delim);
 end;
 
 { TStrJoinFunc }
