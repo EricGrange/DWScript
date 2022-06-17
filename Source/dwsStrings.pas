@@ -155,7 +155,8 @@ const
   CPE_ExternalArrayForStaticMethodsOnly = 'External array is supported only for static methods';
   CPE_ExternalVariablesMustBeGlobal = 'External variables must be global';
   CPE_ExternalClassVariablesInitializationIsNotSupported = 'External class variables initialization is not supported';
-  CPE_ExternalPropertyNoArguments = 'External properties cannot have arguments';
+  CPE_ExternalPropertyNoArguments = 'External properties can only have zero or one argument';
+  CPE_ExternalPropertyNoType = 'External properties require a type';
 
   CPE_GenericParametersNotSupportedHere = 'Generic parameters not supported here';
   CPE_GenericParametersListExpected = 'Generic parameters list expected';

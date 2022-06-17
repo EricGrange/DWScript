@@ -1,0 +1,35 @@
+<script>
+function Print(s) { document.write(s) };
+function PrintLn(s) { Print(s); document.writeln("<br />") };
+
+var foo = 124;
+   bar = [ 456 ];
+   foobar = { foo: 789, bar: [ 135 ] };
+
+<%pas2js
+function Test1 : Integer; external 'foo' property;
+function Test2(a : Integer) : Integer; external 'bar' property;
+
+type
+   JTest = class external 'foobar'
+
+      function Test1 : Integer; external 'foo' property;
+      function Test2(a : Integer) : Integer; external 'bar' property;
+
+      class function CTest1 : Integer; external 'foo' property;
+      class function CTest2(a : Integer) : Integer; external 'bar' property;
+
+   end;
+
+PrintLn(Test1);
+PrintLn(Test2(0));
+
+var p external 'foobar' : JTest;
+PrintLn(p.Test1);
+PrintLn(p.Test2(0));
+
+PrintLn(JTest.CTest1);
+PrintLn(JTest.CTest2(0));
+%>
+
+</script>

@@ -4734,36 +4734,39 @@ begin
 
    end;
 
-   if not funcSym.IsProperty then begin
+   if funcSym.IsProperty then begin
+      if e.Args.Count = 0 then Exit;
+      codeGen.WriteString('[');
+   end else codeGen.WriteString('(');
 
-      codeGen.WriteString('(');
-      CodeGenBeginParams(codeGen, e);
-      for i:=0 to e.Args.Count-1 do begin
-         if i>0 then
-            codeGen.WriteString(',');
-         paramExpr:=e.Args.ExprBase[i] as TTypedExpr;
-         paramSymbol:=funcSym.Params[i] as TParamSymbol;
-         if ShouldBoxParam(paramSymbol) then begin
-            if paramExpr is TVarExpr then
-               TJSVarExpr.CodeGenName(codeGen, TVarExpr(paramExpr))
-            else begin
-               codeGen.WriteString('{'+TdwsJSCodeGen.cBoxFieldName+':');
-               codeGen.Compile(paramExpr);
-               codeGen.WriteString('}');
-            end;
-         end else if paramSymbol is TLazyParamSymbol then begin
-            codeGen.WriteString('function () { return ');
+   CodeGenBeginParams(codeGen, e);
+   for i:=0 to e.Args.Count-1 do begin
+      if i>0 then
+         codeGen.WriteString(',');
+      paramExpr:=e.Args.ExprBase[i] as TTypedExpr;
+      paramSymbol:=funcSym.Params[i] as TParamSymbol;
+      if ShouldBoxParam(paramSymbol) then begin
+         if paramExpr is TVarExpr then
+            TJSVarExpr.CodeGenName(codeGen, TVarExpr(paramExpr))
+         else begin
+            codeGen.WriteString('{'+TdwsJSCodeGen.cBoxFieldName+':');
             codeGen.Compile(paramExpr);
             codeGen.WriteString('}');
-         end else if paramSymbol is TByRefParamSymbol then begin
-            codeGen.Compile(paramExpr);
-         end else begin
-            codeGen.CompileValue(paramExpr);
          end;
+      end else if paramSymbol is TLazyParamSymbol then begin
+         codeGen.WriteString('function () { return ');
+         codeGen.Compile(paramExpr);
+         codeGen.WriteString('}');
+      end else if paramSymbol is TByRefParamSymbol then begin
+         codeGen.Compile(paramExpr);
+      end else begin
+         codeGen.CompileValue(paramExpr);
       end;
-      codeGen.WriteString(')');
-
    end;
+
+   if funcSym.IsProperty then
+      codeGen.WriteString(']')
+   else codeGen.WriteString(')');
 end;
 
 // CodeGenNoWrap

@@ -1,1 +1,2 @@
-Syntax Error: External properties cannot have arguments [line: 1, column: 39]
+Syntax Error: External properties require a type [line: 1, column: 39]
+Syntax Error: External properties can only have zero or one argument [line: 2, column: 52]

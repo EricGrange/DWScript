@@ -605,6 +605,7 @@ type
          procedure AdaptParametersSymPos(guess, actual : TFuncSymbol; const useTypes : TSymbolUsages;
                                          var posArray : TScriptPosArray);
          function ReadProcDeclAsync(const hotPos : TScriptPos) : TFuncSymbol;
+         function ReadProcDeclProperty(funcSymbol : TFuncSymbol; const hotPos : TScriptPos) : TFuncSymbol;
          function ReadProcDecl(funcToken : TTokenType; const hotPos : TScriptPos;
                                declOptions : TdwsReadProcDeclOptions = [];
                                expectedLambdaParams : TParamsSymbolTable = nil) : TFuncSymbol;
@@ -3337,11 +3338,8 @@ begin
                      if Assigned(FExternalRoutinesManager) then
                         Result:=FExternalRoutinesManager.ConvertToMagicSymbol(Result);
                      Result.IsExternal:=True;
-                     if FTok.TestDelete(ttPROPERTY) then begin
-                        Result.IsProperty:=True;
-                        if Result.Params.Count>0 then
-                           FMsgs.AddCompilerError(FTok.HotPos, CPE_ExternalPropertyNoArguments);
-                     end;
+                     if FTok.TestDelete(ttPROPERTY) then
+                        ReadProcDeclProperty(Result, FTok.HotPos);
                      ReadSemiColon;
                   end;
 
@@ -3508,6 +3506,17 @@ begin
       FMsgs.AddCompilerStop(FTok.HotPos, CPE_ProcOrFuncExpected);
       Result := nil;
    end;
+end;
+
+// ReadProcDeclProperty
+//
+function TdwsCompiler.ReadProcDeclProperty(funcSymbol : TFuncSymbol; const hotPos : TScriptPos) : TFuncSymbol;
+begin
+   funcSymbol.IsProperty := True;
+   if funcSymbol.Typ = nil then
+      FMsgs.AddCompilerError(hotPos, CPE_ExternalPropertyNoType);
+   if funcSymbol.Params.Count > 1 then
+      FMsgs.AddCompilerError(hotPos, CPE_ExternalPropertyNoArguments);
 end;
 
 // ReadIntfMethodDecl
@@ -3753,6 +3762,8 @@ begin
          if not ownerSym.IsExternal then
             FMsgs.AddCompilerErrorFmt(FTok.HotPos, CPE_StructureIsNotExternal, [funcResult.QualifiedName]);
          ReadExternalName(funcResult);
+         if FTok.TestDelete(ttPROPERTY) then
+            ReadProcDeclProperty(funcResult, FTok.HotPos);
          ReadSemiColon;
       end;
 

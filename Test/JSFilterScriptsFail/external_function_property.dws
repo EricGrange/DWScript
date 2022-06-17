@@ -1,0 +1,5 @@
+<%pas2js
+procedure Test1; external 'foo' property;
+function Test2(a, b : Integer) : Integer; external 'bar' property;
+%>
+
