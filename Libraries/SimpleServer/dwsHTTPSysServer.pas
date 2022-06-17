@@ -1118,6 +1118,7 @@ begin
                // send response
                response^.Version := request^.Version;
                response^.SetHeaders(Pointer(outCustomHeader), headers);
+
                if FWebResponse.ContentType = HTTP_RESP_STATICFILE then begin
 
                   // response is file -> let http.sys serve it (OutContent is UTF-8)
