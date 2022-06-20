@@ -80,6 +80,12 @@ type
          procedure EvaluateSymbol(const aSymbolList : TSymbolPositionList; msgs : TdwsMessageList); override;
    end;
 
+   TGR_TypesNaming = class abstract (TdwsSymbolDictionaryGabelouRule)
+      public
+         constructor Create; override;
+         procedure EvaluateSymbol(const aSymbolList : TSymbolPositionList; msgs : TdwsMessageList); override;
+   end;
+
    TGR_AttributeClassNaming = class abstract (TdwsSymbolDictionaryGabelouRule)
       public
          constructor Create; override;
@@ -366,6 +372,52 @@ begin
 end;
 
 // ------------------
+// ------------------ TGR_TypesNaming ------------------
+// ------------------
+
+// Create
+//
+constructor TGR_TypesNaming.Create;
+begin
+   Name := GAB_Types_Name;
+   Description := GAB_Types_Description;
+end;
+
+// EvaluateSymbol
+//
+procedure TGR_TypesNaming.EvaluateSymbol(const aSymbolList : TSymbolPositionList; msgs : TdwsMessageList);
+var
+   symName : String;
+   classSymbol : TClassSymbol;
+   typeSymbol : TTypeSymbol;
+   isException : Boolean;
+begin
+   if not (aSymbolList.Symbol is TTypeSymbol) then Exit;
+
+   symName := aSymbolList.Symbol.Name;
+   if symName[1] = 'E' then begin
+
+      isException := False;
+
+      typeSymbol := TTypeSymbol(aSymbolList.Symbol).UnAliasedType;
+      if typeSymbol is TClassSymbol then begin
+         classSymbol := TClassSymbol(typeSymbol);
+         while classSymbol.Parent <> nil do begin
+            classSymbol := classSymbol.Parent;
+            if classSymbol.Name = 'Exception' then begin
+               isException := True;
+               Break;
+            end;
+         end;
+      end;
+
+      if not isException then
+         TGabelouMessage.CreateOnSymbolPosList(msgs, aSymbolList, Description)
+   end;
+end;
+
+
+// ------------------
 // ------------------ TGR_AttributeClassNaming ------------------
 // ------------------
 
@@ -443,6 +495,7 @@ initialization
       TGR_ConstantNamingRules,
 
       TGR_PascalCaseFunctions, TGR_PascalCaseProperties, TGR_PascalCaseTypes,
+      TGR_TypesNaming,
       TGR_AttributeClassNaming,
 
       TGR_PrefixedPrivateFields, TGR_PrefixedPublicFields, TGR_PrefixedClassVariables,
