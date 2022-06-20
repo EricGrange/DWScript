@@ -139,7 +139,27 @@ type
    end;
 
    TScriptDataSet = class
-      Intf : IdwsDataSet;
+      private
+         FIntf : IdwsDataSet;
+         FFirstDone : Boolean;
+         FScriptFieldsPrepared : Boolean;
+         FWriterOptions : TdwsJSONWriterOptions;
+
+         function IndexOfField(const aName : String) : Integer;
+         function FieldByName(const args : TExprBaseListExec) : IdwsDataField;
+         function Step : Boolean;
+         class procedure WriteValueToJSON(wr : TdwsJSONWriter; const fld : IdwsDataField); static;
+         procedure WriteToJSON(wr : TdwsJSONWriter; initial : Integer);
+         function Stringify : String;
+         function StringifyAll(maxRows : Integer) : String;
+         function StringifyMap(maxRows : Integer) : String;
+         function ToSeparated(maxRows : Integer; const separator, quoteChar : String) : String;
+         procedure PrepareScriptFields(programInfo : TProgramInfo; var fieldsInfo : IInfo);
+         class procedure NeedScriptFields(programInfo : TProgramInfo; extObject: TObject; var fieldsInfo : IInfo);
+
+      public
+         property Intf : IdwsDataSet read FIntf;
+         property WriterOptions : TdwsJSONWriterOptions read FWriterOptions;
    end;
 
 implementation
@@ -152,22 +172,6 @@ resourcestring
    FIELD_NOT_FOUND = 'Field ''%s'' not found';
 
 type
-   TDataSet = class (TScriptDataSet)
-      FirstDone : Boolean;
-      ScriptFieldsPrepared : Boolean;
-      WriterOptions : TdwsJSONWriterOptions;
-      function IndexOfField(const aName : String) : Integer;
-      function FieldByName(const args : TExprBaseListExec) : IdwsDataField;
-      function Step : Boolean;
-      class procedure WriteValueToJSON(wr : TdwsJSONWriter; const fld : IdwsDataField); static;
-      procedure WriteToJSON(wr : TdwsJSONWriter; initial : Integer);
-      function Stringify : String;
-      function StringifyAll(maxRows : Integer) : String;
-      function StringifyMap(maxRows : Integer) : String;
-      function ToSeparated(maxRows : Integer; const separator, quoteChar : String) : String;
-      procedure PrepareScriptFields(programInfo : TProgramInfo; var fieldsInfo : IInfo);
-      class procedure NeedScriptFields(programInfo : TProgramInfo; extObject: TObject; var fieldsInfo : IInfo);
-   end;
 
    TDataField = class
       Intf : IdwsDataField;
@@ -189,7 +193,7 @@ end;
 
 // IndexOfField
 //
-function TDataSet.IndexOfField(const aName : String) : Integer;
+function TScriptDataSet.IndexOfField(const aName : String) : Integer;
 begin
    for Result:=0 to Intf.FieldCount-1 do
       if UnicodeSameText(Intf.Fields[Result].Name, aName) then Exit;
@@ -198,7 +202,7 @@ end;
 
 // FieldByName (args)
 //
-function TDataSet.FieldByName(const args : TExprBaseListExec) : IdwsDataField;
+function TScriptDataSet.FieldByName(const args : TExprBaseListExec) : IdwsDataField;
 var
    fieldName : String;
    index : Integer;
@@ -212,17 +216,17 @@ end;
 
 // Step
 //
-function TDataSet.Step : Boolean;
+function TScriptDataSet.Step : Boolean;
 begin
-   if FirstDone then
+   if FFirstDone then
       Intf.Next
-   else FirstDone:=True;
+   else FFirstDone:=True;
    Result:=not Intf.EOF;
 end;
 
 // WriteValueToJSON
 //
-class procedure TDataSet.WriteValueToJSON(wr : TdwsJSONWriter; const fld : IdwsDataField);
+class procedure TScriptDataSet.WriteValueToJSON(wr : TdwsJSONWriter; const fld : IdwsDataField);
 
    procedure ProcessString;
    var
@@ -248,7 +252,7 @@ end;
 
 // WriteToJSON
 //
-procedure TDataSet.WriteToJSON(wr : TdwsJSONWriter; initial : Integer);
+procedure TScriptDataSet.WriteToJSON(wr : TdwsJSONWriter; initial : Integer);
 var
    i : Integer;
    fld : IdwsDataField;
@@ -264,7 +268,7 @@ end;
 
 // Stringify
 //
-function TDataSet.Stringify : String;
+function TScriptDataSet.Stringify : String;
 var
    wr : TdwsJSONWriter;
 begin
@@ -279,7 +283,7 @@ end;
 
 // StringifyAll
 //
-function TDataSet.StringifyAll(maxRows : Integer) : String;
+function TScriptDataSet.StringifyAll(maxRows : Integer) : String;
 var
    wr : TdwsJSONWriter;
 begin
@@ -301,7 +305,7 @@ end;
 
 // StringifyMap
 //
-function TDataSet.StringifyMap(maxRows : Integer) : String;
+function TScriptDataSet.StringifyMap(maxRows : Integer) : String;
 var
    wr : TdwsJSONWriter;
    buf : String;
@@ -326,7 +330,7 @@ end;
 
 // ToSeparated
 //
-function TDataSet.ToSeparated(maxRows : Integer; const separator, quoteChar : String) : String;
+function TScriptDataSet.ToSeparated(maxRows : Integer; const separator, quoteChar : String) : String;
 var
    wobs : TWriteOnlyBlockStream;
    i : Integer;
@@ -408,7 +412,7 @@ end;
 
 // PrepareScriptFields
 //
-procedure TDataSet.PrepareScriptFields(programInfo : TProgramInfo; var fieldsInfo : IInfo);
+procedure TScriptDataSet.PrepareScriptFields(programInfo : TProgramInfo; var fieldsInfo : IInfo);
 var
    i : Integer;
    dataSetInfo : IInfo;
@@ -436,14 +440,14 @@ end;
 
 // NeedScriptFields
 //
-class procedure TDataSet.NeedScriptFields(programInfo : TProgramInfo; extObject : TObject; var fieldsInfo : IInfo);
+class procedure TScriptDataSet.NeedScriptFields(programInfo : TProgramInfo; extObject : TObject; var fieldsInfo : IInfo);
 var
-   dataSet : TDataSet;
+   dataSet : TScriptDataSet;
 begin
-   dataSet:=(extObject as TDataSet);
-   if not dataSet.ScriptFieldsPrepared then begin
+   dataSet:=(extObject as TScriptDataSet);
+   if not dataSet.FScriptFieldsPrepared then begin
       dataSet.PrepareScriptFields(programInfo, fieldsInfo);
-      dataSet.ScriptFieldsPrepared:=True;
+      dataSet.FScriptFieldsPrepared:=True;
    end else fieldsInfo:=programInfo.Vars['FFields'];
 end;
 
@@ -715,7 +719,7 @@ var
    dbo : TScriptDataBase;
    dataSetScript : TScriptObjInstance;
    dataSetSymbol : TClassSymbol;
-   dataSet : TDataSet;
+   dataSet : TScriptDataSet;
    dsID : NativeUInt;
    sql : String;
 begin
@@ -728,9 +732,9 @@ begin
    if TdwsDataSet.CallbacksRegistered then
       dsID := TdwsDataSet.NotifyCreate(args.Expr)
    else dsID := 0;
-   dataSet := TDataSet.Create;
+   dataSet := TScriptDataSet.Create;
    try
-      dataSet.Intf := dbo.Intf.Query(sql, scriptDyn, args.Expr);
+      dataSet.FIntf := dbo.Intf.Query(sql, scriptDyn, args.Expr);
    except
       TdwsDataSet.NotifyDestroy(dsID);
       dataSet.Free;
@@ -743,7 +747,7 @@ begin
    dataSetScript := TScriptObjInstance.Create(dataSetSymbol, TdwsProgramExecution(args.Exec));
 
    if dbo.LowerCaseStringify then
-      dataSet.WriterOptions := [ woLowerCaseNames ];
+      dataSet.FWriterOptions := [ woLowerCaseNames ];
 
    dataSetScript.ExternalObject := dataSet;
    VarCopySafe(Result, dataSetScript as IScriptObj);
@@ -866,7 +870,7 @@ var
    obj : IScriptObj;
 begin
    baseExpr.EvalAsSafeScriptObj(args.Exec, obj);
-   (obj.ExternalObject as TDataSet)
+   (obj.ExternalObject as TScriptDataSet)
       .Intf
       .GetStringField(args.AsInteger[0], result);
 end;
@@ -877,7 +881,7 @@ var
    obj : IScriptObj;
 begin
    baseExpr.EvalAsSafeScriptObj(args.Exec, obj);
-   (obj.ExternalObject as TDataSet)
+   (obj.ExternalObject as TScriptDataSet)
       .FieldByName(args)
       .GetAsString(result);
 end;
@@ -888,7 +892,7 @@ var
    obj : IScriptObj;
 begin
    baseExpr.EvalAsSafeScriptObj(args.Exec, obj);
-   Result := (obj.ExternalObject as TDataSet)
+   Result := (obj.ExternalObject as TScriptDataSet)
       .Intf
       .GetIntegerField(args.AsInteger[0]);
 end;
@@ -899,7 +903,7 @@ var
    obj : IScriptObj;
 begin
    baseExpr.EvalAsSafeScriptObj(args.Exec, obj);
-   Result := (obj.ExternalObject as TDataSet).FieldByName(args).AsInteger;
+   Result := (obj.ExternalObject as TScriptDataSet).FieldByName(args).AsInteger;
 end;
 
 procedure TdwsDatabaseLib.dwsDatabaseClassesDataSetMethodsAsBlob_Integer_FastEvalString(
@@ -909,7 +913,7 @@ var
 begin
    baseExpr.EvalAsSafeScriptObj(args.Exec, obj);
    RawByteStringToScriptString(
-      (obj.ExternalObject as TDataSet)
+      (obj.ExternalObject as TScriptDataSet)
       .Intf.GetBlobField(args.AsInteger[0]),
       result
    );
@@ -921,7 +925,7 @@ var
    obj : IScriptObj;
 begin
    baseExpr.EvalAsSafeScriptObj(args.Exec, obj);
-   RawByteStringToScriptString((obj.ExternalObject as TDataSet).FieldByName(args).AsBlob, result);
+   RawByteStringToScriptString((obj.ExternalObject as TScriptDataSet).FieldByName(args).AsBlob, result);
 end;
 
 function TdwsDatabaseLib.dwsDatabaseClassesDataSetMethodsAsFloat_Integer_FastEvalFloat(
@@ -930,7 +934,7 @@ var
    obj : IScriptObj;
 begin
    baseExpr.EvalAsSafeScriptObj(args.Exec, obj);
-   Result := (obj.ExternalObject as TDataSet)
+   Result := (obj.ExternalObject as TScriptDataSet)
       .Intf
       .GetFloatField(args.AsInteger[0]);
 end;
@@ -941,7 +945,7 @@ var
    obj : IScriptObj;
 begin
    baseExpr.EvalAsSafeScriptObj(args.Exec, obj);
-   Result := (obj.ExternalObject as TDataSet)
+   Result := (obj.ExternalObject as TScriptDataSet)
       .FieldByName(args)
       .AsFloat;
 end;
@@ -952,7 +956,7 @@ var
    obj : IScriptObj;
 begin
    baseExpr.EvalAsSafeScriptObj(args.Exec, obj);
-   Result := (obj.ExternalObject as TDataSet)
+   Result := (obj.ExternalObject as TScriptDataSet)
       .Intf
       .GetIsNullField(args.AsInteger[0]);
 end;
@@ -963,7 +967,7 @@ var
    obj : IScriptObj;
 begin
    baseExpr.EvalAsSafeScriptObj(args.Exec, obj);
-   Result := (obj.ExternalObject as TDataSet)
+   Result := (obj.ExternalObject as TScriptDataSet)
       .FieldByName(args)
       .IsNull;
 end;
@@ -974,7 +978,7 @@ var
    obj : IScriptObj;
 begin
    baseExpr.EvalAsSafeScriptObj(args.Exec, obj);
-   Result := (obj.ExternalObject as TDataSet).Intf.Eof;
+   Result := (obj.ExternalObject as TScriptDataSet).Intf.Eof;
 end;
 
 procedure TdwsDatabaseLib.dwsDatabaseClassesDataSetMethodsFieldByNameEval(
@@ -985,11 +989,11 @@ var
    index : Integer;
 begin
    fieldName:=Info.ParamAsString[0];
-   index:=(ExtObject as TDataSet).IndexOfField(fieldName);
+   index:=(ExtObject as TScriptDataSet).IndexOfField(fieldName);
    if index<0 then
       RaiseDBException(Info, Format(FIELD_NOT_FOUND, [fieldName]))
    else begin
-      TDataSet.NeedScriptFields(Info, ExtObject, fieldsInfo);
+      TScriptDataSet.NeedScriptFields(Info, ExtObject, fieldsInfo);
       Info.ResultAsVariant:=fieldsInfo.Element([index]).Value;
    end;
 end;
@@ -1000,11 +1004,11 @@ var
    fieldsInfo : IInfo;
    index : Integer;
 begin
-   index:=(ExtObject as TDataSet).IndexOfField(Info.ParamAsString[0]);
+   index:=(ExtObject as TScriptDataSet).IndexOfField(Info.ParamAsString[0]);
    if index<0 then
       Info.ResultAsVariant:=IUnknown(nil)
    else begin
-      TDataSet.NeedScriptFields(Info, ExtObject, fieldsInfo);
+      TScriptDataSet.NeedScriptFields(Info, ExtObject, fieldsInfo);
       Info.ResultAsVariant:=fieldsInfo.Element([index]).Value;
    end;
 end;
@@ -1015,7 +1019,7 @@ var
    obj : IScriptObj;
 begin
    baseExpr.EvalAsSafeScriptObj(args.Exec, obj);
-   Result := (obj.ExternalObject as TDataSet).Intf.FieldCount;
+   Result := (obj.ExternalObject as TScriptDataSet).Intf.FieldCount;
 end;
 
 procedure TdwsDatabaseLib.dwsDatabaseClassesDataSetMethodsGetFieldEval(
@@ -1024,7 +1028,7 @@ var
    fieldsInfo : IInfo;
    index : Integer;
 begin
-   TDataSet.NeedScriptFields(Info, ExtObject, fieldsInfo);
+   TScriptDataSet.NeedScriptFields(Info, ExtObject, fieldsInfo);
    index:=Info.ParamAsInteger[0];
    Info.ResultAsVariant:=fieldsInfo.Element([index]).Value;
 end;
@@ -1035,7 +1039,7 @@ var
    obj : IScriptObj;
 begin
    baseExpr.EvalAsSafeScriptObj(args.Exec, obj);
-   Result := (obj.ExternalObject as TDataSet).IndexOfField(args.AsString[0]);
+   Result := (obj.ExternalObject as TScriptDataSet).IndexOfField(args.AsString[0]);
 end;
 
 procedure TdwsDatabaseLib.dwsDatabaseClassesDataSetMethodsNextFastEvalNoResult(
@@ -1044,7 +1048,7 @@ var
    obj : IScriptObj;
 begin
    baseExpr.EvalAsSafeScriptObj(args.Exec, obj);
-   (obj.ExternalObject as TDataSet).Intf.Next;
+   (obj.ExternalObject as TScriptDataSet).Intf.Next;
 end;
 
 function TdwsDatabaseLib.dwsDatabaseClassesDataSetMethodsStepFastEvalBoolean(
@@ -1053,7 +1057,7 @@ var
    obj : IScriptObj;
 begin
    baseExpr.EvalAsSafeScriptObj(args.Exec, obj);
-   Result := (obj.ExternalObject as TDataSet).Step;
+   Result := (obj.ExternalObject as TScriptDataSet).Step;
 end;
 
 procedure TdwsDatabaseLib.dwsDatabaseClassesDataSetMethodsStringifyAllFastEvalString(
@@ -1062,7 +1066,7 @@ var
    obj : IScriptObj;
 begin
    baseExpr.EvalAsSafeScriptObj(args.Exec, obj);
-   Result := (obj.ExternalObject as TDataSet).StringifyAll(args.AsInteger[0]);
+   Result := (obj.ExternalObject as TScriptDataSet).StringifyAll(args.AsInteger[0]);
 end;
 
 procedure TdwsDatabaseLib.dwsDatabaseClassesDataSetMethodsStringifyFastEvalString(
@@ -1071,7 +1075,7 @@ var
    obj : IScriptObj;
 begin
    baseExpr.EvalAsSafeScriptObj(args.Exec, obj);
-   Result := (obj.ExternalObject as TDataSet).Stringify;
+   Result := (obj.ExternalObject as TScriptDataSet).Stringify;
 end;
 
 procedure TdwsDatabaseLib.dwsDatabaseClassesDataSetMethodsStringifyMapFastEvalString(
@@ -1080,7 +1084,7 @@ var
    obj : IScriptObj;
 begin
    baseExpr.EvalAsSafeScriptObj(args.Exec, obj);
-   Result := (obj.ExternalObject as TDataSet).StringifyMap(args.AsInteger[0]);
+   Result := (obj.ExternalObject as TScriptDataSet).StringifyMap(args.AsInteger[0]);
 end;
 
 procedure TdwsDatabaseLib.dwsDatabaseClassesDataSetMethodsToSeparatedFastEvalString(
@@ -1089,7 +1093,7 @@ var
    obj : IScriptObj;
 begin
    baseExpr.EvalAsSafeScriptObj(args.Exec, obj);
-   Result := (obj.ExternalObject as TDataSet).ToSeparated(
+   Result := (obj.ExternalObject as TScriptDataSet).ToSeparated(
       args.AsInteger[0], args.AsString[1], args.AsString[2]
    );
 end;
