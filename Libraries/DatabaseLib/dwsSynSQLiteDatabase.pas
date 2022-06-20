@@ -69,7 +69,7 @@ type
          procedure SetOption(const name, value : String); override;
    end;
 
-   TdwsSynSQLiteDataSet = class (TdwsDataSet)
+   TdwsSynSQLiteDataSet = class sealed (TdwsDataSet)
       private
          FDB : TdwsSynSQLiteDataBase;
          FRequest : TSQLRequest;
@@ -82,6 +82,11 @@ type
       public
          constructor Create(db : TdwsSynSQLiteDataBase; const sql : String; const parameters : IScriptDynArray);
          destructor Destroy; override;
+
+         class function NewInstance: TObject; override;
+
+         class procedure PrepareInstanceTemplate; static;
+         class procedure ReleaseInstanceTemplate; static;
 
          function Eof : Boolean; override;
          procedure Next; override;
@@ -531,6 +536,8 @@ end;
 //
 constructor TdwsSynSQLiteDataSet.Create(db : TdwsSynSQLiteDataBase; const sql : String; const parameters : IScriptDynArray);
 begin
+   if db = nil then Exit;
+
    FSQL := sql;
    FDB := db;
 
@@ -557,9 +564,48 @@ end;
 //
 destructor TdwsSynSQLiteDataSet.Destroy;
 begin
-   Dec(FDB.FDataSets);
-   FRequest.Close;
+   if FDB <> nil then begin
+      Dec(FDB.FDataSets);
+      FRequest.Close;
+   end;
    inherited;
+end;
+
+// NewInstance
+//
+var
+   vSQLiteDataSetInstanceTemplate : Pointer;
+class function TdwsSynSQLiteDataSet.NewInstance: TObject;
+begin
+   if vSQLiteDataSetInstanceTemplate = nil then begin
+      Result := inherited NewInstance;
+      GetMem(Pointer(vSQLiteDataSetInstanceTemplate), InstanceSize);
+      System.Move(Pointer(Result)^, Pointer(vSQLiteDataSetInstanceTemplate)^, InstanceSize);
+   end else begin
+      GetMem(Pointer(Result), InstanceSize);
+      System.Move(Pointer(vSQLiteDataSetInstanceTemplate)^, Pointer(Result)^, InstanceSize);
+   end;
+end;
+
+// PrepareInstanceTemplate
+//
+class procedure TdwsSynSQLiteDataSet.PrepareInstanceTemplate;
+var
+   ds : TdwsSynSQLiteDataSet;
+begin
+   ds := TdwsSynSQLiteDataSet.Create(nil, '', nil);
+   ds.Free;
+end;
+
+// ReleaseInstanceTemplate
+//
+class procedure TdwsSynSQLiteDataSet.ReleaseInstanceTemplate;
+var
+   p : Pointer;
+begin
+   p := vSQLiteDataSetInstanceTemplate;
+   vSQLiteDataSetInstanceTemplate := nil;
+   FreeMem(p);
 end;
 
 // Eof
@@ -795,8 +841,12 @@ initialization
    vFloatFormatSettings := FormatSettings;
    vFloatFormatSettings.DecimalSeparator := '.';
 
+   TdwsSynSQLiteDataSet.PrepareInstanceTemplate;
+
 finalization
 
    FreeAndNil(vSQLite3DynamicMRSW);
+
+   TdwsSynSQLiteDataSet.ReleaseInstanceTemplate;
 
 end.
