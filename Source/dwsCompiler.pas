@@ -4946,9 +4946,14 @@ begin
 
          end;
 
-      end else if stTypeSymbol in symTaxonomy then begin // symClassType.InheritsFrom(TTypeSymbol) then begin
+      end else if stTypeSymbol in symTaxonomy then begin
 
          // type symbols
+
+         if stAliasSymbol in symTaxonomy then begin
+            sym := TAliasSymbol(sym).UnAliasedType;
+            symClassType := sym.ClassType;
+         end;
 
          if baseType is TStructuredTypeSymbol then begin
 
@@ -5063,7 +5068,7 @@ begin
          if UnicodeSameText(name, 'ByName') then begin
             Exit(ReadByName(elemPos));
          end else if not FTok.TestDelete(ttBRIGHT) then
-            FMsgs.AddCompilerStop(FTok.HotPos, CPE_BrackRightExpected);
+            FMsgs.AddCompilerStopFmt(elemPos, CPE_UnknownMethodForType, [ name, enumSym.Name ]);
          elem:=nil;
       end else begin
          elem:=enumSym.Elements.FindLocal(name);

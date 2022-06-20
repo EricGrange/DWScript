@@ -1,1 +1,1 @@
-Syntax Error: There is no accessible member with name "log" for type a [line: 5, column: 3]
+Syntax Error: There is no accessible method with name "log" for type e [line: 5, column: 3]

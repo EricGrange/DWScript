@@ -323,7 +323,8 @@ type
          stConstSymbol,
          stDataSymbol,
       stTypeSymbol,
-         stClassSymbol
+         stClassSymbol,
+         stAliasSymbol
    );
 
    // TSymbol
@@ -750,7 +751,7 @@ type
          function CanExpectAnyFuncSymbol : Boolean; virtual;
          function IsCompatibleWithAnyFuncSymbol : Boolean; virtual;
 
-         function  Taxonomy : TdwsSymbolTaxonomy; override;
+         function Taxonomy : TdwsSymbolTaxonomy; override;
 
          function DistanceTo(typeSym : TTypeSymbol) : Integer; virtual;
          // doesn't treat aliases of a type as the the same type,
@@ -1151,6 +1152,8 @@ type
          procedure InitDataContext(const data : IDataContext; offset : Integer); override;
          function IsCompatible(typSym : TTypeSymbol) : Boolean; override;
          function IsPointerType : Boolean; override;
+
+         function Taxonomy : TdwsSymbolTaxonomy; override;
    end;
 
    // integer/String/float/boolean/variant
@@ -8463,6 +8466,13 @@ end;
 function TAliasSymbol.IsPointerType : Boolean;
 begin
    Result:=Typ.IsPointerType;
+end;
+
+// Taxonomy
+//
+function TAliasSymbol.Taxonomy : TdwsSymbolTaxonomy;
+begin
+   Result := [ stTypeSymbol, stAliasSymbol ];
 end;
 
 // DoIsOfType

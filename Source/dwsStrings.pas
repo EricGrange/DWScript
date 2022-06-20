@@ -333,6 +333,7 @@ const
   CPE_TypeExpected = 'Type expected';
   CPE_InvalidType = '%s is not a Type';
   CPE_UnknownMemberForType = 'There is no accessible member with name "%s" for type %s';
+  CPE_UnknownMethodForType = 'There is no accessible method with name "%s" for type %s';
   CPE_NoMemberExpected = 'No member expected';
   CPE_NoArrayExpected = 'Not an array';
   CPE_NoMethodExpected = 'Not a method';
