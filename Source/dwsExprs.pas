@@ -1573,7 +1573,7 @@ type
          property PrevObject : TScriptObj read FPrevObject write FPrevObject;
    end;
 
-   TScriptObjInstance = class (TScriptObj, IScriptObj)
+   TScriptObjInstance = class sealed (TScriptObj, IScriptObj)
       private
          FExternalObject : TObject;
          FDestroyed : Boolean;
@@ -1593,6 +1593,12 @@ type
          constructor Create(aClassSym : TClassSymbol; executionContext : TdwsProgramExecution = nil);
          destructor Destroy; override;
          procedure BeforeDestruction; override;
+
+         class function NewInstance: TObject; override;
+         procedure FreeInstance; override;
+
+         class procedure PrepareInstanceTemplate; static;
+         class procedure ReleaseInstanceTemplate; static;
 
          function ToString : String; override;
          function ScriptTypeName : String; override;
@@ -7298,6 +7304,51 @@ begin
    inherited;
 end;
 
+// NewInstance
+//
+var
+   vScriptObjInstanceTemplate : Pointer;
+class function TScriptObjInstance.NewInstance: TObject;
+begin
+   if vScriptObjInstanceTemplate = nil then begin
+      Result := inherited NewInstance;
+      GetMem(Pointer(vScriptObjInstanceTemplate), InstanceSize);
+      System.Move(Pointer(Result)^, Pointer(vScriptObjInstanceTemplate)^, InstanceSize);
+   end else begin
+      GetMem(Pointer(Result), InstanceSize);
+      System.Move(Pointer(vScriptObjInstanceTemplate)^, Pointer(Result)^, InstanceSize);
+   end;
+end;
+
+// FreeInstance
+//
+procedure TScriptObjInstance.FreeInstance;
+begin
+  ClearData;
+  FreeMem(Pointer(Self));
+end;
+
+// PrepareInstanceTemplate
+//
+class procedure TScriptObjInstance.PrepareInstanceTemplate;
+var
+   obj : TScriptObjInstance;
+begin
+   obj := TScriptObjInstance.Create(nil);
+   obj.Free;
+end;
+
+// ReleaseInstanceTemplate
+//
+class procedure TScriptObjInstance.ReleaseInstanceTemplate;
+var
+   p : Pointer;
+begin
+   p := vScriptObjInstanceTemplate;
+   vScriptObjInstanceTemplate := nil;
+   FreeMem(p);
+end;
+
 // ToString
 //
 function TScriptObjInstance.ToString : String;
@@ -8412,10 +8463,14 @@ initialization
    TDynamicArraySymbol.SetInitDynamicArrayProc(TScriptDynamicArray_InitData);
    TAssociativeArraySymbol.SetInitAssociativeArrayProc(TScriptAssociativeArray_InitData);
 
+   TScriptObjInstance.PrepareInstanceTemplate;
+
 finalization
 
    TdwsGuardianThread.Finalize;
    TdwsGuardianThread.vExecutionsPool.FreeAll;
+
+   TScriptObjInstance.ReleaseInstanceTemplate;
 
 end.
 
