@@ -2987,7 +2987,7 @@ end;
 procedure TdwsJSONWriter.WriteNumber(const n : Double);
 var
    buffer : array [0..63] of WideChar;
-   nc : Integer;
+   nc, i64 : Integer;
    nExt : Extended;
 begin
    BeforeWriteImmediate;
@@ -2996,9 +2996,13 @@ begin
    else if IsNan(n) then
       FStream.WriteString('null')
    else begin
-      nExt := n;
-      nc := FloatToText(buffer, nExt, fvExtended, ffGeneral, 15, 0, vJSONFormatSettings);
-      FStream.Write(buffer, nc*SizeOf(WideChar));
+      if (Abs(n) <= High(Int64)) and (Round(n) = n) then
+         FStream.WriteString(Round(n))
+      else begin
+         nExt := n;
+         nc := FloatToText(buffer, nExt, fvExtended, ffGeneral, 15, 0, vJSONFormatSettings);
+         FStream.Write(buffer, nc*SizeOf(WideChar));
+      end;
    end;
    AfterWriteImmediate;
 end;
