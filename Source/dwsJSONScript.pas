@@ -316,23 +316,27 @@ class procedure JSONScript.StringifyDynamicArray(exec : TdwsExecution;
    writer : TdwsJSONWriter; const dynArray : IScriptDynArray);
 var
    locData : IDataContext;
+   writeable : IJSONWriteAble;
    dynData : TScriptDynamicDataArray;
    elementType : TTypeSymbol;
    i : Integer;
 begin
-   elementType := dynArray.elementType;
-   if dynArray.GetSelf is TScriptDynamicDataArray then begin
-      dynData := dynArray.GetSelf as TScriptDynamicDataArray;
-      exec.DataContext_CreateOffset(dynData, 0, locData);
-      StringifyDataContextArray(exec, writer, elementType, locData, dynData.ArrayLength);
-   end else begin
-      Assert(elementType.Size = 1);
-      writer.BeginArray;
-      for i := 0 to dynArray.ArrayLength-1 do begin
-         locData := TArrayElementDataContext.Create(dynArray, i);
-         StringifySymbol(exec, writer, elementType, locData);
+   if dynArray.QueryInterface(IJSONWriteAble, writeable) = S_OK then
+      writeable.WriteToJSON(writer)
+   else begin
+      elementType := dynArray.elementType;
+      if dynArray.GetSelf is TScriptDynamicDataArray then begin
+         dynData := dynArray.GetSelf as TScriptDynamicDataArray;
+         exec.DataContext_CreateOffset(dynData, 0, locData);
+         StringifyDataContextArray(exec, writer, elementType, locData, dynData.ArrayLength);
+      end else begin
+         writer.BeginArray;
+         for i := 0 to dynArray.ArrayLength-1 do begin
+            locData := TArrayElementDataContext.Create(dynArray, i);
+            StringifySymbol(exec, writer, elementType, locData);
+         end;
+         writer.EndArray;
       end;
-      writer.EndArray;
    end;
 end;
 
@@ -421,8 +425,12 @@ begin
 
          if memberSymbolClass = TFieldSymbol then begin
             fieldSym := TFieldSymbol(memberSymbol);
-            dataPtr.CreateOffset(fieldSym.Offset, locData);
-            StringifySymbol(exec, writer, fieldSym.Typ, locData);
+            if fieldSym.Typ.IsBaseType then
+               StringifyVariant(exec, writer, dataPtr[fieldSym.Offset])
+            else begin
+               dataPtr.CreateOffset(fieldSym.Offset, locData);
+               StringifySymbol(exec, writer, fieldSym.Typ, locData);
+            end;
          end else if memberSymbolClass.InheritsFrom(TFuncSymbol) then
             DoGetter;
       end;
