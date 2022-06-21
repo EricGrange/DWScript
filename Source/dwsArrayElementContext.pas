@@ -84,8 +84,16 @@ type
 
          function  HashCode(size : NativeInt) : Cardinal;
 
+         constructor CreateEmpty;
+
       public
          constructor Create(const anArray : IScriptDynArray; anIndex : NativeInt);
+
+         class function NewInstance : TObject; override;
+         procedure FreeInstance; override;
+
+         class procedure PrepareInstanceTemplate; static;
+         class procedure ReleaseInstanceTemplate; static;
 
    end;
 
@@ -114,6 +122,55 @@ begin
    FIndex := anIndex;
    FElementSize := anArray.ElementSize;
    FBase := FIndex*FElementSize;
+end;
+
+// CreateEmpty
+//
+constructor TArrayElementDataContext.CreateEmpty;
+begin
+   inherited Create;
+end;
+
+// NewInstance
+//
+var
+   vArrayElementTemplate : Pointer;
+class function TArrayElementDataContext.NewInstance : TObject;
+begin
+   if vArrayElementTemplate = nil then begin
+      Result := inherited;
+      vArrayElementTemplate := GetMemory(InstanceSize);
+      Move(Pointer(Result)^, vArrayElementTemplate^, InstanceSize);
+   end else begin
+      Result := GetMemory(InstanceSize);
+      Move(vArrayElementTemplate^, Pointer(Result)^, InstanceSize);
+   end;
+end;
+
+// FreeInstance
+//
+procedure TArrayElementDataContext.FreeInstance;
+begin
+   FArray := nil;
+   FreeMemory(Self);
+end;
+
+// PrepareInstanceTemplate
+//
+class procedure TArrayElementDataContext.PrepareInstanceTemplate;
+begin
+   TArrayElementDataContext.CreateEmpty.Free;
+end;
+
+// ReleaseInstanceTemplate
+//
+class procedure TArrayElementDataContext.ReleaseInstanceTemplate;
+var
+   p : Pointer;
+begin
+   p := vArrayElementTemplate;
+   vArrayElementTemplate := nil;
+   FreeMemory(p);
 end;
 
 // GetSelf
@@ -407,5 +464,19 @@ function TArrayElementDataContext.HashCode(size : NativeInt) : Cardinal;
 begin
    Result := FArray.HashCode(ComputeAddr(0), size);
 end;
+
+// ------------------------------------------------------------------
+// ------------------------------------------------------------------
+// ------------------------------------------------------------------
+initialization
+// ------------------------------------------------------------------
+// ------------------------------------------------------------------
+// ------------------------------------------------------------------
+
+   TArrayElementDataContext.PrepareInstanceTemplate;
+
+finalization
+
+   TArrayElementDataContext.ReleaseInstanceTemplate;
 
 end.
