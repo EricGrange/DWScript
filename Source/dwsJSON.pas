@@ -2987,7 +2987,7 @@ end;
 procedure TdwsJSONWriter.WriteNumber(const n : Double);
 var
    buffer : array [0..63] of WideChar;
-   nc, i64 : Integer;
+   nc : Integer;
    nExt : Extended;
 begin
    BeforeWriteImmediate;
