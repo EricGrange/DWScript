@@ -400,6 +400,8 @@ begin
       isException := False;
 
       typeSymbol := TTypeSymbol(aSymbolList.Symbol).UnAliasedType;
+      if typeSymbol is TFuncSymbol then Exit;
+
       if typeSymbol is TClassSymbol then begin
          classSymbol := TClassSymbol(typeSymbol);
          while classSymbol.Parent <> nil do begin
