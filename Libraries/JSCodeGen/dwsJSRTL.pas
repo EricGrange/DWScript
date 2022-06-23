@@ -174,7 +174,7 @@ uses dwsJSON, dwsXPlatform, SynZip;
 {$R dwsJSRTL.res}
 
 const
-   cJSRTLDependencies : array [1..320{$ifdef JS_BIGINTEGER} + 16{$endif}] of TJSRTLDependency = (
+   cJSRTLDependencies : array [1..324{$ifdef JS_BIGINTEGER} + 16{$endif}] of TJSRTLDependency = (
       // codegen utility functions
       (Name : '$CheckStep';
        Code : 'function $CheckStep(s,z) { if (s>0) return s; throw Exception.Create($New(Exception),"FOR loop STEP should be strictly positive: "+s.toString()+z) }';
@@ -391,6 +391,14 @@ const
                +#9'a[i]/=v;'#10
                +'}';
        Dependency : 'Exception' ),
+      (Name : '$AKeyAdd';
+       Code : 'function $AKeyAdd(a,k,d,v) { a[k] = (a[k]||d) + v }' ),
+      (Name : '$AKeyMinus';
+       Code : 'function $AKeyMinus(a,k,d,v) { a[k] = (a[k]||d) - v }' ),
+      (Name : '$AKeyMult';
+       Code : 'function $AKeyMult(a,k,d,v) { a[k] = (a[k]||d) + v }' ),
+      (Name : '$AKeyDiv';
+       Code : 'function $AKeyDiv(a,k,d,v) { a[k] = (a[k]||d) / v }' ),
       (Name : '$SIdx';
        Code : 'function $SIdx(s,i,z) {'#10
                +#9'if (i<1) throw Exception.Create($New(Exception),"Lower bound exceeded! Index "+i.toString()+z);'#10
