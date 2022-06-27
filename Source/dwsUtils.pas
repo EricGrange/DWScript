@@ -912,7 +912,7 @@ type
       {$endif}
    end;
 
-   TClassCloneConstructor<T: TRefCountedObject> = record
+   TClassCloneConstructor<T: class> = record
       private
          FTemplate : T;
          FSize : Integer;
@@ -6960,8 +6960,8 @@ end;
 //
 procedure TClassCloneConstructor<T>.Initialize(aTemplate : T);
 begin
-   FTemplate:=aTemplate;
-   FSize:= FTemplate.InstanceSize;
+   FTemplate := aTemplate;
+   FSize := FTemplate.InstanceSize;
 end;
 
 // Finalize
@@ -6969,7 +6969,7 @@ end;
 procedure TClassCloneConstructor<T>.Finalize;
 begin
    FTemplate.Free;
-   TObject(FTemplate):=nil; // D2010 bug workaround
+   TObject(FTemplate) := nil; // D2010 bug workaround
 end;
 
 // Create

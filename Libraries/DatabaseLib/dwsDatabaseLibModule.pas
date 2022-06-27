@@ -183,6 +183,7 @@ var
    vPools : TSimpleNameObjectHash<TDataBaseQueue>;
    vPoolsCS : TMultiReadSingleWrite;
    vPoolsCount : Integer;
+   vScriptDataSetCloneConstructor : TClassCloneConstructor<TScriptDataSet>;
 
 // NotifyDataSetCreate
 //
@@ -732,7 +733,7 @@ begin
    if TdwsDataSet.CallbacksRegistered then
       dsID := TdwsDataSet.NotifyCreate(args.Expr)
    else dsID := 0;
-   dataSet := TScriptDataSet.Create;
+   dataSet := vScriptDataSetCloneConstructor.Create;
    try
       dataSet.FIntf := dbo.Intf.Query(sql, scriptDyn, args.Expr);
    except
@@ -1138,9 +1139,13 @@ initialization
 
    vPoolsCS := TMultiReadSingleWrite.Create;
 
+   vScriptDataSetCloneConstructor.Initialize(TScriptDataSet.Create);
+
 finalization
 
    vPoolsCS.Free;
    vPoolsCS:=nil;
+
+   vScriptDataSetCloneConstructor.Finalize;
 
 end.

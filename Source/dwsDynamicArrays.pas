@@ -70,6 +70,7 @@ type
          function SetFromExpr(index : NativeInt; exec : TdwsExecution; valueExpr : TExprBase) : Boolean;
 
       public
+         procedure FreeInstance; override;
 
          function ScriptTypeName : String; override;
 
@@ -112,8 +113,13 @@ type
          property AsString[index : NativeInt] : String write SetAsString;
    end;
 
-   TScriptDynamicValueArray = class (TScriptDynamicDataArray)
+   TScriptDynamicValueArray = class sealed (TScriptDynamicDataArray)
       public
+         class function NewInstance: TObject; override;
+
+         class procedure PrepareInstanceTemplate; static;
+         class procedure ReleaseInstanceTemplate; static;
+
          procedure Swap(i1, i2 : NativeInt); override;
    end;
 
@@ -356,6 +362,7 @@ type
 
       public
          class function InterfaceToDataOffset : Integer; override; final;
+         procedure FreeInstance; override;
 
          procedure SetArrayLength(n : NativeInt);
 
@@ -413,8 +420,13 @@ type
          procedure AddFromExpr(exec : TdwsExecution; valueExpr : TExprBase);
          function SetFromExpr(index : NativeInt; exec : TdwsExecution; valueExpr : TExprBase) : Boolean;
    end;
-   TScriptDynamicNativeObjectArray = class (TScriptDynamicNativeBaseInterfaceArray, IScriptDynArray)
+   TScriptDynamicNativeObjectArray = class sealed (TScriptDynamicNativeBaseInterfaceArray, IScriptDynArray)
       public
+         class function NewInstance: TObject; override;
+
+         class procedure PrepareInstanceTemplate; static;
+         class procedure ReleaseInstanceTemplate; static;
+
          procedure AddFromExpr(exec : TdwsExecution; valueExpr : TExprBase);
          function SetFromExpr(index : NativeInt; exec : TdwsExecution; valueExpr : TExprBase) : Boolean;
    end;
@@ -492,7 +504,8 @@ type
          procedure WriteToJSON(writer : TdwsJSONWriter);
    end;
 
-procedure CreateNewDynamicArray(elemTyp : TTypeSymbol; var result : IScriptDynArray);
+function CreateNewDynamicArray(elemTyp : TTypeSymbol) : TInterfacedObject; overload;
+procedure CreateNewDynamicArray(elemTyp : TTypeSymbol; var result : IScriptDynArray); inline; overload;
 
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
@@ -535,9 +548,9 @@ begin
       dyn.AsString[i+n] := sl[i];
 end;
 
-// CreateNewDynamicArray
+// CreateNewDynamicArray (func)
 //
-procedure CreateNewDynamicArray(elemTyp : TTypeSymbol; var result : IScriptDynArray);
+function CreateNewDynamicArray(elemTyp : TTypeSymbol) : TInterfacedObject;
 var
    size : Integer;
    ct : TClass;
@@ -563,6 +576,13 @@ begin
 //         Result := TScriptDynamicNativeInterfaceArray.Create(elemTyp)
       else Result := TScriptDynamicValueArray.Create(elemTyp)
    end else Result := TScriptDynamicDataArray.Create(elemTyp);
+end;
+
+// CreateNewDynamicArray (proc IScriptDynArray)
+//
+procedure CreateNewDynamicArray(elemTyp : TTypeSymbol; var result : IScriptDynArray);
+begin
+   result := CreateNewDynamicArray(elemTyp) as IScriptDynArray;
 end;
 
 // ------------------
@@ -721,6 +741,14 @@ begin
       AsVariant[index] := v;
       Result := True;
    end else Result := False;
+end;
+
+// FreeInstance
+//
+procedure TScriptDynamicDataArray.FreeInstance;
+begin
+   ClearData;
+   FreeMemory(Self);
 end;
 
 // AddStrings
@@ -974,6 +1002,43 @@ end;
 // ------------------
 // ------------------ TScriptDynamicValueArray ------------------
 // ------------------
+
+// NewInstance
+//
+var
+   vDynamicValueArrayInstanceTemplate : Pointer;
+class function TScriptDynamicValueArray.NewInstance: TObject;
+begin
+   if vDynamicValueArrayInstanceTemplate = nil then begin
+      Result := inherited NewInstance;
+      vDynamicValueArrayInstanceTemplate := GetMemory(InstanceSize);
+      System.Move(Pointer(Result)^, vDynamicValueArrayInstanceTemplate^, InstanceSize);
+   end else begin
+      Result := GetMemory(InstanceSize);
+      System.Move(vDynamicValueArrayInstanceTemplate^, Pointer(Result)^, InstanceSize);
+   end;
+end;
+
+// PrepareInstanceTemplate
+//
+class procedure TScriptDynamicValueArray.PrepareInstanceTemplate;
+var
+   a : TScriptDynamicValueArray;
+begin
+   a := TScriptDynamicValueArray.Create(nil);
+   a.Free;
+end;
+
+// ReleaseInstanceTemplate
+//
+class procedure TScriptDynamicValueArray.ReleaseInstanceTemplate;
+var
+   p : Pointer;
+begin
+   p := vDynamicValueArrayInstanceTemplate;
+   vDynamicValueArrayInstanceTemplate := nil;
+   FreeMem(p);
+end;
 
 // Swap
 //
@@ -2606,6 +2671,14 @@ begin
    Result := NativeInt(@instance.FData) - NativeInt(intf);
 end;
 
+// FreeInstance
+//
+procedure TScriptDynamicNativeBaseInterfaceArray.FreeInstance;
+begin
+   FData := nil;
+   FreeMemory(Self);
+end;
+
 // ------------------
 // ------------------ TScriptDynamicNativeInterfaceArray ------------------
 // ------------------
@@ -2633,6 +2706,43 @@ end;
 // ------------------
 // ------------------ TScriptDynamicNativeObjectArray ------------------
 // ------------------
+
+// NewInstance
+//
+var
+   vDynamicNativeObjectArrayInstanceTemplate : Pointer;
+class function TScriptDynamicNativeObjectArray.NewInstance: TObject;
+begin
+   if vDynamicNativeObjectArrayInstanceTemplate = nil then begin
+      Result := inherited NewInstance;
+      vDynamicNativeObjectArrayInstanceTemplate := GetMemory(InstanceSize);
+      System.Move(Pointer(Result)^, vDynamicNativeObjectArrayInstanceTemplate^, InstanceSize);
+   end else begin
+      Result := GetMemory(InstanceSize);
+      System.Move(vDynamicNativeObjectArrayInstanceTemplate^, Pointer(Result)^, InstanceSize);
+   end;
+end;
+
+// PrepareInstanceTemplate
+//
+class procedure TScriptDynamicNativeObjectArray.PrepareInstanceTemplate;
+var
+   a : TScriptDynamicNativeObjectArray;
+begin
+   a := TScriptDynamicNativeObjectArray.Create(nil);
+   a.Free;
+end;
+
+// ReleaseInstanceTemplate
+//
+class procedure TScriptDynamicNativeObjectArray.ReleaseInstanceTemplate;
+var
+   p : Pointer;
+begin
+   p := vDynamicNativeObjectArrayInstanceTemplate;
+   vDynamicNativeObjectArrayInstanceTemplate := nil;
+   FreeMem(p);
+end;
 
 // SetFromExpr
 //
@@ -3111,5 +3221,21 @@ begin
       writer.WriteBoolean(FBits[i]);
    writer.EndArray;
 end;
+
+// ------------------------------------------------------------------
+// ------------------------------------------------------------------
+// ------------------------------------------------------------------
+initialization
+// ------------------------------------------------------------------
+// ------------------------------------------------------------------
+// ------------------------------------------------------------------
+
+   TScriptDynamicValueArray.PrepareInstanceTemplate;
+   TScriptDynamicNativeObjectArray.PrepareInstanceTemplate;
+
+finalization
+
+   TScriptDynamicValueArray.ReleaseInstanceTemplate;
+   TScriptDynamicNativeObjectArray.ReleaseInstanceTemplate;
 
 end.

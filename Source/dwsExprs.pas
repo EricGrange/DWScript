@@ -1717,11 +1717,8 @@ uses dwsFunctions, dwsCoreExprs, dwsMagicExprs, dwsMethodExprs, dwsUnifiedConsta
 // TScriptDynamicArray_InitData
 //
 procedure TScriptDynamicArray_InitData(elemTyp : TTypeSymbol; const resultDC : IDataContext; offset : NativeInt);
-var
-   a : IScriptDynarray;
 begin
-   CreateNewDynamicArray(elemTyp, a);
-   resultDC.AsInterface[offset] := a;
+   resultDC.AsInterface[offset] := CreateNewDynamicArray(elemTyp) as IScriptDynarray;
 end;
 
 { TScriptObjectWrapper }

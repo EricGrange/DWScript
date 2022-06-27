@@ -316,6 +316,8 @@ begin
    NotifyDestroy(FID);
    SetLength(FFields, 0);
    FFieldCount := -1;
+   FDataBase := nil;
+
    inherited;
 end;
 
