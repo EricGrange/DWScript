@@ -91,10 +91,6 @@ type
 
          class function NewInstance : TObject; override;
          procedure FreeInstance; override;
-
-         class procedure PrepareInstanceTemplate; static;
-         class procedure ReleaseInstanceTemplate; static;
-
    end;
 
 // ------------------------------------------------------------------
@@ -134,17 +130,12 @@ end;
 // NewInstance
 //
 var
-   vArrayElementTemplate : Pointer;
+   vArrayElementTemplate : TClassInstanceTemplate<TArrayElementDataContext>;
 class function TArrayElementDataContext.NewInstance : TObject;
 begin
-   if vArrayElementTemplate = nil then begin
-      Result := inherited;
-      vArrayElementTemplate := GetMemory(InstanceSize);
-      Move(Pointer(Result)^, vArrayElementTemplate^, InstanceSize);
-   end else begin
-      Result := GetMemory(InstanceSize);
-      Move(vArrayElementTemplate^, Pointer(Result)^, InstanceSize);
-   end;
+   if not vArrayElementTemplate.Initialized then
+      Result := inherited NewInstance
+   else Result := vArrayElementTemplate.CreateInstance;
 end;
 
 // FreeInstance
@@ -152,25 +143,7 @@ end;
 procedure TArrayElementDataContext.FreeInstance;
 begin
    FArray := nil;
-   FreeMemory(Self);
-end;
-
-// PrepareInstanceTemplate
-//
-class procedure TArrayElementDataContext.PrepareInstanceTemplate;
-begin
-   TArrayElementDataContext.CreateEmpty.Free;
-end;
-
-// ReleaseInstanceTemplate
-//
-class procedure TArrayElementDataContext.ReleaseInstanceTemplate;
-var
-   p : Pointer;
-begin
-   p := vArrayElementTemplate;
-   vArrayElementTemplate := nil;
-   FreeMemory(p);
+   vArrayElementTemplate.ReleaseInstance(Self);
 end;
 
 // GetSelf
@@ -473,10 +446,10 @@ initialization
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
 
-   TArrayElementDataContext.PrepareInstanceTemplate;
+   vArrayElementTemplate.Initialize;
 
 finalization
 
-   TArrayElementDataContext.ReleaseInstanceTemplate;
+   vArrayElementTemplate.Finalize;
 
 end.

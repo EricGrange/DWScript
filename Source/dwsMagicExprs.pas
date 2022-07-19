@@ -170,6 +170,7 @@ type
          FOnFastEvalBoolean : TMethodFastEvalBooleanEvent;
          FOnFastEvalFloat : TMethodFastEvalFloatEvent;
          FOnFastEvalNoResult : TMethodFastEvalNoResultEvent;
+         FOnFastEvalScriptObj : TMethodFastEvalScriptObjEvent;
 
       public
          destructor Destroy; override;
@@ -184,6 +185,7 @@ type
          property OnFastEvalBoolean : TMethodFastEvalBooleanEvent read FOnFastEvalBoolean write FOnFastEvalBoolean;
          property OnFastEvalFloat : TMethodFastEvalFloatEvent read FOnFastEvalFloat write FOnFastEvalFloat;
          property OnFastEvalNoResult : TMethodFastEvalNoResultEvent read FOnFastEvalNoResult write FOnFastEvalNoResult;
+         property OnFastEvalScriptObj : TMethodFastEvalScriptObjEvent read FOnFastEvalScriptObj write FOnFastEvalScriptObj;
    end;
 
    // TMagicStaticMethodSymbol
@@ -304,7 +306,14 @@ type
          function EvalAsBoolean(exec : TdwsExecution) : Boolean; override;
          procedure EvalAsString(exec : TdwsExecution; var result : String); override;
          procedure EvalAsInterface(exec : TdwsExecution; var result : IUnknown); override;
-         procedure EvalAsScriptObj(exec : TdwsExecution; var Result : IScriptObj); override;
+         procedure EvalAsScriptObj(exec : TdwsExecution; var result : IScriptObj); override;
+   end;
+
+   TMagicMethodScriptObjExpr = class (TMagicMethodExpr)
+      public
+         procedure EvalAsVariant(exec : TdwsExecution; var result : Variant); override;
+         procedure EvalAsInterface(exec : TdwsExecution; var result : IUnknown); override;
+         procedure EvalAsScriptObj(exec : TdwsExecution; var result : IScriptObj); override;
    end;
 
    TMagicMethodIntegerExpr = class (TMagicMethodExpr)
@@ -949,6 +958,46 @@ begin
    EvalAsVariant(exec, v);
    Assert(TVarData(v).VType = varUnknown);
    result := IUnknown(TVarData(v).VUnknown) as IScriptObj;
+end;
+
+// ------------------
+// ------------------ TMagicMethodScriptObjExpr ------------------
+// ------------------
+
+// EvalAsVariant
+//
+procedure TMagicMethodScriptObjExpr.EvalAsVariant(exec : TdwsExecution; var result : Variant);
+var
+   intf : IScriptObj;
+begin
+   EvalAsScriptObj(exec, intf);
+   VarCopySafe(result, intf);
+end;
+
+// EvalAsInterface
+//
+procedure TMagicMethodScriptObjExpr.EvalAsInterface(exec : TdwsExecution; var result : IUnknown);
+var
+   obj : IScriptObj;
+begin
+   EvalAsScriptObj(exec, obj);
+   result := obj;
+end;
+
+// EvalAsScriptObj
+//
+procedure TMagicMethodScriptObjExpr.EvalAsScriptObj(exec : TdwsExecution; var result : IScriptObj);
+var
+   execRec : TExprBaseListExec;
+begin
+   execRec.ListRec := FArgs;
+   execRec.Exec := exec;
+   execRec.Expr := Self;
+   try
+      FMagicSymbol.OnFastEvalScriptObj(BaseExpr, execRec, result);
+   except
+      RaiseScriptError(exec);
+   end;
 end;
 
 // ------------------

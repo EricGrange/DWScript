@@ -314,10 +314,8 @@ end;
 destructor TdwsDataSet.Destroy;
 begin
    NotifyDestroy(FID);
-   SetLength(FFields, 0);
+   FFields := nil;
    FFieldCount := -1;
-   FDataBase := nil;
-
    inherited;
 end;
 

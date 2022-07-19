@@ -71,6 +71,7 @@ type
    TMethodFastEvalIntegerEvent = function(baseExpr : TTypedExpr; const args : TExprBaseListExec) : Int64 of object;
    TMethodFastEvalFloatEvent = function(baseExpr : TTypedExpr; const args : TExprBaseListExec) : Double of object;
    TMethodFastEvalBooleanEvent = function(baseExpr : TTypedExpr; const args : TExprBaseListExec) : Boolean of object;
+   TMethodFastEvalScriptObjEvent = procedure(baseExpr : TTypedExpr; const args : TExprBaseListExec; var result : IScriptObj) of object;
 
    // Symbol attributes information
    TdwsSymbolAttribute = class (TRefCountedObject)
@@ -1597,9 +1598,6 @@ type
          class function NewInstance: TObject; override;
          procedure FreeInstance; override;
 
-         class procedure PrepareInstanceTemplate; static;
-         class procedure ReleaseInstanceTemplate; static;
-
          function ToString : String; override;
          function ScriptTypeName : String; override;
 
@@ -1717,8 +1715,11 @@ uses dwsFunctions, dwsCoreExprs, dwsMagicExprs, dwsMethodExprs, dwsUnifiedConsta
 // TScriptDynamicArray_InitData
 //
 procedure TScriptDynamicArray_InitData(elemTyp : TTypeSymbol; const resultDC : IDataContext; offset : NativeInt);
+var
+   intf : IScriptDynArray;
 begin
-   resultDC.AsInterface[offset] := CreateNewDynamicArray(elemTyp) as IScriptDynarray;
+   CreateNewDynamicArray(elemTyp, intf);
+   resultDC.AsInterface[offset] := intf;
 end;
 
 { TScriptObjectWrapper }
@@ -7230,10 +7231,10 @@ var
    externalClass : TClassSymbol;
    fieldIter : TFieldSymbol;
 begin
-   FClassSym:=aClassSym;
-   if aClassSym=nil then Exit;
+   FClassSym := aClassSym;
+   if aClassSym = nil then Exit;
 
-   if executionContext<>nil then
+   if executionContext <> nil then
       executionContext.ScriptObjCreated(Self);
 
    SetDataLength(aClassSym.ScriptInstanceSize);
@@ -7304,46 +7305,20 @@ end;
 // NewInstance
 //
 var
-   vScriptObjInstanceTemplate : Pointer;
+   vScriptObjTemplate : TClassInstanceTemplate<TScriptObjInstance>;
 class function TScriptObjInstance.NewInstance: TObject;
 begin
-   if vScriptObjInstanceTemplate = nil then begin
-      Result := inherited NewInstance;
-      GetMem(Pointer(vScriptObjInstanceTemplate), InstanceSize);
-      System.Move(Pointer(Result)^, Pointer(vScriptObjInstanceTemplate)^, InstanceSize);
-   end else begin
-      GetMem(Pointer(Result), InstanceSize);
-      System.Move(Pointer(vScriptObjInstanceTemplate)^, Pointer(Result)^, InstanceSize);
-   end;
+   if not vScriptObjTemplate.Initialized then
+      Result := inherited NewInstance
+   else Result := vScriptObjTemplate.CreateInstance;
 end;
 
 // FreeInstance
 //
 procedure TScriptObjInstance.FreeInstance;
 begin
-  ClearData;
-  FreeMem(Pointer(Self));
-end;
-
-// PrepareInstanceTemplate
-//
-class procedure TScriptObjInstance.PrepareInstanceTemplate;
-var
-   obj : TScriptObjInstance;
-begin
-   obj := TScriptObjInstance.Create(nil);
-   obj.Free;
-end;
-
-// ReleaseInstanceTemplate
-//
-class procedure TScriptObjInstance.ReleaseInstanceTemplate;
-var
-   p : Pointer;
-begin
-   p := vScriptObjInstanceTemplate;
-   vScriptObjInstanceTemplate := nil;
-   FreeMem(p);
+   ClearData;
+   vScriptObjTemplate.ReleaseInstance(Self);
 end;
 
 // ToString
@@ -8460,14 +8435,14 @@ initialization
    TDynamicArraySymbol.SetInitDynamicArrayProc(TScriptDynamicArray_InitData);
    TAssociativeArraySymbol.SetInitAssociativeArrayProc(TScriptAssociativeArray_InitData);
 
-   TScriptObjInstance.PrepareInstanceTemplate;
+   vScriptObjTemplate.Initialize;
 
 finalization
 
    TdwsGuardianThread.Finalize;
    TdwsGuardianThread.vExecutionsPool.FreeAll;
 
-   TScriptObjInstance.ReleaseInstanceTemplate;
+   vScriptObjTemplate.Finalize;
 
 end.
 

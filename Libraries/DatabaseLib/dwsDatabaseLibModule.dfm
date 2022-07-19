@@ -43,29 +43,29 @@ object dwsDatabaseLib: TdwsDatabaseLib
           end
           item
             Name = 'BeginTransaction'
-            OnFastEvalNoResult = dwsDatabaseClassesDataBaseMethodsBeginTransactionFastEvalNoResult
             Kind = mkProcedure
+            OnFastEvalNoResult = dwsDatabaseClassesDataBaseMethodsBeginTransactionFastEvalNoResult
           end
           item
             Name = 'StartTransaction'
-            OnFastEvalNoResult = dwsDatabaseClassesDataBaseMethodsBeginTransactionFastEvalNoResult
             Kind = mkProcedure
+            OnFastEvalNoResult = dwsDatabaseClassesDataBaseMethodsBeginTransactionFastEvalNoResult
           end
           item
             Name = 'Commit'
-            OnFastEvalNoResult = dwsDatabaseClassesDataBaseMethodsCommitFastEvalNoResult
             Kind = mkProcedure
+            OnFastEvalNoResult = dwsDatabaseClassesDataBaseMethodsCommitFastEvalNoResult
           end
           item
             Name = 'Rollback'
-            OnFastEvalNoResult = dwsDatabaseClassesDataBaseMethodsRollbackFastEvalNoResult
             Kind = mkProcedure
+            OnFastEvalNoResult = dwsDatabaseClassesDataBaseMethodsRollbackFastEvalNoResult
           end
           item
             Name = 'InTransaction'
             ResultType = 'Boolean'
-            OnFastEvalBoolean = dwsDatabaseClassesDataBaseMethodsInTransactionFastEvalBoolean
             Kind = mkFunction
+            OnFastEvalBoolean = dwsDatabaseClassesDataBaseMethodsInTransactionFastEvalBoolean
           end
           item
             Name = 'Exec'
@@ -81,8 +81,8 @@ object dwsDatabaseLib: TdwsDatabaseLib
                 HasDefaultValue = True
                 DefaultValue = Null
               end>
-            OnFastEvalNoResult = dwsDatabaseClassesDataBaseMethodsExecFastEvalNoResult
             Kind = mkProcedure
+            OnFastEvalNoResult = dwsDatabaseClassesDataBaseMethodsExecFastEvalNoResult
           end
           item
             Name = 'Query'
@@ -99,14 +99,14 @@ object dwsDatabaseLib: TdwsDatabaseLib
                 DefaultValue = Null
               end>
             ResultType = 'DataSet'
-            OnFastEval = dwsDatabaseClassesDataBaseMethodsQueryFastEval
             Kind = mkFunction
+            OnFastEvalScriptObj = dwsDatabaseClassesDataBaseMethodsQueryFastEvalScriptObj
           end
           item
             Name = 'VersionInfoText'
             ResultType = 'String'
-            OnEval = dwsDatabaseClassesDataBaseMethodsVersionInfoTextEval
             Kind = mkFunction
+            OnEval = dwsDatabaseClassesDataBaseMethodsVersionInfoTextEval
           end
           item
             Name = 'SetLowerCaseStringify'
@@ -115,8 +115,8 @@ object dwsDatabaseLib: TdwsDatabaseLib
                 Name = 'value'
                 DataType = 'Boolean'
               end>
-            OnEval = dwsDatabaseClassesDataBaseMethodsLowerCaseStringifyEval
             Kind = mkProcedure
+            OnEval = dwsDatabaseClassesDataBaseMethodsLowerCaseStringifyEval
           end
           item
             Name = 'GetOption'
@@ -126,8 +126,8 @@ object dwsDatabaseLib: TdwsDatabaseLib
                 DataType = 'String'
               end>
             ResultType = 'String'
-            OnEval = dwsDatabaseClassesDataBaseMethodsGetOptionEval
             Kind = mkFunction
+            OnEval = dwsDatabaseClassesDataBaseMethodsGetOptionEval
           end
           item
             Name = 'SetOption'
@@ -140,14 +140,14 @@ object dwsDatabaseLib: TdwsDatabaseLib
                 Name = 'value'
                 DataType = 'String'
               end>
-            OnEval = dwsDatabaseClassesDataBaseMethodsSetOptionEval
             Kind = mkProcedure
+            OnEval = dwsDatabaseClassesDataBaseMethodsSetOptionEval
           end
           item
             Name = 'OptionList'
             ResultType = 'array of String'
-            OnEval = dwsDatabaseClassesDataBaseMethodsOptionListEval
             Kind = mkFunction
+            OnEval = dwsDatabaseClassesDataBaseMethodsOptionListEval
           end>
         Properties = <
           item
@@ -175,19 +175,19 @@ object dwsDatabaseLib: TdwsDatabaseLib
           item
             Name = 'Step'
             ResultType = 'Boolean'
-            OnFastEvalBoolean = dwsDatabaseClassesDataSetMethodsStepFastEvalBoolean
             Kind = mkFunction
+            OnFastEvalBoolean = dwsDatabaseClassesDataSetMethodsStepFastEvalBoolean
           end
           item
             Name = 'Eof'
             ResultType = 'Boolean'
-            OnFastEvalBoolean = dwsDatabaseClassesDataSetMethodsEofFastEvalBoolean
             Kind = mkFunction
+            OnFastEvalBoolean = dwsDatabaseClassesDataSetMethodsEofFastEvalBoolean
           end
           item
             Name = 'Next'
-            OnFastEvalNoResult = dwsDatabaseClassesDataSetMethodsNextFastEvalNoResult
             Kind = mkProcedure
+            OnFastEvalNoResult = dwsDatabaseClassesDataSetMethodsNextFastEvalNoResult
           end
           item
             Name = 'Close'
@@ -196,8 +196,8 @@ object dwsDatabaseLib: TdwsDatabaseLib
           item
             Name = 'FieldCount'
             ResultType = 'Integer'
-            OnFastEvalInteger = dwsDatabaseClassesDataSetMethodsFieldCountFastEvalInteger
             Kind = mkFunction
+            OnFastEvalInteger = dwsDatabaseClassesDataSetMethodsFieldCountFastEvalInteger
           end
           item
             Name = 'GetField'
@@ -207,9 +207,9 @@ object dwsDatabaseLib: TdwsDatabaseLib
                 DataType = 'Integer'
               end>
             ResultType = 'DataField'
-            OnEval = dwsDatabaseClassesDataSetMethodsGetFieldEval
             Visibility = cvProtected
             Kind = mkFunction
+            OnEval = dwsDatabaseClassesDataSetMethodsGetFieldEval
           end
           item
             Name = 'IndexOfField'
@@ -219,8 +219,8 @@ object dwsDatabaseLib: TdwsDatabaseLib
                 DataType = 'String'
               end>
             ResultType = 'Integer'
-            OnFastEvalInteger = dwsDatabaseClassesDataSetMethodsIndexOfFieldFastEvalInteger
             Kind = mkFunction
+            OnFastEvalInteger = dwsDatabaseClassesDataSetMethodsIndexOfFieldFastEvalInteger
           end
           item
             Name = 'FieldByName'
@@ -230,8 +230,8 @@ object dwsDatabaseLib: TdwsDatabaseLib
                 DataType = 'String'
               end>
             ResultType = 'DataField'
-            OnEval = dwsDatabaseClassesDataSetMethodsFieldByNameEval
             Kind = mkFunction
+            OnEval = dwsDatabaseClassesDataSetMethodsFieldByNameEval
           end
           item
             Name = 'FindField'
@@ -241,8 +241,8 @@ object dwsDatabaseLib: TdwsDatabaseLib
                 DataType = 'String'
               end>
             ResultType = 'DataField'
+            Kind = mkFunction
             OnEval = dwsDatabaseClassesDataSetMethodsFindFieldEval
-            Kind = mkFunction
           end
           item
             Name = 'AsString'
@@ -253,8 +253,8 @@ object dwsDatabaseLib: TdwsDatabaseLib
               end>
             ResultType = 'String'
             Overloaded = True
+            Kind = mkFunction
             OnFastEvalString = dwsDatabaseClassesDataSetMethodsAsString_String_FastEvalString
-            Kind = mkFunction
           end
           item
             Name = 'AsString'
@@ -265,8 +265,8 @@ object dwsDatabaseLib: TdwsDatabaseLib
               end>
             ResultType = 'String'
             Overloaded = True
+            Kind = mkFunction
             OnFastEvalString = dwsDatabaseClassesDataSetMethodsAsString_Integer_FastEvalString
-            Kind = mkFunction
           end
           item
             Name = 'AsInteger'
@@ -277,8 +277,8 @@ object dwsDatabaseLib: TdwsDatabaseLib
               end>
             ResultType = 'Integer'
             Overloaded = True
+            Kind = mkFunction
             OnFastEvalInteger = dwsDatabaseClassesDataSetMethodsAsInteger_String_FastEvalInteger
-            Kind = mkFunction
           end
           item
             Name = 'AsInteger'
@@ -289,8 +289,8 @@ object dwsDatabaseLib: TdwsDatabaseLib
               end>
             ResultType = 'Integer'
             Overloaded = True
+            Kind = mkFunction
             OnFastEvalInteger = dwsDatabaseClassesDataSetMethodsAsInteger_Integer_FastEvalInteger
-            Kind = mkFunction
           end
           item
             Name = 'AsFloat'
@@ -301,8 +301,8 @@ object dwsDatabaseLib: TdwsDatabaseLib
               end>
             ResultType = 'Float'
             Overloaded = True
+            Kind = mkFunction
             OnFastEvalFloat = dwsDatabaseClassesDataSetMethodsAsFloat_String_FastEvalFloat
-            Kind = mkFunction
           end
           item
             Name = 'AsFloat'
@@ -313,8 +313,8 @@ object dwsDatabaseLib: TdwsDatabaseLib
               end>
             ResultType = 'Float'
             Overloaded = True
+            Kind = mkFunction
             OnFastEvalFloat = dwsDatabaseClassesDataSetMethodsAsFloat_Integer_FastEvalFloat
-            Kind = mkFunction
           end
           item
             Name = 'AsBlob'
@@ -325,8 +325,8 @@ object dwsDatabaseLib: TdwsDatabaseLib
               end>
             ResultType = 'String'
             Overloaded = True
+            Kind = mkFunction
             OnFastEvalString = dwsDatabaseClassesDataSetMethodsAsBlob_String_FastEvalString
-            Kind = mkFunction
           end
           item
             Name = 'AsBlob'
@@ -337,8 +337,8 @@ object dwsDatabaseLib: TdwsDatabaseLib
               end>
             ResultType = 'String'
             Overloaded = True
-            OnFastEvalString = dwsDatabaseClassesDataSetMethodsAsBlob_Integer_FastEvalString
             Kind = mkFunction
+            OnFastEvalString = dwsDatabaseClassesDataSetMethodsAsBlob_Integer_FastEvalString
           end
           item
             Name = 'IsNull'
@@ -349,8 +349,8 @@ object dwsDatabaseLib: TdwsDatabaseLib
               end>
             ResultType = 'Boolean'
             Overloaded = True
-            OnFastEvalBoolean = dwsDatabaseClassesDataSetMethodsIsNull_String_FastEvalBoolean
             Kind = mkFunction
+            OnFastEvalBoolean = dwsDatabaseClassesDataSetMethodsIsNull_String_FastEvalBoolean
           end
           item
             Name = 'IsNull'
@@ -361,14 +361,14 @@ object dwsDatabaseLib: TdwsDatabaseLib
               end>
             ResultType = 'Boolean'
             Overloaded = True
-            OnFastEvalBoolean = dwsDatabaseClassesDataSetMethodsIsNull_Integer_FastEvalBoolean
             Kind = mkFunction
+            OnFastEvalBoolean = dwsDatabaseClassesDataSetMethodsIsNull_Integer_FastEvalBoolean
           end
           item
             Name = 'Stringify'
             ResultType = 'String'
-            OnFastEvalString = dwsDatabaseClassesDataSetMethodsStringifyFastEvalString
             Kind = mkFunction
+            OnFastEvalString = dwsDatabaseClassesDataSetMethodsStringifyFastEvalString
           end
           item
             Name = 'StringifyAll'
@@ -380,8 +380,8 @@ object dwsDatabaseLib: TdwsDatabaseLib
                 DefaultValue = 0
               end>
             ResultType = 'String'
-            OnFastEvalString = dwsDatabaseClassesDataSetMethodsStringifyAllFastEvalString
             Kind = mkFunction
+            OnFastEvalString = dwsDatabaseClassesDataSetMethodsStringifyAllFastEvalString
           end
           item
             Name = 'StringifyMap'
@@ -393,8 +393,8 @@ object dwsDatabaseLib: TdwsDatabaseLib
                 DefaultValue = 0
               end>
             ResultType = 'String'
-            OnFastEvalString = dwsDatabaseClassesDataSetMethodsStringifyMapFastEvalString
             Kind = mkFunction
+            OnFastEvalString = dwsDatabaseClassesDataSetMethodsStringifyMapFastEvalString
           end
           item
             Name = 'ToSeparated'
@@ -418,8 +418,8 @@ object dwsDatabaseLib: TdwsDatabaseLib
                 DefaultValue = '"'
               end>
             ResultType = 'String'
-            OnFastEvalString = dwsDatabaseClassesDataSetMethodsToSeparatedFastEvalString
             Kind = mkFunction
+            OnFastEvalString = dwsDatabaseClassesDataSetMethodsToSeparatedFastEvalString
           end>
         Properties = <
           item
@@ -440,56 +440,56 @@ object dwsDatabaseLib: TdwsDatabaseLib
           item
             Name = 'Name'
             ResultType = 'String'
-            OnFastEvalString = dwsDatabaseClassesDataFieldMethodsNameFastEvalString
             Kind = mkFunction
+            OnFastEvalString = dwsDatabaseClassesDataFieldMethodsNameFastEvalString
           end
           item
             Name = 'DataType'
             ResultType = 'DataFieldType'
-            OnFastEvalInteger = dwsDatabaseClassesDataFieldMethodsDataTypeFastEvalInteger
             Kind = mkFunction
+            OnFastEvalInteger = dwsDatabaseClassesDataFieldMethodsDataTypeFastEvalInteger
           end
           item
             Name = 'DeclaredType'
             ResultType = 'String'
-            OnFastEvalString = dwsDatabaseClassesDataFieldMethodsDeclaredTypeFastEvalString
             Kind = mkFunction
+            OnFastEvalString = dwsDatabaseClassesDataFieldMethodsDeclaredTypeFastEvalString
           end
           item
             Name = 'IsNull'
             ResultType = 'Boolean'
-            OnFastEvalBoolean = dwsDatabaseClassesDataFieldMethodsIsNullFastEvalBoolean
             Kind = mkFunction
+            OnFastEvalBoolean = dwsDatabaseClassesDataFieldMethodsIsNullFastEvalBoolean
           end
           item
             Name = 'AsString'
             ResultType = 'String'
-            OnFastEvalString = dwsDatabaseClassesDataFieldMethodsAsStringFastEvalString
             Kind = mkFunction
+            OnFastEvalString = dwsDatabaseClassesDataFieldMethodsAsStringFastEvalString
           end
           item
             Name = 'AsInteger'
             ResultType = 'Integer'
-            OnFastEvalInteger = dwsDatabaseClassesDataFieldMethodsAsIntegerFastEvalInteger
             Kind = mkFunction
+            OnFastEvalInteger = dwsDatabaseClassesDataFieldMethodsAsIntegerFastEvalInteger
           end
           item
             Name = 'AsFloat'
             ResultType = 'Float'
-            OnFastEvalFloat = dwsDatabaseClassesDataFieldMethodsAsFloatFastEvalFloat
             Kind = mkFunction
+            OnFastEvalFloat = dwsDatabaseClassesDataFieldMethodsAsFloatFastEvalFloat
           end
           item
             Name = 'AsBoolean'
             ResultType = 'Boolean'
-            OnFastEvalBoolean = dwsDatabaseClassesDataFieldMethodsAsBooleanFastEvalBoolean
             Kind = mkFunction
+            OnFastEvalBoolean = dwsDatabaseClassesDataFieldMethodsAsBooleanFastEvalBoolean
           end
           item
             Name = 'AsBlob'
             ResultType = 'String'
-            OnFastEvalString = dwsDatabaseClassesDataFieldMethodsAsBlobFastEvalString
             Kind = mkFunction
+            OnFastEvalString = dwsDatabaseClassesDataFieldMethodsAsBlobFastEvalString
           end>
         OnCleanUp = dwsDatabaseClassesDataBaseCleanUp
       end
@@ -510,8 +510,8 @@ object dwsDatabaseLib: TdwsDatabaseLib
               end>
             ResultType = 'DataBase'
             Attributes = [maStatic]
-            OnFastEval = dwsDatabaseClassesDataBasePoolMethodsAcquireFastEval
             Kind = mkClassFunction
+            OnFastEval = dwsDatabaseClassesDataBasePoolMethodsAcquireFastEval
           end
           item
             Name = 'Release'
@@ -532,8 +532,8 @@ object dwsDatabaseLib: TdwsDatabaseLib
                 DefaultValue = 3
               end>
             Attributes = [maStatic]
-            OnEval = dwsDatabaseClassesDataBasePoolMethodsReleaseEval
             Kind = mkClassProcedure
+            OnEval = dwsDatabaseClassesDataBasePoolMethodsReleaseEval
           end
           item
             Name = 'Cleanup'
@@ -545,8 +545,8 @@ object dwsDatabaseLib: TdwsDatabaseLib
                 DefaultValue = '*'
               end>
             Attributes = [maStatic]
-            OnFastEvalNoResult = dwsDatabaseClassesDataBasePoolMethodsCleanupFastEvalNoResult
             Kind = mkClassProcedure
+            OnFastEvalNoResult = dwsDatabaseClassesDataBasePoolMethodsCleanupFastEvalNoResult
           end
           item
             Name = 'Count'
@@ -559,8 +559,8 @@ object dwsDatabaseLib: TdwsDatabaseLib
               end>
             ResultType = 'Integer'
             Attributes = [maStatic]
-            OnFastEvalInteger = dwsDatabaseClassesDataBasePoolMethodsCountFastEvalInteger
             Kind = mkClassFunction
+            OnFastEvalInteger = dwsDatabaseClassesDataBasePoolMethodsCountFastEvalInteger
           end>
       end>
     Enumerations = <

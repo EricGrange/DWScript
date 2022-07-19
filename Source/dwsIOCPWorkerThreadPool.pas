@@ -167,7 +167,7 @@ begin
    try
       if dw.FPool <> nil then begin
          dw.FPool.QueueWork(dw.FEvent, dw.FSender);
-         InterlockedDecrement(dw.FPool.FQueueSize);
+         AtomicDecrement(dw.FPool.FQueueSize);
       end;
    finally
       dw.Free;
@@ -366,7 +366,7 @@ procedure TIOCPWorkerThreadPool.IncrementQueueSize;
 var
    n : Integer;
 begin
-   n := InterlockedIncrement(FQueueSize);
+   n := AtomicIncrement(FQueueSize);
    if n > FPeakQueueSize then
       FPeakQueueSize := n;
 end;

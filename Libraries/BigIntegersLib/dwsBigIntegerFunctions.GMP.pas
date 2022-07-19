@@ -544,7 +544,7 @@ end;
 //
 function TBigIntegerWrapper._Release: Integer;
 begin
-   Result := InterlockedDecrement(FRefCount);
+   Result := AtomicDecrement(FRefCount);
    if Result = 0 then
       vPool.Push(Self);
 end;

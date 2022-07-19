@@ -24,7 +24,7 @@ unit dwsDynamicArrays;
 interface
 
 uses
-   Classes, SysUtils,
+   Classes, SysUtils, System.Variants,
    dwsSymbols, dwsUtils, dwsDataContext, dwsJSON;
 
 type
@@ -33,7 +33,7 @@ type
       function AsPDouble(var nbElements, stride : NativeInt) : PDouble;
    end;
 
-   TScriptDynamicDataArray = class (TDataContext, IScriptDynArray)//(TInterfacedSelfObject, IScriptDynArray)//
+   TScriptDynamicDataArray = class (TDataContext, IScriptDynArray)
       private
          FElementTyp : TTypeSymbol;
          FElementSize : Integer;
@@ -116,9 +116,7 @@ type
    TScriptDynamicValueArray = class sealed (TScriptDynamicDataArray)
       public
          class function NewInstance: TObject; override;
-
-         class procedure PrepareInstanceTemplate; static;
-         class procedure ReleaseInstanceTemplate; static;
+         procedure FreeInstance; override;
 
          procedure Swap(i1, i2 : NativeInt); override;
    end;
@@ -423,9 +421,7 @@ type
    TScriptDynamicNativeObjectArray = class sealed (TScriptDynamicNativeBaseInterfaceArray, IScriptDynArray)
       public
          class function NewInstance: TObject; override;
-
-         class procedure PrepareInstanceTemplate; static;
-         class procedure ReleaseInstanceTemplate; static;
+         procedure FreeInstance; override;
 
          procedure AddFromExpr(exec : TdwsExecution; valueExpr : TExprBase);
          function SetFromExpr(index : NativeInt; exec : TdwsExecution; valueExpr : TExprBase) : Boolean;
@@ -504,8 +500,7 @@ type
          procedure WriteToJSON(writer : TdwsJSONWriter);
    end;
 
-function CreateNewDynamicArray(elemTyp : TTypeSymbol) : TInterfacedObject; overload;
-procedure CreateNewDynamicArray(elemTyp : TTypeSymbol; var result : IScriptDynArray); inline; overload;
+procedure CreateNewDynamicArray(elemTyp : TTypeSymbol; var result : IScriptDynArray);
 
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
@@ -548,9 +543,9 @@ begin
       dyn.AsString[i+n] := sl[i];
 end;
 
-// CreateNewDynamicArray (func)
+// CreateNewDynamicArray (proc IScriptDynArray)
 //
-function CreateNewDynamicArray(elemTyp : TTypeSymbol) : TInterfacedObject;
+procedure CreateNewDynamicArray(elemTyp : TTypeSymbol; var result : IScriptDynArray);
 var
    size : Integer;
    ct : TClass;
@@ -575,14 +570,8 @@ begin
 //      else if ct = TInterfaceSymbol then
 //         Result := TScriptDynamicNativeInterfaceArray.Create(elemTyp)
       else Result := TScriptDynamicValueArray.Create(elemTyp)
-   end else Result := TScriptDynamicDataArray.Create(elemTyp);
-end;
 
-// CreateNewDynamicArray (proc IScriptDynArray)
-//
-procedure CreateNewDynamicArray(elemTyp : TTypeSymbol; var result : IScriptDynArray);
-begin
-   result := CreateNewDynamicArray(elemTyp) as IScriptDynArray;
+   end else Result := TScriptDynamicDataArray.Create(elemTyp);
 end;
 
 // ------------------
@@ -733,12 +722,9 @@ end;
 // SetFromExpr
 //
 function TScriptDynamicDataArray.SetFromExpr(index : NativeInt; exec : TdwsExecution; valueExpr : TExprBase) : Boolean;
-var
-   v : Variant;
 begin
    if BoundsCheckPassed(index) then begin
-      valueExpr.EvalAsVariant(exec, v);
-      AsVariant[index] := v;
+      valueExpr.EvalAsVariant(exec, DirectData[Addr+index]);
       Result := True;
    end else Result := False;
 end;
@@ -804,15 +790,16 @@ var
    i, d : NativeInt;
    p : PData;
 begin
-   if count<=0 then Exit;
+   if count <= 0 then Exit;
+
    Dec(FArrayLength, count);
    index:=index*ElementSize;
    count:=count*ElementSize;
    for i:=index to index+count-1 do
       VarClearSafe(DirectData[i]);
-   d:=(FArrayLength-1)*ElementSize+count-index;
+   d := (FArrayLength-1)*ElementSize+count-index;
    p := AsPData;
-   if d>0 then
+   if d > 0 then
       System.Move(p^[index+count], p^[index], d*SizeOf(Variant));
    System.FillChar(p^[FArrayLength*ElementSize], count*SizeOf(Variant), 0);
    SetDataLength(FArrayLength*ElementSize);
@@ -1006,38 +993,20 @@ end;
 // NewInstance
 //
 var
-   vDynamicValueArrayInstanceTemplate : Pointer;
+   vDynamicValueArray : TClassInstanceTemplate<TScriptDynamicValueArray>;
 class function TScriptDynamicValueArray.NewInstance: TObject;
 begin
-   if vDynamicValueArrayInstanceTemplate = nil then begin
-      Result := inherited NewInstance;
-      vDynamicValueArrayInstanceTemplate := GetMemory(InstanceSize);
-      System.Move(Pointer(Result)^, vDynamicValueArrayInstanceTemplate^, InstanceSize);
-   end else begin
-      Result := GetMemory(InstanceSize);
-      System.Move(vDynamicValueArrayInstanceTemplate^, Pointer(Result)^, InstanceSize);
-   end;
+   if not vDynamicValueArray.Initialized then
+      Result := inherited NewInstance
+   else Result := vDynamicValueArray.CreateInstance;
 end;
 
-// PrepareInstanceTemplate
+// FreeInstance
 //
-class procedure TScriptDynamicValueArray.PrepareInstanceTemplate;
-var
-   a : TScriptDynamicValueArray;
+procedure TScriptDynamicValueArray.FreeInstance;
 begin
-   a := TScriptDynamicValueArray.Create(nil);
-   a.Free;
-end;
-
-// ReleaseInstanceTemplate
-//
-class procedure TScriptDynamicValueArray.ReleaseInstanceTemplate;
-var
-   p : Pointer;
-begin
-   p := vDynamicValueArrayInstanceTemplate;
-   vDynamicValueArrayInstanceTemplate := nil;
-   FreeMem(p);
+   ClearData;
+   vDynamicValueArray.ReleaseInstance(Self);
 end;
 
 // Swap
@@ -1211,7 +1180,7 @@ procedure TScriptDynamicNativeIntegerArray.Delete(index, count : NativeInt);
 var
    n : Integer;
 begin
-   n := FArrayLength-1-index;
+   n := FArrayLength-index-count;
    if n > 0 then
       System.Move(FData[index+count], FData[index], n*SizeOf(Int64));
    Dec(FArrayLength, count);
@@ -1628,7 +1597,7 @@ procedure TScriptDynamicNativeFloatArray.Delete(index, count : NativeInt);
 var
    n : Integer;
 begin
-   n := FArrayLength-1-index;
+   n := FArrayLength-index-count;
    if n > 0 then
       System.Move(FData[index+count], FData[index], n*SizeOf(Double));
    Dec(FArrayLength, count);
@@ -2710,38 +2679,20 @@ end;
 // NewInstance
 //
 var
-   vDynamicNativeObjectArrayInstanceTemplate : Pointer;
+   vDynamicNativeObjectArrayTemplate : TClassInstanceTemplate<TScriptDynamicNativeObjectArray>;
 class function TScriptDynamicNativeObjectArray.NewInstance: TObject;
 begin
-   if vDynamicNativeObjectArrayInstanceTemplate = nil then begin
-      Result := inherited NewInstance;
-      vDynamicNativeObjectArrayInstanceTemplate := GetMemory(InstanceSize);
-      System.Move(Pointer(Result)^, vDynamicNativeObjectArrayInstanceTemplate^, InstanceSize);
-   end else begin
-      Result := GetMemory(InstanceSize);
-      System.Move(vDynamicNativeObjectArrayInstanceTemplate^, Pointer(Result)^, InstanceSize);
-   end;
+   if not vDynamicNativeObjectArrayTemplate.Initialized then
+      Result := inherited NewInstance
+   else Result := vDynamicNativeObjectArrayTemplate.CreateInstance;
 end;
 
-// PrepareInstanceTemplate
+// FreeInstance
 //
-class procedure TScriptDynamicNativeObjectArray.PrepareInstanceTemplate;
-var
-   a : TScriptDynamicNativeObjectArray;
+procedure TScriptDynamicNativeObjectArray.FreeInstance;
 begin
-   a := TScriptDynamicNativeObjectArray.Create(nil);
-   a.Free;
-end;
-
-// ReleaseInstanceTemplate
-//
-class procedure TScriptDynamicNativeObjectArray.ReleaseInstanceTemplate;
-var
-   p : Pointer;
-begin
-   p := vDynamicNativeObjectArrayInstanceTemplate;
-   vDynamicNativeObjectArrayInstanceTemplate := nil;
-   FreeMem(p);
+   FData := nil;
+   vDynamicNativeObjectArrayTemplate.ReleaseInstance(Self);
 end;
 
 // SetFromExpr
@@ -3230,12 +3181,12 @@ initialization
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
 
-   TScriptDynamicValueArray.PrepareInstanceTemplate;
-   TScriptDynamicNativeObjectArray.PrepareInstanceTemplate;
+   vDynamicValueArray.Initialize;
+   vDynamicNativeObjectArrayTemplate.Initialize;
 
 finalization
 
-   TScriptDynamicValueArray.ReleaseInstanceTemplate;
-   TScriptDynamicNativeObjectArray.ReleaseInstanceTemplate;
+   vDynamicValueArray.Finalize;
+   vDynamicNativeObjectArrayTemplate.Finalize;
 
 end.

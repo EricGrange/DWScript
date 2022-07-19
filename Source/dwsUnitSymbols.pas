@@ -412,14 +412,14 @@ end;
 //
 function TStaticSymbolTable._AddRef : Integer;
 begin
-   Result:=InterlockedIncrement(FRefCount);
+   Result := AtomicIncrement(FRefCount);
 end;
 
 // _Release
 //
 function TStaticSymbolTable._Release : Integer;
 begin
-   Result:=InterlockedDecrement(FRefCount);
+   Result := AtomicDecrement(FRefCount);
    if Result=0 then
       Destroy;
 end;

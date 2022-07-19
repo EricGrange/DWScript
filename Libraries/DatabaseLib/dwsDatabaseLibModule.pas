@@ -113,10 +113,11 @@ type
       baseExpr: TTypedExpr; const args: TExprBaseListExec): Int64;
     procedure dwsDatabaseClassesDataSetMethodsToSeparatedFastEvalString(
       baseExpr: TTypedExpr; const args: TExprBaseListExec; var result: string);
-    function dwsDatabaseClassesDataBaseMethodsQueryFastEval(
-      baseExpr: TTypedExpr; const args: TExprBaseListExec): Variant;
     procedure dwsDatabaseClassesDataBaseMethodsExecFastEvalNoResult(
       baseExpr: TTypedExpr; const args: TExprBaseListExec);
+    procedure dwsDatabaseClassesDataBaseMethodsQueryFastEvalScriptObj(
+      baseExpr: TTypedExpr; const args: TExprBaseListExec;
+      var result: IScriptObj);
   private
     { Private declarations }
     FFileSystem : IdwsFileSystem;
@@ -712,8 +713,8 @@ begin
    end;
 end;
 
-function TdwsDatabaseLib.dwsDatabaseClassesDataBaseMethodsQueryFastEval(
-  baseExpr: TTypedExpr; const args: TExprBaseListExec): Variant;
+procedure TdwsDatabaseLib.dwsDatabaseClassesDataBaseMethodsQueryFastEvalScriptObj(
+  baseExpr: TTypedExpr; const args: TExprBaseListExec; var result: IScriptObj);
 var
    scriptObj : IScriptObj;
    scriptDyn : IScriptDynArray;
@@ -751,7 +752,7 @@ begin
       dataSet.FWriterOptions := [ woLowerCaseNames ];
 
    dataSetScript.ExternalObject := dataSet;
-   VarCopySafe(Result, dataSetScript as IScriptObj);
+   result := IScriptObj(dataSetScript);
 end;
 
 procedure TdwsDatabaseLib.dwsDatabaseClassesDataBaseMethodsGetOptionEval(

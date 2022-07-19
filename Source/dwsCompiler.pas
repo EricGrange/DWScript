@@ -1562,7 +1562,7 @@ procedure TdwsCompiler.CleanupAfterCompile;
 begin
    DirectSet8087CW(F8087CW);
 
-   if InterlockedDecrement(vCompileTidy)=0 then begin
+   if AtomicDecrement(vCompileTidy)=0 then begin
       TidyStringsUnifier;
       vCompileTidy:=8;
    end;

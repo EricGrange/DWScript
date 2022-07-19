@@ -395,7 +395,7 @@ begin
    if not (aSymbolList.Symbol is TTypeSymbol) then Exit;
 
    symName := aSymbolList.Symbol.Name;
-   if symName[1] = 'E' then begin
+   if (symName[1] = 'E') and (Length(symName) > 1) and CharInSet(symName[2], ['A'..'Z']) then begin
 
       isException := False;
 

@@ -812,6 +812,7 @@ type
          FOnFastEvalInteger : TMethodFastEvalIntegerEvent;
          FOnFastEvalFloat : TMethodFastEvalFloatEvent;
          FOnFastEvalBoolean : TMethodFastEvalBooleanEvent;
+         FOnFastEvalScriptObj : TMethodFastEvalScriptObjEvent;
 
       protected
          function GetDisplayName: String; override;
@@ -830,6 +831,9 @@ type
 
       published
          property Attributes: TMethodAttributes read FAttributes write SetAttributes default [];
+         property Visibility : TdwsVisibility read FVisibility write FVisibility default cvPublic;
+         property Kind: TMethodKind read FKind write FKind;
+
          property OnEval : TMethodEvalEvent read GetOnEval write SetOnEval;
          property OnFastEval : TMethodFastEvalEvent read FOnFastEval write FOnFastEval;
          property OnFastEvalNoResult : TMethodFastEvalNoResultEvent read FOnFastEvalNoResult write FOnFastEvalNoResult;
@@ -837,8 +841,7 @@ type
          property OnFastEvalInteger : TMethodFastEvalIntegerEvent read FOnFastEvalInteger write FOnFastEvalInteger;
          property OnFastEvalFloat : TMethodFastEvalFloatEvent read FOnFastEvalFloat write FOnFastEvalFloat;
          property OnFastEvalBoolean : TMethodFastEvalBooleanEvent read FOnFastEvalBoolean write FOnFastEvalBoolean;
-         property Visibility : TdwsVisibility read FVisibility write FVisibility default cvPublic;
-         property Kind: TMethodKind read FKind write FKind;
+         property OnFastEvalScriptObj : TMethodFastEvalScriptObjEvent read FOnFastEvalScriptObj write FOnFastEvalScriptObj;
    end;
 
    TdwsMethods = class(TdwsCollection)
@@ -3878,7 +3881,8 @@ begin
 
    if    Assigned(FOnFastEval) or Assigned(FOnFastEvalNoResult)
       or Assigned(FOnFastEvalString) or Assigned(FOnFastEvalInteger)
-      or Assigned(FOnFastEvalFloat) or Assigned(FOnFastEvalBoolean) then begin
+      or Assigned(FOnFastEvalFloat) or Assigned(FOnFastEvalBoolean)
+      or Assigned(FOnFastEvalScriptObj) then begin
       if maVirtual in Attributes then
          raise Exception.Create(UNT_FastEvalNotSupportedForVirtualMethods);
 
@@ -3891,6 +3895,7 @@ begin
       TMagicMethodSymbol(methSymbol).OnFastEvalInteger := FOnFastEvalInteger;
       TMagicMethodSymbol(methSymbol).OnFastEvalBoolean := FOnFastEvalBoolean;
       TMagicMethodSymbol(methSymbol).OnFastEvalFloat := FOnFastEvalFloat;
+      TMagicMethodSymbol(methSymbol).OnFastEvalScriptObj := FOnFastEvalScriptObj;
    end else begin
       methSymbol:=TMethodSymbol.Generate(table, Kind, Attributes, Name,
                                          GetParameters(systemTable, table), ResultType,
@@ -3901,7 +3906,6 @@ begin
       methSymbol.Params.AddParent(table);
       methSymbol.DeprecatedMessage := Deprecated;
       methSymbol.IsOverloaded := Overloaded;
-
    except
       methSymbol.Free;
       raise;

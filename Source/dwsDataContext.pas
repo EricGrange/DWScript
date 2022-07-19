@@ -115,8 +115,9 @@ type
    end;
    PDataPtrPool= ^TDataContextPool;
 
-   TDataContext = class(TInterfacedObject, IDataContext, IGetSelf)
+   TDataContext = class(TObject, IInterface, IDataContext, IGetSelf)
       private
+         FRefCount : Integer;
          FAddr : NativeInt;
          FNext : TDataContext;
          FData : TData;
@@ -137,15 +138,22 @@ type
          function GetAsInterface(addr : NativeInt) : IUnknown; inline;
          procedure SetAsInterface(addr : NativeInt; const value : IUnknown); inline;
 
+      protected
+         function QueryInterface(const IID: TGUID; out Obj): HResult; stdcall;
+         function _AddRef: Integer; stdcall;
          function _Release: Integer; stdcall;
 
-      protected
+         property RefCount : Integer read FRefCount;
          property DirectData : TData read FData write FData;
 
       public
          constructor CreateStandalone(size : NativeInt);
          constructor CreateCopy(const ref : IDataContext);
          constructor CreateAcquireData(const data : TData);
+
+         procedure AfterConstruction; override;
+         procedure BeforeDestruction; override;
+         class function NewInstance: TObject; override;
 
          function GetSelf : TObject;
          function ScriptTypeName : String; virtual;
@@ -586,15 +594,6 @@ end;
 // ------------------ TDataContext ------------------
 // ------------------
 
-// _Release
-//
-function TDataContext._Release: Integer;
-begin
-   Result := InterlockedDecrement(FRefCount);
-   if Result = 0 then
-      FPool.Push(Self);
-end;
-
 // CreateStandalone
 //
 constructor TDataContext.CreateStandalone(size : NativeInt);
@@ -755,9 +754,64 @@ var
    p : PVarData;
 begin
    p:=@FData[FAddr+addr];
-   if p^.VType=varUnknown then
-      IUnknown(p^.VUnknown):=value
-   else VarCopySafe(PVariant(p)^, value);
+   case p^.VType of
+      varEmpty : begin
+         p^.VType := varUnknown;
+         IUnknown(p^.VUnknown) := value
+      end;
+      varUnknown :
+         IUnknown(p^.VUnknown) := value
+   else
+      VarCopySafe(PVariant(p)^, value);
+   end;
+end;
+
+// QueryInterface
+//
+function TDataContext.QueryInterface(const IID: TGUID; out Obj): HResult;
+begin
+   if GetInterface(IID, Obj) then
+      Result := 0
+   else Result := E_NOINTERFACE;
+end;
+
+// _AddRef
+//
+function TDataContext._AddRef: Integer;
+begin
+   Result := AtomicIncrement(FRefCount);
+end;
+
+// _Release
+//
+function TDataContext._Release: Integer;
+begin
+   Result := AtomicDecrement(FRefCount);
+   if Result = 0 then
+      FPool.Push(Self);
+end;
+
+// AfterConstruction
+//
+procedure TDataContext.AfterConstruction;
+begin
+   AtomicDecrement(FRefCount);
+end;
+
+// BeforeDestruction
+//
+procedure TDataContext.BeforeDestruction;
+begin
+   if FRefCount <> 0 then
+      Error(reInvalidPtr);
+end;
+
+// NewInstance
+//
+class function TDataContext.NewInstance: TObject;
+begin
+   Result := inherited NewInstance;
+   TDataContext(Result).FRefCount := 1;
 end;
 
 // AsPData

@@ -35,6 +35,7 @@ type
    TSingleDynArray = array of Single;
    TDoubleDynArray = array of Double;
    TInterfaceDynArray = array of IUnknown;
+   TVariantDynArray = array of Variant;
 
    TInt64Array = array [0..High(MaxInt) shr 4] of Int64;
    PInt64Array = ^TInt64Array;
@@ -912,14 +913,29 @@ type
       {$endif}
    end;
 
-   TClassCloneConstructor<T: class> = record
+   TClassCloneConstructor<T: class, constructor> = record
       private
          FTemplate : T;
          FSize : Integer;
+
       public
          procedure Initialize(aTemplate : T);
          procedure Finalize;
          function Create : T; inline;
+   end;
+
+   TClassInstanceTemplate<T: class> = record
+      private
+         FTemplate : Pointer;
+         FPool : Pointer;
+
+      public
+         procedure Initialize;
+         procedure Finalize;
+         function Initialized : Boolean; inline;
+
+         function CreateInstance : T; inline;
+         procedure ReleaseInstance(instance : T); inline;
    end;
 
    ETightListOutOfBound = class(Exception)
@@ -6548,7 +6564,7 @@ begin
    {$else}
    p:=PInteger(NativeInt(Self)+InstanceSize-hfFieldSize+hfMonitorOffset);
    {$endif}
-   Result:=InterlockedIncrement(p^);
+   Result := AtomicIncrement(p^);
 end;
 
 // DecRefCount
@@ -6565,7 +6581,7 @@ begin
    if p^=0 then begin
       Destroy;
       Result:=0;
-   end else Result:=InterlockedDecrement(p^);
+   end else Result := AtomicDecrement(p^);
 end;
 
 // GetRefCount
@@ -7860,6 +7876,61 @@ begin
    b := buf;
 end;
 
+// ------------------
+// ------------------ TClassInstanceTemplate<T> ------------------
+// ------------------
+
+// Initialize
+//
+procedure TClassInstanceTemplate<T>.Initialize;
+begin
+   FTemplate := T.NewInstance;
+   FPool := nil;
+end;
+
+// Finalize
+//
+procedure TClassInstanceTemplate<T>.Finalize;
+begin
+   if FTemplate <> nil then begin
+      TObject(FTemplate).FreeInstance;
+      FTemplate := nil;
+   end;
+   if FPool <> nil then begin
+      TObject(FPool).FreeInstance;
+      FPool := nil;
+   end;
+end;
+
+// Initialized
+//
+function TClassInstanceTemplate<T>.Initialized : Boolean;
+begin
+   Result := FTemplate <> nil;
+end;
+
+// CreateInstance
+//
+function TClassInstanceTemplate<T>.CreateInstance : T;
+begin
+   Result := FPool;
+   if Result <> nil then
+      Result := InterlockedCompareExchangePointer(FPool, nil, Pointer(Result));
+   if Result = nil then
+      Result := GetMemory(T.InstanceSize);
+   System.Move(Pointer(FTemplate)^, Pointer(Result)^, T.InstanceSize);
+end;
+
+// ReleaseInstance
+//
+procedure TClassInstanceTemplate<T>.ReleaseInstance(instance : T);
+begin
+   if FPool <> nil then
+      FreeMemory(Pointer(instance))
+   else if InterlockedCompareExchangePointer(FPool, Pointer(instance), nil) <> nil then
+      FreeMemory(Pointer(instance));
+end;
+
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
@@ -7889,8 +7960,9 @@ initialization
 finalization
 
    FinalizeStringsUnifier;
-   TSimpleIntegerStack.vTemplate.Free;
-   TObject(vWOBSPool).Free;
+
+   FreeAndNil(TSimpleIntegerStack.vTemplate);
+   FreeAndNil(TObject(vWOBSPool));
 
 end.
 

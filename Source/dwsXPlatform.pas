@@ -303,8 +303,8 @@ function ASCIISameText(const s1, s2 : String) : Boolean; inline;
 function NormalizeString(const s, form : String) : String;
 function StripAccents(const s : String) : String;
 
-function InterlockedIncrement(var val : Integer) : Integer; overload; {$IFDEF PUREPASCAL} inline; {$endif}
-function InterlockedDecrement(var val : Integer) : Integer; {$IFDEF PUREPASCAL} inline; {$endif}
+function InterlockedIncrement(var val : Integer) : Integer; overload; {$IFDEF PUREPASCAL} inline; {$endif} deprecated 'use AtomicIncrement';
+function InterlockedDecrement(var val : Integer) : Integer; {$IFDEF PUREPASCAL} inline; {$endif} deprecated 'use AtomicDecrement';
 
 procedure FastInterlockedIncrement(var val : Integer); {$IFDEF PUREPASCAL} inline; {$endif}
 procedure FastInterlockedDecrement(var val : Integer); {$IFDEF PUREPASCAL} inline; {$endif}
@@ -1069,7 +1069,7 @@ end;
 procedure FastInterlockedIncrement(var val : Integer);
 {$ifndef WIN32_ASM}
 begin
-   InterlockedIncrement(val);
+   AtomicIncrement(val);
 {$else}
 asm
    lock  inc [eax]
@@ -1081,7 +1081,7 @@ end;
 procedure FastInterlockedDecrement(var val : Integer);
 {$ifndef WIN32_ASM}
 begin
-   InterlockedDecrement(val);
+   AtomicDecrement(val);
 {$else}
 asm
    lock  dec [eax]

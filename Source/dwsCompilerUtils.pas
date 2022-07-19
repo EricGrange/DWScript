@@ -444,6 +444,8 @@ begin
             Result := TMagicMethodFloatExpr.Create(context, scriptPos, magicMethodSym, expr)
          else if Assigned(magicMethodSym.OnFastEvalNoResult) then
             Result := TMagicMethodNoResultExpr.Create(context, scriptPos, magicMethodSym, expr)
+         else if Assigned(magicMethodSym.OnFastEvalScriptObj) then
+            Result := TMagicMethodScriptObjExpr.Create(context, scriptPos, magicMethodSym, expr)
          else Result := TMagicMethodExpr.Create(context, scriptPos, magicMethodSym, expr);
       end;
 

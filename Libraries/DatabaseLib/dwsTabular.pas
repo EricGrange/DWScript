@@ -713,14 +713,14 @@ end;
 //
 procedure TdwsTabular.IncSharedCount;
 begin
-   InterlockedIncrement(FSharedCount);
+   AtomicIncrement(FSharedCount);
 end;
 
 // DecSharedCount
 //
 procedure TdwsTabular.DecSharedCount;
 begin
-   InterlockedDecrement(FSharedCount);
+   AtomicDecrement(FSharedCount);
 end;
 
 // ------------------

@@ -535,12 +535,9 @@ var
    procedure ConvDirectly;
    var
       i : Integer;
-      buf : Variant;
    begin
-      for i := 0 to arr.ElementCount-1 do begin
-         arr.Elements[i].EvalAsVariant(exec, buf);
-         result.AsVariant[i] := buf;
-      end;
+      for i := 0 to arr.ElementCount-1 do
+         result.SetFromExpr(i, exec, arr.Elements[i]);
    end;
 
 var
