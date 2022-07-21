@@ -2617,7 +2617,7 @@ begin
    else
       rootBlock:=FTok.Test(ttBEGIN);
       Result:=ReadStatement(action, initVarBlockExpr);
-      if rootBlock and FTok.TestDelete(ttDOT) then
+      if rootBlock and (CurrentProg.Level = 0) and FTok.TestDelete(ttDOT) then
          action:=saEnd;
    end;
 end;
