@@ -290,7 +290,7 @@ begin
 
       Result:=Format( '%%define %0:s %1:s [0x%2:x]'#13#10
                      +'%%define @%0:s 0x%2:x',
-                     [sym.Name, size, NativeUInt(@(TConstSymbol(sym).Data[0]))+$8]);
+                     [sym.Name, size, NativeUInt(@(TConstSymbol(sym).DataContext.AsPData^[0]))+$8]);
 
    end else if sym is TDataSymbol then begin
 
