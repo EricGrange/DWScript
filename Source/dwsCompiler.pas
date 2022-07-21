@@ -8007,7 +8007,7 @@ begin
          amkAdd, amkPush :
             argList.DefaultExpected:=TParamSymbol.Create('', arraySym.Typ);
 
-         amkIndexOf, amkRemove : begin
+         amkIndexOf, amkRemove, amkContains : begin
             argSymTable:=TUnSortedSymbolTable.Create;
             argSymTable.AddSymbol(TParamSymbol.Create('', arraySym.Typ));
             argList.Table:=argSymTable;
@@ -8117,6 +8117,18 @@ begin
                   argList.Clear;
                end else begin
                   Result := indexOfClass.Create(FCompilerContext, namePos, baseExpr, nil, nil);
+               end;
+            end;
+
+            amkContains: begin
+               CheckDynamicOrStatic;
+               if CheckArguments(1, 1) then begin
+                  if (argList[0].Typ=nil) or not arraySym.Typ.IsCompatible(argList[0].Typ) then begin
+                     argList[0] := CompilerUtils.WrapWithImplicitConversion(FCompilerContext, argList[0], arraySym.Typ,
+                                                                           argPosArray[0], CPE_IncompatibleParameterTypes);
+                  end;
+                  Result := CompilerUtils.ArrayContains(FCompilerContext, namePos, baseExpr, argList[0]);
+                  argList.Clear;
                end;
             end;
 
@@ -11187,7 +11199,6 @@ var
    classOpSymbol : TClassOperatorSymbol;
    classOpExpr : TFuncExprBase;
    argPosArray : TScriptPosArray;
-   indexOfExprClass : TArrayIndexOfExprClass;
 begin
    hotPos:=FTok.HotPos;
 
@@ -11222,15 +11233,7 @@ begin
                end;
             end;
 
-            indexOfExprClass := TArrayIndexOfExpr.ArrayIndexOfExprClass(setExpr.Typ as TArraySymbol);
-            Result := indexOfExprClass.Create(FCompilerContext, hotPos, setExpr, left, nil);
-            if indexOfExprClass.InheritsFrom(TStaticArrayIndexOfExpr) then begin
-               TStaticArrayIndexOfExpr(Result).ForceZeroBased := True;
-               if setExpr.Typ.ClassType <> TStaticArraySymbol then
-                  FMsgs.AddCompilerError(hotPos, CPE_IncompatibleOperands);
-            end;
-            Result := TRelGreaterEqualIntExpr.Create(FCompilerContext, hotPos, ttIN, Result,
-                                                   FUnifiedConstants.CreateInteger(0));
+            Result := CompilerUtils.ArrayContains(FCompilerContext, hotPos, setExpr, left);
 
          end else if setExpr.Typ is TSetOfSymbol then begin
 

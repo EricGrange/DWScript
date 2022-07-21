@@ -572,7 +572,8 @@ begin
    var p := FProg.ProgramObject.CompilerContext;
    for var amk in [
          amkLow, amkHigh,
-         amkLength, amkCount
+         amkLength, amkCount,
+         amkIndexOf, amkContains
       ] do begin
       list.Add(a.PseudoMethodSymbol(amk, p));
    end;
@@ -585,7 +586,7 @@ begin
    var p := FProg.ProgramObject.CompilerContext;
    for var amk in [
          amkAdd, amkPush, amkPop, amkPeek, amkDelete, amkRemove, amkInsert,
-         amkIndexOf,
+         amkIndexOf, amkContains,
          amkMove, amkSwap, amkReverse,
          amkSetLength, amkClear,
          amkCopy,

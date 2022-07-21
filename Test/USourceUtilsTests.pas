@@ -379,11 +379,13 @@ begin
    scriptPos:=TScriptPos.Create(prog.SourceList[0].SourceFile, 2, 3);
    sugg:=TdwsSuggestions.Create(prog, scriptPos, [soNoReservedWords]);
 
-   CheckTrue(sugg.Count=4, 's.');
-   CheckEquals('Count', sugg.Code[0], 's. 0');
-   CheckEquals('High', sugg.Code[1], 's. 1');
-   CheckEquals('Length', sugg.Code[2], 's. 2');
-   CheckEquals('Low', sugg.Code[3], 's. 3');
+   var expected := [
+      'Contains', 'Count', 'High',
+      'IndexOf', 'Length', 'Low'
+   ];
+   CheckEquals(Length(expected), sugg.Count, 's. Length');
+   for var i := 0 to High(expected) do
+      CheckEquals(expected[i], sugg.Code[i], 's. ' + IntToStr(i));
 
    scriptPos:=TScriptPos.Create(prog.SourceList[0].SourceFile, 2, 4);
    sugg:=TdwsSuggestions.Create(prog, scriptPos, [soNoReservedWords]);
@@ -423,7 +425,7 @@ begin
    sugg:=TdwsSuggestions.Create(prog, scriptPos, [soNoReservedWords]);
 
    var expected := [
-      'Add', 'Clear', 'Copy', 'Count', 'Delete', 'Filter', 'High',
+      'Add', 'Clear', 'Contains', 'Copy', 'Count', 'Delete', 'Filter', 'High',
       'IndexOf', 'Insert', 'Length', 'Low', 'Map', 'Move',
       'Peek', 'Pop', 'Push', 'Remove', 'Reverse',
       'SetLength', 'Sort', 'Swap'

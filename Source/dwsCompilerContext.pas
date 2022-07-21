@@ -84,6 +84,7 @@ type
          function Table : TSymbolTable;
 
          function CreateConstExpr(typ : TTypeSymbol; const value : Variant) : TExprBase;
+         function CreateInteger(value : Int64) : TExprBase;
 
          function WrapWithImplicitCast(toTyp : TTypeSymbol; const scriptPos : TScriptPos; var expr) : Boolean;
          function FindType(const typName : String) : TTypeSymbol; override;
@@ -249,6 +250,13 @@ begin
    else if typ.typ = TypInteger then
       Result := TConstIntExpr.Create(cNullPos, typ, value)
    else Result := TConstExpr.CreateValue(cNullPos, typ, value);
+end;
+
+// CreateInteger
+//
+function TdwsCompilerContext.CreateInteger(value : Int64) : TExprBase;
+begin
+   Result := TUnifiedConstants(FUnifiedConstants).CreateInteger(value);
 end;
 
 // WrapWithImplicitCast
