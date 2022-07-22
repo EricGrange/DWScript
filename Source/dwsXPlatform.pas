@@ -187,7 +187,7 @@ type
       case Integer of
       0: (
          LowPart: DWORD;
-         HighPart: Longint
+         HighPart: DWORD;
       );
       1: (
          QuadPart: Int64
