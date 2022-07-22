@@ -2167,7 +2167,7 @@ begin
       if not WriteFile(hFile, buffer^, bytesToWrite, Cardinal(bytesToWrite), nil) then
          RaiseLastOSError;
       {$else}
-      bytesToWrite := SysUtils.FileRead(hFile, buffer^, byteCount);
+      bytesToWrite := SysUtils.FileWrite(hFile, buffer^, byteCount);
       if bytesToWrite = -1 then
          raise Exception.Create('file write exception')
       {$endif}
@@ -2195,7 +2195,7 @@ begin
       if not ReadFile(hFile, buffer^, bytesToRead, Cardinal(bytesToRead), nil) then
          RaiseLastOSError;
       {$else}
-      bytesToRead := SysUtils.FileWrite(hFile, buffer^, byteCount);
+      bytesToRead := SysUtils.FileRead(hFile, buffer^, byteCount);
       if bytesToRead = -1 then
          raise Exception.Create('file read exception')
       {$endif}
