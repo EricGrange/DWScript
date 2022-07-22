@@ -1304,16 +1304,9 @@ var
    mix : NativeUInt;
 begin
    // based on xxHash finalizers
-   {$ifdef CPU64}
-   mix := NativeUInt(x);
-   mix := (mix xor (mix shr 33)) * 14029467366897019727;
-   mix := (mix xor (mix shr 29)) * 1609587929392839161;
-   mix := mix xor (mix shr 32);
-   {$else}
    mix := (NativeUInt(x) shr 2) * Cardinal(2246822519);
    mix := (mix xor (mix shr 15)) * Cardinal(3266489917);
    Result := (mix xor (mix shr 16));
-   {$endif}
    if Result = 0 then Result := 1;
 end;
 
