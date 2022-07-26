@@ -245,6 +245,7 @@ type
          function IsFloat(expr : TTypedExpr) : Boolean; overload; inline;
          function IsFloat(typ : TTypeSymbol) : Boolean; overload;
          function IsInteger(expr : TTypedExpr) : Boolean; overload;
+         function IsInteger(typ : TTypeSymbol) : Boolean; overload;
          function IsBoolean(expr : TTypedExpr) : Boolean; overload;
          function IsDynamicArray(expr : TTypedExpr) : Boolean; overload;
          function IsInterface(expr : TTypedExpr) : Boolean; overload;
@@ -734,6 +735,13 @@ end;
 function TdwsJIT.IsInteger(expr : TTypedExpr) : Boolean;
 begin
    Result:=(expr.Typ.UnAliasedType.ClassType=TBaseIntegerSymbol);
+end;
+
+// IsInteger
+//
+function TdwsJIT.IsInteger(typ : TTypeSymbol) : Boolean;
+begin
+   Result:=(typ.UnAliasedType.ClassType=TBaseIntegerSymbol);
 end;
 
 // IsBoolean
