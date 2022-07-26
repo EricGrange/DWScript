@@ -888,7 +888,7 @@ begin
       prog:=FCompiler.Compile( 'var f := ConnectForm("ConnectorTestForm");'#13#10
                               +'Print(f.Name);'#13#10
                               +'f.Name := "Hello";'#13#10
-                              +'var lbl := CreateComponent(f, "StdCtrls.TLabel");'#13#10
+                              +'var lbl := CreateComponent(f, "Vcl.StdCtrls.TLabel");'#13#10
                               +'lbl.Caption := "World";'#13#10
                               +'CreateComponent(f, "TLabel").Caption := "Label2";'#13#10
                               );
