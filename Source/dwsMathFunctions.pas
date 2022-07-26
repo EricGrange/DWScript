@@ -329,6 +329,7 @@ function Lcm(const a, b : Int64) : Int64;
 function LeastFactor(const n : Int64) : Int64;
 function IsPrime(const n : Int64) : Boolean;
 function IsFinite(const v : Double) : Boolean;
+function FloatSign(const v : Double) : Int64;
 
 function Haversine(lat1, lon1, lat2, lon2, r : Double) : Double;
 
@@ -409,6 +410,20 @@ end;
 function IsFinite(const v : Double) : Boolean;
 begin
    Result:=not (IsNan(v) or IsInfinite(v));
+end;
+
+// FloatSign
+//
+function FloatSign(const v : Double) : Int64;
+var
+   iv : Int64;
+begin
+   iv := PInt64(@v)^;
+   if (iv and $7FFFFFFFFFFFFFFF) = 0 then
+      Result := 0
+   else if (iv and $8000000000000000) = $8000000000000000 then
+      Result := -1
+   else Result := 1;
 end;
 
 // Haversine
@@ -702,7 +717,7 @@ end;
 
 function TSignFunc.DoEvalAsInteger(const args : TExprBaseListExec) : Int64;
 begin
-   Result:=Sign(args.AsFloat[0]);
+   Result := FloatSign(args.AsFloat[0]);
 end;
 
 { TSignIntFunc }
