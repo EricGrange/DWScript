@@ -800,7 +800,8 @@ var
    vAddr_CoTan : function (const v : Double) : Double = Math.Cotan;
    vAddr_ArcTan2 : function (const x, y : Double) : Double = Math.ArcTan2;
    vAddr_Hypot : function (const x, y : Double) : Double = Math.Hypot;
-   vAddr_Sign : function (const x : Double) : Int64 = FloatSign;
+   vAddr_SignFloat : function (const x : Double) : Int64 = SignFloat;
+   vAddr_SignInt : function (const x : Int64) : Int64 = SignInt64;
 
 // ------------------
 // ------------------ TdwsJITx86_64 ------------------
@@ -1102,7 +1103,8 @@ begin
    RegisterJITter(TTruncFunc,                   Tx86DirectCallFunc.Create(Self, @vAddr_Trunc));
    RegisterJITter(TFracFunc,                    Tx86DirectCallFunc.Create(Self, @vAddr_Frac));
 
-   RegisterJITter(TSignFunc,                    Tx86DirectCallFunc.Create(Self, @vAddr_Sign));
+   RegisterJITter(TSignFunc,                    Tx86DirectCallFunc.Create(Self, @vAddr_SignFloat));
+   RegisterJITter(TSignIntFunc,                 Tx86DirectCallFunc.Create(Self, @vAddr_SignInt));
 
    RegisterJITter(TIsNaNFunc,                   Tx86DirectCallFunc.Create(Self, @vAddr_IsNaN));
    RegisterJITter(TIsInfiniteFunc,              FInterpretedJITter.IncRefCount);// Tx86DirectCallFunc.Create(Self, @@vAddr_IsInfinite));
@@ -5310,8 +5312,9 @@ var
    i : Integer;
    p : TParamSymbol;
    paramReg : array of TxmmRegister;
+   gpr : TgpRegister64;
 begin
-   Result:=False;
+   Result := False;
 
    Assert(funcSym.Params.Count <= 2); // TODO support different number of parameters
 
@@ -5321,6 +5324,11 @@ begin
       p:=funcSym.Params[i];
       if jit.IsFloat(p.Typ) then begin
          paramReg[i] := jit.CompileFloat(args[i] as TTypedExpr);
+      end else if jit.IsInteger(p.Typ) and (funcSym.Params.Count = 1) then begin
+         paramReg[i] := xmmNone;
+         gpr := jit.CompileIntegerToRegister(args[i] as TTypedExpr);
+         x86._mov_reg_reg(gprRCX, gpr);
+         jit.ReleaseGPReg(gpr);
       end else Exit;
    end;
 
