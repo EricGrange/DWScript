@@ -635,6 +635,7 @@ type
    TDivExpr = class(TIntegerBinOpExpr)
       function EvalAsInteger(exec : TdwsExecution) : Int64; override;
       function Optimize(context : TdwsCompilerContext) : TProgramExpr; override;
+      procedure RaiseDivisionByZero(exec : TdwsExecution);
    end;
    // a div const b
    TDivConstExpr = class(TIntegerBinOpExpr)
@@ -4519,13 +4520,14 @@ end;
 // TDivExpr
 //
 function TDivExpr.EvalAsInteger(exec : TdwsExecution) : Int64;
+var
+   n, d : Int64;
 begin
-   try
-      Result:=FLeft.EvalAsInteger(exec) div FRight.EvalAsInteger(exec);
-   except
-      exec.SetScriptError(Self);
-      raise;
-   end;
+   n := FLeft.EvalAsInteger(exec);
+   d := FRight.EvalAsInteger(exec);
+   if d = 0 then
+      RaiseDivisionByZero(exec);
+   Result := n div d;
 end;
 
 // Optimize
@@ -4541,6 +4543,14 @@ begin
       Right:=nil;
       Orphan(context);
    end;
+end;
+
+// RaiseDivisionByZero
+//
+procedure TDivExpr.RaiseDivisionByZero(exec : TdwsExecution);
+begin
+   exec.SetScriptError(Self);
+   RaiseScriptError(exec, EScriptError.Create(CPE_DivisionByZero));
 end;
 
 // ------------------

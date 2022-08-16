@@ -2082,8 +2082,11 @@ begin
             Debugger.NotifyException(Self, e.ExceptionObj);
          Msgs.AddRuntimeError(e.ScriptPos, e.Message, e.ScriptCallStack);
       end;
-      on e: EScriptError do
+      on e: EScriptError do begin
+         if IsDebugging then
+            Debugger.NotifyException(Self, nil);
          Msgs.AddRuntimeError(e.ScriptPos, e.Message, e.ScriptCallStack);
+      end;
       on e: EScriptStackException do
          Msgs.AddRuntimeError(LastScriptError.ScriptPos,
                               e.Message,
