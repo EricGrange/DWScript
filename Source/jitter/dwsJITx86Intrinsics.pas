@@ -426,6 +426,8 @@ type
          procedure _imul_reg_reg_imm(dest, operand : TgpRegister64; value : Int64);
          procedure _imul_reg_reg(dest, operand : TgpRegister64);
 
+         procedure _idiv_qword_ptr_reg(reg : TgpRegister64; offset : Integer);
+
          procedure _neg_reg(reg : TgpRegister64);
          procedure _not_reg(reg : TgpRegister64);
 
@@ -470,6 +472,8 @@ type
          procedure _call_reg(reg : TgpRegister64; offset : Integer);
 
          procedure _test_al_al;
+
+         procedure _cqo;
 
          procedure _cvtsi2sd(dest : TxmmRegister; src : TgpRegister64);
          procedure _cvtsd2si(dest : TgpRegister64; src : TxmmRegister);
@@ -2744,6 +2748,17 @@ begin
    ]);
 end;
 
+// _idiv_qword_ptr_reg
+//
+procedure Tx86_64_WriteOnlyStream._idiv_qword_ptr_reg(reg : TgpRegister64; offset : Integer);
+begin
+   if reg < gprR8 then
+      WriteByte($48)
+   else WriteByte($49);
+   WriteByte($f7);
+   _modRMSIB_ptr_reg8($38, Ord(reg) and 7, offset);
+end;
+
 // _neg_reg
 //
 procedure Tx86_64_WriteOnlyStream._neg_reg(reg : TgpRegister64);
@@ -3061,6 +3076,13 @@ end;
 procedure Tx86_64_WriteOnlyStream._test_al_al;
 begin
    WriteBytes([$84, $C0]);
+end;
+
+// _cqo
+//
+procedure Tx86_64_WriteOnlyStream._cqo;
+begin
+   WriteBytes([$49, $99]);
 end;
 
 // _cvtsi2sd

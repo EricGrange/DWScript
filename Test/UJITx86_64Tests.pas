@@ -50,7 +50,8 @@ type
 //         procedure xor_and_or_cmp_32;
 //         procedure xor_and_or_cmp_reg;
 //         procedure mul_imul_reg;
-         procedure mul_imul_dword_ptr_reg;
+         procedure imul_qword_ptr_reg;
+         procedure idiv_qword_ptr_reg;
          procedure push_pop;
          procedure nops;
          procedure calls;
@@ -974,9 +975,9 @@ begin
    end;
 end;
 }
-// mul_imul_dword_ptr_reg
+// imul_qword_ptr_reg
 //
-procedure TJITx86_64Tests.mul_imul_dword_ptr_reg;
+procedure TJITx86_64Tests.imul_qword_ptr_reg;
 var
    reg, src : TgpRegister64;
    offset : Integer;
@@ -1000,6 +1001,35 @@ begin
             expect:= expect+'imul '+cgpRegister64Name[reg]+', qword ptr ['+cgpRegister64Name[src]+offsetText+']'#13#10
                  ;
          end;
+         CheckEquals(expect, DisasmStream);
+      end;
+   end;
+end;
+
+// idiv_qword_ptr_reg
+//
+procedure TJITx86_64Tests.idiv_qword_ptr_reg;
+var
+   reg : TgpRegister64;
+   offset : Integer;
+   expect, offsetText : String;
+begin
+   for offset:=0 to 2 do begin
+      for reg:=gprRAX to gprR15 do begin
+         case offset of
+            1 : offsetText:='+40h';
+            2 : offsetText:='+00000080h';
+         else
+            if reg in [gprRBP, gprRSP, gprR12, gprR13] then
+               offsetText:='+00h'
+            else offsetText:='';
+         end;
+//         expect:='mul qword ptr ['+cgpRegisterName[src]+offsetText+']'#13#10;
+//         FStream._mul_qword_ptr_reg(src, offset*$40);
+         expect := '';
+         FStream._idiv_qword_ptr_reg(reg, offset*$40);
+         expect:= expect+'idiv qword ptr ['+cgpRegister64Name[reg]+offsetText+']'#13#10
+              ;
          CheckEquals(expect, DisasmStream);
       end;
    end;
