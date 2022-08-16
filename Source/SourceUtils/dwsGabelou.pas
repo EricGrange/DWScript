@@ -297,7 +297,7 @@ begin
       symPos := symPosList.FindUsage(suDeclaration);
       if     (symPos <> nil)
          and (   (restrictToSourceFile = nil)
-              or (symPos.ScriptPos.SourceFile <> restrictToSourceFile)) then begin
+              or (symPos.ScriptPos.SourceFile = restrictToSourceFile)) then begin
          EvaluateSymbol(symPosList, msgs);
       end;
    end;
