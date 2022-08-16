@@ -503,7 +503,7 @@ begin
                if RefKind=rkClassOfRef then
                   context.Msgs.AddCompilerError(scriptPos, CPE_StaticMethodExpected)
                else if expr.Typ is TClassOfSymbol then
-                  context.Msgs.AddCompilerError(scriptPos, CPE_ClassMethodExpected);
+                  context.Msgs.AddCompilerError(scriptPos, CPE_ClassMethodOrConstructorExpected);
                if not (cfoForceStatic in options) and meth.IsVirtual then
                   Result := TMethodVirtualExpr.Create(context, scriptPos, meth, expr)
                else Result := TMethodStaticExpr.Create(context, scriptPos, meth, expr);

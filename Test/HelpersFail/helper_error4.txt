@@ -1,1 +1,1 @@
-Syntax Error: Class method expected [line: 11, column: 9]
+Syntax Error: Class method or constructor expected [line: 11, column: 9]

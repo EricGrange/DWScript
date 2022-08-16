@@ -9595,7 +9595,7 @@ begin
          end else if sym is TMethodSymbol then begin
 
             if classProperty and not TMethodSymbol(sym).IsClassMethod then
-               FMsgs.AddCompilerError(accessPos, CPE_ClassMethodExpected);
+               FMsgs.AddCompilerError(accessPos, CPE_ClassMethodOrConstructorExpected);
             if not CheckPropertyFuncParams(propSym.ArrayIndices, TMethodSymbol(sym), indexTyp) then
                FMsgs.AddCompilerErrorFmt(FTok.HotPos, CPE_IncompatibleParameters, [sym.Name]);
 
@@ -9626,7 +9626,7 @@ begin
          else if sym is TMethodSymbol then begin
 
             if classProperty and not TMethodSymbol(sym).IsClassMethod then
-               FMsgs.AddCompilerError(accessPos, CPE_ClassMethodExpected);
+               FMsgs.AddCompilerError(accessPos, CPE_ClassMethodOrConstructorExpected);
             if    (not (TMethodSymbol(sym).Kind in [fkProcedure, fkMethod]))
                or (TMethodSymbol(sym).Typ<>nil) then
                FMsgs.AddCompilerError(FTok.HotPos, CPE_ProcedureMethodExpected)
@@ -14602,7 +14602,7 @@ begin
                if typeSym.ClassType<>THelperSymbol then begin
                   if    (expr is TTypeReferenceExpr)
                      or (expr.Typ is TStructuredTypeMetaSymbol) then begin
-                     FMsgs.AddCompilerError(namePos, CPE_ClassMethodExpected);
+                     FMsgs.AddCompilerError(namePos, CPE_ClassMethodOrConstructorExpected);
                      // keep compiling
                      expr:=TConvExpr.Create(FCompilerContext, namePos, expr);
                      expr.Typ:=meth.Params[0].Typ;

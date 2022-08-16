@@ -417,14 +417,13 @@ var
    newMeth : TMethodSymbol;
    refKind : TRefKind;
 begin
-   newMeth:=(newFuncSym as TMethodSymbol);
+   newMeth := (newFuncSym as TMethodSymbol);
 
-   if BaseExpr.Typ is TStructuredTypeMetaSymbol then begin
-      Assert(newMeth.IsClassMethod or (newMeth.Kind=fkConstructor));
-      refKind:=rkClassOfRef;
-   end else refKind:=rkObjRef;
+   if BaseExpr.Typ is TStructuredTypeMetaSymbol then
+      refKind := rkClassOfRef
+   else refKind := rkObjRef;
 
-   Result:=CreateMethodExpr(context, newMeth, Self.FBaseExpr, refKind, ScriptPos, options);
+   Result := CreateMethodExpr(context, newMeth, Self.FBaseExpr, refKind, ScriptPos, options);
    Result.Args.Assign(Args);
    Self.FArgs.Clear;
    Self.Free;

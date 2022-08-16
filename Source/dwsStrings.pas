@@ -360,7 +360,7 @@ const
   CPE_MatchingOverload = 'Overload of "%s" will be ambiguous with a previously declared version';
   CPH_AmbiguousMatchingOverloadsForCall = 'Ambiguous matching overloads of "%s"';
   CPE_OverloadNotAllowed = 'Overload not allowed';
-  CPE_ClassMethodExpected = 'Class method expected';
+  CPE_ClassMethodOrConstructorExpected = 'Class method or constructor expected';
   CPE_ClassMemberExpected = 'Class member expected';
   CPE_RecordTypeExpected = 'Record type expected';
   CPE_RecordTypeNotFullyDefined = 'Record type "%s" is not fully defined';
