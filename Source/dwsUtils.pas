@@ -1202,6 +1202,9 @@ const
       ('9','0'), ('9','1'), ('9','2'), ('9','3'), ('9','4'), ('9','5'), ('9','6'), ('9','7'), ('9','8'), ('9','9')
       );
 
+var
+   vValueOfNullVariantAsString : String = 'Null';
+
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
@@ -2292,10 +2295,10 @@ begin
          FloatAsString(varData^.VDouble, s);
       varBoolean :
          if varData^.VBoolean then
-            s:='True'
-         else s:='False';
+            s := 'True'
+         else s := 'False';
       varNull :
-         s:='Null';
+         s := vValueOfNullVariantAsString;
       varUnknown :
          UnknownAsString(IUnknown(varData^.VUnknown), s);
       varError :
