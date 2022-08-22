@@ -227,12 +227,12 @@ begin
       for xmm := xmm0 to xmm15 do begin
          FStream._cvtsi2sd(xmm, reg);
          FStream._xmm_reg_dword_ptr_reg(xmm_cvtsi2sd, xmm, reg, $12);
-         FStream._xmm_reg_qword_ptr_reg(xmm_cvtsi2sd, xmm, reg, $12);
          FStream._cvtsd2si(reg, xmm);
+         FStream._cvttsd2si(reg, xmm);
          CheckEquals( 'cvtsi2sd xmm' + IntToStr(Ord(xmm)) + ', ' + cgpRegister64Name[reg] + #13#10
                      +'cvtsi2sd xmm' + IntToStr(Ord(xmm)) + ', dword ptr [' + cgpRegister64Name[reg] + '+12h]'#13#10
-                     +'cvtsi2sd xmm' + IntToStr(Ord(xmm)) + ', qword ptr [' + cgpRegister64Name[reg] + '+12h]'#13#10
                      +'cvtsd2si ' + cgpRegister64Name[reg] + ', xmm' + IntToStr(Ord(xmm)) + #13#10
+                     +'cvttsd2si ' + cgpRegister64Name[reg] + ', xmm' + IntToStr(Ord(xmm)) + #13#10
                      , DisasmStream);
       end;
    end;
@@ -1029,7 +1029,9 @@ begin
 //         FStream._mul_qword_ptr_reg(src, offset*$40);
          expect := '';
          FStream._idiv_qword_ptr_reg(reg, offset*$40);
+         FStream._idiv_reg(reg);
          expect:= expect+'idiv qword ptr ['+cgpRegister64Name[reg]+offsetText+']'#13#10
+                        +'idiv '+cgpRegister64Name[reg]+#13#10
               ;
          CheckEquals(expect, DisasmStream);
       end;

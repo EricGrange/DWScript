@@ -492,6 +492,7 @@ end;
 procedure TdwsJIT.SetOutputFailedOn(e : TExprBase);
 begin
    FOutputFailedOn:=e;
+   OutputDebugString(e.ClassName);
 end;
 
 // RegisterJITter

@@ -213,7 +213,7 @@ begin
             continue;
          end;
 
-         OutputDebugString(FTests[i]);
+         //OutputDebugString(FTests[i]);
 
          try
             jit:={$ifdef WIN32} TdwsJITx86 {$endif}{$ifdef WIN64} TdwsJITx86_64 {$endif}.Create;
