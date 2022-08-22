@@ -68,6 +68,7 @@ type
          procedure boolflags;
          procedure movsd_indexed;
          procedure mov_indexed;
+         procedure movsx;
          procedure lea;
          procedure vcmp;
          procedure vpcmpeq;
@@ -1478,6 +1479,22 @@ begin
          end;
       end;
    end;
+end;
+
+// movsx
+//
+procedure TJITx86_64Tests.movsx;
+begin
+   FStream._movsx_reg_al(gprRAX);
+   FStream._movsx_reg_al(gprRDX);
+   FStream._movsx_reg_al(gprR9);
+   FStream._movsx_reg_al(gprR15);
+   CheckEquals(  ''
+               + 'movsx rax, al'#13#10
+               + 'movsx rdx, al'#13#10
+               + 'movsx r9, al'#13#10
+               + 'movsx r15, al'#13#10
+               , DisasmStream);
 end;
 
 // lea

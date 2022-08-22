@@ -475,6 +475,8 @@ type
 
          procedure _cqo;
 
+         procedure _movsx_reg_al(dest : TgpRegister64);
+
          procedure _cvtsi2sd(dest : TxmmRegister; src : TgpRegister64);
          procedure _cvtsd2si(dest : TgpRegister64; src : TxmmRegister);
 
@@ -3083,6 +3085,15 @@ end;
 procedure Tx86_64_WriteOnlyStream._cqo;
 begin
    WriteBytes([$49, $99]);
+end;
+
+// _movsx_reg_al
+//
+procedure Tx86_64_WriteOnlyStream._movsx_reg_al(dest : TgpRegister64);
+begin
+   WriteBytes([
+      $48 + 4*Ord(dest >= gprR8), $0f, $be, $c0 + 8*(Ord(dest) and 7)
+   ]);
 end;
 
 // _cvtsi2sd
