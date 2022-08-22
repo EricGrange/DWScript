@@ -461,7 +461,7 @@ begin
    exec := prog.CreateNewExecution;
    executing.Exec := @exec;
    executing.Options := options;
-   executing.ID := InterlockedIncrement(FExecutingID);
+   executing.ID := AtomicIncrement(FExecutingID);
 
    webenv := TWebEnvironment.Create;
    webenv.WebRequest := request;

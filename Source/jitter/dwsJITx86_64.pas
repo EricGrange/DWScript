@@ -743,11 +743,6 @@ const
       gprR12, gprR13, gprR14, gprR15
    ];
 
-function int64_mod(a, b : Int64) : Int64;
-begin
-   Result:=a mod b;
-end;
-
 function double_floor(v : Double) : Int64;
 begin
    Result := Floor(v);
@@ -756,11 +751,6 @@ end;
 function double_ceil(v : Double) : Int64;
 begin
    Result := Ceil(v);
-end;
-
-function double_trunc(const v : Double) : Int64;
-begin
-   Result:=Trunc(v);
 end;
 
 function double_frac(const v : Double) : Double;
@@ -802,7 +792,6 @@ var
    vAddr_Floor : function (v : Double) : Int64 = double_floor;
    vAddr_Ceil : function (v : Double) : Int64 = double_ceil;
    vAddr_Frac : function (const v : Double) : Double = double_frac;
-   vAddr_mod : function (a, b : Int64) : Int64 = int64_mod;
    vAddr_IsNaN : function (const v : Double) : Boolean = Math.IsNan;
    vAddr_IsInfinite : function (const v : Double) : Boolean = Math.IsInfinite;
    vAddr_IsFinite : function (const v : Double) : Boolean = dwsMathFunctions.IsFinite;
