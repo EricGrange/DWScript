@@ -605,7 +605,7 @@ const
       'eax', 'ecx', 'edx', 'ebx', 'esp', 'ebp', 'esi', 'edi'
       );
    cgpRegister8bitName : array [TgpRegister] of UnicodeString = (
-      'al', 'cl', 'dl', 'bl', '??', '??', '??', '??'
+      'al', 'cl', 'dl', 'bl', '??', '??', 'sil', 'dil'
       );
    cgpRegister64Name : array [TgpRegister64] of UnicodeString = (
       'rax', 'rcx', 'rdx', 'rbx', 'rsp', 'rbp', 'rsi', 'rdi',
@@ -614,6 +614,10 @@ const
    cgpRegister64dName : array [TgpRegister64] of UnicodeString = (
       'eax', 'ecx', 'edx', 'ebx', 'esp', 'ebp', 'esi', 'edi',
       'r8d', 'r9d', 'r10d', 'r11d', 'r12d', 'r13d', 'r14d', 'r15d'
+      );
+   cgpRegister64bName : array [TgpRegister64] of UnicodeString = (
+      'al', 'cl', 'dl', 'bl', '??', '??', 'sil', 'dil',
+      'r8L', 'r9L', 'r10L', 'r11L', 'r12L', 'r13L', 'r14L', 'r15L'
       );
    cExecMemGPR = {$ifdef WIN32} gprEBX {$endif} {$ifdef WIN64} gprRBX {$endif};
 
@@ -2873,16 +2877,30 @@ end;
 //
 procedure Tx86_64_WriteOnlyStream._test_reg_imm(reg : TgpRegister64; value : Int64);
 begin
-   if Int32(value) = value then begin
+   if (Byte(value) = value) and not (reg in [ gprRSP, gprRBP ]) then begin
       case reg of
          gprRAX :
-            WriteBytes([ $48, $A9 ]);
-         gprRCX..gprRDI :
-            WriteBytes([ $48, $F7, $C0 + (Ord(reg) and 7) ]);
+            WriteBytes([ $A8 ]);
+         gprRCX..gprRBX :
+            WriteBytes([ $F6, $C0 + (Ord(reg) and 7) ]);
+         gprRSI..gprRDI :
+            WriteBytes([ $40, $F6, $C0 + (Ord(reg) and 7) ]);
       else
-         WriteBytes([ $49, $F7, $C0 + (Ord(reg) and 7) ]);
+         WriteBytes([ $41, $F6, $C0 + (Ord(reg) and 7) ]);
       end;
-      WriteInt32(value);
+      WriteByte(value);
+   end else if DWord(value) = value then begin
+      case reg of
+         gprRAX :
+            WriteBytes([ $A9 ]);
+         gprRCX..gprRBX :
+            WriteBytes([ $F7, $C0 + (Ord(reg) and 7) ]);
+         gprRSI..gprRDI :
+            WriteBytes([ $F7, $C0 + (Ord(reg) and 7) ]);
+      else
+         WriteBytes([ $41, $F7, $C0 + (Ord(reg) and 7) ]);
+      end;
+      WriteDWord(value);
    end else Assert(False);
 end;
 

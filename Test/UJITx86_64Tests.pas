@@ -60,7 +60,7 @@ type
          procedure cmp_reg_imm;
          procedure ops;
          procedure test_reg_reg;
-//         procedure test_reg_int32;
+         procedure test_reg_int32;
 //         procedure test_dword_ptr_reg_int32;
 //         procedure test_dword_ptr_reg_byte;
 //         procedure test_dword_ptr_reg_reg;
@@ -1216,28 +1216,30 @@ begin
       CheckEquals(expect, DisasmStream);
    end;
 end;
-{
+
 // test_reg_int32
 //
 procedure TJITx86_64Tests.test_reg_int32;
 var
-   reg : TgpRegister;
+   reg : TgpRegister64;
    expect : String;
 begin
-   for reg:=gprEAX to gprEDI do begin
+   for reg:=gprRAX to gprR15 do begin
+      if reg in [ gprRSP, gprRBP ] then continue;
       FStream._test_reg_imm(reg, $40);
       FStream._test_reg_imm(reg, $180);
       case reg of
-         gprEAX : expect:='test '+cgpRegister8bitName[reg]+', 40h'#13#10;
-         gprECX..gprEBX : expect:= 'test '+cgpRegister8bitName[reg]+', 00000040h'#13#10;
+         gprRAX : expect:='test '+cgpRegister64bName[reg]+', 40h'#13#10;
+         gprRCX..gprRDI : expect:= 'test '+cgpRegister64bName[reg]+', 40h'#13#10;
+//         gprRSP..gprRDI : expect:= 'test '+cgpRegister64dName[reg]+', 40h'#13#10;
       else
-         expect:= 'test '+cgpRegisterName[reg]+', 00000040h'#13#10;
+         expect:= 'test '+cgpRegister64bName[reg]+', 40h'#13#10;
       end;
-      expect:=expect+'test '+cgpRegisterName[reg]+', 00000180h'#13#10;
+      expect:=expect+'test '+cgpRegister64dName[reg]+', 00000180h'#13#10;
       CheckEquals(expect, DisasmStream);
    end;
 end;
-
+{
 // test_dword_ptr_reg_int32
 //
 procedure TJITx86_64Tests.test_dword_ptr_reg_int32;
