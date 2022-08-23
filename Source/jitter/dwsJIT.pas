@@ -167,6 +167,12 @@ type
    end;
    TJITTedIntegerExprClass = class of TJITTedIntegerExpr;
 
+   TJITTedBooleanExpr = class (TJITTedTypedExpr)
+      public
+         procedure EvalAsVariant(exec : TdwsExecution; var Result : Variant); override;
+   end;
+   TJITTedBooleanExprClass = class of TJITTedBooleanExpr;
+
    TQueuedJITGreed = class
       public
          Next : TQueuedJITGreed;
@@ -198,6 +204,7 @@ type
          FJITTedProgramExprClass : TJITTedProgramExprClass;
          FJITTedFloatExprClass : TJITTedFloatExprClass;
          FJITTedIntegerExprClass : TJITTedIntegerExprClass;
+         FJITTedBooleanExprClass : TJITTedBooleanExprClass;
 
          FOptions : TdwsJITOptions;
 
@@ -217,6 +224,7 @@ type
          property JITTedProgramExprClass : TJITTedProgramExprClass read FJITTedProgramExprClass write FJITTedProgramExprClass;
          property JITTedFloatExprClass : TJITTedFloatExprClass read FJITTedFloatExprClass write FJITTedFloatExprClass;
          property JITTedIntegerExprClass : TJITTedIntegerExprClass read FJITTedIntegerExprClass write FJITTedIntegerExprClass;
+         property JITTedBooleanExprClass : TJITTedBooleanExprClass read FJITTedBooleanExprClass write FJITTedBooleanExprClass;
 
       public
          constructor Create; virtual;
@@ -229,6 +237,7 @@ type
          function JITStatement(expr : TProgramExpr; exitable : Boolean) : TJITTedProgramExpr;
          function JITFloat(expr : TTypedExpr) : TJITTedFloatExpr;
          function JITInteger(expr : TTypedExpr) : TJITTedIntegerExpr;
+         function JITBoolean(expr : TTypedExpr) : TJITTedBooleanExpr;
 
          procedure CompileStatement(expr : TExprBase);
          function  CompileFloat(expr : TTypedExpr) : Integer;
@@ -588,6 +597,23 @@ begin
    else OutputDebugString(OutputFailedOn.ClassName);
 end;
 
+// JITBoolean
+//
+function TdwsJIT.JITBoolean(expr : TTypedExpr) : TJITTedBooleanExpr;
+var
+   outcome : Integer;
+begin
+   Result := nil;
+
+   StartJIT(expr, False);
+   outcome := CompileBooleanValue(expr);
+   EndIntegerJIT(outcome);
+
+   if OutputFailedOn = nil then
+      Result := JITTedBooleanExprClass.Create(expr, CompiledOutput)
+   else OutputDebugString(OutputFailedOn.ClassName);
+end;
+
 // CompileStatement
 //
 procedure TdwsJIT.CompileStatement(expr : TExprBase);
@@ -935,29 +961,31 @@ var
    paramTyp : TTypeSymbol;
    argExpr : TExprBase;
 begin
-   funcSym:=funcExpr.FuncSym;
-   if funcSym=nil then Exit;
+   funcSym := funcExpr.FuncSym;
+   if funcSym = nil then Exit;
    if funcExpr is TMagicFuncExpr then begin
-      for i:=0 to funcExpr.Args.Count-1 do begin
+      for i := 0 to funcExpr.Args.Count-1 do begin
          p:=funcSym.Params[i];
          if p.ClassType<>TParamSymbol then continue;
          argExpr:=funcExpr.Args[i];
          if not (argExpr is TJITTedTypedExpr) then begin
-            paramTyp:=p.Typ.UnAliasedType;
+            paramTyp := p.Typ.UnAliasedType;
             if paramTyp is TBaseIntegerSymbol then
-               jitted:=JITInteger(argExpr as TTypedExpr)
+               jitted := JITInteger(argExpr as TTypedExpr)
             else if paramTyp is TBaseFloatSymbol then
-               jitted:=JITFloat(argExpr as TTypedExpr)
-            else jitted:=nil;
-            if jitted<>nil then begin
+               jitted := JITFloat(argExpr as TTypedExpr)
+            else if paramTyp is TBaseBooleanSymbol then
+               jitted := JITBoolean(argExpr as TTypedExpr)
+            else jitted := nil;
+            if jitted <> nil then begin
                funcExpr.Args[i].Free;
-               funcExpr.Args[i]:=jitted;
+               funcExpr.Args[i] := jitted;
             end else GreedyJIT(argExpr);
          end;
       end;
    end else begin
-      for i:=0 to funcExpr.SubExprCount-1 do begin
-         argExpr:=funcExpr.SubExpr[i];
+      for i := 0 to funcExpr.SubExprCount-1 do begin
+         argExpr := funcExpr.SubExpr[i];
          if argExpr is TFuncExprBase then
             QueueGreed(argExpr);
       end;
@@ -1148,6 +1176,17 @@ end;
 procedure TJITTedIntegerExpr.EvalAsVariant(exec : TdwsExecution; var Result : Variant);
 begin
    Result:=EvalAsInteger(exec);
+end;
+
+// ------------------
+// ------------------ TJITTedBooleanExpr ------------------
+// ------------------
+
+// EvalAsVariant
+//
+procedure TJITTedBooleanExpr.EvalAsVariant(exec : TdwsExecution; var Result : Variant);
+begin
+   Result := EvalAsBoolean(exec);
 end;
 
 end.
