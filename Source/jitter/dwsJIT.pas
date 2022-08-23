@@ -500,8 +500,10 @@ end;
 //
 procedure TdwsJIT.SetOutputFailedOn(e : TExprBase);
 begin
-   FOutputFailedOn:=e;
-   OutputDebugString(e.ClassName);
+   FOutputFailedOn := e;
+   if e <> nil then
+      OutputDebugString(e.ClassName)
+   else OutputDebugString('nil');
 end;
 
 // RegisterJITter

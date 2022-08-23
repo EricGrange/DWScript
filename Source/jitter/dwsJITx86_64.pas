@@ -527,6 +527,10 @@ type
    Tx86MultIntPow2 = class (TdwsJITter_x86)
       function DoCompileInteger(expr : TTypedExpr) : TgpRegister64; override;
    end;
+   Tx86SqrInt = class (TdwsJITter_x86)
+      function DoCompileInteger(expr : TTypedExpr) : TgpRegister64; override;
+      function CompileIntegerOperand(sqrExpr, operandExpr : TTypedExpr) : TgpRegister64;
+   end;
    Tx86DivInt = class (Tx86InterpretedExpr)
       protected
          function PowerOfTwoDivisor(expr : TTypedExpr; operandReg : TgpRegister64; exponent : Integer) : TgpRegister64; virtual;
@@ -691,6 +695,9 @@ type
    end;
    Tx86SqrFloatFunc = class (Tx86SqrFloat)
       function DoCompileFloat(expr : TTypedExpr) : TxmmRegister; override;
+   end;
+   Tx86SqrIntFunc = class (Tx86SqrInt)
+      function DoCompileInteger(expr : TTypedExpr) : TgpRegister64; override;
    end;
 
    Tx86ScaleFloatFunc = class (Tx86MagicFunc)
@@ -996,7 +1003,7 @@ begin
    RegisterJITter(TAddIntExpr,                  Tx86IntegerBinOpExpr.Create(Self, gpOp_add));
    RegisterJITter(TSubIntExpr,                  Tx86IntegerBinOpExpr.Create(Self, gpOp_sub, False));
    RegisterJITter(TMultIntExpr,                 Tx86MultInt.Create(Self));
-   RegisterJITter(TSqrIntExpr,                  FInterpretedJITter.IncRefCount);
+   RegisterJITter(TSqrIntExpr,                  Tx86SqrInt.Create(Self));
    RegisterJITter(TDivExpr,                     Tx86DivInt.Create(Self));
    RegisterJITter(TDivConstExpr,                Tx86DivInt.Create(Self));
    RegisterJITter(TModExpr,                     Tx86ModInt.Create(Self));
@@ -1132,6 +1139,7 @@ begin
 
    RegisterJITter(TSqrtFunc,                    Tx86SqrtFunc.Create(Self));
    RegisterJITter(TSqrFloatFunc,                Tx86SqrFloatFunc.Create(Self));
+   RegisterJITter(TSqrIntFunc,                  Tx86SqrIntFunc.Create(Self));
    RegisterJITter(TMaxFunc,                     Tx86MinMaxFloatFunc.Create(Self, xmm_maxsd));
    RegisterJITter(TMinFunc,                     Tx86MinMaxFloatFunc.Create(Self, xmm_minsd));
 
@@ -4651,6 +4659,33 @@ begin
 end;
 
 // ------------------
+// ------------------ Tx86SqrInt ------------------
+// ------------------
+
+// DoCompileInteger
+//
+function Tx86SqrInt.DoCompileInteger(expr : TTypedExpr) : TgpRegister64;
+var
+   e : TSqrIntExpr;
+begin
+   e := TSqrIntExpr(expr);
+   Result := CompileIntegerOperand(expr, e.Expr);
+end;
+
+// CompileIntegerOperand
+//
+function Tx86SqrInt.CompileIntegerOperand(sqrExpr, operandExpr : TTypedExpr) : TgpRegister64;
+var
+   regOperand : TgpRegister64;
+begin
+   regOperand := jit.CompileIntegerToRegister(operandExpr);
+
+   Result := jit.AllocOrAcquireGPReg(regOperand, sqrExpr);
+
+   x86._imul_reg_reg(Result, Result);
+end;
+
+// ------------------
 // ------------------ Tx86DivInt ------------------
 // ------------------
 
@@ -5725,6 +5760,17 @@ end;
 function Tx86SqrFloatFunc.DoCompileFloat(expr : TTypedExpr) : TxmmRegister;
 begin
    Result:=CompileFloatOperand(expr, TMagicFuncExpr(expr).Args[0] as TTypedExpr);
+end;
+
+// ------------------
+// ------------------ Tx86SqrIntFunc ------------------
+// ------------------
+
+// DoCompileInteger
+//
+function Tx86SqrIntFunc.DoCompileInteger(expr : TTypedExpr) : TgpRegister64;
+begin
+   Result := CompileIntegerOperand(expr, TMagicFuncExpr(expr).Args[0] as TTypedExpr);
 end;
 
 // ------------------
