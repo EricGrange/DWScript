@@ -379,8 +379,8 @@ type
          procedure _mov_reg_reg(dest : TxmmRegister; src : TgpRegister64); overload;
          procedure _mov_reg_dword(reg : TgpRegister64d; imm : DWORD); overload;
          procedure _mov_reg_dword(reg : TgpRegister64; imm : DWORD); overload;
-         procedure _mov_reg_qword(reg : TgpRegister64; imm : QWORD); overload;
-         procedure _mov_reg_imm(reg : TgpRegister64; imm : Int64); overload;
+         procedure _mov_reg_qword(reg : TgpRegister64; imm : QWORD; preserveFlags : Boolean = False); overload;
+         procedure _mov_reg_imm(reg : TgpRegister64; imm : Int64; preserveFlags : Boolean = False); overload;
          procedure _mov_al_byte(imm : Byte);
 
          procedure _movsd_qword_ptr_reg_reg(dest : TgpRegister64; offset : Integer; src : TxmmRegister);
@@ -2315,33 +2315,27 @@ end;
 
 // _mov_reg_qword
 //
-procedure Tx86_64_WriteOnlyStream._mov_reg_qword(reg : TgpRegister64; imm : QWORD);
+procedure Tx86_64_WriteOnlyStream._mov_reg_qword(reg : TgpRegister64; imm : QWORD; preserveFlags : Boolean = False);
 begin
-   if imm=0 then
+   if (imm = 0) and not preserveFlags then
       _xor_reg_reg(reg, reg)
-   else if Int32(imm) = Int64(imm) then begin
-      if (Int32(imm) > 0) and (reg < gprR8) then begin
-         // 32 bit GPR assignment are zero extended on the higher bits
-         WriteByte($B8 + Ord(reg));
-      end else begin
-         WriteBytes([
-            $48 + Ord(reg >= gprR8),
-            $c7,
-            $c0 + (Ord(reg) and 7)
-         ]);
-      end;
+   else if UInt32(imm) = Int64(imm) then begin
+      // 32 bit GPR assignment are zero extended on the higher bits
+      if reg >= gprR8 then
+         WriteByte($41);
+      WriteByte($B8 + (Ord(reg) and 7));
       WriteInt32(imm);
    end else begin
-      WriteBytes([$48 + Ord(reg >= gprR8), $b8 + (Ord(reg) and 7)]);
+      WriteBytes([$48 + Ord(reg >= gprR8), $B8 + (Ord(reg) and 7)]);
       WriteQWord(imm);
    end;
 end;
 
 // _mov_reg_imm
 //
-procedure Tx86_64_WriteOnlyStream._mov_reg_imm(reg : TgpRegister64; imm : Int64);
+procedure Tx86_64_WriteOnlyStream._mov_reg_imm(reg : TgpRegister64; imm : Int64; preserveFlags : Boolean = False);
 begin
-   _mov_reg_qword(reg, QWORD(imm))
+   _mov_reg_qword(reg, QWORD(imm), preserveFlags)
 end;
 
 // _mov_al_byte

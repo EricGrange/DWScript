@@ -460,6 +460,7 @@ begin
                , DisasmStream);
 
    FStream._mov_reg_imm(gprRAX, 0);
+   FStream._mov_reg_imm(gprRAX, 0, True);
    FStream._mov_reg_imm(gprRDX, 0);
    FStream._mov_reg_imm(gprR9, 0);
    FStream._mov_reg_imm(gprRAX, 1);
@@ -473,11 +474,12 @@ begin
    FStream._mov_reg_imm(gprR11, $11223344556677);
 
    CheckEquals( 'xor rax, rax'#13#10
+               +'mov eax, 00000000h'#13#10
                +'xor rdx, rdx'#13#10
                +'xor r9, r9'#13#10
                +'mov eax, 00000001h'#13#10
                +'mov rax, FFFFFFFFFFFFFFFFh'#13#10
-               +'mov r8, 0000000000000002h'#13#10
+               +'mov r8d, 00000002h'#13#10
                +'mov r8, FFFFFFFFFFFFFFFEh'#13#10
                +'mov eax, 00000003h'#13#10
                +'mov rax, FFFFFFFFFFFFFFFDh'#13#10
@@ -536,17 +538,10 @@ begin
       FStream._mov_reg_imm(dest, -1);
       FStream._mov_reg_imm(dest, -2);
       regName := cgpRegister64Name[dest];
-      reg32Name := 'e' + Copy(regName, 2);
-      expect := 'xor ' + regName  + ', ' + regName + #13#10;
-      if dest < gprR8 then
-         expect := expect
-                 + 'mov '+reg32Name+', 00000001h'#13#10
-                 + 'mov '+reg32Name+', 00000080h'#13#10
-      else
-         expect := expect
-                 + 'mov '+regName+', 0000000000000001h'#13#10
-                 + 'mov '+regName+', 0000000000000080h'#13#10;
-      expect := expect
+      reg32Name := cgpRegister64dName[dest];
+      expect := 'xor ' + regName  + ', ' + regName + #13#10
+              + 'mov '+reg32Name+', 00000001h'#13#10
+              + 'mov '+reg32Name+', 00000080h'#13#10
               + 'mov '+regName+', FFFFFFFFFFFFFFFFh'#13#10
               + 'mov '+regName+', FFFFFFFFFFFFFFFEh'#13#10;
       CheckEquals(expect, DisasmStream);
