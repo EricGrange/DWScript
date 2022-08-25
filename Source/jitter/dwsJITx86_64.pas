@@ -632,6 +632,10 @@ type
       function DoCompileInteger(expr : TTypedExpr) : TgpRegister64; override;
    end;
 
+   Tx86BitwiseInOpExpr = class (TdwsJITter_x86)
+      procedure DoCompileBoolean(expr : TTypedExpr; targetTrue, targetFalse : TFixup); override;
+   end;
+
 {
    Tx86SetOfExpr = class (TdwsJITter_x86)
       procedure NormalizeEnumOperand(setTyp : TSetOfSymbol; operand : TTypedExpr; targetOutOfRange : TFixup);
@@ -1027,7 +1031,7 @@ begin
    RegisterJITter(TStringInOpExpr,              FInterpretedJITter.IncRefCount);
    RegisterJITter(TStringInOpStaticSetExpr,     FInterpretedJITter.IncRefCount);
    RegisterJITter(TIntegerInOpExpr,             FInterpretedJITter.IncRefCount);
-   RegisterJITter(TBitwiseInOpExpr,             FInterpretedJITter.IncRefCount);
+   RegisterJITter(TBitwiseInOpExpr,             Tx86BitwiseInOpExpr.Create(Self));
 
    RegisterJITter(TIncIntVarExpr,               Tx86IncIntVar.Create(Self));
    RegisterJITter(TDecIntVarExpr,               Tx86DecIntVar.Create(Self));
@@ -5286,6 +5290,31 @@ begin
 
    jit.Fixups.AddFixup(targetDone);
 end;
+
+// ------------------
+// ------------------ Tx86BitwiseInOpExpr ------------------
+// ------------------
+
+// DoCompileBoolean
+//
+procedure Tx86BitwiseInOpExpr.DoCompileBoolean(expr : TTypedExpr; targetTrue, targetFalse : TFixup);
+var
+   e : TBitwiseInOpExpr;
+   reg : TgpRegister64;
+begin
+   e := TBitwiseInOpExpr(expr);
+
+   reg := jit.CompileIntegerToRegister(e.Expr);
+   x86._cmp_reg_imm(reg, 32);
+   jit.Fixups.NewJump(flagsAE, targetFalse);
+   x86._mov_reg_reg(gprRCX, reg);
+   jit.ReleaseGPReg(reg);
+   x86._mov_reg_imm(gprRAX, 1);
+   x86._shl_rax_cl;
+   x86._test_reg_imm(gprRAX, e.Mask);
+   jit.Fixups.NewConditionalJumps(flagsNZ, targetTrue, targetFalse);
+end;
+
 
 {
 // ------------------

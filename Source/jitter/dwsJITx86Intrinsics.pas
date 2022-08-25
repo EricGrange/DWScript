@@ -434,6 +434,7 @@ type
          procedure _not_reg(reg : TgpRegister64);
 
          procedure _shift_reg_imm(shift : TgpShift; reg : TgpRegister64; value : Byte);
+         procedure _shl_rax_cl;
 
          procedure _cmp_reg_imm(reg : TgpRegister64; value : Int64); overload;
          procedure _cmp_reg_reg(left, right : TgpRegister64);
@@ -2788,6 +2789,13 @@ begin
          WriteBytes([$D1, Ord(shift) + (Ord(reg) and 7)])
       else WriteBytes([$C1, Ord(shift) + (Ord(reg) and 7), value]);
    end;
+end;
+
+// _shl_rax_cl
+//
+procedure Tx86_64_WriteOnlyStream._shl_rax_cl;
+begin
+   WriteBytes([$48, $D3, $E0]);
 end;
 
 // _not_reg

@@ -1255,6 +1255,7 @@ type
 
          procedure TypeCheck(context : TdwsCompilerContext; typ : TTypeSymbol); virtual; abstract;
          function IsConstant : Boolean; virtual; abstract;
+         function ApplyToConstantMask(var mask : UInt64) : Boolean; virtual;
          function IsExpr(aClass : TClass) : Boolean; virtual; abstract;
 
          property ScriptPos : TScriptPos read FScriptPos;
@@ -1288,6 +1289,7 @@ type
 
          procedure TypeCheck(context : TdwsCompilerContext; typ : TTypeSymbol); override;
          function IsConstant : Boolean; override;
+         function ApplyToConstantMask(var mask : UInt64) : Boolean; override;
          function IsExpr(aClass : TClass) : Boolean; override;
 
          property CompareExpr : TTypedExpr read FCompareExpr;
@@ -1332,6 +1334,7 @@ type
 
          procedure TypeCheck(context : TdwsCompilerContext; typ : TTypeSymbol); override;
          function IsConstant : Boolean; override;
+         function ApplyToConstantMask(var mask : UInt64) : Boolean; override;
          function IsExpr(aClass : TClass) : Boolean; override;
 
          property FromExpr : TTypedExpr read FFromExpr;
@@ -1443,12 +1446,12 @@ type
    // bitwise val in [case conditions list]
    TBitwiseInOpExpr = class(TUnaryOpBoolExpr)
       private
-         FMask : Integer;
+         FMask : UInt32;
 
       public
          function EvalAsBoolean(exec : TdwsExecution) : Boolean; override;
 
-         property Mask : Integer read FMask write FMask;
+         property Mask : UInt32 read FMask write FMask;
    end;
 
    // for FVarExpr := FFromExpr to FToExpr do FDoExpr;
@@ -3399,36 +3402,32 @@ function TInOpExpr.Optimize(context : TdwsCompilerContext) : TProgramExpr;
    end;
 
 var
-   enumSym : TEnumerationSymbol;
-   value : Variant;
-   i, k, mask : Integer;
+   i : Integer;
+   mask : UInt64;
    cc : TCaseCondition;
    iioe : TIntegerInOpExpr;
 begin
-   Result:=Self;
-   // if left is an enumeration with 31 or less symbols (31 is limit for JS)
-   // and conditions are constants, then it can be optimized to a bitwise test
-   if (FLeft.Typ is TEnumerationSymbol) and ConstantConditions then begin
+   Result := Self;
 
-      enumSym:=TEnumerationSymbol(FLeft.Typ);
-      if (enumSym.LowBound<0) or (enumSym.HighBound>31) then Exit;
-      mask:=0;
-      for k:=enumSym.LowBound to enumSym.HighBound do begin
-         value:=Int64(k);
-         for i:=0 to FCaseConditions.Count-1 do begin
-            cc:=TCaseCondition(FCaseConditions.List[i]);
-            if cc.IsTrue(context.Execution, Value) then begin
-               mask:=mask or (1 shl k);
-               Break;
-            end;
+   if FLeft.IsOfType(context.TypInteger) then begin
+
+      // all case conditions are constanst and in the 0..31 range (31 is limit for JS)
+      // then it can be optimized to a bitwise test
+      mask := 0;
+      for i := 0 to FCaseConditions.Count-1 do begin
+         cc := TCaseCondition(FCaseConditions.List[i]);
+         if not cc.ApplyToConstantMask(mask) then begin
+            mask := 0;
+            Break;
          end;
       end;
-      Result:=TBitwiseInOpExpr.Create(context, ScriptPos, FLeft);
-      TBitwiseInOpExpr(Result).Mask:=mask;
-      FLeft:=nil;
-      Orphan(context);
-
-   end else if FLeft.IsOfType(context.TypInteger) then begin
+      if (mask > 0) and (mask <= $FFFFFFFF) then begin
+         Result := TBitwiseInOpExpr.Create(context, ScriptPos, FLeft);
+         TBitwiseInOpExpr(Result).Mask := mask;
+         FLeft := nil;
+         Orphan(context);
+         Exit;
+      end;
 
       if TCaseConditionsHelper.CanOptimizeToTyped(FCaseConditions, TConstIntExpr) then begin
          iioe := TIntegerInOpExpr.Create(context, Left);
@@ -6743,6 +6742,13 @@ begin
            or (typ is TEnumerationSymbol);
 end;
 
+// ApplyToConstantMask
+//
+function TCaseCondition.ApplyToConstantMask(var mask : UInt64) : Boolean;
+begin
+   Result := False;
+end;
+
 // ------------------
 // ------------------ TCaseConditionsHelper ------------------
 // ------------------
@@ -6842,6 +6848,20 @@ end;
 function TCompareCaseCondition.IsConstant : Boolean;
 begin
    Result:=FCompareExpr.IsConstant;
+end;
+
+// ApplyToConstantMask
+//
+function TCompareCaseCondition.ApplyToConstantMask(var mask : UInt64) : Boolean;
+var
+   v : Int64;
+begin
+   if FCompareExpr is TConstIntExpr then begin
+      v := TConstIntExpr(FCompareExpr).Value;
+      Result := (UInt64(v) <= 63);
+      if Result then
+         mask := mask or (UInt64(1) shl v);
+   end else Result := False;
 end;
 
 // IsExpr
@@ -7031,6 +7051,23 @@ end;
 function TRangeCaseCondition.IsConstant : Boolean;
 begin
    Result:=FFromExpr.IsConstant and FToExpr.IsConstant;
+end;
+
+// ApplyToConstantMask
+//
+function TRangeCaseCondition.ApplyToConstantMask(var mask : UInt64) : Boolean;
+var
+   fromValue, toValue : Int64;
+begin
+   if (FromExpr is TConstIntExpr) and (ToExpr is TConstIntExpr) then begin
+      fromValue := TConstIntExpr(FromExpr).Value;
+      toValue := TConstIntExpr(ToExpr).Value;
+      Result := (UInt64(fromValue) <= 63) and (UInt64(toValue) <= 63);
+      if Result then begin
+         for fromValue := fromValue to toValue do
+            mask := mask or (UInt64(1) shl fromValue);
+      end;
+   end else Result := False;
 end;
 
 // IsExpr
