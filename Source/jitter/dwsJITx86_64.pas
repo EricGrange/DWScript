@@ -948,13 +948,6 @@ begin
    RegisterJITter(TMultAssignFloatExpr,         Tx86OpAssignFloat.Create(Self, xmm_multsd));
    RegisterJITter(TDivideAssignExpr,            Tx86OpAssignFloat.Create(Self, xmm_divsd));
 
-   RegisterJITter(TStringLengthExpr,            FInterpretedJITter.IncRefCount);
-   RegisterJITter(TAppendStringVarExpr,         FInterpretedJITter.IncRefCount);
-   RegisterJITter(TAppendConstStringVarExpr,    FInterpretedJITter.IncRefCount);
-   RegisterJITter(TVarStringArraySetExpr,       FInterpretedJITter.IncRefCount);
-   RegisterJITter(TStringArrayOpExpr,           FInterpretedJITter.IncRefCount);
-   RegisterJITter(TPlusAssignStrExpr,           FInterpretedJITter.IncRefCount);
-
    RegisterJITter(TPlusAssignIntExpr,           FInterpretedJITter.IncRefCount);
    RegisterJITter(TMinusAssignIntExpr,          FInterpretedJITter.IncRefCount);
    RegisterJITter(TMultAssignIntExpr,           FInterpretedJITter.IncRefCount);
@@ -962,6 +955,13 @@ begin
    RegisterJITter(TPlusAssignExpr,              FInterpretedJITter.IncRefCount);
    RegisterJITter(TMinusAssignExpr,             FInterpretedJITter.IncRefCount);
    RegisterJITter(TMultAssignExpr,              FInterpretedJITter.IncRefCount);
+
+   RegisterJITter(TStringLengthExpr,            FInterpretedJITter.IncRefCount);
+   RegisterJITter(TAppendStringVarExpr,         FInterpretedJITter.IncRefCount);
+   RegisterJITter(TAppendConstStringVarExpr,    FInterpretedJITter.IncRefCount);
+   RegisterJITter(TVarStringArraySetExpr,       FInterpretedJITter.IncRefCount);
+   RegisterJITter(TStringArrayOpExpr,           FInterpretedJITter.IncRefCount);
+   RegisterJITter(TPlusAssignStrExpr,           FInterpretedJITter.IncRefCount);
 
    RegisterJITter(TIfThenExpr,                  Tx86IfThen.Create(Self));
    RegisterJITter(TIfThenElseExpr,              Tx86IfThenElse.Create(Self));
@@ -1104,7 +1104,7 @@ begin
    RegisterJITter(TConvIntToFloatExpr,          Tx86ConvIntToFloat.Create(Self));
    RegisterJITter(TConvVarToFloatExpr,          FInterpretedJITter.IncRefCount);
    RegisterJITter(TConvVarToIntegerExpr,        FInterpretedJITter.IncRefCount);
-   RegisterJITter(TConvVarToBoolExpr,        FInterpretedJITter.IncRefCount);
+   RegisterJITter(TConvVarToBoolExpr,           FInterpretedJITter.IncRefCount);
    RegisterJITter(TConvOrdToIntegerExpr,        Tx86OrdInt.Create(Self));
 
    RegisterJITter(TConstructorStaticExpr,       FInterpretedJITter.IncRefCount);
