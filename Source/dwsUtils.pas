@@ -3548,11 +3548,15 @@ function TidyStringsUnifier : Integer;
 var
    i : Integer;
    su : array [0..High(vUnifiedStrings)] of TStringUnifier;
+   p : Pointer;
 begin
    Result := 0;
    for i := Low(vUnifiedStrings) to High(vUnifiedStrings) do begin
       repeat
-         su[i] := TStringUnifier(InterlockedCompareExchangePointer(vUnifiedStrings[i], nil, vUnifiedStrings[i]));
+         p := vUnifiedStrings[i];
+         if p <> nil then
+            su[i] := TStringUnifier(InterlockedCompareExchangePointer(vUnifiedStrings[i], nil, p))
+         else su[i] := nil;
       until su[i] <> nil;
       Result := Result + su[i].FCount;
       su[i].Clear;
