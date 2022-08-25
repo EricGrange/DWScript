@@ -7914,8 +7914,10 @@ end;
 function TClassInstanceTemplate<T>.CreateInstance : T;
 begin
    Result := FPool;
-   if Result <> nil then
-      Result := InterlockedCompareExchangePointer(FPool, nil, Pointer(Result));
+   if Result <> nil then begin
+      if InterlockedCompareExchangePointer(FPool, nil, Pointer(Result)) <> Pointer(Result) then
+         Result := nil;
+   end;
    if Result = nil then
       Result := GetMemory(T.InstanceSize);
    System.Move(Pointer(FTemplate)^, Pointer(Result)^, T.InstanceSize);
