@@ -488,7 +488,7 @@ type
       procedure CompileStatement(expr : TExprBase); override;
    end;
 
-   Tx86ForUpward = class (TdwsJITter_x86)
+   Tx86ForLoop = class (TdwsJITter_x86)
       procedure CompileStatement(expr : TExprBase); override;
    end;
 
@@ -979,10 +979,10 @@ begin
    RegisterJITter(TRepeatExpr,                  Tx86Repeat.Create(Self));
    RegisterJITter(TWhileExpr,                   Tx86While.Create(Self));
 
-   RegisterJITter(TForUpwardExpr,               Tx86ForUpward.Create(Self));
-   RegisterJITter(TForUpwardStepExpr,           Tx86ForUpward.Create(Self));
-   RegisterJITter(TForDownwardExpr,             FInterpretedJITter.IncRefCount);
-   RegisterJITter(TForDownwardStepExpr,         FInterpretedJITter.IncRefCount);
+   RegisterJITter(TForUpwardExpr,               Tx86ForLoop.Create(Self));
+   RegisterJITter(TForUpwardStepExpr,           Tx86ForLoop.Create(Self));
+   RegisterJITter(TForDownwardExpr,             Tx86ForLoop.Create(Self));
+   RegisterJITter(TForDownwardStepExpr,         Tx86ForLoop.Create(Self));
    RegisterJITter(TForCharCodeInStrExpr,        FInterpretedJITter.IncRefCount);
    RegisterJITter(TForCharInStrExpr,            FInterpretedJITter.IncRefCount);
 
@@ -3286,14 +3286,14 @@ begin
 end;
 
 // ------------------
-// ------------------ Tx86ForUpward ------------------
+// ------------------ Tx86ForLoop ------------------
 // ------------------
 
 // CompileStatement
 //
 var
    cPtr_TForStepExpr_RaiseForLoopStepShouldBeStrictlyPositive : Pointer = @TForStepExpr.RaiseForLoopStepShouldBeStrictlyPositive;
-procedure Tx86ForUpward.CompileStatement(expr : TExprBase);
+procedure Tx86ForLoop.CompileStatement(expr : TExprBase);
 var
    e : TForExpr;
    loopStart : TFixupTarget;
@@ -3305,6 +3305,8 @@ var
    toValueOffset : Integer;
    stepValueIsConstant : Boolean;
    stepValueOffset : Integer;
+   upwardLoop : Boolean;
+   stepOp : TgpOp;
    tmpReg : TgpRegister64;
 begin
    e := TForExpr(expr);
@@ -3327,12 +3329,12 @@ begin
 
    end;
 
-   if e is TForUpwardStepExpr then begin
+   if e is TForStepExpr then begin
 
-      if TForUpwardStepExpr(e).StepExpr is TConstIntExpr then begin
+      if TForStepExpr(e).StepExpr is TConstIntExpr then begin
 
          stepValueIsConstant := True;
-         stepValue := TConstIntExpr(TForUpwardStepExpr(e).StepExpr).Value;
+         stepValue := TConstIntExpr(TForStepExpr(e).StepExpr).Value;
          stepValueOffset := 0;
 
       end else begin
@@ -3341,7 +3343,7 @@ begin
          stepValue := 0;
          stepValueOffset := jit.FPreamble.AllocateStackSpace(SizeOf(Int64));
 
-         tmpReg := jit.CompileIntegerToRegister(TForUpwardStepExpr(e).StepExpr);
+         tmpReg := jit.CompileIntegerToRegister(TForStepExpr(e).StepExpr);
          x86._mov_qword_ptr_reg_reg(gprRBP, stepValueOffset, tmpReg);
 
          x86._cmp_reg_imm(tmpReg, 0);
@@ -3369,6 +3371,8 @@ begin
 
    end;
 
+   upwardLoop := (expr is TForUpwardExpr) or (expr is TForUpwardStepExpr);
+
    jit.FlushRegisters(regFlushAll);
 
    loopStart := jit.Fixups.NewTarget(True);
@@ -3384,7 +3388,9 @@ begin
       x86._cmp_reg_qword_ptr_reg(tmpReg, gprRBP, toValueOffset);
    end;
    jit.ReleaseGPReg(tmpReg);
-   jit.Fixups.NewJump(flagsG, loopAfter);
+   if upwardLoop then
+      jit.Fixups.NewJump(flagsG, loopAfter)
+   else jit.Fixups.NewJump(flagsL, loopAfter);
 
    jit._DoStep(e.DoExpr);
    jit.CompileStatement(e.DoExpr);
@@ -3393,10 +3399,13 @@ begin
 
    if jit.CurrentGPReg(e.VarExpr, tmpReg) then begin
 
+      if upwardLoop then
+         stepOp := gpOp_add
+      else stepOp := gpOp_sub;
       if stepValueIsConstant then begin
-         jit._op_reg_imm(gpOp_add, tmpReg, stepValue);
+         jit._op_reg_imm(stepOp, tmpReg, stepValue);
       end else begin
-         x86._op_reg_qword_ptr_reg(gpOp_add, tmpReg, gprRBP, stepValueOffset);
+         x86._op_reg_qword_ptr_reg(stepOp, tmpReg, gprRBP, stepValueOffset);
       end;
 
       x86._mov_execmem_reg(e.VarExpr.StackAddr, tmpReg);
@@ -3405,10 +3414,14 @@ begin
    end else begin
 
       if stepValueIsConstant then begin
-         x86._add_execmem_imm(e.VarExpr.StackAddr, stepValue);
+         if upwardLoop then
+            x86._add_execmem_imm(e.VarExpr.StackAddr, stepValue)
+         else x86._sub_execmem_imm(e.VarExpr.StackAddr, stepValue);
       end else begin
          x86._mov_reg_qword_ptr_reg(gprRAX, gprRBP, stepValueOffset);
-         x86._add_execmem_reg(e.VarExpr.StackAddr, gprRAX);
+         if upwardLoop then
+            x86._add_execmem_reg(e.VarExpr.StackAddr, gprRAX)
+         else x86._sub_execmem_reg(e.VarExpr.StackAddr, gprRAX);
       end;
 
    end;
