@@ -55,8 +55,6 @@ type
    TProgramExpr = class;
    TDataExpr = class;
 
-   TVariantDynArray = array of Variant;
-
    TProgramExprList = array[0..MaxInt shr 4] of TProgramExpr;
    PProgramExprList = ^TProgramExprList;
    PProgramExpr = ^TProgramExpr;
