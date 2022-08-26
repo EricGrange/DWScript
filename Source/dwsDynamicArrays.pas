@@ -33,6 +33,13 @@ type
       function AsPDouble(var nbElements, stride : NativeInt) : PDouble;
    end;
 
+   // Here be dragons! this is a hack !
+   // This is used for JIT casting of interface pointer to underlying to field offset
+   TDynamicArrayInterfaceToOffsets = record
+      DataPtrOffset : Integer;
+      ArrayLengthOffset : Integer;
+   end;
+
    TScriptDynamicDataArray = class (TDataContext, IScriptDynArray)
       private
          FElementTyp : TTypeSymbol;
@@ -140,7 +147,8 @@ type
          function ToString : String; override;
          function ScriptTypeName : String;
 
-         class function InterfaceToDataOffset : Integer; virtual; abstract;
+         class function InterfaceOffsets : TDynamicArrayInterfaceToOffsets; virtual; abstract;
+
          function BoundsCheckPassed(index : NativeInt) : Boolean; inline;
 
          property ElementTyp : TTypeSymbol read FElementTyp;
@@ -158,7 +166,7 @@ type
       public
          destructor Destroy; override;
 
-         class function InterfaceToDataOffset : Integer; override; final;
+         class function InterfaceOffsets : TDynamicArrayInterfaceToOffsets; override; final;
 
          procedure SetArrayLength(n : NativeInt);
 
@@ -222,7 +230,6 @@ type
                                           )
       protected
          FData : PDoubleArray;
-
          FCapacity : NativeInt;
 
          procedure Grow;
@@ -231,7 +238,7 @@ type
       public
          destructor Destroy; override;
 
-         class function InterfaceToDataOffset : Integer; override; final;
+         class function InterfaceOffsets : TDynamicArrayInterfaceToOffsets; override; final;
 
          procedure SetArrayLength(n : NativeInt);
 
@@ -296,7 +303,7 @@ type
          FData : TStringDynArray;
 
       public
-         class function InterfaceToDataOffset : Integer; override; final;
+         class function InterfaceOffsets : TDynamicArrayInterfaceToOffsets; override; final;
 
          procedure SetArrayLength(n : NativeInt);
 
@@ -359,7 +366,8 @@ type
          FData : TInterfaceDynArray;
 
       public
-         class function InterfaceToDataOffset : Integer; override; final;
+         class function InterfaceOffsets : TDynamicArrayInterfaceToOffsets; override; final;
+
          procedure FreeInstance; override;
 
          procedure SetArrayLength(n : NativeInt);
@@ -442,7 +450,7 @@ type
          constructor Create(elemTyp : TTypeSymbol); override;
          destructor Destroy; override;
 
-         class function InterfaceToDataOffset : Integer; override; final;
+         class function InterfaceOffsets : TDynamicArrayInterfaceToOffsets; override; final;
 
          procedure SetArrayLength(n : NativeInt);
 
@@ -1488,17 +1496,17 @@ begin
    writer.EndArray;
 end;
 
-// InterfaceToDataOffset
+// InterfaceOffsets
 //
-class function TScriptDynamicNativeIntegerArray.InterfaceToDataOffset : Integer;
-// Here be dragons! This is used for JIT casting of interface to field offset, this is a hack
+class function TScriptDynamicNativeIntegerArray.InterfaceOffsets : TDynamicArrayInterfaceToOffsets;
 var
    instance : TScriptDynamicNativeIntegerArray;
    intf : IScriptDynArray;
 begin
    instance := TScriptDynamicNativeIntegerArray.Create(nil);
    intf := instance;
-   Result := NativeInt(@instance.FData) - NativeInt(intf);
+   Result.DataPtrOffset := NativeInt(@instance.FData) - NativeInt(intf);
+   Result.ArrayLengthOffset := NativeInt(@instance.FArrayLength) - NativeInt(intf);
 end;
 
 // ------------------
@@ -1909,17 +1917,17 @@ begin
    writer.EndArray;
 end;
 
-// InterfaceToDataOffset
+// InterfaceOffsets
 //
-class function TScriptDynamicNativeFloatArray.InterfaceToDataOffset : Integer;
-// Here be dragons! This is used for JIT casting of interface to field offset, this is a hack
+class function TScriptDynamicNativeFloatArray.InterfaceOffsets : TDynamicArrayInterfaceToOffsets;
 var
    instance : TScriptDynamicNativeFloatArray;
    intf : IScriptDynArray;
 begin
    instance := TScriptDynamicNativeFloatArray.Create(nil);
    intf := instance;
-   Result := NativeInt(@instance.FData) - NativeInt(intf);
+   Result.DataPtrOffset := NativeInt(@instance.FData) - NativeInt(intf);
+   Result.ArrayLengthOffset := NativeInt(@instance.FArrayLength) - NativeInt(intf);
 end;
 
 // ------------------
@@ -2283,17 +2291,17 @@ begin
    writer.EndArray;
 end;
 
-// InterfaceToDataOffset
+// InterfaceOffsets
 //
-class function TScriptDynamicNativeStringArray.InterfaceToDataOffset : Integer;
-// Here be dragons! This is used for JIT casting of interface to field offset, this is a hack
+class function TScriptDynamicNativeStringArray.InterfaceOffsets : TDynamicArrayInterfaceToOffsets;
 var
-   instance : TScriptDynamicNativeStringArray;
+   instance : TScriptDynamicNativeIntegerArray;
    intf : IScriptDynArray;
 begin
-   instance := TScriptDynamicNativeStringArray.Create(nil);
+   instance := TScriptDynamicNativeIntegerArray.Create(nil);
    intf := instance;
-   Result := NativeInt(@instance.FData) - NativeInt(intf);
+   Result.DataPtrOffset := NativeInt(@instance.FData) - NativeInt(intf);
+   Result.ArrayLengthOffset := NativeInt(@instance.FArrayLength) - NativeInt(intf);
 end;
 
 // ------------------
@@ -2627,17 +2635,17 @@ begin
       Result := cFNV_basis;
 end;
 
-// InterfaceToDataOffset
+// InterfaceOffsets
 //
-class function TScriptDynamicNativeBaseInterfaceArray.InterfaceToDataOffset : Integer;
-// Here be dragons! This is used for JIT casting of interface to field offset, this is a hack
+class function TScriptDynamicNativeBaseInterfaceArray.InterfaceOffsets : TDynamicArrayInterfaceToOffsets;
 var
    instance : TScriptDynamicNativeInterfaceArray;
    intf : IScriptDynArray;
 begin
    instance := TScriptDynamicNativeInterfaceArray.Create(nil);
    intf := instance;
-   Result := NativeInt(@instance.FData) - NativeInt(intf);
+   Result.DataPtrOffset := NativeInt(@instance.FData) - NativeInt(intf);
+   Result.ArrayLengthOffset := NativeInt(@instance.FArrayLength) - NativeInt(intf);
 end;
 
 // FreeInstance
@@ -2788,17 +2796,17 @@ begin
    FBits.Free;
 end;
 
-// InterfaceToDataOffset
+// InterfaceOffsets
 //
-class function TScriptDynamicNativeBooleanArray.InterfaceToDataOffset : Integer;
-// Here be dragons! This is used for JIT casting of interface to field offset, this is a hack
+class function TScriptDynamicNativeBooleanArray.InterfaceOffsets : TDynamicArrayInterfaceToOffsets;
 var
-   instance : TScriptDynamicNativeIntegerArray;
+   instance : TScriptDynamicNativeBooleanArray;
    intf : IScriptDynArray;
 begin
-   instance := TScriptDynamicNativeIntegerArray.Create(nil);
+   instance := TScriptDynamicNativeBooleanArray.Create(nil);
    intf := instance;
-   Result := NativeInt(@instance.FData) - NativeInt(intf);
+   Result.DataPtrOffset := NativeInt(@instance.FBits) - NativeInt(intf);
+   Result.ArrayLengthOffset := NativeInt(@instance.FArrayLength) - NativeInt(intf);
 end;
 
 // SetArrayLength

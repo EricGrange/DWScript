@@ -735,7 +735,6 @@ type
    // otherwise inlining won't work
    TBoundsHelper = class helper for TProgramExpr
       procedure BoundsCheck(exec : TdwsExecution; aLength, index : Integer); inline;
-      procedure BoundsCheckFailed(exec : TdwsExecution; index : Integer);
    end;
 
 // BoundsCheck
@@ -744,15 +743,6 @@ procedure TBoundsHelper.BoundsCheck(exec : TdwsExecution; aLength, index : Integ
 begin
    if Cardinal(index)>=Cardinal(aLength) then
       BoundsCheckFailed(exec, index);
-end;
-
-// BoundsCheckFailed
-//
-procedure TBoundsHelper.BoundsCheckFailed(exec : TdwsExecution; index : Integer);
-begin
-   if index<0 then
-      RaiseLowerExceeded(exec, index)
-   else RaiseUpperExceeded(exec, index);
 end;
 
 // ------------------

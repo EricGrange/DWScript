@@ -271,8 +271,13 @@ type
          procedure _mov_reg_execStatus(reg : TgpRegister64);
          procedure _mov_execStatus_imm(value : Int32);
          procedure _DoStep(expr : TExprBase);
-//         procedure _RangeCheck(expr : TExprBase; reg : TgpRegister64;
-//                               delta, miniInclusive, maxiExclusive : Integer);
+
+         procedure _RangeCheck(expr : TExprBase; reg : TgpRegister64; delta, miniInclusive, maxiExclusive : Integer);
+         procedure _RangeCheckDynArray(expr : TExprBase; regIndex, regDynBase : TgpRegister64;
+                                       offsetToArrayLength : Integer);
+         procedure _RaiseBoundsCheckFailed(expr : TExprBase; indexReg : TgpRegister64);
+         procedure _RaiseLowerExceeded(expr : TExprBase; indexReg : TgpRegister64);
+         procedure _RaiseUpperExceeded(expr : TExprBase; indexReg : TgpRegister64);
    end;
 
    TdwsJITCodeBlock86_64 = class (TdwsJITCodeBlock)
@@ -423,7 +428,6 @@ type
    end;
 
    Tx86DynamicArrayBase = class (Tx86ArrayBase)
-      function CompileAsData(expr : TTypedExpr; elementType : TVarType) : TgpRegister64;
       function CompileAsItemPtr(base, index : TTypedExpr; var offset : Integer; elementType : TVarType) : TgpRegister64;
    end;
    Tx86DynamicArray = class (Tx86DynamicArrayBase)
@@ -751,6 +755,8 @@ implementation
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
+
+uses dwsDynamicArrays;
 
 {$R-}
 {$Q-}
@@ -1566,8 +1572,10 @@ begin
    Assert(FGPRegs[reg].DataSymbol = nil);
    Assert(FGPRegs[reg].Lock = 1);
 
-   dataSymbol := CanonicGPRDataSymbol(expr);
-   FlushGPRSymbol(dataSymbol);
+   if expr <> nil then begin
+      dataSymbol := CanonicGPRDataSymbol(expr);
+      FlushGPRSymbol(dataSymbol);
+   end else dataSymbol := nil;
 
    FGPRegs[reg].DataSymbol := dataSymbol;
    FGPRegs[reg].Expr := expr;
@@ -1978,48 +1986,90 @@ end;
 
 // _RangeCheck
 //
-{var
+var
    cPtr_TProgramExpr_RaiseUpperExceeded : Pointer = @TProgramExpr.RaiseUpperExceeded;
    cPtr_TProgramExpr_RaiseLowerExceeded : Pointer = @TProgramExpr.RaiseLowerExceeded;
+   cPtr_TProgramExpr_BoundsCheckFailed : Pointer = @TProgramExpr.BoundsCheckFailed;
 procedure TdwsJITx86_64._RangeCheck(expr : TExprBase; reg : TgpRegister64; delta, miniInclusive, maxiExclusive : Integer);
 var
    passed, passedMini : TFixupTarget;
 begin
-   delta:=delta-miniInclusive;
-   maxiExclusive:=maxiExclusive-miniInclusive;
-   if delta<>0 then
-      x86._add_reg_int32(reg, delta);
+   delta := delta-miniInclusive;
+   maxiExclusive := maxiExclusive-miniInclusive;
+   if delta <> 0 then
+      x86._add_reg_imm(reg, delta);
 
    if not (jitoRangeCheck in Options) then Exit;
 
-   passed:=Fixups.NewHangingTarget(True);
+   passed := Fixups.NewHangingTarget(True);
 
-   x86._cmp_reg_int32(reg, maxiExclusive);
+   x86._cmp_reg_imm(reg, maxiExclusive);
 
    Fixups.NewJump(flagsB, passed);
 
-   if delta<>0 then
-      x86._add_reg_int32(reg, -delta);
-   x86._cmp_reg_int32(reg, miniInclusive);
+   if delta <> 0 then
+      x86._sub_reg_imm(reg, delta);
+   x86._cmp_reg_imm(reg, miniInclusive);
 
-   passedMini:=Fixups.NewHangingTarget(False);
+   passedMini := Fixups.NewHangingTarget(False);
 
    Fixups.NewJump(flagsGE, passedMini);
 
-   x86._mov_reg_reg(gprECX, reg);
-   _mov_reg_execInstance(gprEDX);
-   x86._mov_reg_dword(gprEAX, DWORD(expr));
-   x86._call_absmem(@cPtr_TProgramExpr_RaiseLowerExceeded);
+   _RaiseLowerExceeded(expr, reg);
 
    Fixups.AddFixup(passedMini);
 
-   x86._mov_reg_reg(gprECX, reg);
-   _mov_reg_execInstance(gprEDX);
-   x86._mov_reg_dword(gprEAX, DWORD(expr));
-   x86._call_absmem(@cPtr_TProgramExpr_RaiseUpperExceeded);
+   _RaiseUpperExceeded(expr, reg);
 
    Fixups.AddFixup(passed);
-end;        }
+end;
+
+// _RangeCheckDynArray
+//
+procedure TdwsJITx86_64._RangeCheckDynArray(expr : TExprBase; regIndex, regDynBase : TgpRegister64;
+                                            offsetToArrayLength : Integer);
+var
+   passed : TFixupTarget;
+begin
+   passed := Fixups.NewHangingTarget(True);
+
+   x86._cmp_reg_qword_ptr_reg(regIndex, regDynBase, offsetToArrayLength);
+   Fixups.NewJump(flagsB, passed);
+
+   _RaiseBoundsCheckFailed(expr, regIndex);
+
+   Fixups.AddFixup(passed);
+end;
+
+// _RaiseBoundsCheckFailed
+//
+procedure TdwsJITx86_64._RaiseBoundsCheckFailed(expr : TExprBase; indexReg : TgpRegister64);
+begin
+   x86._mov_reg_reg(gprR8, indexReg);
+   _mov_reg_execInstance(gprRDX);
+   x86._mov_reg_imm(gprRCX, QWORD(expr));
+   x86._call_absmem(cPtr_TProgramExpr_BoundsCheckFailed);
+end;
+
+// _RaiseLowerExceeded
+//
+procedure TdwsJITx86_64._RaiseLowerExceeded(expr : TExprBase; indexReg : TgpRegister64);
+begin
+   x86._mov_reg_reg(gprR8, indexReg);
+   _mov_reg_execInstance(gprRDX);
+   x86._mov_reg_imm(gprRCX, QWORD(expr));
+   x86._call_absmem(cPtr_TProgramExpr_RaiseLowerExceeded);
+end;
+
+// _RaiseUpperExceeded
+//
+procedure TdwsJITx86_64._RaiseUpperExceeded(expr : TExprBase; indexReg : TgpRegister64);
+begin
+   x86._mov_reg_reg(gprR8, indexReg);
+   _mov_reg_execInstance(gprRDX);
+   x86._mov_reg_imm(gprRCX, QWORD(expr));
+   x86._call_absmem(cPtr_TProgramExpr_RaiseUpperExceeded);
+end;
 
 // ------------------
 // ------------------ TdwsJITCodeBlock86_64 ------------------
@@ -4266,6 +4316,26 @@ begin
    end else begin
 
       var reg := jit.CompileIntegerToRegister(expr.IndexExpr);
+
+      var targetPassed := jit.Fixups.NewHangingTarget(True);
+
+      if expr.LowBound = 0 then begin
+         x86._cmp_reg_imm(reg, expr.Count);
+         jit.Fixups.NewJump(flagsB, targetPassed);
+         jit._RaiseBoundsCheckFailed(expr, reg);
+      end else begin
+         var targetBelow := jit.Fixups.NewHangingTarget(False);
+         x86._cmp_reg_imm(reg, expr.LowBound);
+         jit.Fixups.NewJump(flagsL, targetBelow);
+         x86._cmp_reg_imm(reg, expr.LowBound + expr.Count);
+         jit.Fixups.NewJump(flagsL, targetPassed);
+         jit._RaiseUpperExceeded(expr, reg);
+         jit.Fixups.AddFixup(targetBelow);
+         jit._RaiseLowerExceeded(expr, reg);
+      end;
+
+      jit.Fixups.AddFixup(targetPassed);
+
       x86._imul_reg_reg_imm(gprRAX, reg, SizeOf(Variant));
       jit.ReleaseGPReg(reg);
 
@@ -4392,33 +4462,14 @@ end;
 // ------------------ Tx86DynamicArrayBase ------------------
 // ------------------
 
-// CompileAsData
-//
-function Tx86DynamicArrayBase.CompileAsData(expr : TTypedExpr; elementType : TVarType) : TgpRegister64;
-var
-   regDyn : TgpRegister64;
-begin
-   regDyn := jit.CompileScriptDynArray(expr);
-   jit.ReleaseGPReg(regDyn);
-   Result := jit.AllocGPReg(nil);
-   case elementType of
-      varDouble :
-         x86._mov_reg_qword_ptr_reg(Result, regDyn, vmt_ScriptDynamicFloatArray_IScriptDynArray_To_DataPointer);
-      varInt64 :
-         x86._mov_reg_qword_ptr_reg(Result, regDyn, vmt_ScriptDynamicIntegerArray_IScriptDynArray_To_DataPointer);
-      varUnknown :
-         x86._mov_reg_qword_ptr_reg(Result, regDyn, vmt_ScriptDynamicInterfaceArray_IScriptDynArray_To_DataPointer);
-   else
-      Assert(False);
-   end;
-end;
-
 // CompileAsItemPtr
 //
 function Tx86DynamicArrayBase.CompileAsItemPtr(base, index : TTypedExpr; var offset : Integer; elementType : TVarType) : TgpRegister64;
 var
    indexClass : TClass;
    elementSize : Integer;
+   regDynBase : TgpRegister64;
+   offsets : TDynamicArrayInterfaceToOffsets;
 begin
    case elementType of
       varDouble  : elementSize := SizeOf(Double);
@@ -4444,25 +4495,30 @@ begin
       end;
    end;
 
-   Result := CompileAsData(base, elementType);
+   regDynBase := jit.CompileScriptDynArray(base);
+   var regIdx := jit.CompileIntegerToRegister(index);
 
-   if index is TConstIntExpr then begin
+   case elementType of
+      varInt64 : offsets := vmt_ScriptDynamicIntegerArray_IScriptDynArray_Offsets;
+      varDouble : offsets := vmt_ScriptDynamicFloatArray_IScriptDynArray_Offsets;
+      varUnknown : offsets := vmt_ScriptDynamicInterfaceArray_IScriptDynArray_Offsets;
+   else
+      Assert(False);
+   end;
 
-      x86._add_reg_imm(Result, TConstIntExpr(index).Value * elementSize);
+   jit._RangeCheckDynArray(index, regIdx, regDynBase, offsets.ArrayLengthOffset);
 
+   Result := jit.AllocOrAcquireGPReg(regDynBase, nil);
+   x86._mov_reg_qword_ptr_reg(Result, regDynBase, offsets.DataPtrOffset);
+
+   if (elementSize in [ 1, 2, 4, 8 ]) and not (regIdx in [ gprRSP, gprR12 ]) then begin
+      x86._lea_reg_ptr_indexed_reg(Result, Result, regIdx, elementSize, offset);
+      jit.ReleaseGPReg(regIdx);
+      offset := 0;
    end else begin
-
-      var regIdx := jit.CompileIntegerToRegister(index);
-      if (elementSize in [ 1, 2, 4, 8 ]) and not (regIdx in [ gprRSP, gprR12 ]) then begin
-         x86._lea_reg_ptr_indexed_reg(Result, Result, regIdx, elementSize, offset);
-         jit.ReleaseGPReg(regIdx);
-         offset := 0;
-      end else begin
-         x86._imul_reg_reg_imm(gprRAX, regIdx, elementSize);
-         jit.ReleaseGPReg(regIdx);
-         x86._add_reg_reg(Result, gprRAX);
-      end;
-
+      x86._imul_reg_reg_imm(gprRAX, regIdx, elementSize);
+      jit.ReleaseGPReg(regIdx);
+      x86._add_reg_reg(Result, gprRAX);
    end;
 end;
 

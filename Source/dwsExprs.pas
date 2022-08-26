@@ -716,6 +716,7 @@ type
 
          procedure RaiseUpperExceeded(exec : TdwsExecution; index : Integer);
          procedure RaiseLowerExceeded(exec : TdwsExecution; index : Integer);
+         procedure BoundsCheckFailed(exec : TdwsExecution; index : Integer);
 
          procedure CheckScriptObject(exec : TdwsExecution; const scriptObj : IScriptObj);
 
@@ -4013,6 +4014,15 @@ end;
 procedure TProgramExpr.RaiseLowerExceeded(exec : TdwsExecution; index : Integer);
 begin
    RaiseScriptError(exec, EScriptOutOfBounds.CreateFmt(RTE_ArrayLowerBoundExceeded, [index]));
+end;
+
+// BoundsCheckFailed
+//
+procedure TProgramExpr.BoundsCheckFailed(exec : TdwsExecution; index : Integer);
+begin
+   if index < 0 then
+      RaiseLowerExceeded(exec, index)
+   else RaiseUpperExceeded(exec, index);
 end;
 
 // CheckScriptObject

@@ -19,7 +19,7 @@ unit dwsVMTOffsets;
 interface
 
 uses
-   dwsExprs, dwsDataContext, dwsSymbols;
+   dwsExprs, dwsDataContext, dwsSymbols, dwsDynamicArrays;
 
 var
    vmt_Prepared : Boolean;
@@ -43,9 +43,9 @@ var
 //   vmt_ScriptDynamicArray_IScriptObj_To_FData : Integer;
    vmt_ScriptObjInstance_IScriptObj_To_FData : Integer;
 
-   vmt_ScriptDynamicFloatArray_IScriptDynArray_To_DataPointer : Integer;
-   vmt_ScriptDynamicIntegerArray_IScriptDynArray_To_DataPointer : Integer;
-   vmt_ScriptDynamicInterfaceArray_IScriptDynArray_To_DataPointer : Integer;
+   vmt_ScriptDynamicIntegerArray_IScriptDynArray_Offsets : TDynamicArrayInterfaceToOffsets;
+   vmt_ScriptDynamicFloatArray_IScriptDynArray_Offsets : TDynamicArrayInterfaceToOffsets;
+   vmt_ScriptDynamicInterfaceArray_IScriptDynArray_Offsets : TDynamicArrayInterfaceToOffsets;
 
    fld_TdwsExecution_Status : Integer;
 
@@ -66,7 +66,7 @@ implementation
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
 
-uses Variants, dwsDynamicArrays;
+uses Variants;
 
 // PrepareVMTOffsets
 //
@@ -102,9 +102,9 @@ var
    soi : TScriptObjInstance;
    io : IScriptObj;
 begin
-   vmt_ScriptDynamicFloatArray_IScriptDynArray_To_DataPointer := TScriptDynamicNativeFloatArray.InterfaceToDataOffset;
-   vmt_ScriptDynamicIntegerArray_IScriptDynArray_To_DataPointer := TScriptDynamicNativeIntegerArray.InterfaceToDataOffset;
-   vmt_ScriptDynamicInterfaceArray_IScriptDynArray_To_DataPointer := TScriptDynamicNativeInterfaceArray.InterfaceToDataOffset;
+   vmt_ScriptDynamicIntegerArray_IScriptDynArray_Offsets := TScriptDynamicNativeIntegerArray.InterfaceOffsets;
+   vmt_ScriptDynamicFloatArray_IScriptDynArray_Offsets := TScriptDynamicNativeFloatArray.InterfaceOffsets;
+   vmt_ScriptDynamicInterfaceArray_IScriptDynArray_Offsets := TScriptDynamicNativeInterfaceArray.InterfaceOffsets;
 
    soi:=TScriptObjInstance.Create(nil);
    io:=IScriptObj(soi);
