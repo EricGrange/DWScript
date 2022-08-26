@@ -233,6 +233,8 @@ type
       function GetResult : TdwsResult;
       function GetObjectCount : Integer;
       function GetProg : IdwsProgram;
+      function HasProgram : Boolean;
+      function HasCompileErrors : Boolean;
       function GetLocalizer : IdwsLocalizer;
       procedure SetLocalizer(const loc : IdwsLocalizer);
       function GetExecutionTimedOut : Boolean;
@@ -348,6 +350,8 @@ type
 
          // for interface only, script exprs use direct properties
          function GetProg : IdwsProgram;
+         function HasProgram : Boolean;
+         function HasCompileErrors : Boolean;
          function GetInfo : TProgramInfo;
          function GetResult : TdwsResult;
          function GetObjectCount : Integer;
@@ -2566,6 +2570,20 @@ end;
 function TdwsProgramExecution.GetProg : IdwsProgram;
 begin
    Result:=FProg;
+end;
+
+// HasProgram
+//
+function TdwsProgramExecution.HasProgram : Boolean;
+begin
+   Result := FProg <> nil;
+end;
+
+// HasCompileErrors
+//
+function TdwsProgramExecution.HasCompileErrors : Boolean;
+begin
+   Result := (FProg <> nil) and FProg.CompileMsgs.HasErrors;
 end;
 
 // EnterRecursion
