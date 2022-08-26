@@ -275,8 +275,15 @@ end;
 //
 function CompareDeclaration(Item1, Item2: Pointer): Integer;
 begin
-   Result := TSymbolPositionList(Item1).FindUsage(suDeclaration).ScriptPos
-            .Compare(TSymbolPositionList(Item2).FindUsage(suDeclaration).ScriptPos);
+   var symPos1 := TSymbolPositionList(Item1).FindUsage(suDeclaration);
+   var symPos2 := TSymbolPositionList(Item2).FindUsage(suDeclaration);
+   if symPos1 <> nil then
+      if symPos2 <> nil then
+         Result := symPos1.ScriptPos.Compare(symPos2.ScriptPos)
+      else Result := 1
+   else if symPos2 <> nil then
+      Result := -1
+   else Result := 0;
 end;
 function CompareAlpha(Item1, Item2: Pointer): Integer;
 begin
