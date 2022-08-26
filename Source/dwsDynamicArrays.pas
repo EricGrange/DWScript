@@ -444,12 +444,14 @@ type
 
    TScriptDynamicNativeBooleanArray = class (TScriptDynamicNativeArray, IScriptDynArray, IJSONWriteAble)
       protected
-         FBits : TBits;
+         FData : TUInt64DynArray;
+         const cBlockByteSize = SizeOf(UInt64);
+         const cBlockBitSize = 64;
+         const cShiftBlockBitSize = 6;
+         const cShiftBlockByteSize = 3;
+         const cMaskBlockBits = (1 shl cShiftBlockBitSize)-1;
 
       public
-         constructor Create(elemTyp : TTypeSymbol); override;
-         destructor Destroy; override;
-
          class function InterfaceOffsets : TDynamicArrayInterfaceToOffsets; override; final;
 
          procedure SetArrayLength(n : NativeInt);
@@ -485,8 +487,8 @@ type
          function GetAsInteger(index : NativeInt) : Int64;
          procedure SetAsInteger(index : NativeInt; const v : Int64);
 
-         function GetAsBoolean(index : NativeInt) : Boolean; inline;
-         procedure SetAsBoolean(index : NativeInt; const v : Boolean); inline;
+         function GetAsBoolean(index : NativeInt) : Boolean;
+         procedure SetAsBoolean(index : NativeInt; const v : Boolean);
 
          procedure SetAsVariant(index : NativeInt; const v : Variant);
          procedure EvalAsVariant(index : NativeInt; var result : Variant);
@@ -717,7 +719,7 @@ end;
 //
 procedure TScriptDynamicDataArray.AddFromExpr(exec : TdwsExecution; valueExpr : TExprBase);
 var
-   n : Integer;
+   n : NativeInt;
    v : Variant;
 begin
    Assert(FElementTyp.Size = 1);
@@ -1964,7 +1966,7 @@ end;
 //
 procedure TScriptDynamicNativeStringArray.Add(const v : String);
 var
-   n : Integer;
+   n : NativeInt;
 begin
    n := FArrayLength+1;
    SetLength(FData, n);
@@ -2338,7 +2340,7 @@ end;
 //
 procedure TScriptDynamicNativeBaseInterfaceArray.Add(const v : IUnknown);
 var
-   n : Integer;
+   n : NativeInt;
 begin
    n := FArrayLength+1;
    SetLength(FData, n);
@@ -2780,22 +2782,6 @@ end;
 // ------------------ TScriptDynamicNativeBooleanArray ------------------
 // ------------------
 
-// Create
-//
-constructor TScriptDynamicNativeBooleanArray.Create(elemTyp : TTypeSymbol);
-begin
-   inherited Create(elemTyp);
-   FBits := TBits.Create;
-end;
-
-// Destroy
-//
-destructor TScriptDynamicNativeBooleanArray.Destroy;
-begin
-   inherited;
-   FBits.Free;
-end;
-
 // InterfaceOffsets
 //
 class function TScriptDynamicNativeBooleanArray.InterfaceOffsets : TDynamicArrayInterfaceToOffsets;
@@ -2805,15 +2791,28 @@ var
 begin
    instance := TScriptDynamicNativeBooleanArray.Create(nil);
    intf := instance;
-   Result.DataPtrOffset := NativeInt(@instance.FBits) - NativeInt(intf);
+   Result.DataPtrOffset := NativeInt(@instance.FData) - NativeInt(intf);
    Result.ArrayLengthOffset := NativeInt(@instance.FArrayLength) - NativeInt(intf);
 end;
 
 // SetArrayLength
 //
 procedure TScriptDynamicNativeBooleanArray.SetArrayLength(n : NativeInt);
+var
+   blockCount : NativeInt;
+   tailBits : Integer;
 begin
-   FBits.Size := n;
+   if n = FArrayLength then Exit;
+   blockCount := n + ((cBlockBitSize - 1) shr cShiftBlockBitSize);
+   SetLength(FData, blockCount);
+   if n < FArrayLength then begin
+      // wipe tail bits if any
+      if n > 0 then begin
+         tailBits := cBlockBitSize - n mod cBlockBitSize;
+         if tailBits > 0 then
+            FData[blockCount-1] := FData[blockCount-1] and (UInt64(-1) shr tailBits);
+      end;
+   end;
    FArrayLength := n;
 end;
 
@@ -2825,7 +2824,7 @@ var
 begin
    SetLength(Result, FArrayLength);
    for i := 0 to FArrayLength-1 do
-      if FBits[i] then
+      if GetAsBoolean(i) then
          Result[i] := 'True'
       else Result[i] := 'False';
 end;
@@ -2838,18 +2837,18 @@ var
 begin
    SetLength(Result, FArrayLength);
    for i := 0 to FArrayLength-1 do
-      Result[i] := Ord(FBits[i]);
+      Result[i] := GetAsInteger(i);
 end;
 
 // Add
 //
 procedure TScriptDynamicNativeBooleanArray.Add(v : Boolean);
 var
-   n : Integer;
+   n : NativeInt;
 begin
    n := FArrayLength;
    SetArrayLength(n+1);
-   FBits[n] := v;
+   SetAsBoolean(n, v);
 end;
 
 // Insert
@@ -2860,8 +2859,8 @@ var
 begin
    SetArrayLength(FArrayLength + 1);
    for i := FArrayLength-1 downto index+1 do
-      FBits[i] := FBits[i-1];
-   FBits[index] := False;
+      SetAsBoolean(i, GetAsBoolean(i-1));
+   SetAsBoolean(index, False);
 end;
 
 // Delete
@@ -2871,7 +2870,7 @@ var
    i : NativeInt;
 begin
    for i := index to FArrayLength-count-1 do
-      FBits[i] := FBits[i+count];
+      SetAsBoolean(i, GetAsBoolean(i+count));
    SetArrayLength(FArrayLength - count);
 end;
 
@@ -2884,16 +2883,16 @@ var
 begin
    if source = destination then Exit;
 
-   buf := FBits[source];
+   buf := GetAsBoolean(source);
 
    if source < destination then begin
       for i := source to destination-1 do
-         FBits[i] := FBits[i+1];
+         SetAsBoolean(i, GetAsBoolean(i+1));
    end else begin
       for i := source downto destination+1 do
-         FBits[i] := FBits[i-1];
+         SetAsBoolean(i, GetAsBoolean(i-1));
    end;
-   FBits[destination] := buf;
+   SetAsBoolean(destination, buf);
 end;
 
 // Swap
@@ -2902,9 +2901,9 @@ procedure TScriptDynamicNativeBooleanArray.Swap(index1, index2 : NativeInt);
 var
    buf : Boolean;
 begin
-   buf := FBits[index1];
-   FBits[index1] := FBits[index2];
-   FBits[index2] := buf;
+   buf := GetAsBoolean(index1);
+   SetAsBoolean(index1, GetAsBoolean(index2));
+   SetAsBoolean(index2, buf);
 end;
 
 // IndexOfValue
@@ -2923,7 +2922,7 @@ var
 begin
    v := (item <> 0);
    for i := fromIndex to FArrayLength-1 do
-      if FBits[i] = v then
+      if GetAsBoolean(i) = v then
          Exit(i);
    Result := -1;
 end;
@@ -2963,7 +2962,7 @@ var
    i : NativeInt;
 begin
    for i := 0 to size-1 do
-      FBits[i + destAddr] := src.AsBoolean[i + srcAddr];
+      SetAsBoolean(i + destAddr, src.AsBoolean[i + srcAddr]);
 end;
 
 // Concat
@@ -2985,7 +2984,7 @@ begin
       n := FArrayLength;
       SetArrayLength(n + size);
       for i := 0 to size-1 do
-         FBits[n + i] := srcDyn.FBits[index + i];
+         SetAsBoolean(n + i, srcDyn.GetAsBoolean(index + i));
    end;
 end;
 
@@ -2999,9 +2998,9 @@ begin
    i := 0;
    j := FArrayLength-1;
    while i < j do begin
-      buf := FBits[i];
-      FBits[i] := FBits[j];
-      FBits[j] := buf;
+      buf := GetAsBoolean(i);
+      SetAsBoolean(i, GetAsBoolean(j));
+      SetAsBoolean(j, buf);
       Inc(i);
       Dec(j);
    end;
@@ -3011,7 +3010,7 @@ end;
 //
 function TScriptDynamicNativeBooleanArray.Compare(index1, index2 : NativeInt) : NativeInt;
 begin
-   Result := Ord(FBits[index1]) - Ord(FBits[index2]);
+   Result := Ord(GetAsBoolean(index1)) - Ord(GetAsBoolean(index2));
 end;
 
 // NaturalSort
@@ -3022,14 +3021,14 @@ var
 begin
    j := FArrayLength;
    for i := 0 to FArrayLength-1 do begin
-      if FBits[i] then begin
+      if GetAsBoolean(i) then begin
          Dec(j);
          if i < j then
-            FBits[i] := False;
+            SetAsBoolean(i, False);
       end;
    end;
    for i := j to FArrayLength-1 do
-      FBits[i] := True;
+      SetAsBoolean(i, True);
 end;
 
 // AddStrings
@@ -3043,70 +3042,88 @@ end;
 //
 function TScriptDynamicNativeBooleanArray.GetAsFloat(index : NativeInt) : Double;
 begin
-   Result := Ord(FBits[index]);
+   Result := Ord(GetAsBoolean(index));
 end;
 
 // SetAsFloat
 //
 procedure TScriptDynamicNativeBooleanArray.SetAsFloat(index : NativeInt; const v : Double);
 begin
-   FBits[index] := (v <> 0);
+   SetAsBoolean(index, v <> 0);
 end;
 
 // GetAsInteger
 //
 function TScriptDynamicNativeBooleanArray.GetAsInteger(index : NativeInt) : Int64;
 begin
-   Result := Ord(FBits[index]);
+   Result := Ord(GetAsBoolean(index));
 end;
 
 // SetAsInteger
 //
 procedure TScriptDynamicNativeBooleanArray.SetAsInteger(index : NativeInt; const v : Int64);
 begin
-   FBits[index] := (v <> 0);
+   SetAsBoolean(index, v <> 0);
 end;
 
 // GetAsBoolean
 //
 function TScriptDynamicNativeBooleanArray.GetAsBoolean(index : NativeInt) : Boolean;
+var
+   p : PUInt64;
+   mask : UInt64;
+   bitSubIndex : Integer;
 begin
-   Result := FBits[index];
+   p := PUInt64(IntPtr(FData) + ((index shr cShiftBlockBitSize) shl cShiftBlockByteSize));
+   // the following intermediate line is required to work around a compiler bug :(
+   bitSubIndex := Integer(index) and cMaskBlockBits;
+   mask := UInt64(1) shl bitSubIndex;
+   Result := (p^ and mask) <> 0;
 end;
 
 // SetAsBoolean
 //
 procedure TScriptDynamicNativeBooleanArray.SetAsBoolean(index : NativeInt; const v : Boolean);
+var
+   p : PUInt64;
+   mask : UInt64;
+   bitSubIndex : Integer;
 begin
-   FBits[index] := v;
+   p := PUInt64(IntPtr(FData) + ((index shr cShiftBlockBitSize) shl cShiftBlockByteSize));
+   // the following intermediate line is required to work around a compiler bug :(
+   bitSubIndex := Integer(index) and cMaskBlockBits;
+   mask := UInt64(1) shl bitSubIndex;
+   if v then
+      p^ := p^ or mask
+   else p^ := p^ and not mask;
 end;
 
 // SetAsVariant
 //
 procedure TScriptDynamicNativeBooleanArray.SetAsVariant(index : NativeInt; const v : Variant);
 begin
-   FBits[index] := VariantToBool(v);
+   SetAsBoolean(index, VariantToBool(v));
 end;
 
 // EvalAsVariant
 //
 procedure TScriptDynamicNativeBooleanArray.EvalAsVariant(index : NativeInt; var result : Variant);
 begin
-   VarCopySafe(result, FBits[index]);
+   VarCopySafe(result, GetAsBoolean(index));
 end;
 
 // SetAsString
 //
 procedure TScriptDynamicNativeBooleanArray.SetAsString(index : NativeInt; const v : String);
 begin
-   FBits[index] := StringToBoolean(v);
+   SetAsBoolean(index, StringToBoolean(v));
 end;
 
 // EvalAsString
 //
 procedure TScriptDynamicNativeBooleanArray.EvalAsString(index : NativeInt; var result : String);
 begin
-   if FBits[index] then
+   if GetAsBoolean(index) then
       result := 'True'
    else result := 'False';
 end;
@@ -3137,7 +3154,7 @@ end;
 function TScriptDynamicNativeBooleanArray.SetFromExpr(index : NativeInt; exec : TdwsExecution; valueExpr : TExprBase) : Boolean;
 begin
    if BoundsCheckPassed(index) then begin
-      FBits[index] := valueExpr.EvalAsBoolean(exec);
+      SetAsBoolean(index, valueExpr.EvalAsBoolean(exec));
       Result := True;
    end else Result := False;
 end;
@@ -3164,7 +3181,7 @@ var
 begin
    Result := cFNV_basis;
    for i := 0 to FArrayLength-1 do
-      Result := (Result xor SimpleIntegerHash(Ord(FBits[i]))) * cFNV_prime;
+      Result := (Result xor SimpleIntegerHash(Ord(GetAsBoolean(i)))) * cFNV_prime;
    if Result = 0 then
       Result := cFNV_basis;
 end;
@@ -3177,7 +3194,7 @@ var
 begin
    writer.BeginArray;
    for i := 0 to FArrayLength-1 do
-      writer.WriteBoolean(FBits[i]);
+      writer.WriteBoolean(GetAsBoolean(i));
    writer.EndArray;
 end;
 
