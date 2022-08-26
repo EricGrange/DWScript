@@ -475,6 +475,7 @@ type
          procedure _call_reg(reg : TgpRegister64; offset : Integer);
 
          procedure _test_al_al;
+         procedure _bt_ptr_rax_reg(reg : TgpRegister64);
 
          procedure _cqo;
 
@@ -3110,6 +3111,17 @@ end;
 procedure Tx86_64_WriteOnlyStream._test_al_al;
 begin
    WriteBytes([$84, $C0]);
+end;
+
+// _bt_ptr_rax_reg
+//
+procedure Tx86_64_WriteOnlyStream._bt_ptr_rax_reg(reg : TgpRegister64);
+begin
+   WriteBytes([
+      $48 + 4*Ord(reg >= gprR8),
+      $0F, $A3,
+      8*(Ord(reg) and 7)
+   ]);
 end;
 
 // _cqo

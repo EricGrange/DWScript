@@ -431,8 +431,12 @@ type
       function CompileAsItemPtr(base, index : TTypedExpr; var offset : Integer; elementType : TVarType) : TgpRegister64;
    end;
    Tx86DynamicArray = class (Tx86DynamicArrayBase)
+      procedure CompileBooleanToCarryFlag(expr : TDynamicArrayExpr);
+
       function DoCompileFloat(expr : TTypedExpr) : TxmmRegister; override;
       function DoCompileInteger(expr : TTypedExpr) : TgpRegister64; override;
+      procedure DoCompileBoolean(expr : TTypedExpr; targetTrue, targetFalse : TFixup); override;
+      function DoCompileBooleanValue(expr : TTypedExpr) : TgpRegister64; override;
       function DoCompileScriptObj(expr : TTypedExpr) : TgpRegister64; override;
    end;
    Tx86DynamicArraySet = class (Tx86DynamicArrayBase)
@@ -4569,6 +4573,63 @@ begin
       x86._mov_reg_qword_ptr_reg(Result, regPtr, offset);
 
       jit.ReleaseGPReg(regPtr);
+
+   end else Result := inherited;
+end;
+
+// CompileBooleanToCarryFlag
+//
+procedure Tx86DynamicArray.CompileBooleanToCarryFlag(expr : TDynamicArrayExpr);
+begin
+   var regDynBase := jit.CompileScriptDynArray(expr.BaseExpr);
+   var regIdx := jit.CompileIntegerToRegister(expr.IndexExpr);
+
+   jit._RangeCheckDynArray(
+      expr.IndexExpr, regIdx, regDynBase,
+      vmt_ScriptDynamicBooleanArray_IScriptDynArray_Offsets.ArrayLengthOffset
+   );
+   x86._mov_reg_qword_ptr_reg(
+      gprRAX, regDynBase,
+      vmt_ScriptDynamicBooleanArray_IScriptDynArray_Offsets.DataPtrOffset
+   );
+   jit.ReleaseGPReg(regDynBase);
+   x86._bt_ptr_rax_reg(regIdx);
+   jit.ReleaseGPReg(regIdx);
+end;
+
+// DoCompileBoolean
+//
+procedure Tx86DynamicArray.DoCompileBoolean(expr : TTypedExpr; targetTrue, targetFalse : TFixup);
+var
+   e : TDynamicArrayExpr;
+begin
+   e := TDynamicArrayExpr(expr);
+
+   if jit.IsBoolean(e) then begin
+
+      CompileBooleanToCarryFlag(e);
+      if targetFalse <> nil then
+         jit.Fixups.NewJump(flagsNC, targetFalse);
+      if targetTrue <> nil then
+         jit.Fixups.NewJump(flagsC, targetTrue);
+
+   end else inherited;
+end;
+
+// DoCompileBooleanValue
+//
+function Tx86DynamicArray.DoCompileBooleanValue(expr : TTypedExpr) : TgpRegister64;
+var
+   e : TDynamicArrayExpr;
+begin
+   e := TDynamicArrayExpr(expr);
+
+   if jit.IsBoolean(e) then begin
+
+      CompileBooleanToCarryFlag(e);
+      x86._set_al_flags(flagsC);
+      Result := jit.AllocGPReg(expr);
+      x86._movsx_reg_al(Result);
 
    end else Result := inherited;
 end;

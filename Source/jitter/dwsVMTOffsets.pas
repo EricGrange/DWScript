@@ -46,6 +46,7 @@ var
    vmt_ScriptDynamicIntegerArray_IScriptDynArray_Offsets : TDynamicArrayInterfaceToOffsets;
    vmt_ScriptDynamicFloatArray_IScriptDynArray_Offsets : TDynamicArrayInterfaceToOffsets;
    vmt_ScriptDynamicInterfaceArray_IScriptDynArray_Offsets : TDynamicArrayInterfaceToOffsets;
+   vmt_ScriptDynamicBooleanArray_IScriptDynArray_Offsets : TDynamicArrayInterfaceToOffsets;
 
    fld_TdwsExecution_Status : Integer;
 
@@ -105,6 +106,7 @@ begin
    vmt_ScriptDynamicIntegerArray_IScriptDynArray_Offsets := TScriptDynamicNativeIntegerArray.InterfaceOffsets;
    vmt_ScriptDynamicFloatArray_IScriptDynArray_Offsets := TScriptDynamicNativeFloatArray.InterfaceOffsets;
    vmt_ScriptDynamicInterfaceArray_IScriptDynArray_Offsets := TScriptDynamicNativeInterfaceArray.InterfaceOffsets;
+   vmt_ScriptDynamicBooleanArray_IScriptDynArray_Offsets := TScriptDynamicNativeBooleanArray.InterfaceOffsets;
 
    soi:=TScriptObjInstance.Create(nil);
    io:=IScriptObj(soi);

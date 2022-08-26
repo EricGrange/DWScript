@@ -32,6 +32,7 @@ type
 
    TStringDynArray = array of String;
    TInt64DynArray = array of Int64;
+   TUInt64DynArray = array of UInt64;
    TSingleDynArray = array of Single;
    TDoubleDynArray = array of Double;
    TInterfaceDynArray = array of IUnknown;
