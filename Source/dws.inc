@@ -62,6 +62,9 @@
    {$IF CompilerVersion>=32.0}
       {$DEFINE DELPHI_TOKYO_PLUS}
    {$IFEND}
+   {$IF CompilerVersion>=35.0}
+      {$DEFINE DELPHI_ALEXANDRIA_PLUS}
+   {$IFEND}
 {$ELSE}
    {$mode delphi}
    {$DEFINE PUREPASCAL}
