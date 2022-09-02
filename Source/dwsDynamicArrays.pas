@@ -925,21 +925,36 @@ end;
 // Concat
 //
 procedure TScriptDynamicDataArray.Concat(const src : IScriptDynArray; index, size : NativeInt);
+
+   procedure Fallback;
+   var
+      i, n, size : NativeInt;
+   begin
+      size := src.ArrayLength;
+      if size = 0 then Exit;
+      n := ArrayLength;
+      SetArrayLength(n + size);
+      Assert(ElementSize = 1);
+      for i := 0 to size-1 do
+         src.EvalAsVariant(i, AsPData^[n + i]);
+   end;
+
 var
    n : NativeInt;
    srcDyn : TScriptDynamicDataArray;
 begin
-   Assert(src.GetSelf.ClassType = Self.ClassType);
    Assert(index >= 0);
-   srcDyn := TScriptDynamicDataArray(src.GetSelf);
-   if size > srcDyn.ArrayLength - index then
-      size := srcDyn.ArrayLength - index;
-   if size > 0 then begin
-      n := ArrayLength;
-      FArrayLength := n + size;
-      SetDataLength(FArrayLength*ElementSize);
-      WriteData(n*ElementSize, srcDyn, index*ElementSize, size*ElementSize);
-   end;
+   if src.GetSelf.ClassType = Self.ClassType then begin
+      srcDyn := TScriptDynamicDataArray(src.GetSelf);
+      if size > srcDyn.ArrayLength - index then
+         size := srcDyn.ArrayLength - index;
+      if size > 0 then begin
+         n := ArrayLength;
+         FArrayLength := n + size;
+         SetDataLength(FArrayLength*ElementSize);
+         WriteData(n*ElementSize, srcDyn, index*ElementSize, size*ElementSize);
+      end;
+   end else Fallback;
 end;
 
 // MoveItem
