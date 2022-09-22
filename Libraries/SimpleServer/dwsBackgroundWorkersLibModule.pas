@@ -26,6 +26,7 @@ type
 
       protected
          function GetHeaders : TStrings; override;
+         function GetUserAgent : String; override;
 
       public
          Task : String;
@@ -138,6 +139,13 @@ begin
    if FHeaders=nil then
       FHeaders := TStringList.Create;
    Result := FHeaders;
+end;
+
+// GetUserAgent
+//
+function TWorkWebRequest.GetUserAgent : String;
+begin
+   Result := 'BackgroundWorker';
 end;
 
 // RemoteIP

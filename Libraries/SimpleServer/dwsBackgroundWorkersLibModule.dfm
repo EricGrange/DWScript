@@ -19,8 +19,8 @@ object dwsBackgroundWorkersLib: TdwsBackgroundWorkersLib
               end>
             ResultType = 'Boolean'
             Attributes = [maStatic]
-            OnEval = dwsBackgroundWorkersClassesBackgroundWorkersMethodsCreateWorkQueueEval
             Kind = mkClassFunction
+            OnEval = dwsBackgroundWorkersClassesBackgroundWorkersMethodsCreateWorkQueueEval
           end
           item
             Name = 'DestroyWorkQueue'
@@ -31,8 +31,8 @@ object dwsBackgroundWorkersLib: TdwsBackgroundWorkersLib
               end>
             ResultType = 'Boolean'
             Attributes = [maStatic]
-            OnEval = dwsBackgroundWorkersClassesBackgroundWorkersMethodsDestroyWorkQueueEval
             Kind = mkClassFunction
+            OnEval = dwsBackgroundWorkersClassesBackgroundWorkersMethodsDestroyWorkQueueEval
           end
           item
             Name = 'QueueWork'
@@ -52,8 +52,8 @@ object dwsBackgroundWorkersLib: TdwsBackgroundWorkersLib
                 DefaultValue = ''
               end>
             Attributes = [maStatic]
-            OnEval = dwsBackgroundWorkersClassesBackgroundWorkersMethodsQueueWorkEval
             Kind = mkClassProcedure
+            OnEval = dwsBackgroundWorkersClassesBackgroundWorkersMethodsQueueWorkEval
           end
           item
             Name = 'QueueSize'
@@ -64,8 +64,8 @@ object dwsBackgroundWorkersLib: TdwsBackgroundWorkersLib
               end>
             ResultType = 'Integer'
             Attributes = [maStatic]
-            OnEval = dwsBackgroundWorkersClassesBackgroundWorkersMethodsQueueSizeEval
             Kind = mkClassFunction
+            OnEval = dwsBackgroundWorkersClassesBackgroundWorkersMethodsQueueSizeEval
           end
           item
             Name = 'QueueDelayedWork'
@@ -89,8 +89,8 @@ object dwsBackgroundWorkersLib: TdwsBackgroundWorkersLib
                 DefaultValue = ''
               end>
             Attributes = [maStatic]
-            OnEval = dwsBackgroundWorkersClassesBackgroundWorkersMethodsQueueDelayedWorkEval
             Kind = mkClassProcedure
+            OnEval = dwsBackgroundWorkersClassesBackgroundWorkersMethodsQueueDelayedWorkEval
           end
           item
             Name = 'GetWorkerCount'
@@ -101,8 +101,8 @@ object dwsBackgroundWorkersLib: TdwsBackgroundWorkersLib
               end>
             ResultType = 'Integer'
             Attributes = [maStatic]
-            OnEval = dwsBackgroundWorkersClassesBackgroundWorkersMethodsGetWorkerCountEval
             Kind = mkClassFunction
+            OnEval = dwsBackgroundWorkersClassesBackgroundWorkersMethodsGetWorkerCountEval
           end
           item
             Name = 'SetWorkerCount'
@@ -116,8 +116,8 @@ object dwsBackgroundWorkersLib: TdwsBackgroundWorkersLib
                 DataType = 'Integer'
               end>
             Attributes = [maStatic]
-            OnEval = dwsBackgroundWorkersClassesBackgroundWorkersMethodsSetWorkerCountEval
             Kind = mkClassProcedure
+            OnEval = dwsBackgroundWorkersClassesBackgroundWorkersMethodsSetWorkerCountEval
           end
           item
             Name = 'WorkQueueStatusAsJSON'
@@ -134,8 +134,8 @@ object dwsBackgroundWorkersLib: TdwsBackgroundWorkersLib
               end>
             ResultType = 'String'
             Attributes = [maStatic]
-            OnEval = dwsBackgroundWorkersClassesBackgroundWorkersMethodsQueueStatusAsJSONEval
             Kind = mkClassFunction
+            OnEval = dwsBackgroundWorkersClassesBackgroundWorkersMethodsQueueStatusAsJSONEval
           end>
         Properties = <
           item

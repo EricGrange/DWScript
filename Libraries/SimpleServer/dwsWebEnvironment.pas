@@ -80,7 +80,7 @@ type
          function GetQueryFields : TStrings;
          function GetContentFields : TStrings;
 
-         function GetUserAgent : String;
+         function GetUserAgent : String; virtual;
 
          function GetAuthentication : TWebRequestAuthentication; virtual;
          function GetAuthenticatedUser : String; virtual;
