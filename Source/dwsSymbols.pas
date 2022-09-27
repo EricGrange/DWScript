@@ -738,7 +738,7 @@ type
          function GetIsDeprecated : Boolean; inline;
 
       public
-         procedure InitDataContext(const data : IDataContext; offset : Integer); virtual;
+         procedure InitDataContext(const data : IDataContext; offset : NativeInt); virtual;
          procedure InitString(var s : String); virtual;
          function DynamicInitialization : Boolean; virtual;
 
@@ -915,7 +915,7 @@ type
          function  GetParamType(idx : Integer) : TTypeSymbol;
          function  ParamTypeForbidsImplicitCasts(idx : Integer) : Boolean;
          procedure Initialize(const msgs : TdwsCompileMessageList); override;
-         procedure InitDataContext(const data : IDataContext; offset : Integer); override;
+         procedure InitDataContext(const data : IDataContext; offset : NativeInt); override;
          procedure AddCondition(cond : TConditionSymbol);
 
          function  IsValidOverloadOf(other : TFuncSymbol) : Boolean;
@@ -1049,7 +1049,7 @@ type
          procedure SetOverlap(meth: TMethodSymbol);
          procedure SetIsFinal;
          procedure SetIsStatic;
-         procedure InitDataContext(const data : IDataContext; offset : Integer); override;
+         procedure InitDataContext(const data : IDataContext; offset : NativeInt); override;
          function QualifiedName : String; override;
          function ParamsDescription : String; override;
          function HasConditions : Boolean;
@@ -1149,7 +1149,7 @@ type
 
       public
          function BaseType : TTypeSymbol; override;
-         procedure InitDataContext(const data : IDataContext; offset : Integer); override;
+         procedure InitDataContext(const data : IDataContext; offset : NativeInt); override;
          function IsCompatible(typSym : TTypeSymbol) : Boolean; override;
          function IsPointerType : Boolean; override;
 
@@ -1171,7 +1171,7 @@ type
       public
          constructor Create;
 
-         procedure InitDataContext(const data : IDataContext; offset : Integer); override;
+         procedure InitDataContext(const data : IDataContext; offset : NativeInt); override;
          function IsCompatible(typSym : TTypeSymbol) : Boolean; override;
    end;
 
@@ -1179,7 +1179,7 @@ type
       public
          constructor Create;
 
-         procedure InitDataContext(const data : IDataContext; offset : Integer); override;
+         procedure InitDataContext(const data : IDataContext; offset : NativeInt); override;
    end;
 
    TBaseStringSymbol = class (TBaseSymbol)
@@ -1194,7 +1194,7 @@ type
          constructor Create;
          destructor Destroy; override;
 
-         procedure InitDataContext(const data : IDataContext; offset : Integer); override;
+         procedure InitDataContext(const data : IDataContext; offset : NativeInt); override;
          procedure InitString(var s : String); override;
 
          function LengthPseudoSymbol(baseSymbols : TdwsBaseSymbolsContext) : TPseudoMethodSymbol; inline;
@@ -1206,7 +1206,7 @@ type
       public
          constructor Create;
 
-         procedure InitDataContext(const data : IDataContext; offset : Integer); override;
+         procedure InitDataContext(const data : IDataContext; offset : NativeInt); override;
    end;
 
    TBaseVariantSymbol = class (TBaseSymbol)
@@ -1214,7 +1214,7 @@ type
          constructor Create(const name : String = '');
 
          function IsCompatible(typSym : TTypeSymbol) : Boolean; override;
-         procedure InitDataContext(const data : IDataContext; offset : Integer); override;
+         procedure InitDataContext(const data : IDataContext; offset : NativeInt); override;
          function SupportsEmptyParam : Boolean; virtual;
    end;
 
@@ -1265,7 +1265,7 @@ type
                             aMin, aMax : Integer);
 
          function IsCompatible(typSym : TTypeSymbol) : Boolean; override;
-         procedure InitDataContext(const data : IDataContext; offset : Integer); override;
+         procedure InitDataContext(const data : IDataContext; offset : NativeInt); override;
 
          function AssignsAsDataExpr : Boolean; override;
 
@@ -1320,7 +1320,7 @@ type
 
       public
          constructor Create(const name : String; elementType, indexType : TTypeSymbol);
-         procedure InitDataContext(const data : IDataContext; offset : Integer); override;
+         procedure InitDataContext(const data : IDataContext; offset : NativeInt); override;
          function IsCompatible(typSym : TTypeSymbol) : Boolean; override;
          function IsPointerType : Boolean; override;
          function SameType(typSym : TTypeSymbol) : Boolean; override;
@@ -1344,7 +1344,7 @@ type
          constructor Create(const name : String; elementType, indexType : TTypeSymbol;
                             lowBound, highBound : Integer);
 
-         procedure InitDataContext(const data : IDataContext; offset : Integer); override;
+         procedure InitDataContext(const data : IDataContext; offset : NativeInt); override;
          function IsCompatible(typSym : TTypeSymbol) : Boolean; override;
          function SameType(typSym : TTypeSymbol) : Boolean; override;
          procedure AddElement;
@@ -1381,7 +1381,7 @@ type
          constructor Create(const name : String; elementType, keyType : TTypeSymbol);
          destructor Destroy; override;
 
-         procedure InitDataContext(const data : IDataContext; offset : Integer); override;
+         procedure InitDataContext(const data : IDataContext; offset : NativeInt); override;
          function DynamicInitialization : Boolean; override;
 
          function IsCompatible(typSym : TTypeSymbol) : Boolean; override;
@@ -1557,7 +1557,7 @@ type
       public
          constructor Create(const name : String; typ : TStructuredTypeSymbol);
 
-         procedure InitDataContext(const data : IDataContext; offset : Integer); override;
+         procedure InitDataContext(const data : IDataContext; offset : NativeInt); override;
          function IsCompatible(typSym : TTypeSymbol) : Boolean; override;
 
          function StructSymbol : TStructuredTypeSymbol; inline;
@@ -1632,7 +1632,7 @@ type
          function CreateAnonymousMethod(aFuncKind : TFuncKind; aVisibility : TdwsVisibility;
                                         isClassMethod : Boolean) : TMethodSymbol; override;
 
-         procedure InitDataContext(const data : IDataContext; offset : Integer); override;
+         procedure InitDataContext(const data : IDataContext; offset : NativeInt); override;
          function DynamicInitialization : Boolean; override;
          function IsCompatible(typSym : TTypeSymbol) : Boolean; override;
          function AssignsAsDataExpr : Boolean; override;
@@ -1663,7 +1663,7 @@ type
 
          procedure AddMethod(methSym : TMethodSymbol); override;
 
-         procedure InitDataContext(const data : IDataContext; offset : Integer); override;
+         procedure InitDataContext(const data : IDataContext; offset : NativeInt); override;
          procedure Initialize(const msgs : TdwsCompileMessageList); override;
          function  IsCompatible(typSym : TTypeSymbol) : Boolean; override;
          function  IsPointerType : Boolean; override;
@@ -1851,7 +1851,7 @@ type
 
          function  FieldAtOffset(offset : Integer) : TFieldSymbol; override;
          procedure InheritFrom(ancestorClassSym : TClassSymbol);
-         procedure InitDataContext(const data : IDataContext; offset : Integer); override;
+         procedure InitDataContext(const data : IDataContext; offset : NativeInt); override;
          procedure Initialize(const msgs : TdwsCompileMessageList); override;
          function  IsCompatible(typSym : TTypeSymbol) : Boolean; override;
          function  IsPointerType : Boolean; override;
@@ -1950,7 +1950,7 @@ type
          function IsCompatible(typSym : TTypeSymbol) : Boolean; override;
          function IsCompatibleWithAnyFuncSymbol : Boolean; override;
 
-         procedure InitDataContext(const data : IDataContext; offset : Integer); override;
+         procedure InitDataContext(const data : IDataContext; offset : NativeInt); override;
 
          function SpecializeType(const context : ISpecializationContext) : TTypeSymbol; override;
    end;
@@ -2000,7 +2000,7 @@ type
          destructor Destroy; override;
 
          function DefaultValue : Int64;
-         procedure InitDataContext(const data : IDataContext; offset : Integer); override;
+         procedure InitDataContext(const data : IDataContext; offset : NativeInt); override;
          function BaseType : TTypeSymbol; override;
          function IsCompatible(typSym : TTypeSymbol) : Boolean; override;
 
@@ -3295,7 +3295,7 @@ end;
 
 // InitDataContext
 //
-procedure TStructuredTypeMetaSymbol.InitDataContext(const data : IDataContext; offset : Integer);
+procedure TStructuredTypeMetaSymbol.InitDataContext(const data : IDataContext; offset : NativeInt);
 begin
    data.SetZeroInt64(offset);
 end;
@@ -3398,7 +3398,7 @@ end;
 
 // InitDataContext
 //
-procedure TRecordSymbol.InitDataContext(const data : IDataContext; offset : Integer);
+procedure TRecordSymbol.InitDataContext(const data : IDataContext; offset : NativeInt);
 var
    field : TFieldSymbol;
 begin
@@ -3594,7 +3594,7 @@ end;
 
 // InitDataContext
 //
-procedure TInterfaceSymbol.InitDataContext(const data : IDataContext; offset : Integer);
+procedure TInterfaceSymbol.InitDataContext(const data : IDataContext; offset : NativeInt);
 begin
    data.SetNilInterface(offset);
 end;
@@ -4384,7 +4384,7 @@ end;
 
 // InitDataContext
 //
-procedure TFuncSymbol.InitDataContext(const data : IDataContext; offset : Integer);
+procedure TFuncSymbol.InitDataContext(const data : IDataContext; offset : NativeInt);
 begin
    data.SetNilInterface(offset);
 end;
@@ -4853,7 +4853,7 @@ end;
 
 // InitDataContext
 //
-procedure TMethodSymbol.InitDataContext(const data : IDataContext; offset : Integer);
+procedure TMethodSymbol.InitDataContext(const data : IDataContext; offset : NativeInt);
 begin
    data.SetNilInterface(offset);
    if Size = 2 then
@@ -5505,7 +5505,7 @@ end;
 
 // InitDataContext
 //
-procedure TClassSymbol.InitDataContext(const data : IDataContext; offset : Integer);
+procedure TClassSymbol.InitDataContext(const data : IDataContext; offset : NativeInt);
 begin
    data.SetNilInterface(offset);
 end;
@@ -5976,7 +5976,7 @@ end;
 
 // InitDataContext
 //
-procedure TNilSymbol.InitDataContext(const data : IDataContext; offset : Integer);
+procedure TNilSymbol.InitDataContext(const data : IDataContext; offset : NativeInt);
 begin
    data.SetNilInterface(offset);
 end;
@@ -6092,7 +6092,7 @@ end;
 
 // InitDataContext
 //
-procedure TBaseIntegerSymbol.InitDataContext(const data : IDataContext; offset : Integer);
+procedure TBaseIntegerSymbol.InitDataContext(const data : IDataContext; offset : NativeInt);
 begin
    data.SetZeroInt64(offset);
 end;
@@ -6121,7 +6121,7 @@ end;
 
 // InitDataContext
 //
-procedure TBaseFloatSymbol.InitDataContext(const data : IDataContext; offset : Integer);
+procedure TBaseFloatSymbol.InitDataContext(const data : IDataContext; offset : NativeInt);
 begin
    data.SetZeroFloat(offset);
 end;
@@ -6149,7 +6149,7 @@ end;
 
 // InitDataContext
 //
-procedure TBaseStringSymbol.InitDataContext(const data : IDataContext; offset : Integer);
+procedure TBaseStringSymbol.InitDataContext(const data : IDataContext; offset : NativeInt);
 begin
    data.SetEmptyString(offset);
 end;
@@ -6212,7 +6212,7 @@ end;
 
 // InitDataContext
 //
-procedure TBaseBooleanSymbol.InitDataContext(const data : IDataContext; offset : Integer);
+procedure TBaseBooleanSymbol.InitDataContext(const data : IDataContext; offset : NativeInt);
 begin
    data.SetFalseBoolean(offset);
 end;
@@ -6252,7 +6252,7 @@ end;
 
 // InitDataContext
 //
-procedure TBaseVariantSymbol.InitDataContext(const data : IDataContext; offset : Integer);
+procedure TBaseVariantSymbol.InitDataContext(const data : IDataContext; offset : NativeInt);
 begin
    data.SetEmptyVariant(offset);
 end;
@@ -7580,9 +7580,9 @@ end;
 
 // InitDataContext
 //
-procedure TSetOfSymbol.InitDataContext(const data : IDataContext; offset : Integer);
+procedure TSetOfSymbol.InitDataContext(const data : IDataContext; offset : NativeInt);
 var
-   i : Integer;
+   i : NativeInt;
 begin
    for i := offset to offset+Size-1 do
       data.SetZeroInt64(i);
@@ -7847,7 +7847,7 @@ end;
 
 // InitDataContext
 //
-procedure TDynamicArraySymbol.InitDataContext(const data : IDataContext; offset : Integer);
+procedure TDynamicArraySymbol.InitDataContext(const data : IDataContext; offset : NativeInt);
 begin
    vInitDynamicArray(Self.Typ, data, offset);
 end;
@@ -8003,9 +8003,9 @@ end;
 
 // InitDataContext
 //
-procedure TStaticArraySymbol.InitDataContext(const data : IDataContext; offset : Integer);
+procedure TStaticArraySymbol.InitDataContext(const data : IDataContext; offset : NativeInt);
 var
-   i, s : Integer;
+   i, s : NativeInt;
 begin
    s := Typ.BaseType.Size;
    for i := 1 to ElementCount do begin
@@ -8129,7 +8129,7 @@ end;
 
 // InitDataContext
 //
-procedure TAssociativeArraySymbol.InitDataContext(const data : IDataContext; offset : Integer);
+procedure TAssociativeArraySymbol.InitDataContext(const data : IDataContext; offset : NativeInt);
 begin
    vInitAssociativeArray(Self, data, offset);
 end;
@@ -8317,7 +8317,7 @@ end;
 
 // InitDataContext
 //
-procedure TEnumerationSymbol.InitDataContext(const data : IDataContext; offset : Integer);
+procedure TEnumerationSymbol.InitDataContext(const data : IDataContext; offset : NativeInt);
 begin
    data.AsInteger[offset] := DefaultValue;
 end;
@@ -8460,7 +8460,7 @@ end;
 
 // InitDataContext
 //
-procedure TAliasSymbol.InitDataContext(const data : IDataContext; offset : Integer);
+procedure TAliasSymbol.InitDataContext(const data : IDataContext; offset : NativeInt);
 begin
    Typ.InitDataContext(data, offset);
 end;
@@ -8666,7 +8666,7 @@ end;
 
 // InitDataContext
 //
-procedure TTypeSymbol.InitDataContext(const data : IDataContext; offset : Integer);
+procedure TTypeSymbol.InitDataContext(const data : IDataContext; offset : NativeInt);
 begin
    Assert(False);
 end;

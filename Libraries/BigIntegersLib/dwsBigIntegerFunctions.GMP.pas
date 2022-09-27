@@ -38,7 +38,7 @@ type
          constructor Create;
 
          function IsCompatible(typSym : TTypeSymbol) : Boolean; override;
-         procedure InitDataContext(const data : IDataContext; offset : Integer); override;
+         procedure InitDataContext(const data : IDataContext; offset : NativeInt); override;
    end;
 
    IdwsBigInteger = interface
@@ -515,7 +515,7 @@ end;
 
 // InitDataContext
 //
-procedure TBaseBigIntegerSymbol.InitDataContext(const data : IDataContext; offset : Integer);
+procedure TBaseBigIntegerSymbol.InitDataContext(const data : IDataContext; offset : NativeInt);
 begin
    data.SetNilInterface(offset);
 end;

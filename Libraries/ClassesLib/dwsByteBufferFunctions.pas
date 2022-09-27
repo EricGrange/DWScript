@@ -39,7 +39,7 @@ type
          constructor Create(const aName : String);
          function DynamicInitialization : Boolean; override;
          function IsCompatible(typSym : TTypeSymbol) : Boolean; override;
-         procedure InitDataContext(const data : IDataContext; offset : Integer); override;
+         procedure InitDataContext(const data : IDataContext; offset : NativeInt); override;
    end;
 
    TByteBufferUnaryOpExpr = class (TUnaryOpExpr)
@@ -286,7 +286,7 @@ end;
 
 // InitDataContext
 //
-procedure TBaseByteBufferSymbol.InitDataContext(const data : IDataContext; offset : Integer);
+procedure TBaseByteBufferSymbol.InitDataContext(const data : IDataContext; offset : NativeInt);
 begin
    data.AsInterface[offset] := IdwsByteBuffer(TdwsByteBuffer.Create)
 end;

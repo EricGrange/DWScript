@@ -448,7 +448,7 @@ type
          constructor Create(const name : UnicodeString; const connectorType: IConnectorType; Typ: TTypeSymbol);
 
          function IsCompatible(typSym : TTypeSymbol) : Boolean; override;
-         procedure InitDataContext(const data : IDataContext; offset : Integer); override;
+         procedure InitDataContext(const data : IDataContext; offset : NativeInt); override;
    end;
 
    TComVariantArrayMember = class (TInterfacedSelfObject, IConnectorMember)
@@ -1383,7 +1383,7 @@ end;
 
 // InitDataContext
 //
-procedure TComVariantArraySymbol.InitDataContext(const data : IDataContext; offset : Integer);
+procedure TComVariantArraySymbol.InitDataContext(const data : IDataContext; offset : NativeInt);
 begin
    data.AsVariant[offset] := VarArrayCreate([0, -1], varVariant); // empty array
 end;

@@ -43,7 +43,7 @@ type
          function GetIsGeneric : Boolean; override;
 
       public
-         procedure InitDataContext(const data : IDataContext; offset : Integer); override;
+         procedure InitDataContext(const data : IDataContext; offset : NativeInt); override;
 
          function DoIsOfType(typSym : TTypeSymbol) : Boolean; override;
          function IsCompatible(typSym : TTypeSymbol) : Boolean; override;
@@ -512,7 +512,7 @@ end;
 
 // InitDataContext
 //
-procedure TGenericTypeSymbol.InitDataContext(const data : IDataContext; offset : Integer);
+procedure TGenericTypeSymbol.InitDataContext(const data : IDataContext; offset : NativeInt);
 begin
    // nothing
 end;
