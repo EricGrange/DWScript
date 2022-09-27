@@ -78,7 +78,8 @@ uses
   UdwsTabularTests in 'UdwsTabularTests.pas',
   UdwsCSSPackTests in 'UdwsCSSPackTests.pas',
   UdwsIniFileTests in 'UdwsIniFileTests.pas',
-  UdwsCustomDataTests in 'UdwsCustomDataTests.pas';
+  UdwsCustomDataTests in 'UdwsCustomDataTests.pas',
+  UdwsTimeSeriesTests in 'UdwsTimeSeriesTests.pas';
 
 {$R *.res}
 
