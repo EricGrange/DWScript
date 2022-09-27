@@ -85,7 +85,7 @@ type
 
          function FindTimeIndex(const time : Int64; var idx : Integer) : Boolean;
          function SequenceData(seq : TdwsTimeSeriesSequence) : TdwsTimeSeriesSequenceData;
-         procedure StoreSample(seq : TdwsTimeSeriesSequence; const time : Int64; const value : Double);
+         procedure StoreSample(seq : TdwsTimeSeriesSequence; const time : Int64; value : Double);
 
          function GetSamples(seq : TdwsTimeSeriesSequence; const fromTime, toTime : Int64;
                              timeStamps : TScriptDynamicNativeIntegerArray;
@@ -163,7 +163,7 @@ type
    end;
 
 function DeltaPackValues(const values : Pointer; const nbValues : Integer; const scale : Double; var packedData : Pointer) : Integer;
-procedure DeltaUnpackValues(const packedData : Pointer; const nbValues : Integer; const scale : Double; const values : Pointer);
+procedure DeltaUnpackValues(const packedData : Pointer; nbValues : Integer; const scale : Double; const values : Pointer);
 
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
@@ -176,6 +176,37 @@ implementation
 uses Math;
 
 const cNaN = 0/0;
+
+(*
+
+Packed delta byte encoding
+
+Direct delta
+
+2 bits scale 1, 10, 100, 1000
+5 bits -16 +15
+
+Special values
+
+$80
+
+3 bits -> number of values -1 of that size in sequence
+3 bits -> 0 -> int8
+		    1 -> int16
+          2 -> int24
+          3 -> int32
+          4 -> int64
+          7 -> nulls
+
+$87 -> NaN
+
+3 bits -> number of NaN -1
+
+$C0
+
+6 bytes number of zeroes
+
+*)
 
 // DeltaPackValues
 //
@@ -303,9 +334,104 @@ end;
 
 // DeltaUnpackValues
 //
-procedure DeltaUnpackValues(const packedData : Pointer; const nbValues : Integer; const scale : Double; const values : Pointer);
+procedure DeltaUnpackValues(const packedData : Pointer; nbValues : Integer; const scale : Double; const values : Pointer);
+type
+   TInt24 = packed record
+      w : Word;
+      b : Byte;
+   end;
+   PInt24 = ^TInt24;
+   TInt24Array = packed array [0..MaxInt shr 2] of TInt24;
+   PInt24Array = ^TInt24Array;
+var
+   pSrc, pDest : PByte;
+   current, delta : Int64;
+   int64Dest : Boolean;
+
+   procedure WriteCurrent;
+   begin
+      Assert(nbValues > 0);
+      if int64Dest then
+         PInt64(pDest)^ := current
+      else PDouble(pDest)^ := current*scale;
+      Inc(pDest, SizeOf(Int64));
+      Dec(nbValues);
+   end;
+
+   procedure WriteNaN;
+   begin
+      Assert(nbValues > 0);
+      PDouble(pDest)^ := cNaN;
+      Inc(pDest, SizeOf(Double));
+      Dec(nbValues);
+   end;
+
 begin
-   Assert(False, 'Todo');
+   int64Dest := (scale = 0);
+   pDest := values;
+   pSrc := packedData;
+   current := 0;
+
+   while nbValues > 0 do begin
+      var code := pSrc^;
+      Inc(pSrc);
+      if (code and $80) = $80 then begin
+         if (code and $C0) = $C0 then begin
+            // number of zeroes
+            for var i := 0 to (code and 7) do
+               WriteCurrent;
+         end else begin
+            // large delta
+            var nb := ((code shr 3) and 7);
+            case code and 7 of
+               0 : for var i := 0 to nb do begin
+                  Inc(current, PInt8Array(pSrc)[i]);
+                  Inc(pSrc, SizeOf(Int8));
+                  WriteCurrent;
+               end;
+               1 : for var i := 0 to nb do begin
+                  Inc(current, PInt16Array(pSrc)[i]);
+                  Inc(pSrc, SizeOf(Int16));
+                  WriteCurrent;
+               end;
+               2 : for var i := 0 to nb do begin
+                  var pi24 := PInt24(@PInt24Array(pSrc)[i]);
+                  if (pi24.b and $80) = 0 then
+                     Inc(current, pi24.w + (pi24.b shl 16))
+                  else Inc(current, (Int64(-1) xor $FFFFFF) + (pi24.w + (pi24.b shl 16)));
+                  Inc(pSrc, SizeOf(TInt24));
+                  WriteCurrent;
+               end;
+               3 : for var i := 0 to nb do begin
+                  Inc(current, PInt32Array(pSrc)[i]);
+                  Inc(pSrc, SizeOf(Int32));
+                  WriteCurrent;
+               end;
+               4 : for var i := 0 to nb do begin
+                  Inc(current, PInt64Array(pSrc)[i]);
+                  Inc(pSrc, SizeOf(Int64));
+                  WriteCurrent;
+               end;
+               7 : for var i := 0 to nb do
+                  WriteNaN;
+            else
+               Assert(False);
+            end;
+         end;
+      end else begin
+         // small direct delta
+         if (code and $10) = 0 then
+            delta := code and $F
+         else delta := ((Int64(-1) xor $1F) + code);
+         case (code shr 5) and 3 of
+            1 : delta := delta * 10;
+            2 : delta := delta * 100;
+            3 : delta := delta * 1000;
+         end;
+         Inc(current, delta);
+         WriteCurrent;
+      end;
+   end;
 end;
 
 // ------------------
@@ -343,7 +469,7 @@ begin
    if Length(FValues) > 0 then Exit;
 
    SetLength(FValues, nbValues);
-   DeltaUnpackValues(FPackedData, nbValues, IntPower(10, Sequence.Decimals), FValues);
+   DeltaUnpackValues(FPackedData, nbValues, IntPower(0.1, Sequence.Decimals), FValues);
 
    if unpackMode = tsumUnpackAndDelete then begin
       FreeMem(FPackedData);
@@ -398,6 +524,7 @@ procedure TdwsTimeSeriesBatch.UnpackTimeStamps(unpackMode : TdwsTimeSeriesUnpack
 begin
    if (NbSamples = 0) or (Length(FTimeStamps) > 0) then Exit;
 
+   SetLength(FTimeStamps, NbSamples);
    DeltaUnpackValues(FPackedTimeStamps, NbSamples, 0, FTimeStamps);
 
    if unpackMode = tsumUnpackAndDelete then begin
@@ -503,10 +630,13 @@ end;
 
 // StoreSample
 //
-procedure TdwsTimeSeriesBatch.StoreSample(seq : TdwsTimeSeriesSequence; const time : Int64; const value : Double);
+procedure TdwsTimeSeriesBatch.StoreSample(seq : TdwsTimeSeriesSequence; const time : Int64; value : Double);
 var
    timeIndex : Integer;
 begin
+   if not IsNan(value) then
+      value := RoundTo(value, -seq.Decimals);
+
    if NbSamples = 0 then begin
       // special case of 1st sample in a batch
       SetLength(FTimeStamps, 1);

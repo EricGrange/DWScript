@@ -29,6 +29,8 @@ type
          procedure CompilationWithMapAndSymbols;
          procedure ExecutionNonOptimized;
          procedure ExecutionOptimized;
+
+         procedure DeltaPackTest;
    end;
 
 // ------------------------------------------------------------------
@@ -39,7 +41,7 @@ implementation
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
 
-uses dwsTabular;
+uses dwsTimeSeries;
 
 // ------------------
 // ------------------ TdwsTimeSeriesTests ------------------
@@ -118,7 +120,6 @@ end;
 //
 procedure TdwsTimeSeriesTests.ExecutionNonOptimized;
 begin
-   vTabularDisableJIT := True;
    FCompiler.Config.CompilerOptions:=[coAssertions];
    Execution;
 end;
@@ -127,7 +128,6 @@ end;
 //
 procedure TdwsTimeSeriesTests.ExecutionOptimized;
 begin
-   vTabularDisableJIT := False;
    FCompiler.Config.CompilerOptions:=[coOptimize, coAssertions];
    Execution;
 end;
@@ -172,6 +172,28 @@ begin
       expectedResult.Free;
       source.Free;
    end;
+end;
+
+// DeltaPackTest
+//
+procedure TdwsTimeSeriesTests.DeltaPackTest;
+const
+   cTestDoubles : array [ 0..10 ]  of Double = (
+      1.0, 1.0, -1.0, 3.5, -1.5, 20.0,
+      -100.5, 1000.5, 1000.0, -100000.0, 0
+   );
+var
+   packedData : Pointer;
+   temp : array [0..High(cTestDoubles)] of Double;
+begin
+   packedData := nil;
+   for var i := 0 to High(cTestDoubles) do begin
+      var n := DeltaPackValues(@cTestDoubles[0], i, 10, packedData);
+      DeltaUnpackValues(packedData, i, 0.1, @temp[0]);
+      for var k := 0 to i-1 do
+         CheckEquals(cTestDoubles[k], temp[k], 'Pass ' + IntToStr(i) + ' offset ' + IntToStr(k));
+   end;
+   FreeMemory(packedData);
 end;
 
 // ------------------------------------------------------------------
