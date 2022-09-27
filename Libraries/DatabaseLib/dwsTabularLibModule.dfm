@@ -73,8 +73,8 @@ object dwsTabularLib: TdwsTabularLib
                 DefaultValue = -1
               end>
             ResultType = 'Float'
-            OnEval = dwsTabularClassesTabularDataMethodsEvaluateAggregateEval
             Kind = mkFunction
+            OnEval = dwsTabularClassesTabularDataMethodsEvaluateAggregateEval
           end
           item
             Name = 'EvaluateNewColumn'
@@ -88,8 +88,8 @@ object dwsTabularLib: TdwsTabularLib
                 DataType = 'array of Variant'
               end>
             ResultType = 'Float'
-            OnEval = dwsTabularClassesTabularDataMethodsEvaluateNewColumnEval
             Kind = mkFunction
+            OnEval = dwsTabularClassesTabularDataMethodsEvaluateNewColumnEval
           end
           item
             Name = 'Evaluate'
@@ -99,8 +99,8 @@ object dwsTabularLib: TdwsTabularLib
                 DataType = 'array of Variant'
               end>
             ResultType = 'array of Float'
-            OnEval = dwsTabularClassesTabularDataMethodsEvaluateEval
             Kind = mkFunction
+            OnEval = dwsTabularClassesTabularDataMethodsEvaluateEval
           end
           item
             Name = 'ExportToSeparated'
@@ -122,8 +122,8 @@ object dwsTabularLib: TdwsTabularLib
                 DefaultValue = '"'
               end>
             ResultType = 'String'
-            OnEval = dwsTabularClassesTabularDataMethodsExportToSeparatedEval
             Kind = mkFunction
+            OnEval = dwsTabularClassesTabularDataMethodsExportToSeparatedEval
           end
           item
             Name = 'DropColumn'
@@ -133,8 +133,8 @@ object dwsTabularLib: TdwsTabularLib
                 DataType = 'String'
               end>
             ResultType = 'Boolean'
-            OnEval = dwsTabularClassesTabularDataMethodsDropColumnEval
             Kind = mkFunction
+            OnEval = dwsTabularClassesTabularDataMethodsDropColumnEval
           end
           item
             Name = 'AddColumn'
@@ -147,8 +147,8 @@ object dwsTabularLib: TdwsTabularLib
                 Name = 'values'
                 DataType = 'array of Float'
               end>
-            OnEval = dwsTabularClassesTabularDataMethodsAddColumnEval
             Kind = mkProcedure
+            OnEval = dwsTabularClassesTabularDataMethodsAddColumnEval
           end
           item
             Name = 'LockAndShare'
@@ -157,14 +157,14 @@ object dwsTabularLib: TdwsTabularLib
                 Name = 'sharedName'
                 DataType = 'String'
               end>
-            OnEval = dwsTabularClassesTabularDataMethodsLockAndShareEval
             Kind = mkProcedure
+            OnEval = dwsTabularClassesTabularDataMethodsLockAndShareEval
           end
           item
             Name = 'ColumnNames'
             ResultType = 'array of String'
-            OnEval = dwsTabularClassesTabularDataMethodsColumnNamesEval
             Kind = mkFunction
+            OnEval = dwsTabularClassesTabularDataMethodsColumnNamesEval
           end
           item
             Name = 'ColumnStrings'
@@ -174,8 +174,8 @@ object dwsTabularLib: TdwsTabularLib
                 DataType = 'String'
               end>
             ResultType = 'array of String'
-            OnEval = dwsTabularClassesTabularDataMethodsColumnStringsEval
             Kind = mkFunction
+            OnEval = dwsTabularClassesTabularDataMethodsColumnStringsEval
           end>
         OnCleanUp = dwsTabularClassesTabularDataCleanUp
       end>
