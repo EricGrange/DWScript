@@ -245,7 +245,7 @@ function DeltaPackValues(const values : Pointer; const nbValues : Integer; const
 var
    pSrc, pNextSrc : UIntPtr;
    pDest : PByte;
-   current : Int64;
+   current, prev : Int64;
    int64Src : Boolean;
 begin
    Assert(SizeOf(Int64) = SizeOf(Double));
@@ -258,7 +258,7 @@ begin
    pSrc := UIntPtr(values);
    int64Src := (scale = 0);
 
-   var prev := 0;
+   prev := 0;
 
    var i := 0;
    while i < nbValues do begin

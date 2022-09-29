@@ -26,7 +26,7 @@ begin
    for var i := 0 to ref.High do begin
       if times[i] <> i then
          PrintLn('Before, invalid time at ' + i.ToString);
-      if Round((values[i] - ref[i])*100) <> 0 then
+      if Round((values[i] - ref[i])*scale) <> 0 then
          PrintLn('Before, invalid value at ' + i.ToString);
    end;
 
@@ -41,7 +41,7 @@ begin
    for var i := 0 to ref.High do begin
       if times[i] <> i then
          PrintLn('After, invalid time at ' + i.ToString);
-      if Round((values[i] - ref[i])*100) <> 0 then
+      if Round((values[i] - ref[i])*scale) <> 0 then
          PrintLn('After, invalid value at ' + i.ToString + ': ' + values[i].ToString + ' vs ' + ref[i].ToString);
    end;
 end;
@@ -51,3 +51,4 @@ TestRange(0, 10, 1);
 TestRange(0, 1000, 2);
 TestRange(-10000, 10000, 3);
 TestRange(-100000000, 100000000, 3);
+TestRange(0, 1000000000000000, 1);
