@@ -392,7 +392,7 @@ var
    typeSymbol : TTypeSymbol;
    isException : Boolean;
 begin
-   if not (aSymbolList.Symbol is TTypeSymbol) then Exit;
+   if not aSymbolList.Symbol.IsType then Exit;
 
    symName := aSymbolList.Symbol.Name;
    if (symName[1] = 'E') and (Length(symName) > 1) and CharInSet(symName[2], ['A'..'Z']) then begin
