@@ -42,6 +42,12 @@ type
 
    TdwsTimeSeriesUnpackMode = ( tsumUnpackAndKeep, tsumUnpackAndDelete );
 
+   TdwsTimeSeriesMemoryStatistics = record
+      PackedBytes : Int64;
+      UnPackedBytes : Int64;
+      SampleCount : Int64;
+   end;
+
    TdwsTimeSeriesSequenceData = class (TRefCountedObject)
       private
          FSequence : TdwsTimeSeriesSequence;
@@ -60,12 +66,12 @@ type
          property Sequence : TdwsTimeSeriesSequence read FSequence;
          property Values : TDoubleDynArray read FValues;
 
-         procedure MemoryStats(var packedSize, unpackedUse : Int64);
+         procedure MemoryStats(var stats : TdwsTimeSeriesMemoryStatistics);
    end;
    TdwsTimeSeriesSequenceDatas = TObjectList<TdwsTimeSeriesSequenceData>;
 
    TdwsTimeSeriesExtractionOption = (
-      tseoIgnoreNulls = 1
+      tseoIgnoreNulls = 0
    );
    TdwsTimeSeriesExtractionOptions = set of TdwsTimeSeriesExtractionOption;
 
@@ -87,6 +93,7 @@ type
          function SequenceData(seq : TdwsTimeSeriesSequence) : TdwsTimeSeriesSequenceData;
          procedure StoreSample(seq : TdwsTimeSeriesSequence; const time : Int64; value : Double);
 
+         function GetTimeStamps(const fromTime, toTime : Int64; const timeStamps : TScriptDynamicNativeIntegerArray) : Integer;
          function GetSamples(seq : TdwsTimeSeriesSequence; const fromTime, toTime : Int64;
                              timeStamps : TScriptDynamicNativeIntegerArray;
                              values : TScriptDynamicNativeFloatArray;
@@ -105,7 +112,7 @@ type
 
          procedure ClearSamplesBefore(time : Int64);
 
-         procedure MemoryStats(var packedSize, unpackedUse : Int64);
+         procedure MemoryStats(var stats : TdwsTimeSeriesMemoryStatistics);
    end;
    TdwsTimeSeriesBatches = TObjectList<TdwsTimeSeriesBatch>;
 
@@ -138,16 +145,20 @@ type
          procedure ClearSamples;
          procedure ClearSamplesBefore(time : Int64);
 
+         function GetTimeStamps(const fromTime, toTime : Int64; const times : IScriptDynArray) : Integer;
+         function GetSample(seq : TdwsTimeSeriesSequence; const timeStamp : Int64) : Double;
          function GetSamples(seq : TdwsTimeSeriesSequence; const fromTime, toTime : Int64;
                              const times, values : IScriptDynArray;
                              options : TdwsTimeSeriesExtractionOptions) : Integer;
+
+         function NextTimeStamp(var timeStamp : Int64) : Boolean;
 
          procedure SplitLargeBatches(sampleCountTreshold : Integer);
 
          procedure Pack;
          procedure Unpack(unpackMode : TdwsTimeSeriesUnpackMode);
 
-         procedure MemoryStats(var packedSize, unpackedUse : Int64);
+         function MemoryStats : TdwsTimeSeriesMemoryStatistics;
    end;
 
    TimeSeriesPool = class sealed
@@ -456,10 +467,10 @@ end;
 
 // MemoryStats
 //
-procedure TdwsTimeSeriesSequenceData.MemoryStats(var packedSize, unpackedUse : Int64);
+procedure TdwsTimeSeriesSequenceData.MemoryStats(var stats : TdwsTimeSeriesMemoryStatistics);
 begin
-   Inc(packedSize, FPackedDataSize);
-   Inc(unpackedUse, Length(FValues)*SizeOf(Double));
+   Inc(stats.PackedBytes, FPackedDataSize);
+   Inc(stats.UnPackedBytes, Length(FValues)*SizeOf(Double));
 end;
 
 // Unpack
@@ -576,12 +587,13 @@ end;
 
 // MemoryStats
 //
-procedure TdwsTimeSeriesBatch.MemoryStats(var packedSize, unpackedUse : Int64);
+procedure TdwsTimeSeriesBatch.MemoryStats(var stats : TdwsTimeSeriesMemoryStatistics);
 begin
-   Inc(packedSize, FPackedTimeStampsSize);
-   Inc(unpackedUse, Length(FTimeStamps)*SizeOf(Int64));
+   Inc(stats.PackedBytes, FPackedTimeStampsSize);
+   Inc(stats.UnPackedBytes, Length(FTimeStamps)*SizeOf(Int64));
+   Inc(stats.SampleCount, NbSamples);
    for var i := 0 to FDatas.Count-1 do
-      FDatas[i].MemoryStats(packedSize, unpackedUse);
+      FDatas[i].MemoryStats(stats);
 end;
 
 // FindTimeIndex
@@ -659,7 +671,29 @@ begin
          Insert(cNaN, FDatas[i].FValues, timeIndex);
       Inc(FNbSamples);
    end;
-   FDatas[seq.Index].FValues[timeIndex] := value;
+   var data := SequenceData(seq);
+   data.FValues[timeIndex] := value;
+end;
+
+// GetTimeStamps
+//
+function TdwsTimeSeriesBatch.GetTimeStamps(
+      const fromTime, toTime : Int64;
+      const timeStamps : TScriptDynamicNativeIntegerArray
+   ) : Integer;
+begin
+   UnpackTimeStamps(tsumUnpackAndKeep);
+
+   var i := 0;
+   var n := Length(FTimeStamps);
+   while (i < n) and (FTimeStamps[i] < fromTime) do
+      Inc(i);
+   Result := timeStamps.ArrayLength;
+   while (i < n) and (FTimeStamps[i] <= toTime) do begin
+      timeStamps.Add(FTimeStamps[i]);
+      Inc(i);
+   end;
+   Result := timeStamps.ArrayLength - Result;
 end;
 
 // GetSamples
@@ -867,6 +901,56 @@ begin
    end;
 end;
 
+// GetTimeStamps
+//
+function TdwsTimeSeries.GetTimeStamps(const fromTime, toTime : Int64; const times : IScriptDynArray) : Integer;
+begin
+   var timesArray := times.GetSelf as TScriptDynamicNativeIntegerArray;
+
+   Result := 0;
+   FLock.BeginRead;
+   try
+      for var i := 0 to FBatches.Count-1 do begin
+         var batch := FBatches[i];
+         if batch.StopTime < fromTime then continue;
+         if batch.StartTime > toTime then break;
+
+         Inc(Result, batch.GetTimeStamps(fromTime, toTime, timesArray));
+      end;
+   finally
+      FLock.EndRead;
+   end;
+end;
+
+// GetSample
+//
+function TdwsTimeSeries.GetSample(seq : TdwsTimeSeriesSequence; const timeStamp : Int64) : Double;
+var
+   batchIndex, timeIndex : Integer;
+begin
+   FLock.BeginRead;
+   try
+      var n := FBatches.Count;
+      if n > 0 then begin
+         FindBatchIndex(timeStamp, batchIndex);
+         if batchIndex >= n then
+            Dec(batchIndex);
+         var batch := FBatches[batchIndex];
+         if (timeStamp >= batch.StartTime) and (timeStamp <= batch.StopTime) then begin
+            batch.UnpackTimeStamps(tsumUnpackAndKeep);
+            if batch.FindTimeIndex(timeStamp, timeIndex) then begin
+               var data := batch.SequenceData(seq);
+               data.Unpack(batch.NbSamples, tsumUnpackAndKeep);
+               Exit(data.FValues[timeIndex]);
+            end;
+         end;
+      end;
+   finally
+      FLock.EndRead;
+   end;
+   Result := cNaN;
+end;
+
 // GetSamples
 //
 function TdwsTimeSeries.GetSamples(seq : TdwsTimeSeriesSequence; const fromTime, toTime : Int64;
@@ -885,6 +969,45 @@ begin
          if batch.StartTime > toTime then break;
 
          Inc(Result, batch.GetSamples(seq, fromTime, toTime, timesArray, valuesArray, options));
+      end;
+   finally
+      FLock.EndRead;
+   end;
+end;
+
+// NextTimeStamp
+//
+function TdwsTimeSeries.NextTimeStamp(var timeStamp : Int64) : Boolean;
+var
+   batchIndex, timeIndex : Integer;
+begin
+   Result := False;
+   FLock.BeginRead;
+   try
+      if not FindBatchIndex(timeStamp, batchIndex) then begin
+         if batchIndex > 0 then
+            Dec(batchIndex)
+         else if FBatches.Count = 0 then
+            Exit;
+      end;
+
+      var batch := FBatches[batchIndex];
+      if batch.StopTime = timeStamp then begin
+         if batchIndex >= FBatches.Count-1 then
+            Exit;
+         batch := FBatches[batchIndex+1];
+         if batch.StartTime > timeStamp then
+            Exit;
+      end;
+      if timeStamp < batch.StartTime then begin
+         timeStamp := batch.StartTime;
+         Exit(True);
+      end;
+      batch.UnpackTimeStamps(tsumUnpackAndKeep);
+      if batch.FindTimeIndex(timeStamp, timeIndex) then begin
+         Assert(timeIndex < High(batch.FTimeStamps));
+         timeStamp := batch.FTimeStamps[timeIndex + 1];
+         Result := True;
       end;
    finally
       FLock.EndRead;
@@ -971,12 +1094,13 @@ end;
 
 // MemoryStats
 //
-procedure TdwsTimeSeries.MemoryStats(var packedSize, unpackedUse : Int64);
+function TdwsTimeSeries.MemoryStats : TdwsTimeSeriesMemoryStatistics;
 begin
+   Result := Default(TdwsTimeSeriesMemoryStatistics);
    FLock.BeginRead;
    try
       for var i := 0 to FBatches.Count-1 do
-         MemoryStats(packedSize, unpackedUse);
+         FBatches[i].MemoryStats(Result);
    finally
       FLock.EndRead;
    end;
@@ -986,7 +1110,8 @@ end;
 //
 function TdwsTimeSeries.FindBatchIndex(const time : Int64; var idx : Integer) : Boolean;
 var
-   lower, upper, mid, cmp: Integer;
+   lower, upper, mid : Integer;
+   cmp : Int64;
 begin
    Result := False;
    lower := 0;

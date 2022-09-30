@@ -47,6 +47,14 @@ type
       Info: TProgramInfo; ExtObject: TObject);
     procedure dwsTimeSeriesClassesTimeSeriesMethodsClearSamplesEval(
       Info: TProgramInfo; ExtObject: TObject);
+    procedure dwsTimeSeriesClassesTimeSeriesMethodsMemoryStatisticsEval(
+      Info: TProgramInfo; ExtObject: TObject);
+    procedure dwsTimeSeriesClassesTimeSeriesMethodsExtractTimeStampsEval(
+      Info: TProgramInfo; ExtObject: TObject);
+    procedure dwsTimeSeriesClassesTimeSeriesMethodsGetSampleEval(
+      Info: TProgramInfo; ExtObject: TObject);
+    procedure dwsTimeSeriesClassesTimeSeriesMethodsNextTimeStampEval(
+      Info: TProgramInfo; ExtObject: TObject);
   private
     FScript : TDelphiWebScript;
   protected
@@ -76,7 +84,7 @@ end;
 function ExtractOptionsFromInteger(i : Integer) : TdwsTimeSeriesExtractionOptions;
 begin
    Result := [];
-   if (i and Ord(tseoIgnoreNulls)) <> 0 then Include(Result, tseoIgnoreNulls);
+   if (i and (1 shl Ord(tseoIgnoreNulls))) <> 0 then Include(Result, tseoIgnoreNulls);
 end;
 
 procedure TdwsTimeSeriesLib.dwsTimeSeriesClassesTimeSeriesCleanUp(
@@ -134,10 +142,48 @@ begin
    )
 end;
 
+procedure TdwsTimeSeriesLib.dwsTimeSeriesClassesTimeSeriesMethodsExtractTimeStampsEval(
+  Info: TProgramInfo; ExtObject: TObject);
+begin
+   Info.ResultAsInteger := TdwsTimeSeries(ExtObject).GetTimeStamps(
+      Info.ParamAsInteger[0], Info.ParamAsInteger[1],
+      Info.ParamAsScriptDynArray[2]
+   )
+end;
+
+procedure TdwsTimeSeriesLib.dwsTimeSeriesClassesTimeSeriesMethodsGetSampleEval(
+  Info: TProgramInfo; ExtObject: TObject);
+begin
+   Info.ResultAsFloat := TdwsTimeSeries(ExtObject).GetSample(
+      SeqByName(Info, ExtObject),
+      Info.ParamAsInteger[1]
+   );
+end;
+
 procedure TdwsTimeSeriesLib.dwsTimeSeriesClassesTimeSeriesMethodsGetSequenceNameEval(
   Info: TProgramInfo; ExtObject: TObject);
 begin
    Info.ResultAsString := TdwsTimeSeries(ExtObject).SequenceByIndex(Info.ParamAsInteger[0]).Name;
+end;
+
+procedure TdwsTimeSeriesLib.dwsTimeSeriesClassesTimeSeriesMethodsMemoryStatisticsEval(
+  Info: TProgramInfo; ExtObject: TObject);
+begin
+   var stats := TdwsTimeSeries(ExtObject).MemoryStats;
+   var r := Info.ResultVars;
+   r.Member['PackedBytes'].ValueAsInteger := stats.PackedBytes;
+   r.Member['UnPackedBytes'].ValueAsInteger := stats.UnPackedBytes;
+   r.Member['SampleCount'].ValueAsInteger := stats.SampleCount;
+end;
+
+procedure TdwsTimeSeriesLib.dwsTimeSeriesClassesTimeSeriesMethodsNextTimeStampEval(
+  Info: TProgramInfo; ExtObject: TObject);
+begin
+   var t := Info.ParamAsInteger[0];
+   var r := TdwsTimeSeries(ExtObject).NextTimeStamp(t);
+   Info.ResultAsBoolean := r;
+   if r then
+      Info.ParamAsInteger[0] := t;
 end;
 
 procedure TdwsTimeSeriesLib.dwsTimeSeriesClassesTimeSeriesMethodsOptimizeEval(

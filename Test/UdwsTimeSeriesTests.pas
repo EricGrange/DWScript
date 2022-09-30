@@ -189,6 +189,7 @@ begin
    packedData := nil;
    for var i := 0 to High(cTestDoubles) do begin
       var n := DeltaPackValues(@cTestDoubles[0], i, 10, packedData);
+      CheckEquals(i > 0, n > 0, 'length for ' + IntToStr(i));
       DeltaUnpackValues(packedData, i, 0.1, @temp[0]);
       for var k := 0 to i-1 do
          CheckEquals(cTestDoubles[k], temp[k], 'Pass ' + IntToStr(i) + ' offset ' + IntToStr(k));

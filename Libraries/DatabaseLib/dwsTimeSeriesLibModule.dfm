@@ -100,6 +100,25 @@ object dwsTimeSeriesLib: TdwsTimeSeriesLib
             OnEval = dwsTimeSeriesClassesTimeSeriesMethodsOptimizeEval
           end
           item
+            Name = 'ExtractTimeStamps'
+            Parameters = <
+              item
+                Name = 'fromTimestamp'
+                DataType = 'Integer'
+              end
+              item
+                Name = 'toTimestamp'
+                DataType = 'Integer'
+              end
+              item
+                Name = 'timestamps'
+                DataType = 'array of Integer'
+              end>
+            ResultType = 'Integer'
+            Kind = mkFunction
+            OnEval = dwsTimeSeriesClassesTimeSeriesMethodsExtractTimeStampsEval
+          end
+          item
             Name = 'ExtractSamples'
             Parameters = <
               item
@@ -134,6 +153,39 @@ object dwsTimeSeriesLib: TdwsTimeSeriesLib
             Name = 'ClearSamples'
             Kind = mkProcedure
             OnEval = dwsTimeSeriesClassesTimeSeriesMethodsClearSamplesEval
+          end
+          item
+            Name = 'MemoryStatistics'
+            ResultType = 'TimeSeriesMemoryStatistics'
+            Kind = mkFunction
+            OnEval = dwsTimeSeriesClassesTimeSeriesMethodsMemoryStatisticsEval
+          end
+          item
+            Name = 'GetSample'
+            Parameters = <
+              item
+                Name = 'sequenceName'
+                DataType = 'String'
+              end
+              item
+                Name = 'timeStamp'
+                DataType = 'Integer'
+              end>
+            ResultType = 'Float'
+            Kind = mkFunction
+            OnEval = dwsTimeSeriesClassesTimeSeriesMethodsGetSampleEval
+          end
+          item
+            Name = 'NextTimeStamp'
+            Parameters = <
+              item
+                Name = 'timeStamp'
+                DataType = 'Integer'
+                IsVarParam = True
+              end>
+            ResultType = 'Boolean'
+            Kind = mkFunction
+            OnEval = dwsTimeSeriesClassesTimeSeriesMethodsNextTimeStampEval
           end>
         Properties = <
           item
@@ -154,7 +206,6 @@ object dwsTimeSeriesLib: TdwsTimeSeriesLib
         Elements = <
           item
             Name = 'tseoIgnoreNulls'
-            UserDefValue = 1
             IsUserDef = True
           end>
       end>
@@ -162,6 +213,27 @@ object dwsTimeSeriesLib: TdwsTimeSeriesLib
       item
         Name = 'TimeSeriesExtractionOptions'
         BaseType = 'TimeSeriesExtractionOption'
+      end>
+    Records = <
+      item
+        Name = 'TimeSeriesMemoryStatistics'
+        Members = <
+          item
+            Name = 'PackedBytes'
+            DataType = 'Integer'
+            Visibility = cvPublished
+          end
+          item
+            Name = 'UnPackedBytes'
+            DataType = 'Integer'
+            Visibility = cvPublished
+          end
+          item
+            Name = 'SampleCount'
+            DataType = 'Integer'
+            Visibility = cvPublished
+          end>
+        Properties = <>
       end>
     UnitName = 'System.Data.TimeSeries'
     StaticSymbols = True
