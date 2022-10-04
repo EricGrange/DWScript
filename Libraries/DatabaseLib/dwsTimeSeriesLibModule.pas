@@ -64,7 +64,8 @@ type
   end;
 
 var
-   vTimeSeriesLargeBatchTreshold : Integer = 1000;
+   vTimeSeriesLargeBatchTreshold : Integer = 500;
+   vTimeSeriesLargeBatchTresholdAutoSplit : Integer = 1000;
 
 implementation
 
@@ -202,17 +203,23 @@ end;
 procedure TdwsTimeSeriesLib.dwsTimeSeriesClassesTimeSeriesMethodsStoreSampleEval(
   Info: TProgramInfo; ExtObject: TObject);
 begin
-   TdwsTimeSeries(ExtObject).StoreSample(
+   var ts := TdwsTimeSeries(ExtObject);
+   ts.StoreSample(
       SeqByName(Info, ExtObject), Info.ParamAsInteger[1], Info.ParamAsFloat[2]
    );
+   if ts.LargestBatchSampleCount > vTimeSeriesLargeBatchTresholdAutoSplit then
+      ts.SplitLargeBatches(vTimeSeriesLargeBatchTreshold);
 end;
 
 procedure TdwsTimeSeriesLib.dwsTimeSeriesClassesTimeSeriesMethodsStoreSamplesEval(
   Info: TProgramInfo; ExtObject: TObject);
 begin
-   TdwsTimeSeries(ExtObject).StoreSamples(
+   var ts := TdwsTimeSeries(ExtObject);
+   ts.StoreSamples(
       SeqByName(Info, ExtObject), Info.ParamAsScriptDynArray[1], Info.ParamAsScriptDynArray[2]
    );
+   if ts.LargestBatchSampleCount > vTimeSeriesLargeBatchTresholdAutoSplit then
+      ts.SplitLargeBatches(vTimeSeriesLargeBatchTreshold);
 end;
 
 procedure TdwsTimeSeriesLib.SetScript(const val : TDelphiWebScript);

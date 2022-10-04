@@ -30,12 +30,16 @@ type
          FOwner : TdwsTimeSeries;
          FName : String;
          FDecimals : Integer;
+         FScaleIntToFloat : Double;
+         FScaleFloatToInt : Double;
          FIndex : Integer;
 
       public
          property Owner : TdwsTimeSeries read FOwner;
          property Name : String read FName;
          property Decimals : Integer read FDecimals;
+         property ScaleIntToFloat : Double read FScaleIntToFloat;
+         property ScaleFloatToInt : Double read FScaleFloatToInt;
          property Index : Integer read FIndex;
    end;
    TdwsTimeSeriesSequences = TObjectList<TdwsTimeSeriesSequence>;
@@ -51,20 +55,31 @@ type
    TdwsTimeSeriesSequenceData = class (TRefCountedObject)
       private
          FSequence : TdwsTimeSeriesSequence;
+         FValuesPtr : Pointer;
+         FCount : Integer;
+         FCapacity : Integer;
          FPackedData : Pointer;
          FPackedDataSize : Integer;
-         FValues : TDoubleDynArray;
 
       protected
          procedure Pack;
          procedure Unpack(nbValues : Integer; unpackMode : TdwsTimeSeriesUnpackMode);
+
+         procedure Grow;
+         function GetValues(index : Integer) : Double; inline;
+         procedure SetValues(index : Integer; const v : Double); inline;
 
       public
          constructor Create(aSequence : TdwsTimeSeriesSequence);
          destructor Destroy; override;
 
          property Sequence : TdwsTimeSeriesSequence read FSequence;
-         property Values : TDoubleDynArray read FValues;
+         property Values[index : Integer] : Double read GetValues write SetValues;
+
+         procedure AddValue(const v : Double);
+         procedure Insert(index : Integer; const v : Double);
+         procedure Delete(index, nb : Integer);
+         procedure SetFrom(p : PDoubleArray; nb : Integer);
 
          procedure MemoryStats(var stats : TdwsTimeSeriesMemoryStatistics);
    end;
@@ -125,6 +140,7 @@ type
          FUseCount : Integer;
          FPoolNext : TdwsTimeSeries;
          FName : String;
+         FLargestBatchSampleCount : Integer;
 
       protected
          function FindBatchIndex(const time : Int64; var idx : Integer) : Boolean;
@@ -159,6 +175,7 @@ type
          procedure Unpack(unpackMode : TdwsTimeSeriesUnpackMode);
 
          function MemoryStats : TdwsTimeSeriesMemoryStatistics;
+         property LargestBatchSampleCount : Integer read FLargestBatchSampleCount write FLargestBatchSampleCount;
    end;
 
    TimeSeriesPool = class sealed
@@ -261,10 +278,11 @@ var
 begin
    Assert(SizeOf(Int64) = SizeOf(Double));
 
-   FreeMem(packedData);
+   FreeMemory(packedData);
+   packedData := nil;
    if nbValues = 0 then Exit(0);
 
-   GetMem(packedData, nbValues*9); // worst case all 8 bytes values
+   packedData := GetMemory(nbValues*9); // worst case all 8 bytes values
    pDest := PByte(packedData);
    pSrc := UIntPtr(values);
    int64Src := (scale = 0);
@@ -340,7 +358,7 @@ begin
       Inc(i);
    end;
    Result := IntPtr(pDest)-IntPtr(packedData);
-   ReallocMem(packedData, Result);
+   packedData := ReallocMemory(packedData, Result);
 end;
 
 // DeltaUnpackValues
@@ -462,7 +480,59 @@ end;
 destructor TdwsTimeSeriesSequenceData.Destroy;
 begin
    inherited;
-   FreeMem(FPackedData);
+   FreeMemory(FPackedData);
+   FreeMemory(FValuesPtr);
+end;
+
+// AddValue
+//
+procedure TdwsTimeSeriesSequenceData.AddValue(const v : Double);
+begin
+   if FCount = FCapacity then Grow;
+   PDoubleArray(FValuesPtr)[FCount] := v;
+   Inc(FCount);
+end;
+
+// Insert
+//
+procedure TdwsTimeSeriesSequenceData.Insert(index : Integer; const v : Double);
+begin
+   Assert(Cardinal(index) <= Cardinal(FCount));
+   if FCount = FCapacity then Grow;
+   if index < FCount then
+      System.Move(PDoubleArray(FValuesPtr)[index], PDoubleArray(FValuesPtr)[index+1], (FCount-index)*SizeOf(Double));
+   PDoubleArray(FValuesPtr)[index] := v;
+   Inc(FCount);
+end;
+
+// Delete
+//
+procedure TdwsTimeSeriesSequenceData.Delete(index, nb : Integer);
+begin
+   Assert(Cardinal(index) < Cardinal(FCount));
+   var nTail := FCount - index - nb;
+   if nTail > 0 then begin
+      System.Move(PDoubleArray(FValuesPtr)[index + nb], PDoubleArray(FValuesPtr)[index], nTail*SizeOf(Double));
+   end else Assert(nTail = 0);
+   Dec(FCount, nb);
+   FValuesPtr := ReallocMemory(FValuesPtr, FCount*SizeOf(Double));
+   FCapacity := FCount;
+end;
+
+// SetFrom
+//
+procedure TdwsTimeSeriesSequenceData.SetFrom(p : PDoubleArray; nb : Integer);
+begin
+   if FPackedData <> nil then begin
+      FreeMemory(FPackedData);
+      FPackedData := nil;
+      FPackedDataSize := 0;
+   end;
+   var byteSize := nb * SizeOf(Double);
+   FValuesPtr := ReallocMemory(FValuesPtr, byteSize);
+   FCapacity := nb;
+   FCount := nb;
+   System.Move(p^, FValuesPtr^, byteSize);
 end;
 
 // MemoryStats
@@ -470,32 +540,62 @@ end;
 procedure TdwsTimeSeriesSequenceData.MemoryStats(var stats : TdwsTimeSeriesMemoryStatistics);
 begin
    Inc(stats.PackedBytes, FPackedDataSize);
-   Inc(stats.UnPackedBytes, Length(FValues)*SizeOf(Double));
+   Inc(stats.UnPackedBytes, FCapacity*SizeOf(Double));
 end;
 
-// Unpack
+// Grow
 //
-procedure TdwsTimeSeriesSequenceData.Unpack(nbValues : Integer; unpackMode : TdwsTimeSeriesUnpackMode);
+procedure TdwsTimeSeriesSequenceData.Grow;
 begin
-   if Length(FValues) > 0 then Exit;
+   FCapacity := FCapacity + (FCapacity shr 2) + 8;
+   FValuesPtr := ReallocMemory(FValuesPtr, FCapacity*SizeOf(Double));
+end;
 
-   SetLength(FValues, nbValues);
-   DeltaUnpackValues(FPackedData, nbValues, IntPower(0.1, Sequence.Decimals), FValues);
+// GetValues
+//
+function TdwsTimeSeriesSequenceData.GetValues(index : Integer) : Double;
+begin
+   Assert(Cardinal(index) < Cardinal(FCount));
+   Result := PDoubleArray(FValuesPtr)[index];
+end;
 
-   if unpackMode = tsumUnpackAndDelete then begin
-      FreeMem(FPackedData);
-      FPackedDataSize := 0;
-   end;
+// SetValues
+//
+procedure TdwsTimeSeriesSequenceData.SetValues(index : Integer; const v : Double);
+begin
+   Assert(Cardinal(index) < Cardinal(FCount));
+   PDoubleArray(FValuesPtr)[index] := v;
 end;
 
 // Pack
 //
 procedure TdwsTimeSeriesSequenceData.Pack;
 begin
-   if Length(FValues) = 0 then Exit;
+   if FCapacity = 0 then Exit;
 
-   FPackedDataSize := DeltaPackValues(FValues, Length(FValues), IntPower(10, Sequence.Decimals), FPackedData);
-   SetLength(FValues, 0);
+   FPackedDataSize := DeltaPackValues(FValuesPtr, FCount, Sequence.ScaleFloatToInt, FPackedData);
+   FreeMemory(FValuesPtr);
+   FValuesPtr := nil;
+   FCapacity := 0;
+   FCount := 0;
+end;
+
+// Unpack
+//
+procedure TdwsTimeSeriesSequenceData.Unpack(nbValues : Integer; unpackMode : TdwsTimeSeriesUnpackMode);
+begin
+   if FCapacity > 0 then Exit;
+
+   FCapacity := nbValues;
+   FCount := nbValues;
+   FValuesPtr := ReallocMemory(FValuesPtr, nbValues*SizeOf(Double));
+   DeltaUnpackValues(FPackedData, nbValues, Sequence.ScaleIntToFloat, FValuesPtr);
+
+   if unpackMode = tsumUnpackAndDelete then begin
+      FreeMemory(FPackedData);
+      FPackedData := nil;
+      FPackedDataSize := 0;
+   end;
 end;
 
 // ------------------
@@ -516,7 +616,7 @@ destructor TdwsTimeSeriesBatch.Destroy;
 begin
    inherited;
    FDatas.Free;
-   FreeMem(FPackedTimeStamps);
+   FreeMemory(FPackedTimeStamps);
 end;
 
 // PackTimeStamps
@@ -539,7 +639,8 @@ begin
    DeltaUnpackValues(FPackedTimeStamps, NbSamples, 0, FTimeStamps);
 
    if unpackMode = tsumUnpackAndDelete then begin
-      FreeMem(FPackedTimeStamps);
+      FreeMemory(FPackedTimeStamps);
+      FPackedTimeStamps := nil;
       FPackedTimeStampsSize := 0;
    end;
 end;
@@ -577,7 +678,7 @@ begin
       for var i := 0 to FDatas.Count-1 do begin
          var d := FDatas[i];
          d.Unpack(FNbSamples, tsumUnpackAndDelete);
-         Delete(d.FValues, 0, n);
+         d.Delete(0, n);
       end;
       Dec(FNbSamples);
       if FNbSamples > 0 then
@@ -600,7 +701,8 @@ end;
 //
 function TdwsTimeSeriesBatch.FindTimeIndex(const time : Int64; var idx : Integer) : Boolean;
 var
-   lower, upper, mid, cmp: Integer;
+   lower, upper, mid : Integer;
+   cmp : Int64;
 begin
    Result := False;
    lower := 0;
@@ -628,9 +730,8 @@ function TdwsTimeSeriesBatch.SequenceData(seq : TdwsTimeSeriesSequence) : TdwsTi
       for var i := FDatas.Count to seqIndex do begin
          var data := TdwsTimeSeriesSequenceData.Create(timeSeries.FSequences[i]);
          FDatas.Add(data);
-         SetLength(data.FValues, NbSamples);
          for var j := 0 to NbSamples-1 do
-            data.FValues[j] := cNaN;
+            data.AddValue(cNaN);
       end;
    end;
 
@@ -656,7 +757,7 @@ begin
       FStartTime := time;
       FStopTime := time;
       FTimeStamps[0] := time;
-      SequenceData(seq).FValues[0] := value;
+      SequenceData(seq).Values[0] := value;
       Exit;
    end;
 
@@ -666,13 +767,20 @@ begin
          FStartTime := time
       else if time > FStopTime then
          FStopTime := time;
-      Insert(time, FTimeStamps, timeIndex);
-      for var i := 0 to FDatas.Count-1 do
-         Insert(cNaN, FDatas[i].FValues, timeIndex);
+      if timeIndex = NbSamples then begin
+         SetLength(FTimeStamps, timeIndex + 1);
+         FTimeStamps[timeIndex] := time;
+         for var i := 0 to FDatas.Count-1 do
+            FDatas[i].AddValue(cNaN);
+      end else begin
+         Insert(time, FTimeStamps, timeIndex);
+         for var i := 0 to FDatas.Count-1 do
+            FDatas[i].Insert(timeIndex, cNaN);
+      end;
       Inc(FNbSamples);
    end;
    var data := SequenceData(seq);
-   data.FValues[timeIndex] := value;
+   data.Values[timeIndex] := value;
 end;
 
 // GetTimeStamps
@@ -706,7 +814,7 @@ begin
    Result := 0;
    if seq.Index >= FDatas.Count then Exit;
 
-   var data := FDatas[seq.Index];
+   var data := SequenceData(seq);
 
    UnpackTimeStamps(tsumUnpackAndKeep);
    data.Unpack(NbSamples, tsumUnpackAndKeep);
@@ -762,6 +870,8 @@ begin
       Result := TdwsTimeSeriesSequence.Create;
       Result.FOwner := Self;
       Result.FDecimals := decimals;
+      Result.FScaleFloatToInt := IntPower(10, decimals);
+      Result.FScaleIntToFloat := IntPower(0.1, decimals);
       Result.FIndex := FSequences.Count;
       Result.FName := name;
       FSequences.Add(Result);
@@ -825,7 +935,10 @@ begin
       FindBatchIndex(time, idx);
       if idx >= FBatches.Count then
          idx := FBatches.Count-1;
-      FBatches[idx].StoreSample(seq, time, value);
+      var batch := FBatches[idx];
+      batch.StoreSample(seq, time, value);
+      if batch.NbSamples > FLargestBatchSampleCount then
+         FLargestBatchSampleCount := batch.NbSamples;
    finally
       FLock.EndWrite;
    end;
@@ -862,6 +975,8 @@ begin
             batch := FBatches[batchIndex];
          end;
          batch.StoreSample(seq, t, values.AsFloat[sampleIndex]);
+         if batch.NbSamples > FLargestBatchSampleCount then
+            FLargestBatchSampleCount := batch.NbSamples;
          Inc(sampleIndex);
       end;
    finally
@@ -941,7 +1056,7 @@ begin
             if batch.FindTimeIndex(timeStamp, timeIndex) then begin
                var data := batch.SequenceData(seq);
                data.Unpack(batch.NbSamples, tsumUnpackAndKeep);
-               Exit(data.FValues[timeIndex]);
+               Exit(data.Values[timeIndex]);
             end;
          end;
       end;
@@ -1039,11 +1154,16 @@ begin
 
    FLock.BeginWrite;
    try
+      FLargestBatchSampleCount := 0;
       if needSplitsFromIndex > FBatches.Count-1 then
          needSplitsFromIndex := FBatches.Count-1;
       for var i := needSplitsFromIndex downto 0 do begin
          var batch := FBatches[i];
-         if batch.NbSamples <= sampleCountTreshold then continue;
+         if batch.NbSamples <= sampleCountTreshold then begin
+            if batch.NbSamples > FLargestBatchSampleCount then
+               FLargestBatchSampleCount := batch.NbSamples;
+            continue;
+         end;
 
          var newBatch := TdwsTimeSeriesBatch.Create;
          FBatches.Insert(i, newBatch);
@@ -1051,15 +1171,26 @@ begin
 
          batch.UnpackTimeStamps(tsumUnpackAndDelete);
          newBatch.FTimeStamps := Copy(batch.FTimeStamps, 0, nbToNewBatch);
-         Delete(batch.FTimeStamps, 0, nbToNewBatch);
+         newBatch.FNbSamples := nbToNewBatch;
 
          for var k := 0 to batch.FDatas.Count-1 do begin
             var data := batch.FDatas[k];
             data.Unpack(batch.NbSamples, tsumUnpackAndDelete);
             var newData := TdwsTimeSeriesSequenceData.Create(data.Sequence);
-            newData.FValues := Copy(data.FValues, 0, nbToNewBatch);
-            Delete(data.FValues, 0, nbToNewBatch);
+            newBatch.FDatas.Add(newData);
+            newData.SetFrom(data.FValuesPtr, nbToNewBatch);
+            data.Delete(0, nbToNewBatch);
          end;
+
+         Dec(batch.FNbSamples, nbToNewBatch);
+
+         Delete(batch.FTimeStamps, 0, nbToNewBatch);
+         newBatch.FStartTime := batch.StartTime;
+         batch.FStartTime := batch.FTimeStamps[0];
+         newBatch.FStopTime := newBatch.FTimeStamps[nbToNewBatch-1];
+
+         if nbToNewBatch > FLargestBatchSampleCount then
+            FLargestBatchSampleCount := nbToNewBatch;
       end;
    finally
       FLock.EndWrite
