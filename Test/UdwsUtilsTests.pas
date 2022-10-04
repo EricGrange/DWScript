@@ -95,6 +95,7 @@ type
          procedure Base32EncoderTest;
 
          procedure NameObjectHashTest;
+         procedure NameObjectHashStressTest;
          procedure SimpleHashTest;
 
          procedure ObjectListTest;
@@ -1363,6 +1364,32 @@ begin
       CheckTrue(nil=noh.Objects[name1], '6 a');
       CheckTrue(nil=noh.Objects[name1c], '6 b');
       CheckTrue(nil=noh.Objects[name2], '6 c');
+   finally
+      noh.Free;
+   end;
+end;
+
+// NameObjectHashStressTest
+//
+procedure TdwsUtilsTests.NameObjectHashStressTest;
+var
+   s : array of String;
+begin
+   SetLength(s, 100);
+   for var i := 0 to High(s) do
+      s[i] := Chr(33 + i);
+
+   var noh := TNameObjectHash.Create;
+   try
+      for var i := 1 to Length(s) do begin
+         noh.Clear;
+         for var j := 0 to 2000 do begin
+            var k := j mod i;
+            noh.Objects[s[k]] := TObject(k);
+         end;
+         for var j := 0 to i-1 do
+            CheckTrue(TObject(j) = noh.Objects[s[j]]);
+      end;
    finally
       noh.Free;
    end;
