@@ -761,8 +761,10 @@ begin
       Exit;
    end;
 
-   Unpack(tsumUnpackAndDelete);
+   if Length(FTimeStamps) = 0 then
+      UnpackTimeStamps(tsumUnpackAndDelete);
    if not FindTimeIndex(time, timeIndex) then begin
+      Unpack(tsumUnpackAndDelete);
       if time < FStartTime then
          FStartTime := time
       else if time > FStopTime then
@@ -780,6 +782,8 @@ begin
       Inc(FNbSamples);
    end;
    var data := SequenceData(seq);
+   if data.FCapacity = 0 then
+      data.Unpack(NbSamples, tsumUnpackAndDelete);
    data.Values[timeIndex] := value;
 end;
 

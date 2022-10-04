@@ -73,8 +73,28 @@ object dwsTimeSeriesLib: TdwsTimeSeriesLib
                 Name = 'value'
                 DataType = 'Float'
               end>
+            Overloaded = True
             Kind = mkProcedure
             OnEval = dwsTimeSeriesClassesTimeSeriesMethodsStoreSampleEval
+          end
+          item
+            Name = 'StoreSample'
+            Parameters = <
+              item
+                Name = 'sequenceIndex'
+                DataType = 'Integer'
+              end
+              item
+                Name = 'timestamp'
+                DataType = 'Integer'
+              end
+              item
+                Name = 'value'
+                DataType = 'Float'
+              end>
+            Overloaded = True
+            Kind = mkProcedure
+            OnFastEvalNoResult = dwsTimeSeriesClassesTimeSeriesMethodsStoreSample_IntegerIntegerFloat_FastEvalNoResult
           end
           item
             Name = 'StoreSamples'

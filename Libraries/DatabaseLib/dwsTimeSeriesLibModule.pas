@@ -19,7 +19,7 @@ unit dwsTimeSeriesLibModule;
 interface
 
 uses
-  System.SysUtils, System.Classes, dwsComp, dwsExprs, dwsSymbols;
+  System.SysUtils, System.Classes, dwsComp, dwsExprs, dwsExprList, dwsSymbols;
 
 type
   TdwsTimeSeriesLib = class(TDataModule)
@@ -55,6 +55,8 @@ type
       Info: TProgramInfo; ExtObject: TObject);
     procedure dwsTimeSeriesClassesTimeSeriesMethodsNextTimeStampEval(
       Info: TProgramInfo; ExtObject: TObject);
+    procedure dwsTimeSeriesClassesTimeSeriesMethodsStoreSample_IntegerIntegerFloat_FastEvalNoResult(
+      baseExpr: TTypedExpr; const args: TExprBaseListExec);
   private
     FScript : TDelphiWebScript;
   protected
@@ -80,6 +82,12 @@ begin
    Result := TdwsTimeSeries(extObject).SequenceByName(name);
    if Result = nil then
       raise Exception.CreateFmt('Unknown sequence "%s"', [ name ]);
+end;
+
+procedure AutoSplit(ts : TdwsTimeSeries);
+begin
+   if ts.LargestBatchSampleCount > vTimeSeriesLargeBatchTresholdAutoSplit then
+      ts.SplitLargeBatches(vTimeSeriesLargeBatchTreshold);
 end;
 
 function ExtractOptionsFromInteger(i : Integer) : TdwsTimeSeriesExtractionOptions;
@@ -218,8 +226,22 @@ begin
    ts.StoreSamples(
       SeqByName(Info, ExtObject), Info.ParamAsScriptDynArray[1], Info.ParamAsScriptDynArray[2]
    );
-   if ts.LargestBatchSampleCount > vTimeSeriesLargeBatchTresholdAutoSplit then
-      ts.SplitLargeBatches(vTimeSeriesLargeBatchTreshold);
+   AutoSplit(ts);
+end;
+
+procedure TdwsTimeSeriesLib.dwsTimeSeriesClassesTimeSeriesMethodsStoreSample_IntegerIntegerFloat_FastEvalNoResult(
+  baseExpr: TTypedExpr; const args: TExprBaseListExec);
+var
+   tsObj : IScriptObj;
+begin
+   baseExpr.EvalAsScriptObj(args.Exec, tsObj);
+   (args.Expr as TProgramExpr).CheckScriptObject(args.Exec, tsObj);
+   var ts := TdwsTimeSeries(tsObj.ExternalObject);
+   ts.StoreSample(
+      ts.SequenceByIndex(args.AsInteger[0]),
+      args.AsInteger[1], args.AsFloat[2]
+   );
+   AutoSplit(ts);
 end;
 
 procedure TdwsTimeSeriesLib.SetScript(const val : TDelphiWebScript);
