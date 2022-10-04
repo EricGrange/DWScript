@@ -2053,12 +2053,27 @@ end;
 function TScriptDynamicNativeStringArray.IndexOfString(const item : String; fromIndex : NativeInt) : NativeInt;
 var
    i : NativeInt;
+   n : Integer;
+   p : PString;
 begin
    if fromIndex < 0 then
       fromIndex := 0;
-   for i := fromIndex to FArrayLength-1 do begin
-      if FData[i] = item then
-         Exit(i);
+   if fromIndex < FArrayLength then begin
+      p := @FData[fromIndex];
+      n := Length(item);
+      if n = 0 then begin
+         for i := fromIndex to FArrayLength-1 do begin
+            if p^ = '' then
+               Exit(i);
+            Inc(p);
+         end;
+      end else begin
+         for i := fromIndex to FArrayLength-1 do begin
+            if (Length(p^) = n) and SysUtils.CompareMem(Pointer(p^), Pointer(item), n*SizeOf(Char)) then
+               Exit(i);
+            Inc(p);
+         end;
+      end;
    end;
    Result := -1;
 end;
