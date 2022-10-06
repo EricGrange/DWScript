@@ -58,7 +58,7 @@ type
 
          procedure Clear; inline;
 
-         function SamePosAs(const aPos : TScriptPos) : Boolean;
+         function SamePosAs(const aPos : TScriptPos) : Boolean; inline;
          function IsMainModule : Boolean;
          function IsSourceFile(const name : String) : Boolean;
          procedure GetSourceName(var result : String); inline;

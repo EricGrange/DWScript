@@ -24,7 +24,8 @@ unit dwsRelExprs;
 interface
 
 uses
-   dwsExprs, dwsSymbols, dwsErrors, dwsConstExprs, Variants, dwsScriptSource,
+   SysUtils, Variants,
+   dwsExprs, dwsSymbols, dwsErrors, dwsConstExprs, dwsScriptSource,
    dwsCompilerContext, dwsSpecializationContext, dwsTokenTypes, dwsUtils;
 
 type
@@ -448,7 +449,7 @@ var
 begin
    FLeft.EvalAsString(exec, a);
    FRight.EvalAsString(exec, b);
-   Result:=(a=b);
+   Result := StrEquals(a, b);
 end;
 
 // ------------------
@@ -463,7 +464,7 @@ var
 begin
    FLeft.EvalAsString(exec, a);
    FRight.EvalAsString(exec, b);
-   Result:=(a<>b);
+   Result := not StrEquals(a, b);
 end;
 
 // ------------------

@@ -1003,6 +1003,8 @@ function UnicodeCompareText(const s1, s2 : UnicodeString) : Integer; overload;
 function UnicodeSameText(const s1, s2 : UnicodeString) : Boolean; overload;
 function UnicodeCompareStr(const s1, s2 : UnicodeString) : Integer; overload; inline;
 
+function StrEquals(const s1, s2 : UnicodeString) : Boolean;
+
 {$ifdef FPC}
 function UnicodeCompareText(const s1, s2 : String) : Integer; overload;
 function UnicodeCompareStr(const s1, s2 : String) : Integer; overload; inline;
@@ -1224,6 +1226,28 @@ begin
              or (    (unk.QueryInterface(ICoalesceable, c)=S_OK)
                  and c.IsFalsey);
 end;
+
+// StrEquals
+//
+function StrEquals(const s1, s2 : UnicodeString) : Boolean;
+{$ifdef FPC}
+begin
+   Result := s1 = s2;
+end;
+{$else}
+var
+   n : Integer;
+begin
+   if s1 = '' then
+      Result := (s2 = '')
+   else begin
+      n := Length(s1);
+      if Length(s2) <> n then
+         Result := False
+      else Result := SysUtils.CompareMem(Pointer(s1), Pointer(s2), n*SizeOf(Char));
+   end;
+end;
+{$endif}
 
 // dwsFreeAndNil
 //
@@ -7660,7 +7684,7 @@ end;
 function TSimpleStringList.IndexOf(const s : String) : Integer;
 begin
    for Result := 0 to FCount-1 do
-      if FItems[Result] = s then Exit;
+      if StrEquals(FItems[Result], s) then Exit;
    Result := -1;
 end;
 

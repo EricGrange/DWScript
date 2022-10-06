@@ -7478,7 +7478,7 @@ begin
       ptrList := PPointer(FSymbols.List);
       repeat
          Result := TSymbol(ptrList^);
-         if UnicodeCompareText(Result.Name, aName) = 0 then begin
+         if UnicodeSameText(Result.Name, aName) then begin
             Exit;
          end;
          Inc(ptrList);
