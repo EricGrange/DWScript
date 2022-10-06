@@ -436,9 +436,11 @@ function TSymbolPositionList.IndexOfPosition(const scriptPos : TScriptPos) : Int
 var
    i : Integer;
 begin
-   for i:=0 to Count-1 do begin
-      if FPosList[i].ScriptPos.SamePosAs(scriptPos) then
-         Exit(i);
+   if (FSourceFile = nil) or (FSourceFile = scriptPos.SourceFile) then begin
+      for i:=0 to Count-1 do begin
+         if FPosList[i].ScriptPos.SamePosAs(scriptPos) then
+            Exit(i);
+      end;
    end;
    Result:=-1;
 end;
