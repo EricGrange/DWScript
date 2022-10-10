@@ -2791,9 +2791,9 @@ begin
             WriteString(#10);
       end;
 
-      processedDependencies:=TStringList.Create;
-      processedDependencies.Sorted:=True;
+      processedDependencies := TFastCompareTextList.Create;
       try
+         processedDependencies.Sorted := True;
          // expand dependencies
          repeat
             n:=Dependencies.List.Count;

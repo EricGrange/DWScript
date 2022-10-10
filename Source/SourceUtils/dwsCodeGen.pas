@@ -416,7 +416,7 @@ begin
    FOutput:=TWriteOnlyBlockStream.Create;
    FOutputLine:=1;
    FDependencies:=TdwsCodeGenDependencies.Create;
-   FFlushedDependencies:=TStringList.Create;
+   FFlushedDependencies := TFastCompareTextList.Create;
    FFlushedDependencies.Sorted:=True;
    FFlushedDependencies.Duplicates:=dupIgnore;
    FTempReg:=TdwsRegisteredCodeGen.Create;
