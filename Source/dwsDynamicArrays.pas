@@ -346,6 +346,7 @@ type
 
          procedure SetAsString(index : NativeInt; const v : String); inline;
          procedure EvalAsString(index : NativeInt; var result : String); inline;
+         function  AsStringPtr(index : NativeInt) : PString; inline;
 
          procedure SetAsInterface(index : NativeInt; const v : IUnknown);
          procedure EvalAsInterface(index : NativeInt; var result : IUnknown);
@@ -2245,6 +2246,13 @@ end;
 procedure TScriptDynamicNativeStringArray.EvalAsString(index : NativeInt; var result : String);
 begin
    result := FData[index];
+end;
+
+// AsStringPtr
+//
+function TScriptDynamicNativeStringArray.AsStringPtr(index : NativeInt) : PString;
+begin
+   Result := @FData[index];
 end;
 
 // SetAsInterface
