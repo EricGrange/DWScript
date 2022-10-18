@@ -314,6 +314,9 @@ type
          constructor Create(const aScriptPos: TScriptPos; baseExpr: TVarExpr;
                             fieldSymbol : TFieldSymbol);
 
+         procedure AssignValueAsInteger(exec : TdwsExecution; const value : Int64); override;
+         procedure AssignValueAsFloat(exec : TdwsExecution; const value : Double); override;
+
          function EvalAsInteger(exec : TdwsExecution) : Int64; override;
          function EvalAsFloat(exec : TdwsExecution) : Double; override;
          procedure EvalAsVariant(exec : TdwsExecution; var result : Variant); override;
@@ -409,9 +412,12 @@ type
       public
          procedure AssignValueAsInteger(exec : TdwsExecution; const value : Int64); override;
 
+         procedure EvalAsString(exec : TdwsExecution; var result : String); override;
          function EvalAsInteger(exec : TdwsExecution) : Int64; override;
          function EvalAsFloat(exec : TdwsExecution) : Double; override;
          function EvalAsBoolean(exec : TdwsExecution) : Boolean; override;
+         procedure EvalAsScriptObj(exec : TdwsExecution; var Result : IScriptObj); override;
+         procedure EvalAsScriptDynArray(exec : TdwsExecution; var result : IScriptDynArray); override;
 
          procedure GetDataPtr(exec : TdwsExecution; var result : IDataContext); override;
 
@@ -2761,6 +2767,20 @@ begin
    FVarPlusMemberOffset:=MemberOffset+baseExpr.StackAddr;
 end;
 
+// AssignValueAsInteger
+//
+procedure TRecordVarExpr.AssignValueAsInteger(exec : TdwsExecution; const value : Int64);
+begin
+   exec.Stack.WriteIntValue_BaseRelative(VarPlusMemberOffset, value);
+end;
+
+// AssignValueAsFloat
+//
+procedure TRecordVarExpr.AssignValueAsFloat(exec : TdwsExecution; const value : Double);
+begin
+   exec.Stack.WriteFloatValue_BaseRelative(VarPlusMemberOffset, value);
+end;
+
 // EvalAsInteger
 //
 function TRecordVarExpr.EvalAsInteger(exec : TdwsExecution) : Int64;
@@ -3120,6 +3140,13 @@ begin
    GetPIScriptObj(exec)^.AsInteger[FieldSym.Offset]:=value;
 end;
 
+// EvalAsString
+//
+procedure TFieldVarExpr.EvalAsString(exec : TdwsExecution; var result : String);
+begin
+   GetPIScriptObj(exec)^.EvalAsString(FieldSym.Offset, result);
+end;
+
 // EvalAsInteger
 //
 function TFieldVarExpr.EvalAsInteger(exec : TdwsExecution) : Int64;
@@ -3139,6 +3166,20 @@ end;
 function TFieldVarExpr.EvalAsBoolean(exec : TdwsExecution) : Boolean;
 begin
    Result:=GetPIScriptObj(exec)^.AsBoolean[FieldSym.Offset];
+end;
+
+// EvalAsScriptObj
+//
+procedure TFieldVarExpr.EvalAsScriptObj(exec : TdwsExecution; var Result : IScriptObj);
+begin
+   GetPIScriptObj(exec)^.EvalAsInterface(FieldSym.Offset, PIUnknown(@result)^);
+end;
+
+// EvalAsScriptDynArray
+//
+procedure TFieldVarExpr.EvalAsScriptDynArray(exec : TdwsExecution; var result : IScriptDynArray);
+begin
+   GetPIScriptObj(exec)^.EvalAsInterface(FieldSym.Offset, PIUnknown(@result)^);
 end;
 
 // GetDataPtr
