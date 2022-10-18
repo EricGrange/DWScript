@@ -48,7 +48,7 @@ type
       function Copy(offset, size : NativeInt) : IdwsByteBuffer;
 
       function DataPtr : Pointer;
-      procedure RangeCheck(index, size : Integer);
+      procedure RangeCheck(index, size : NativeInt);
 
       function GetByteP : Byte;
       function GetInt8P : Int8;
@@ -111,7 +111,7 @@ type
          FMetaData : TInt64DynArray;
 
       protected
-         procedure RangeCheck(index, size : Integer); inline;
+         procedure RangeCheck(index, size : NativeInt); inline;
 
          function GetSelf : TObject;
          function ScriptTypeName : String;
@@ -202,7 +202,10 @@ type
          property Meta[const index : Integer] : Int64 read GetMeta write SetMeta;
    end;
 
-   EdwsByteBuffer = class (Exception);
+   EdwsByteBuffer = class (Exception)
+      public
+         class procedure RaiseOutOfRange(index, size, count : NativeInt);
+   end;
 
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
@@ -214,11 +217,26 @@ implementation
 
 uses dwsEncoding;
 
+// bounds checking is done explicitly by RangeCheck method
+{$R-}
+
 type
    PInt8 = ^Int8;
    PInt16 = ^Int16;
    PDWord = ^DWord;
    PInt32 = ^Int32;
+
+// ------------------
+// ------------------ EdwsByteBuffer ------------------
+// ------------------
+
+// RaiseOutOfRange
+//
+class procedure EdwsByteBuffer.RaiseOutOfRange(index, size, count : NativeInt);
+begin
+   raise EdwsByteBuffer.CreateFmt('Out of range (index %d, size %d for length %d)',
+                                  [index, size, count]);
+end;
 
 // ------------------
 // ------------------ TdwsByteBuffer ------------------
@@ -337,11 +355,10 @@ end;
 
 // RangeCheck
 //
-procedure TdwsByteBuffer.RangeCheck(index, size : Integer);
+procedure TdwsByteBuffer.RangeCheck(index, size : NativeInt);
 begin
    if (index < 0) or (index + size - 1 >= FCount) then
-      raise EdwsByteBuffer.CreateFmt('Out of range (index %d, size %d for length %d)',
-                                     [index, size, FCount]);
+      EdwsByteBuffer.RaiseOutOfRange(index, size, count);
 end;
 
 // Assign
