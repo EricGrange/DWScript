@@ -115,6 +115,10 @@ implementation
 
 uses dwsXPlatform;
 
+// turn off range checks, as they will be pointless
+// PObjectTightList size is not static
+{$R-}
+
 // ------------------
 // ------------------ TExprBaseListRec ------------------
 // ------------------
