@@ -200,6 +200,11 @@ type
          function  EvalAsInteger(exec : TdwsExecution) : Int64; override;
    end;
 
+   TBooleanExpr86 = class (TJITTedBooleanExpr)
+      public
+         function  EvalAsBoolean(exec : TdwsExecution) : Boolean; override;
+   end;
+
    TdwsJITter_x86 = class (TdwsJITter)
       private
          FJIT : TdwsJITx86;
@@ -731,6 +736,7 @@ begin
    JITTedProgramExprClass:=TProgramExpr86;
    JITTedFloatExprClass:=TFloatExpr86;
    JITTedIntegerExprClass:=TIntegerExpr86;
+   JITTedBooleanExprClass:=TBooleanExpr86;
 
    FInterpretedJITter:=Tx86InterpretedExpr.Create(Self);
 
@@ -1859,6 +1865,17 @@ end;
 // EvalAsInteger
 //
 function TIntegerExpr86.EvalAsInteger(exec : TdwsExecution) : Int64;
+asm
+   jmp [eax+FCodePtr]
+end;
+
+// ------------------
+// ------------------ TBooleanExpr86 ------------------
+// ------------------
+
+// EvalAsBoolean
+//
+function TBooleanExpr86.EvalAsBoolean(exec : TdwsExecution) : Boolean;
 asm
    jmp [eax+FCodePtr]
 end;
