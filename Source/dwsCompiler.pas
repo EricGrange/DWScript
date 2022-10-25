@@ -1418,13 +1418,13 @@ end;
 //
 function TdwsCompiler.GetFuncExpr(funcSym : TFuncSymbol; codeExpr : TTypedExpr = nil) : TFuncExprBase;
 begin
-   if codeExpr=nil then begin
+   if codeExpr = nil then begin
 
       Result := CreateSimpleFuncExpr(FCompilerContext, FTok.HotPos, funcSym);
 
    end else begin
 
-      Result:=TFuncPtrExpr.Create(FCompilerContext, FTok.HotPos, codeExpr);
+      Result := TFuncPtrExpr.Create(FCompilerContext, FTok.HotPos, codeExpr);
 
    end;
 
@@ -5911,7 +5911,8 @@ begin
 
             end else begin
 
-               RecordSymbolUseReference(member, namePos, isWrite);
+               if not member.IsOverloaded then
+                  RecordSymbolUseReference(member, namePos, isWrite);
                if not (coHintsDisabled in FOptions) then
                   CheckMatchingDeclarationCase(name, member, namePos);
 
@@ -7019,12 +7020,14 @@ function TdwsCompiler.ReadMethod(methodSym : TMethodSymbol; instanceExpr : TType
 var
    funcExpr : TFuncExprBase;
 begin
-   if methodSym.IsClassMethod then
-      funcExpr:=GetMethodExpr(methodSym, instanceExpr, rkClassOfRef, scriptPos, [])
+   if overloads <> nil then
+      funcExpr := TOverloadedExpr.Create(CompilerContext, scriptPos, methodSym, instanceExpr)
+   else if methodSym.IsClassMethod then
+      funcExpr := GetMethodExpr(methodSym, instanceExpr, rkClassOfRef, scriptPos, [])
    else begin
-      funcExpr:=GetMethodExpr(methodSym, instanceExpr, rkObjRef, scriptPos, []);
+      funcExpr := GetMethodExpr(methodSym, instanceExpr, rkObjRef, scriptPos, []);
    end;
-   Result:=WrapUpFunctionRead(funcExpr, expecting, overloads, []);
+   Result := WrapUpFunctionRead(funcExpr, expecting, overloads, []);
 end;
 
 // ReadStaticMethod
@@ -7042,8 +7045,10 @@ begin
       if compoSym.IsStatic then
          FMsgs.AddCompilerErrorFmt(scriptPos, CPE_ClassIsStaticNoInstantiation, [compoSym.Name]);
    end;
-   funcExpr:=GetMethodExpr(methodSym, metaExpr, rkClassOfRef, scriptPos, []);
-   Result:=WrapUpFunctionRead(funcExpr, expecting, overloads, []);
+   if overloads <> nil then
+      funcExpr := TOverloadedExpr.Create(CompilerContext, scriptPos, methodSym, metaExpr)
+   else funcExpr := GetMethodExpr(methodSym, metaExpr, rkClassOfRef, scriptPos, []);
+   Result := WrapUpFunctionRead(funcExpr, expecting, overloads, []);
 end;
 
 type
@@ -7097,7 +7102,7 @@ begin
    repeat
       for member in struct.Members do begin
          if not UnicodeSameText(member.Name, methSym.Name) then continue;
-         if not (member is TMethodSymbol) then continue;
+         if not member.InheritsFrom(TMethodSymbol) then continue;
          if not member.IsVisibleFor(visibility) then continue;
          lastOverloaded:=TMethodSymbol(member);
          if not overloads.ContainsChildMethodOf(lastOverloaded) then
@@ -7115,12 +7120,12 @@ function TdwsCompiler.ReadSelfMethOverloaded(methSym : TMethodSymbol; isWrite : 
 var
    overloads : TFuncSymbolList;
 begin
-   overloads:=TFuncSymbolList.Create;
+   overloads := CompilerContext.AllocateFuncSymbolList;
    try
       CollectMethodOverloads(methSym, overloads);
       Result:=ReadSelfMethod(methSym, isWrite, expecting, overloads, options);
    finally
-      overloads.Free;
+      CompilerContext.ReleaseFuncSymbolList(overloads);
    end;
 end;
 
@@ -7132,12 +7137,12 @@ function TdwsCompiler.ReadMethOverloaded(methSym : TMethodSymbol; instanceExpr :
 var
    overloads : TFuncSymbolList;
 begin
-   overloads:=TFuncSymbolList.Create;
+   overloads := CompilerContext.AllocateFuncSymbolList;
    try
       CollectMethodOverloads(methSym, overloads);
       Result:=ReadMethod(methSym, instanceExpr, scriptPos, expecting, overloads);
    finally
-      overloads.Free;
+      CompilerContext.ReleaseFuncSymbolList(overloads);
    end;
 end;
 
@@ -7151,11 +7156,11 @@ var
    overloads : TFuncSymbolList;
    meth : TMethodSymbol;
 begin
-   overloads:=TFuncSymbolList.Create;
+   overloads := CompilerContext.AllocateFuncSymbolList;
    try
       CollectMethodOverloads(methSym, overloads);
-      for i:=overloads.Count-1 downto 0 do begin
-         meth:=(overloads[i] as TMethodSymbol);
+      for i := overloads.Count-1 downto 0 do begin
+         meth := (overloads[i] as TMethodSymbol);
          case meth.Kind of
             fkFunction, fkProcedure, fkMethod:
                if not meth.IsClassMethod then
@@ -7164,15 +7169,12 @@ begin
                overloads.Extract(i);
          end;
       end;
-      if overloads.Count=0 then
+      if overloads.Count = 0 then
          FMsgs.AddCompilerStop(scriptPos, CPE_StaticMethodExpected);
-      meth:=methSym;
-      methSym:=TMethodSymbol(overloads[0]);
-      if (meth <> methSym) and (coSymbolDictionary in Options) then
-         ReplaceSymbolUse(meth, methSym, scriptPos);
-      Result:=ReadStaticMethod(methSym, metaExpr, scriptPos, expecting, overloads);
+      methSym := TMethodSymbol(overloads[0]);
+      Result := ReadStaticMethod(methSym, metaExpr, scriptPos, expecting, overloads);
    finally
-      overloads.Free;
+      CompilerContext.ReleaseFuncSymbolList(overloads);
    end;
 end;
 
@@ -7199,9 +7201,9 @@ begin
    if expecting<>nil then
       funcExprArgCount:=expecting.Params.Count
    else funcExprArgCount:=funcExpr.Args.Count;
-   for i:=0 to overloads.Count-1 do begin
-      match:=overloads[i];
-      if funcExprArgCount>match.Params.Count then continue;
+   for i := 0 to overloads.Count-1 do begin
+      match := overloads[i];
+      if funcExprArgCount > match.Params.Count then continue;
       matchDistance:=0;
       for j:=0 to funcExprArgCount-1 do begin
          matchParamType := match.GetParamType(j);
@@ -7336,27 +7338,33 @@ begin
          FMsgs.AddCompilerHintFmt(funcExpr.ScriptPos, CPH_AmbiguousMatchingOverloadsForCall,
                                   [funcExpr.FuncSym.Name]);
       end;
-      if bestMatch.ClassType=TAliasMethodSymbol then
-         bestMatch:=TAliasMethodSymbol(bestMatch).Alias;
-      if bestMatch<>funcExpr.FuncSym then begin
-         if coSymbolDictionary in Options then begin
-            ReplaceSymbolUse(funcExpr.FuncSym, bestMatch, funcExpr.ScriptPos);
-            delta:=funcExpr.Args.Count-funcExpr.FuncSym.Params.Count;
-            if delta>=0 then begin
-               for i:=0 to Min(bestMatch.Params.Count, funcExpr.Args.Count-delta)-1 do begin
-                  nowVarParam:=(bestMatch.Params[i].ClassType=TVarParamSymbol);
-                  funcExprArg:=funcExpr.Args[i+delta];
-                  wasVarParam:=(funcExprArg is TByRefParamExpr) and TByRefParamExpr(funcExprArg).IsWritable;
-                  if wasVarParam<>nowVarParam then begin
-                     if wasVarParam then
-                        FSymbolDictionary.ChangeUsageAt(argPosArray[i], [], [suWrite])
-                     else FSymbolDictionary.ChangeUsageAt(argPosArray[i], [suWrite], []);
-                  end;
+
+      if coSymbolDictionary in Options then
+         RecordSymbolUseReference(bestMatch, funcExpr.ScriptPos, False);
+
+      if bestMatch.ClassType = TAliasMethodSymbol then begin
+         bestMatch := TAliasMethodSymbol(bestMatch).Alias;
+         if coSymbolDictionary in Options then
+            RecordSymbolUseImplicitReference(bestMatch, funcExpr.ScriptPos, False);
+      end;
+
+      if coSymbolDictionary in Options then begin
+         RecordSymbolUseReference(bestMatch, funcExpr.ScriptPos, False);
+         delta:=funcExpr.Args.Count-funcExpr.FuncSym.Params.Count;
+         if delta>=0 then begin
+            for i:=0 to Min(bestMatch.Params.Count, funcExpr.Args.Count-delta)-1 do begin
+               nowVarParam:=(bestMatch.Params[i].ClassType=TVarParamSymbol);
+               funcExprArg:=funcExpr.Args[i+delta];
+               wasVarParam:=(funcExprArg is TByRefParamExpr) and TByRefParamExpr(funcExprArg).IsWritable;
+               if wasVarParam<>nowVarParam then begin
+                  if wasVarParam then
+                     FSymbolDictionary.ChangeUsageAt(argPosArray[i], [], [suWrite])
+                  else FSymbolDictionary.ChangeUsageAt(argPosArray[i], [suWrite], []);
                end;
             end;
          end;
-         funcExpr:=funcExpr.ChangeFuncSymbol(FCompilerContext, bestMatch, cfOptions);
       end;
+      funcExpr:=funcExpr.ChangeFuncSymbol(FCompilerContext, bestMatch, cfOptions);
       Result:=True;
    end else begin
       FMsgs.AddCompilerErrorFmt(funcExpr.ScriptPos, CPE_NoMatchingOverloadForCall,
@@ -7484,11 +7492,13 @@ begin
       end;
    end;
 
-   funcExpr:=GetFuncExpr(funcSym, codeExpr);
-   Result:=WrapUpFunctionRead(funcExpr, expecting, overloads, []);
+   if overloads = nil then
+      funcExpr := GetFuncExpr(funcSym, codeExpr)
+   else funcExpr := TOverloadedExpr.Create(CompilerContext, FTok.HotPos, funcSym, nil);
+   Result := WrapUpFunctionRead(funcExpr, expecting, overloads, []);
 
    if Optimize then
-      Result:=Result.OptimizeToTypedExpr(FCompilerContext, Result.ScriptPos);
+      Result := Result.OptimizeToTypedExpr(FCompilerContext, Result.ScriptPos);
 end;
 
 // WrapUpFunctionRead
@@ -8764,7 +8774,7 @@ begin
       OrphanAndNil(baseExpr);
       FMsgs.AddCompilerStopFmt(hotPos, CPE_NoDefaultConstructor, [classSym.Name])
    end else if methSym.IsOverloaded then
-      overloads:=TFuncSymbolList.Create;
+      overloads := CompilerContext.AllocateFuncSymbolList;
    try
       if overloads<>nil then begin
          CollectMethodOverloads(methSym, overloads);
@@ -8796,7 +8806,7 @@ begin
          raise;
       end;
    finally
-      overloads.Free;
+      CompilerContext.ReleaseFuncSymbolList(overloads);
    end;
 end;
 
@@ -14561,9 +14571,11 @@ begin
          if killNameToken then
             FTok.KillToken;
 
-         RecordSymbolUseReference(sym, namePos, False);
-         if sym.ClassType=TAliasMethodSymbol then
-            RecordSymbolUseImplicitReference(TAliasMethodSymbol(sym).Alias, namePos, False);
+         if not sym.IsOverloaded then begin
+            RecordSymbolUseReference(sym, namePos, False);
+            if sym.ClassType = TAliasMethodSymbol then
+               RecordSymbolUseImplicitReference(TAliasMethodSymbol(sym).Alias, namePos, False);
+         end;
 
          if sym.ClassType=TPropertySymbol then begin
 

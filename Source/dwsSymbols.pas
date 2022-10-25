@@ -345,6 +345,7 @@ type
          function GetAsFuncSymbol : TFuncSymbol; virtual;
          function GetIsGeneric : Boolean; virtual;
          function GetExternalName : String;
+         function GetIsOverloaded : Boolean; virtual;
 
          function GetIsClassSymbol : Boolean; virtual;
          function GetIsDataSymbol : Boolean; virtual;
@@ -367,6 +368,7 @@ type
          function AsFuncSymbol : TFuncSymbol; overload;
          function AsFuncSymbol(var funcSym : TFuncSymbol) : Boolean; overload;
          function IsGeneric : Boolean;
+         property IsOverloaded : Boolean read GetIsOverloaded;
 
          function QualifiedName : String; virtual;
 
@@ -874,7 +876,8 @@ type
          procedure SetIsExport(const val : Boolean); inline;
          function GetIsProperty : Boolean; inline;
          procedure SetIsProperty(const val : Boolean); inline;
-         function GetIsOverloaded : Boolean; inline;
+         function GetIsOverloaded : Boolean; override;
+         function GetIsOverloadedDirect : Boolean; inline;
          procedure SetIsOverloaded(const val : Boolean); inline;
          function GetIsLambda : Boolean; inline;
          procedure SetIsLambda(const val : Boolean); inline;
@@ -934,7 +937,7 @@ type
          property IsDeprecated : Boolean read GetIsDeprecated;
          property IsStateless : Boolean read GetIsStateless write SetIsStateless;
          function IsForwarded : Boolean; override;
-         property IsOverloaded : Boolean read GetIsOverloaded write SetIsOverloaded;
+         property IsOverloaded : Boolean read GetIsOverloadedDirect write SetIsOverloaded;
          property IsExternal : Boolean read GetIsExternal write SetIsExternal;
          property IsExport : Boolean read GetIsExport write SetIsExport;
          property IsProperty : Boolean read GetIsProperty write SetIsProperty;
@@ -1039,6 +1042,7 @@ type
          constructor Create(const Name: String; FuncKind: TFuncKind; aStructSymbol : TCompositeTypeSymbol;
                             aVisibility : TdwsVisibility; isClassMethod : Boolean;
                             funcLevel : Integer = 1); virtual;
+
          constructor Generate(Table: TSymbolTable; MethKind: TMethodKind;
                               const Attributes: TMethodAttributes; const MethName: String;
                               const MethParams: TParamArray; const MethType: String;
@@ -2769,6 +2773,13 @@ begin
    else Result := False;
 end;
 
+// GetIsOverloaded
+//
+function TSymbol.GetIsOverloaded : Boolean;
+begin
+   Result := False;
+end;
+
 // AsFuncSymbol
 //
 function TSymbol.AsFuncSymbol(var funcSym : TFuncSymbol) : Boolean;
@@ -4105,11 +4116,18 @@ begin
    else Exclude(FFlags, fsfProperty);
 end;
 
+// GetIsOverloadedDirect
+//
+function TFuncSymbol.GetIsOverloadedDirect : Boolean;
+begin
+   Result:=(fsfOverloaded in FFlags);
+end;
+
 // GetIsOverloaded
 //
 function TFuncSymbol.GetIsOverloaded : Boolean;
 begin
-   Result:=(fsfOverloaded in FFlags);
+   Result := GetIsOverloadedDirect;
 end;
 
 // SetIsOverloaded

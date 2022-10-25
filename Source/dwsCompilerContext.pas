@@ -56,6 +56,7 @@ type
          FUnitList : TIdwsUnitList;
          FHelperMemberNames : TSimpleStringHash;
          FSpecialSymbols : array [TSpecialKeywordKind] of TSymbol;
+         FFuncSymbolListPool : TFuncSymbolList;
 
          FTypDefaultConstructor : TMethodSymbol;
          FTypDefaultDestructor : TMethodSymbol;
@@ -92,6 +93,9 @@ type
          function SpecialSymbol(sk : TSpecialKeywordKind) : TSymbol;
 
          function Optimize : Boolean;
+
+         function AllocateFuncSymbolList : TFuncSymbolList;
+         procedure ReleaseFuncSymbolList(list : TFuncSymbolList);
 
          property StringsUnifier : TStringUnifier read FStringsUnifier;
 
@@ -177,6 +181,8 @@ begin
 
    for sk := Low(FSpecialSymbols) to High(FSpecialSymbols) do
       FSpecialSymbols[sk].Free;
+
+   FFuncSymbolListPool.Free;
 
    inherited;
 end;
@@ -348,6 +354,28 @@ end;
 function TdwsCompilerContext.Optimize : Boolean;
 begin
    Result := (coOptimize in FOptions) and (not FMsgs.HasErrors);
+end;
+
+// AllocateFuncSymbolList
+//
+function TdwsCompilerContext.AllocateFuncSymbolList : TFuncSymbolList;
+begin
+   if FFuncSymbolListPool <> nil then begin
+      Result := FFuncSymbolListPool;
+      FFuncSymbolListPool := nil;
+   end else Result := TFuncSymbolList.Create;
+end;
+
+// ReleaseFuncSymbolList
+//
+procedure TdwsCompilerContext.ReleaseFuncSymbolList(list : TFuncSymbolList);
+begin
+   if list <> nil then begin
+      if FFuncSymbolListPool = nil then begin
+         list.Clear;
+         FFuncSymbolListPool := list;
+      end else list.Free;
+   end;
 end;
 
 // SetSystemTable

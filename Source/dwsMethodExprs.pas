@@ -81,8 +81,8 @@ type
          procedure PostCall(exec : TdwsExecution; var Result : Variant); virtual;
 
       public
-         constructor Create(context : TdwsCompilerContext; const scriptPos : TScriptPos; Func: TMethodSymbol;
-                            BaseExpr: TTypedExpr);
+         constructor Create(context : TdwsCompilerContext; const aScriptPos : TScriptPos; aFunc: TMethodSymbol;
+                            aBaseExpr: TTypedExpr);
          destructor Destroy; override;
 
          procedure EvalAsVariant(exec : TdwsExecution; var result : Variant); override;
@@ -96,7 +96,10 @@ type
    end;
 
    // Call of a record method
-   TRecordMethodExpr = class (TFuncExpr)
+   TRecordMethodExpr = class sealed (TFuncExpr)
+      public
+         constructor Create(context : TdwsCompilerContext; const aScriptPos : TScriptPos; aFunc: TMethodSymbol;
+                            aBaseExpr: TTypedExpr);
    end;
 
    // Call of a helper method
@@ -359,13 +362,13 @@ end;
 
 // Create
 //
-constructor TMethodExpr.Create(context : TdwsCompilerContext; const scriptPos: TScriptPos;
-                               Func: TMethodSymbol; BaseExpr: TTypedExpr);
+constructor TMethodExpr.Create(context : TdwsCompilerContext; const aScriptPos: TScriptPos;
+                               aFunc: TMethodSymbol; aBaseExpr: TTypedExpr);
 begin
-   inherited Create(context, scriptPos, Func);
-   FBaseExpr:=BaseExpr;
-   if Func.SelfSym <> nil then
-      FSelfAddr := Func.SelfSym.StackAddr
+   inherited Create(context, aScriptPos, aFunc);
+   FBaseExpr := aBaseExpr;
+   if aFunc.SelfSym <> nil then
+      FSelfAddr := aFunc.SelfSym.StackAddr
    else FSelfAddr := MaxInt;
 end;
 
@@ -460,6 +463,21 @@ procedure TMethodExpr.PostCall(exec : TdwsExecution; var Result : Variant);
 begin
    if Typ<>nil then
       StaticPostCall(exec, Result);
+end;
+
+// ------------------
+// ------------------ TRecordMethodExpr ------------------
+// ------------------
+
+// Create
+//
+constructor TRecordMethodExpr.Create(
+   context : TdwsCompilerContext; const aScriptPos : TScriptPos;
+   aFunc: TMethodSymbol; aBaseExpr: TTypedExpr
+   );
+begin
+   inherited Create(context, aScriptPos, aFunc);
+   AddArg(aBaseExpr);
 end;
 
 // ------------------

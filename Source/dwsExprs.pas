@@ -938,7 +938,7 @@ type
 
          procedure InitializeResultAddr(prog : TdwsProgram);
          procedure SetResultAddr(aResultAddr : Integer); inline;
-         property ResultAddr : Integer read FResultAddr;
+         property ResultAddr : Integer read FResultAddr write FResultAddr;
 
          function ChangeFuncSymbol(context : TdwsCompilerContext; newFuncSym : TFuncSymbol;
                                    options : TCreateFunctionOptions) : TFuncExprBase; virtual;
@@ -1149,6 +1149,22 @@ type
       public
          constructor Create(context : TdwsCompilerContext; const aScriptPos: TScriptPos; BaseExpr: TDataExpr);
          procedure GetDataPtr(exec : TdwsExecution; var result : IDataContext); override;
+   end;
+
+   // Temporary holder for overload resolution
+   TOverloadedExpr = class sealed (TFuncExpr)
+      private
+         FBaseExpr : TTypedExpr;
+
+      public
+         constructor Create(context : TdwsCompilerContext; const aScriptPos : TScriptPos; aFunc: TFuncSymbol;
+                            aBaseExpr: TTypedExpr);
+         destructor Destroy; override;
+
+         function ChangeFuncSymbol(context : TdwsCompilerContext; newFuncSym : TFuncSymbol;
+                                   options : TCreateFunctionOptions) : TFuncExprBase; override;
+
+         property BaseExpr : TTypedExpr read FBaseExpr;
    end;
 
    TSourceCondition = class (TInterfacedSelfObject, IBooleanEvalable, IStringEvalable)
@@ -8031,6 +8047,78 @@ end;
 procedure TMethodObjExpr.GetDataPtr(exec : TdwsExecution; var result : IDataContext);
 begin
    FBaseExpr.DataPtr[exec].CreateOffset(1, result);
+end;
+
+// ------------------
+// ------------------ TOverloadedExpr ------------------
+// ------------------
+
+// Create
+//
+constructor TOverloadedExpr.Create(context : TdwsCompilerContext; const aScriptPos : TScriptPos; aFunc: TFuncSymbol;
+                            aBaseExpr: TTypedExpr);
+var
+   structSymbolClass : TClass;
+begin
+   if aFunc is TAliasMethodSymbol then begin
+
+      inherited Create(context, aScriptPos, TAliasMethodSymbol(aFunc).Alias);
+      AddArg(aBaseExpr);
+
+   end else begin
+
+      inherited Create(context, aScriptPos, aFunc);
+
+      if aBaseExpr <> nil then begin
+
+         if (aFunc is TMethodSymbol) and (not TMethodSymbol(aFunc).IsClassMethod) then begin
+            structSymbolClass := TMethodSymbol(aFunc).StructSymbol.ClassType;
+            if (structSymbolClass = TRecordSymbol) or (structSymbolClass = THelperSymbol) then
+               AddArg(aBaseExpr);
+         end;
+         FBaseExpr := aBaseExpr;
+
+      end;
+   end;
+end;
+
+// Destroy
+//
+destructor TOverloadedExpr.Destroy;
+begin
+   FBaseExpr.Free;
+   inherited;
+end;
+
+// ChangeFuncSymbol
+//
+function TOverloadedExpr.ChangeFuncSymbol(context : TdwsCompilerContext; newFuncSym : TFuncSymbol;
+                                          options : TCreateFunctionOptions) : TFuncExprBase;
+var
+   newMeth : TMethodSymbol;
+   refKind : TRefKind;
+begin
+   if newFuncSym is TMethodSymbol then begin
+
+      newMeth := TMethodSymbol(newFuncSym);
+      if BaseExpr.Typ is TStructuredTypeMetaSymbol then
+         refKind := rkClassOfRef
+      else refKind := rkObjRef;
+      Result := CreateMethodExpr(context, newMeth, Self.FBaseExpr, refKind, ScriptPos, options);
+      Result.Args.Assign(Args);
+      Self.FBaseExpr := nil;
+      Self.FArgs.Clear;
+      Self.Free;
+
+   end else begin
+
+      Result := CreateSimpleFuncExpr(context, ScriptPos, newFuncSym);
+      Result.Args.Assign(Args);
+      Args.Clear;
+      TFuncExprBase(Result).ResultAddr := FResultAddr;
+      Self.Free;
+
+   end;
 end;
 
 // ------------------

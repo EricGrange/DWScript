@@ -560,8 +560,7 @@ begin
 
       end else begin
 
-         Result:=TRecordMethodExpr.Create(context, scriptPos, meth);
-         Result.AddArg(expr);
+         Result:=TRecordMethodExpr.Create(context, scriptPos, meth, expr);
 
       end;
 
