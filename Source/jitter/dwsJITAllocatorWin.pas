@@ -169,8 +169,6 @@ begin
    Result:=FCurrent;
    Inc(FCurrent, aSize);
    Dec(FRemaining, aSize);
-   if FRemaining<64 then
-      Protect;
 end;
 
 // Protect
@@ -333,6 +331,7 @@ begin
    while sub<>nil do begin
       p:=sub.Allocate(n);
       if p<>nil then break;
+      sub := sub.Next;
    end;
    if p = nil then begin
       if n > SubAllocatorSize then
