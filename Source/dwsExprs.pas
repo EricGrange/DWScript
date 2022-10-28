@@ -8101,7 +8101,7 @@ begin
    if newFuncSym is TMethodSymbol then begin
 
       newMeth := TMethodSymbol(newFuncSym);
-      if BaseExpr.Typ is TStructuredTypeMetaSymbol then
+      if (BaseExpr = nil) or (BaseExpr.Typ is TStructuredTypeMetaSymbol) then
          refKind := rkClassOfRef
       else refKind := rkObjRef;
       Result := CreateMethodExpr(context, newMeth, Self.FBaseExpr, refKind, ScriptPos, options);

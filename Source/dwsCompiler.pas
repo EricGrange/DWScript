@@ -42,7 +42,7 @@ const
    cDefaultStackChunkSize = 4096;  // 64 kB in 32bit Delphi, each stack entry is a Variant
 
    // compiler version is date in YYYYMMDD format, dot subversion number
-   cCompilerVersion = 20190215.0;
+   cCompilerVersion = 20221028.0;
 
 type
    TdwsCompiler = class;
@@ -6979,36 +6979,37 @@ function TdwsCompiler.ReadSelfMethod(methodSym : TMethodSymbol;
 var
    progMeth : TMethodSymbol;
    structSym : TCompositeTypeSymbol;
+   selfExpr : TTypedExpr;
+   refKind : TRefKind;
 begin
    progMeth:=CurrentProg.ContextMethodSymbol;
 
-   if progMeth<>nil then begin
-      if methodSym.IsStatic then
-         Result:=GetMethodExpr(methodSym, nil, rkObjRef, FTok.HotPos, options)
-      else if progMeth.IsStatic then begin
-         structSym:=progMeth.StructSymbol;
-         Result:=GetMethodExpr(methodSym,
-                               TConstExpr.CreateValue(FTok.HotPos, structSym.MetaSymbol, Int64(structSym)),
-                               rkClassOfRef, FTok.HotPos, options);
+   if progMeth <> nil then begin
+      if progMeth.IsStatic then begin
+         structSym := progMeth.StructSymbol;
+         selfExpr := TConstExpr.CreateValue(FTok.HotPos, structSym.MetaSymbol, Int64(structSym));
+         refKind := rkClassOfRef;
       end else if progMeth.SelfSym is TConstByRefParamSymbol then begin
-         Result:=GetMethodExpr(methodSym,
-                               GetConstByRefParamExpr(TConstByRefParamSymbol(progMeth.SelfSym)),
-                               rkObjRef, FTok.HotPos, options);
-      end else if progMeth.SelfSym=nil then begin
-         Result:=GetMethodExpr(methodSym, nil, rkClassOfRef, FTok.HotPos, options);
+         selfExpr := GetConstByRefParamExpr(TConstByRefParamSymbol(progMeth.SelfSym));
+         refKind := rkObjRef;
+      end else if progMeth.SelfSym = nil then begin
+         selfExpr := nil;
+         refKind := rkClassOfRef;
       end else begin
-         Result:=GetMethodExpr(methodSym,
-                               GetSelfParamExpr(FTok.HotPos, progMeth.SelfSym),
-                               rkObjRef, FTok.HotPos, options);
+         selfExpr := GetSelfParamExpr(FTok.HotPos, progMeth.SelfSym);
+         refKind := rkObjRef;
       end;
    end else begin
-      structSym:=methodSym.StructSymbol;
-      Result:=GetMethodExpr(methodSym,
-                            TConstExpr.CreateValue(FTok.HotPos, structSym.MetaSymbol, Int64(structSym)),
-                            rkClassOfRef, FTok.HotPos, [cfoForceStatic]);
+      structSym := methodSym.StructSymbol;
+      selfExpr := TConstExpr.CreateValue(FTok.HotPos, structSym.MetaSymbol, Int64(structSym));
+      refKind := rkClassOfRef;
    end;
 
-   Result:=WrapUpFunctionRead(TFuncExpr(Result), expecting, overloads, options);
+   if overloads <> nil then
+      Result := TOverloadedExpr.Create(CompilerContext, FTok.HotPos, methodSym, selfExpr)
+   else Result := GetMethodExpr(methodSym, selfExpr, refKind, FTok.HotPos, options);
+
+   Result := WrapUpFunctionRead(TFuncExpr(Result), expecting, overloads, options);
 end;
 
 // ReadMethod
