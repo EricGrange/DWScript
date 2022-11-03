@@ -203,10 +203,6 @@ begin
     OnEval := DoGetSelfInstance;
   end;
 
-  FCriticalSection := TCriticalSection.Create;
-  FSyncEvent := TEvent.Create;
-  FRescanThread := TRescanThread.Create;
-
   AcnCodeGenLLVM.Enabled := False;
   AcnCodeGenJS.Enabled := False;
   MnuCodeGenLLVM.Visible := False;
@@ -266,6 +262,11 @@ begin
   MnuCodeGenJS.Visible := True;
   AcnCodeGenJS.Enabled := True;
   {$ENDIF}
+
+  FCriticalSection := TCriticalSection.Create;
+  FSyncEvent := TEvent.Create;
+  FRescanThread := TRescanThread.Create;
+
 end;
 
 procedure TFrmBasic.FormDestroy(Sender: TObject);
