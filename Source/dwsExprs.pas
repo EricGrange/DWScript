@@ -8057,8 +8057,6 @@ end;
 //
 constructor TOverloadedExpr.Create(context : TdwsCompilerContext; const aScriptPos : TScriptPos; aFunc: TFuncSymbol;
                             aBaseExpr: TTypedExpr);
-var
-   structSymbolClass : TClass;
 begin
    if aFunc is TAliasMethodSymbol then begin
 
@@ -8071,10 +8069,11 @@ begin
 
       if aBaseExpr <> nil then begin
 
-         if (aFunc is TMethodSymbol) and (not TMethodSymbol(aFunc).IsClassMethod) then begin
-            structSymbolClass := TMethodSymbol(aFunc).StructSymbol.ClassType;
-            if (structSymbolClass = TRecordSymbol) or (structSymbolClass = THelperSymbol) then
+         if aFunc is TMethodSymbol then begin
+            if (aFunc.Params.Count > 0) and (aFunc.Params[0].Name = SYS_SELF) then begin
                AddArg(aBaseExpr);
+               aBaseExpr.IncRefCount;
+            end;
          end;
          FBaseExpr := aBaseExpr;
 
@@ -8105,9 +8104,12 @@ begin
          refKind := rkClassOfRef
       else refKind := rkObjRef;
       Result := CreateMethodExpr(context, newMeth, Self.FBaseExpr, refKind, ScriptPos, options);
-      Result.Args.Assign(Args);
       Self.FBaseExpr := nil;
-      Self.FArgs.Clear;
+      if Args.Count > 0 then begin
+         Result.Args.Clean;
+         Result.Args.Assign(Args);
+         Self.FArgs.Clear;
+      end;
       Self.Free;
 
    end else begin
