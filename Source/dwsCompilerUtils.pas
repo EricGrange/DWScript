@@ -420,7 +420,7 @@ var
    classSymbol : TClassSymbol;
    magicMethodSym : TMagicMethodSymbol;
 begin
-   if meth is TAliasMethodSymbol then begin
+   if meth.ClassType = TAliasMethodSymbol then begin
 
       Result := CreateSimpleFuncExpr(context, scriptPos, TAliasMethodSymbol(meth).Alias);
       Result.AddArg(expr);

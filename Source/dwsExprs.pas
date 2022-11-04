@@ -8058,7 +8058,7 @@ end;
 constructor TOverloadedExpr.Create(context : TdwsCompilerContext; const aScriptPos : TScriptPos; aFunc: TFuncSymbol;
                             aBaseExpr: TTypedExpr);
 begin
-   if aFunc is TAliasMethodSymbol then begin
+   if aFunc.ClassType = TAliasMethodSymbol then begin
 
       inherited Create(context, aScriptPos, TAliasMethodSymbol(aFunc).Alias);
       AddArg(aBaseExpr);
