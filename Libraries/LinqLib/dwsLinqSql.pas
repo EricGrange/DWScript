@@ -334,7 +334,7 @@ begin
 
    FMethod := TMethodStaticExpr.Create(compiler.CompilerContext, pos, query, base);
    FMethod.AddArg(TConstStringExpr.Create(pos, compiler.CompilerContext.TypString, FSql));
-   arr := TConvStaticArrayToDynamicExpr.Create(compiler.CompilerContext, pos, FParams, TDynamicArraySymbol(query.Params.Symbols[1].Typ));
+   arr := TConvArrayConstantToDynamicExpr.Create(compiler.CompilerContext, pos, FParams, TDynamicArraySymbol(query.Params.Symbols[1].Typ));
    FMethod.AddArg(arr);
    FMethod.Initialize(compiler.CompilerContext);
 end;
@@ -369,12 +369,12 @@ end;
 procedure TSqlFromExpr.BuildDynamicQuery(prog: TdwsProgram; const query: string; params: TArrayConstantExpr);
 var
    method: TMethodStaticExpr;
-   arr: TConvStaticArrayToDynamicExpr;
+   arr: TConvArrayConstantToDynamicExpr;
 begin
    method := TMethodStaticExpr.Create(prog.Root.CompilerContext, FMethod.ScriptPos, FMethod.FuncSym as TMethodSymbol, FMethod.BaseExpr);
    method.BaseExpr.IncRefCount;
    method.AddArg(TConstStringExpr.Create(FMethod.ScriptPos, prog.Root.CompilerContext.TypString, query));
-   arr := TConvStaticArrayToDynamicExpr.Create(prog.Root.CompilerContext, cNullPos, params,
+   arr := TConvArrayConstantToDynamicExpr.Create(prog.Root.CompilerContext, cNullPos, params,
      TDynamicArraySymbol(method.FuncSym.Params.Symbols[1].Typ));
    method.AddArg(arr);
    method.Initialize(prog.Root.CompilerContext);

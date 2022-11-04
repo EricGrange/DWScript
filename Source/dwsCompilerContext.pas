@@ -310,7 +310,7 @@ begin
       end else if     toTyp.UnAliasedTypeIs(TDynamicArraySymbol) and (typedExpr is TArrayConstantExpr)
                   and toTyp.UnAliasedType.Typ.IsCompatible(typedExpr.Typ.UnaliasedType.Typ) then begin
          Result := True;
-         typedExpr := TConvStaticArrayToDynamicExpr.Create(
+         typedExpr := TConvArrayConstantToDynamicExpr.Create(
             Self, scriptPos,
             TArrayConstantExpr(typedExpr), TDynamicArraySymbol(toTyp.UnAliasedType)
          );
