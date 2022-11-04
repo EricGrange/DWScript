@@ -600,6 +600,10 @@ type
       procedure CodeGenNoWrap(codeGen : TdwsCodeGen; expr : TTypedExpr); override;
    end;
 
+   TJSConvStaticArrayToDynamicExpr = class (TJSExprCodeGen)
+      procedure CodeGenNoWrap(codeGen : TdwsCodeGen; expr : TTypedExpr); override;
+   end;
+
    TJSOrdExpr = class (TJSExprCodeGen)
       procedure CodeGen(codeGen : TdwsCodeGen; expr : TExprBase); override;
    end;
@@ -1127,6 +1131,7 @@ begin
    RegisterCodeGen(TConvVarToBoolExpr,    TdwsExprGenericCodeGen.Create(['$VarToBool', '(', 0, ')'], gcgExpression, '$VarToBool'));
    RegisterCodeGen(TConvVarToStringExpr,  TJSConvStringExpr.Create);
    RegisterCodeGen(TConvArrayConstantToDynamicExpr, TJSConvArrayConstantToDynamicExpr.Create);
+   RegisterCodeGen(TConvStaticArrayToDynamicExpr, TJSConvStaticArrayToDynamicExpr.Create);
    RegisterCodeGen(TConvVariantExpr,      TdwsExprGenericCodeGen.Create([0]));
    RegisterCodeGen(TConvExternalExpr,     TdwsExprGenericCodeGen.Create([0]));
 
@@ -6407,6 +6412,23 @@ begin
    e := TConvArrayConstantToDynamicExpr(expr);
 
    codeGen.Compile(e.Expr);
+end;
+
+// ------------------
+// ------------------ TJSConvStaticArrayToDynamicExpr ------------------
+// ------------------
+
+// CodeGenNoWrap
+//
+procedure TJSConvStaticArrayToDynamicExpr.CodeGenNoWrap(codeGen : TdwsCodeGen; expr : TTypedExpr);
+var
+   e : TConvStaticArrayToDynamicExpr;
+begin
+   e := TConvStaticArrayToDynamicExpr(expr);
+
+   codeGen.WriteString('(');
+   codeGen.Compile(e.Expr);
+   codeGen.WriteString(').slice()');
 end;
 
 // ------------------
