@@ -120,7 +120,7 @@ var
    t : TTokenizer;
 begin
    FMsgs.Clear;
-   FSourceFile.Code:='@ @= %= ^ ^= $( ? ?? ?. | || & && ~ ~= a&&b';
+   FSourceFile.Code:='@ @= %= ^ ^= $( ? ?? ?. | || & && ~ ~= \ a&&b';
    rules:=TPascalTokenizerStateRules.Create;
    t:=rules.CreateTokenizer(FMsgs, nil);
    try
@@ -142,6 +142,7 @@ begin
       CheckTrue(t.TestDelete(ttAMP_AMP), '&&');
       CheckTrue(t.TestDelete(ttTILDE), '~');
       CheckTrue(t.TestDelete(ttTILDE_ASSIGN), '~=');
+      CheckTrue(t.TestDelete(ttBACKSLASH), '\');
 
       CheckTrue(t.TestDelete(ttNAME), 'a');
       CheckTrue(t.TestDelete(ttAMP_AMP), '&&');

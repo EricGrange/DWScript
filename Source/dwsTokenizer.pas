@@ -631,6 +631,9 @@ begin
          else if Len=2 then
             if Buffer[1]='=' then
                Result := ttTILDE_ASSIGN; // '~='
+      '\':
+         if Len=1 then
+            Result := ttBACKSLASH;
       ';': Result := ttSEMI;
       '(': Result := ttBLEFT;
       ')': Result := ttBRIGHT;

@@ -101,14 +101,15 @@ implementation
 const
    cOPS = ['+', '-', '*', '/', '=', '<', '>', '@', '%', '^', '|'];
    cSPACE = [' ', #9, #13, #10, #0];
-   cSPEC = ['(', ')', ',', ';', '[', ']', '}', '!', '?'];
-   cSTOP = cSPEC + cOPS + cSPACE + [':', '.', '{', '&'];
+   cSPEC = ['(', ')', ',', ';', '[', ']', '}', '!', '?', '\'];
+   cSTRING = ['''', '"', '#'];
+   cSTOP = cSPEC + cOPS + cSPACE + cSTRING + [':', '.', '{', '&'];
    cANYCHAR = [#0..#127];
    cNAM = ['A'..'Z', 'a'..'z', '_', #127];
    cINT = ['0'..'9'];
    cHEX = cINT + ['A'..'F', 'a'..'f', '_'];
    cBIN = ['0', '1', '_'];
-   cStart = ['''', '"', '#', ':', '$', '.'] + cNAM + cINT + cOPS;
+   cStart = [':', '$', '.'] + cSTRING + cNAM + cINT + cOPS;
 
 // ------------------
 // ------------------ TPascalTokenizerStateRules ------------------
