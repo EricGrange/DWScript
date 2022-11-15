@@ -4,7 +4,7 @@ interface
 
 uses
   Windows, SysUtils, Classes,
-  dwsExprs, dwsComp, dwsWebUtils, dwsUtils, dwsXPlatform, dwsSymbols,
+  dwsExprList, dwsExprs, dwsComp, dwsWebUtils, dwsUtils, dwsXPlatform, dwsSymbols,
   SynZip;
 
 type
@@ -38,6 +38,25 @@ type
     procedure dwsZipClassesTZipWriterCleanUp(ExternalObject: TObject);
     procedure dwsZipClassesTZipWriterMethodsAddFromZipEval(Info: TProgramInfo;
       ExtObject: TObject);
+    procedure dwsZipClassesTDeflateCompressorConstructorsCreateEval(
+      Info: TProgramInfo; var ExtObject: TObject);
+    procedure dwsZipClassesTDeflateCompressorCleanUp(ExternalObject: TObject);
+    procedure dwsZipClassesTDeflateCompressorMethodsFlushEval(
+      Info: TProgramInfo; ExtObject: TObject);
+    function dwsZipClassesTDeflateCompressorMethodsWriteDataFastEval(
+      baseExpr: TTypedExpr; const args: TExprBaseListExec): Variant;
+    procedure dwsZipClassesTZipWriterMethodsAddDeflatedDataEval(
+      Info: TProgramInfo; ExtObject: TObject);
+    procedure dwsZipClassesTDeflateCompressorMethodsCRC32Eval(
+      Info: TProgramInfo; ExtObject: TObject);
+    procedure dwsZipClassesTDeflateCompressorMethodsSizeOutEval(
+      Info: TProgramInfo; ExtObject: TObject);
+    procedure dwsZipClassesTDeflateCompressorMethodsSizeInEval(
+      Info: TProgramInfo; ExtObject: TObject);
+    procedure dwsZipClassesTZipWriterConstructorsCreateInMemoryEval(
+      Info: TProgramInfo; var ExtObject: TObject);
+    procedure dwsZipClassesTZipWriterMethodsCloseInMemoryEval(
+      Info: TProgramInfo; ExtObject: TObject);
   private
     { Private declarations }
   public
@@ -45,6 +64,12 @@ type
   end;
 
   EdwsZIPException = class (Exception);
+
+implementation
+
+{$R *.dfm}
+
+type
 
    PZipEntry = ^TZipEntry;
    PFileHeader = ^TFileHeader;
@@ -54,61 +79,234 @@ type
       function CheckedIndex(Info : TProgramInfo) : Integer;
    end;
 
-   TScriptZipWrite = class (TZipWrite)
+   TScriptZipStream = class
+      Flushed : Boolean;
+      Compressor : TSynZipCompressor;
+      Stream : TMemoryStream;
+      procedure Flush;
+   end;
+
+   TScriptZipFileEntry = record
+      Name : ZipString;
+      FileHeader : TFileHeader;
+   end;
+   PScriptZipFileEntry = ^TScriptZipFileEntry;
+
+   TScriptZipWrite = class
+
+      ZipStream : TStream;
+
+      Count : Integer;
+      Entries : array of TScriptZipFileEntry;
+
+      AppendOffset : Cardinal;
+      Magic : Cardinal;
+
+      constructor CreateFile(const fileName : String);
+      constructor CreateInMemory;
+      destructor Destroy; override;
+
+      procedure CloseInMemory(var dataString : String);
+
+      procedure WrapUp;
+
+      procedure SetHeaderFromCompressor(
+         index : Integer; offsetHead : Cardinal;
+         compressor : TSynZipCompressor; const aDateTime : TdwsDateTime
+      );
+      function InternalAdd(const zipName : TFileName; buf : Pointer; size : Integer) : Cardinal;
+
+      procedure AddFromCompressor(stream : TScriptZipStream; const name : TFileName);
       procedure AddData(data : Pointer; size : Int64; compression : Integer; const name : TFileName);
       procedure AddFile(const aFileName : TFileName; compression : Integer; const nameInZip : TFileName);
       procedure AddFromZip(reader : TZipRead; index : Integer);
    end;
 
-implementation
+const
+   PK_FIRSTHEADER_SIGNATURE = $04034b50;
+   PK_LASTHEADER_SIGNATURE  = $06054b50;
+   PK_ENTRY_SIGNATURE = $02014b50;
 
-{$R *.dfm}
-
-function DateTimeToDosDateTime(dt : TDateTime) : Integer;
+function ZipEntry(Info : TProgramInfo; ExtObject : TObject) : PZipEntry;
 var
-   sysTime : TSystemTime;
-   fileTime : TFileTime;
-   dosTime : LongRec;
+   z : TScriptZipRead;
+   i : Integer;
 begin
-   DateTimeToSystemTime(dt, sysTime);
-   SystemTimeToFileTime(sysTime, fileTime);
-   FileTimeToDosDateTime(fileTime, dosTime.Hi, dosTime.Lo);
-   Result:=Integer(dosTime);
+   z := TScriptZipRead(ExtObject);
+   i := z.CheckedIndex(Info);
+   Result := @z.Entry[i];
+end;
+
+// ------------------
+// ------------------ TScriptZipWrite ------------------
+// ------------------
+
+// CreateFile
+//
+constructor TScriptZipWrite.CreateFile(const fileName : String);
+begin
+   Create;
+   Magic := PK_FIRSTHEADER_SIGNATURE;
+   ZipStream := TFileStream.Create(fileName, fmCreate);
+end;
+
+// CreateInMemory
+//
+constructor TScriptZipWrite.CreateInMemory;
+begin
+   Create;
+   Magic := PK_FIRSTHEADER_SIGNATURE;
+   ZipStream := TMemoryStream.Create;
+end;
+
+// Destroy
+//
+destructor TScriptZipWrite.Destroy;
+begin
+   inherited;
+   if ZipStream <> nil then begin
+      if ZipStream is TFileStream then begin
+         WrapUp;
+         ZipStream.Size := ZipStream.Position;
+      end;
+      ZipStream.Free;
+   end;
+end;
+
+// CloseInMemory
+//
+procedure TScriptZipWrite.CloseInMemory(var dataString : String);
+var
+   nb : Int64;
+begin
+   if ZipStream <> nil then begin
+      WrapUp;
+      nb := ZipStream.Position;
+      SetLength(dataString, nb);
+      if ZipStream is TMemoryStream then begin
+         BytesToWords(TMemoryStream(ZipStream).Memory, Pointer(dataString), nb);
+      end else begin
+         ZipStream.Size := nb;
+         ZipStream.Read(Pointer(dataString)^, nb);
+         ZipStream.Free;
+         BytesToWordsInPlace(Pointer(dataString), nb);
+      end;
+   end;
+end;
+
+// WrapUp
+//
+procedure TScriptZipWrite.WrapUp;
+var
+   lhr : TLastHeader;
+   i : Integer;
+   entry : PScriptZipFileEntry;
+begin
+   FillChar(lhr, SizeOf(lhr), 0);
+   lhr := Default(TLastHeader);
+   lhr.signature := PK_LASTHEADER_SIGNATURE;
+   lhr.thisFiles := Count;
+   lhr.totalFiles := Count;
+   lhr.headerOffset := ZipStream.Position - AppendOffset;
+   for i := 0 to Count-1 do begin
+      entry := @Entries[i];
+      Assert(entry.FileHeader.fileInfo.nameLen = Length(entry.Name));
+      Inc(lhr.headerSize, SizeOf(TFileHeader) + entry.FileHeader.fileInfo.nameLen);
+      ZipStream.Write(entry.FileHeader, SizeOf(entry.FileHeader));
+      ZipStream.Write(Pointer(entry.Name)^, entry.FileHeader.fileInfo.nameLen);
+   end;
+   ZipStream.Write(lhr, SizeOf(lhr));
+end;
+
+// SetHeaderFromCompressor
+//
+procedure TScriptZipWrite.SetHeaderFromCompressor(
+      index : Integer; offsetHead : Cardinal;
+      compressor : TSynZipCompressor; const aDateTime : TdwsDateTime
+);
+var
+   offsetEnd : Cardinal;
+   fhr : PFileHeader;
+   fileInfo : PFileInfo;
+begin
+   fhr := @Entries[index].FileHeader;
+   fileInfo := @fhr.fileInfo;
+   fileInfo.zcrc32 := compressor.CRC;
+   fileInfo.zfullSize := compressor.SizeIn;
+   fileInfo.zzipSize := compressor.SizeOut;
+   fileInfo.zzipMethod := Z_DEFLATED;
+   fileInfo.zlastMod := aDateTime.AsDosDateTime;
+
+   offsetEnd := ZipStream.Position;
+   ZipStream.Position := offsetHead + SizeOf(Magic);
+   ZipStream.Write(fileInfo^, SizeOf(fhr.fileInfo));
+   ZipStream.Position := offsetEnd;
+end;
+
+// InternalAdd
+//
+function TScriptZipWrite.InternalAdd(const zipName : TFileName; buf : Pointer; size : Integer) : Cardinal;
+var
+   entry : PScriptZipFileEntry;
+   fileHeader : PFileHeader;
+begin
+   entry := @Entries[Count];
+   fileHeader := @entry.FileHeader;
+   fileHeader.signature := PK_ENTRY_SIGNATURE;
+   fileHeader.madeBy := $14;
+   fileHeader.fileInfo.neededVersion := $14;
+   Result := ZipStream.Position;
+   fileHeader.localHeadOff := Result - AppendOffset;
+   entry.Name := UTF8Encode(zipName);
+   fileHeader.fileInfo.SetUTF8FileName;
+   fileHeader.fileInfo.nameLen := Length(entry.Name);
+   fileHeader.fileInfo.extraLen := 0; // source may have something here
+   ZipStream.Write(Magic, SizeOf(Magic));
+   ZipStream.Write(fileHeader.fileInfo, SizeOf(fileHeader.fileInfo));
+   ZipStream.Write(Pointer(entry.Name)^, fileHeader.fileInfo.nameLen);
+   if buf <> nil then begin
+      ZipStream.Write(buf^, size); // write stored data
+      Inc(Count);
+   end;
+end;
+
+// AddFromCompressor
+//
+procedure TScriptZipWrite.AddFromCompressor(stream : TScriptZipStream; const name : TFileName);
+var
+   offsetHead : Cardinal;
+begin
+   SetLength(Entries, Count+1);
+   offsetHead := InternalAdd(name, nil, 0);
+
+   stream.Flush;
+   Assert(stream.Stream.Size = stream.Compressor.SizeOut);
+
+   ZipStream.Write(stream.Stream.Memory^, stream.Compressor.SizeOut);
+
+   SetHeaderFromCompressor(Count, offsetHead, stream.Compressor, TdwsDateTime.Now);
+
+   Inc(Count);
 end;
 
 // AddData
 //
 procedure TScriptZipWrite.AddData(data : Pointer; size : Int64; compression : Integer; const name : TFileName);
 var
-   offsetHead, offsetEnd: cardinal;
-   destStream: THandleStream;
+   offsetHead : Cardinal;
    zipCompressor: TSynZipCompressor;
-   fhr : PFileHeader;
-   fileInfo : PFileInfo;
 begin
-   SetLength(Entry, Count+1);
+   SetLength(Entries, Count+1);
    offsetHead := InternalAdd(name, nil, 0);
 
-   destStream := THandleStream.Create(Handle);
-   zipCompressor := TSynZipCompressor.Create(destStream, compression);
+   zipCompressor := TSynZipCompressor.Create(ZipStream, compression);
    try
       zipCompressor.Write(data^, size);
       zipCompressor.Flush;
-      assert(zipCompressor.SizeIn=size);
-      fhr:=@Entry[Count].fhr;
-      fileInfo:=@fhr.fileInfo;
-      fileInfo.zcrc32 := zipCompressor.CRC;
-      fileInfo.zfullSize := zipCompressor.SizeIn;
-      fileInfo.zzipSize := zipCompressor.SizeOut;
-      fileInfo.zzipMethod := Z_DEFLATED;
-      fileInfo.zlastMod := DateTimeToDosDateTime(Now);
-      offsetEnd := destStream.Position;
-      destStream.Position := offsetHead+SizeOf(fMagic);
-      destStream.Write(fileInfo^, SizeOf(fhr.fileInfo));
-      destStream.Position := offsetEnd;
+      Assert(zipCompressor.SizeIn = size);
+      SetHeaderFromCompressor(Count, offsetHead, zipCompressor, TdwsDateTime.Now);
    finally
       zipCompressor.Free;
-      destStream.Free;
    end;
    Inc(Count);
 end;
@@ -118,47 +316,32 @@ end;
 procedure TScriptZipWrite.AddFile(const aFileName : TFileName; compression : Integer; const nameInZip : TFileName);
 var
    size : Int64;
-   offsetHead, offsetEnd : cardinal;
+   offsetHead : cardinal;
    sourceStream : TFileStream;
-   destStream : THandleStream;
    zipCompressor : TSynZipCompressor;
-   fhr : PFileHeader;
-   fileInfo : PFileInfo;
 begin
-   SetLength(Entry, Count+1);
+   SetLength(Entries, Count+1);
    offsetHead := InternalAdd(nameInZip, nil, 0);
 
    sourceStream := TFileStream.Create(aFileName, fmOpenRead or fmShareDenyNone);
    try
       size := sourceStream.size;
-      if Int64Rec(size).Hi<>0 then
+      if Int64Rec(size).Hi <> 0 then
          raise ESynZipException.CreateFmt('"%s" file is too big for .zip', [aFileName]);
 
-      destStream := THandleStream.Create(Handle);
-      zipCompressor := TSynZipCompressor.Create(destStream, compression);
+      zipCompressor := TSynZipCompressor.Create(ZipStream, compression);
       try
          zipCompressor.CopyFrom(sourceStream, size);
          zipCompressor.Flush;
-         Assert(zipCompressor.SizeIn=size);
-         fhr:=@Entry[Count].fhr;
-         fileInfo:=@fhr.fileInfo;
-         fileInfo.zcrc32 := zipCompressor.CRC;
-         fileInfo.zfullSize := zipCompressor.SizeIn;
-         fileInfo.zzipSize := zipCompressor.SizeOut;
-         fileInfo.zzipMethod := Z_DEFLATED;
-         fileInfo.zlastMod := FileDateTime(aFileName).AsDosDateTime;
-         offsetEnd := destStream.Position;
-         destStream.Position := offsetHead+SizeOf(fMagic);
-         destStream.Write(fhr.fileInfo, SizeOf(fhr.fileInfo));
-         destStream.Position := offsetEnd;
-         Inc(Count);
+         Assert(zipCompressor.SizeIn = size);
+         SetHeaderFromCompressor(Count, offsetHead, zipCompressor, FileDateTime(aFileName));
       finally
          zipCompressor.Free;
-         destStream.Free;
       end;
    finally
       sourceStream.Free;
    end;
+   Inc(Count);
 end;
 
 // AddFromZip
@@ -168,32 +351,46 @@ var
    n : Integer;
 begin
    n := Count;
-   if n >= Length(Entry) then
-      SetLength(Entry, n + 20);
-   if not reader.RetrieveFileInfo(index, Entry[n].fhr.fileInfo) then
+   SetLength(Entries, n + 1);
+   if not reader.RetrieveFileInfo(index, Entries[n].FileHeader.fileInfo) then
       raise EdwsZIPException.CreateFmt('Failed to retrieve ZIP info for index %d', [ index ]);
+
+   InternalAdd(reader.Entry[index].zipName, reader.Entry[index].data, Entries[n].FileHeader.fileInfo.zzipSize);
    if StrEndsWith(reader.Entry[index].zipName, '\') then
-   InternalAdd(reader.Entry[index].zipName, reader.Entry[index].data, Entry[n].fhr.fileInfo.zzipSize);
-   if StrEndsWith(reader.Entry[index].zipName, '\') then
-      Entry[n].fhr.extFileAttr := Entry[n].fhr.extFileAttr or $00000010;
+      Entries[n].FileHeader.extFileAttr := Entries[n].FileHeader.extFileAttr or $00000010;
+   Inc(Count);
 end;
 
+// ------------------
+// ------------------ TScriptZipStream ------------------
+// ------------------
+
+// Flush
+//
+procedure TScriptZipStream.Flush;
+begin
+   if not Flushed then begin
+      Flushed := True;
+      Compressor.Flush;
+   end;
+end;
+
+// ------------------
+// ------------------ TScriptZipRead ------------------
+// ------------------
+
+// CheckedIndex
+//
 function TScriptZipRead.CheckedIndex(Info : TProgramInfo) : Integer;
 begin
-   Result:=Info.ParamAsInteger[0];
-   if Cardinal(Result)>=Cardinal(Count) then
-      raise EdwsZIPException.CreateFmt('ZIP file index out of bounds (%d)', [Result]);
+   Result := Info.ParamAsInteger[0];
+   if Cardinal(Result) >= Cardinal(Count) then
+      raise EdwsZIPException.CreateFmt('ZIP file index out of bounds (%d)', [ Result ]);
 end;
 
-function ZipEntry(Info : TProgramInfo; ExtObject : TObject) : PZipEntry;
-var
-   z : TScriptZipRead;
-   i : Integer;
-begin
-   z:=TScriptZipRead(ExtObject);
-   i:=z.CheckedIndex(Info);
-   Result:=@z.Entry[i];
-end;
+// ------------------
+// ------------------ TdwsZipLib ------------------
+// ------------------
 
 procedure TdwsZipLib.dwsZipClassesTZipReaderCleanUp(
   ExternalObject: TObject);
@@ -203,11 +400,8 @@ end;
 
 procedure TdwsZipLib.dwsZipClassesTZipReaderConstructorsCreateEval(
   Info: TProgramInfo; var ExtObject: TObject);
-var
-   z : TScriptZipRead;
 begin
-   z:=TScriptZipRead.Create(Info.ParamAsFileName[0], 0, 0);
-   ExtObject:=z;
+   ExtObject := TScriptZipRead.Create(Info.ParamAsFileName[0], 0, 0);
 end;
 
 procedure TdwsZipLib.dwsZipClassesTZipReaderConstructorsFromDataEval(
@@ -288,11 +482,26 @@ end;
 
 procedure TdwsZipLib.dwsZipClassesTZipWriterConstructorsCreateEval(
   Info: TProgramInfo; var ExtObject: TObject);
+begin
+   ExtObject := TScriptZipWrite.CreateFile(Info.ParamAsFileName[0]);
+end;
+
+procedure TdwsZipLib.dwsZipClassesTZipWriterConstructorsCreateInMemoryEval(
+  Info: TProgramInfo; var ExtObject: TObject);
+begin
+   ExtObject := TScriptZipWrite.CreateInMemory;
+end;
+
+procedure TdwsZipLib.dwsZipClassesTZipWriterMethodsCloseInMemoryEval(
+  Info: TProgramInfo; ExtObject: TObject);
 var
    z : TScriptZipWrite;
+   data : String;
 begin
-   z:=TScriptZipWrite.Create(Info.ParamAsFileName[0]);
-   ExtObject:=z;
+   z := TScriptZipWrite(ExtObject);
+   z.CloseInMemory(data);
+   Info.ResultAsString := data;
+   Info.ScriptObj.Destroyed := True;
 end;
 
 procedure TdwsZipLib.dwsZipClassesTZipWriterMethodsAddDataEval(
@@ -302,12 +511,23 @@ var
    buf : RawByteString;
    nameInZip : String;
 begin
-   z:=TScriptZipWrite(ExtObject);
+   z := TScriptZipWrite(ExtObject);
 
    buf:=Info.ParamAsDataString[0];
    nameInZip:=Info.ParamAsString[2];
 
    z.AddData(Pointer(buf), Length(buf), Info.ParamAsInteger[1], nameInZip);
+end;
+
+procedure TdwsZipLib.dwsZipClassesTZipWriterMethodsAddDeflatedDataEval(
+  Info: TProgramInfo; ExtObject: TObject);
+var
+   z : TScriptZipWrite;
+   szs : TScriptZipStream;
+begin
+   z := TScriptZipWrite(ExtObject);
+   szs := Info.ParamAsObject[0] as TScriptZipStream;
+   z.AddFromCompressor(szs, Info.ParamAsString[1]);
 end;
 
 procedure TdwsZipLib.dwsZipClassesTZipWriterMethodsAddFileEval(
@@ -348,6 +568,80 @@ begin
       raise Exception.CreateFmt('zipReader entry index out of bounds (%d)', [index]);
 
    z.AddFromZip(reader, index);
+end;
+
+procedure TdwsZipLib.dwsZipClassesTDeflateCompressorConstructorsCreateEval(
+  Info: TProgramInfo; var ExtObject: TObject);
+var
+   szs : TScriptZipStream;
+begin
+   szs := TScriptZipStream.Create;
+   ExtObject := szs;
+   szs.Stream := TMemoryStream.Create;
+   szs.Compressor := TSynZipCompressor.Create(szs.Stream, Info.ParamAsInteger[0]);
+end;
+
+procedure TdwsZipLib.dwsZipClassesTDeflateCompressorCleanUp(
+  ExternalObject: TObject);
+var
+   szs : TScriptZipStream;
+begin
+   szs := TScriptZipStream(ExternalObject);
+   szs.Compressor.Free;
+   szs.Stream.Free;
+   szs.Free;
+end;
+
+function TdwsZipLib.dwsZipClassesTDeflateCompressorMethodsWriteDataFastEval(
+  baseExpr: TTypedExpr; const args: TExprBaseListExec): Variant;
+var
+   obj : IScriptObj;
+   szs : TScriptZipStream;
+   buf : String;
+begin
+   baseExpr.EvalAsSafeScriptObj(args.Exec, obj);
+   szs := TScriptZipStream(obj.ExternalObject);
+   if szs.Flushed then
+      raise EdwsZIPException.Create('Compressor already flushed');
+   args.EvalAsString(0, buf);
+
+   case Length(buf) of
+      0 : ;
+      1 : szs.Compressor.Write(Pointer(buf)^, 1);
+   else
+      StringWordsToBytes(buf, False);
+      szs.Compressor.Write(Pointer(buf)^, 2*Length(buf));
+   end;
+end;
+
+procedure TdwsZipLib.dwsZipClassesTDeflateCompressorMethodsCRC32Eval(
+  Info: TProgramInfo; ExtObject: TObject);
+begin
+   Info.ResultAsInteger := TScriptZipStream(ExtObject).Compressor.CRC;
+end;
+
+procedure TdwsZipLib.dwsZipClassesTDeflateCompressorMethodsFlushEval(
+  Info: TProgramInfo; ExtObject: TObject);
+var
+   szs : TScriptZipStream;
+   result : String;
+begin
+   szs := TScriptZipStream(ExtObject);
+   szs.Flush;
+   BytesToScriptString(szs.Stream.Memory, szs.Stream.Position, result);
+   Info.ResultAsString := result;
+end;
+
+procedure TdwsZipLib.dwsZipClassesTDeflateCompressorMethodsSizeInEval(
+  Info: TProgramInfo; ExtObject: TObject);
+begin
+   Info.ResultAsInteger := TScriptZipStream(ExtObject).Compressor.SizeIn;
+end;
+
+procedure TdwsZipLib.dwsZipClassesTDeflateCompressorMethodsSizeOutEval(
+  Info: TProgramInfo; ExtObject: TObject);
+begin
+   Info.ResultAsInteger := TScriptZipStream(ExtObject).Compressor.SizeOut;
 end;
 
 end.

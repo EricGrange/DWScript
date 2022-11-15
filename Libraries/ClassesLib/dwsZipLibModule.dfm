@@ -29,8 +29,8 @@ object dwsZipLib: TdwsZipLib
           item
             Name = 'Count'
             ResultType = 'Integer'
-            OnEval = dwsZipClassesTZipReaderMethodsCountEval
             Kind = mkFunction
+            OnEval = dwsZipClassesTZipReaderMethodsCountEval
           end
           item
             Name = 'GetName'
@@ -40,8 +40,8 @@ object dwsZipLib: TdwsZipLib
                 DataType = 'Integer'
               end>
             ResultType = 'String'
-            OnEval = dwsZipClassesTZipReaderMethodsGetNameEval
             Kind = mkFunction
+            OnEval = dwsZipClassesTZipReaderMethodsGetNameEval
           end
           item
             Name = 'GetData'
@@ -51,8 +51,8 @@ object dwsZipLib: TdwsZipLib
                 DataType = 'Integer'
               end>
             ResultType = 'String'
-            OnEval = dwsZipClassesTZipReaderMethodsGetDataEval
             Kind = mkFunction
+            OnEval = dwsZipClassesTZipReaderMethodsGetDataEval
           end
           item
             Name = 'GetFullSize'
@@ -62,8 +62,8 @@ object dwsZipLib: TdwsZipLib
                 DataType = 'Integer'
               end>
             ResultType = 'Integer'
-            OnEval = dwsZipClassesTZipReaderMethodsGetFullSizeEval
             Kind = mkFunction
+            OnEval = dwsZipClassesTZipReaderMethodsGetFullSizeEval
           end
           item
             Name = 'GetZipSize'
@@ -73,8 +73,8 @@ object dwsZipLib: TdwsZipLib
                 DataType = 'Integer'
               end>
             ResultType = 'Integer'
-            OnEval = dwsZipClassesTZipReaderMethodsGetZipSizeEval
             Kind = mkFunction
+            OnEval = dwsZipClassesTZipReaderMethodsGetZipSizeEval
           end
           item
             Name = 'IndexOf'
@@ -84,8 +84,8 @@ object dwsZipLib: TdwsZipLib
                 DataType = 'String'
               end>
             ResultType = 'Integer'
-            OnEval = dwsZipClassesTZipReaderMethodsIndexOfEval
             Kind = mkFunction
+            OnEval = dwsZipClassesTZipReaderMethodsIndexOfEval
           end
           item
             Name = 'Unzip'
@@ -99,8 +99,8 @@ object dwsZipLib: TdwsZipLib
                 DataType = 'String'
               end>
             ResultType = 'Boolean'
-            OnEval = dwsZipClassesTZipReaderMethodsUnzipEval
             Kind = mkFunction
+            OnEval = dwsZipClassesTZipReaderMethodsUnzipEval
           end
           item
             Name = 'Close'
@@ -160,6 +160,10 @@ object dwsZipLib: TdwsZipLib
                 DataType = 'String'
               end>
             OnEval = dwsZipClassesTZipWriterConstructorsCreateEval
+          end
+          item
+            Name = 'CreateInMemory'
+            OnEval = dwsZipClassesTZipWriterConstructorsCreateInMemoryEval
           end>
         Methods = <
           item
@@ -181,8 +185,8 @@ object dwsZipLib: TdwsZipLib
                 HasDefaultValue = True
                 DefaultValue = ''
               end>
-            OnEval = dwsZipClassesTZipWriterMethodsAddFileEval
             Kind = mkProcedure
+            OnEval = dwsZipClassesTZipWriterMethodsAddFileEval
           end
           item
             Name = 'AddData'
@@ -199,8 +203,22 @@ object dwsZipLib: TdwsZipLib
                 Name = 'nameInZip'
                 DataType = 'String'
               end>
-            OnEval = dwsZipClassesTZipWriterMethodsAddDataEval
             Kind = mkProcedure
+            OnEval = dwsZipClassesTZipWriterMethodsAddDataEval
+          end
+          item
+            Name = 'AddDeflatedData'
+            Parameters = <
+              item
+                Name = 'deflated'
+                DataType = 'TDeflateCompressor'
+              end
+              item
+                Name = 'nameInZip'
+                DataType = 'String'
+              end>
+            Kind = mkProcedure
+            OnEval = dwsZipClassesTZipWriterMethodsAddDeflatedDataEval
           end
           item
             Name = 'AddFromZip'
@@ -213,14 +231,71 @@ object dwsZipLib: TdwsZipLib
                 Name = 'index'
                 DataType = 'Integer'
               end>
-            OnEval = dwsZipClassesTZipWriterMethodsAddFromZipEval
             Kind = mkProcedure
+            OnEval = dwsZipClassesTZipWriterMethodsAddFromZipEval
           end
           item
             Name = 'Close'
             Kind = mkDestructor
+          end
+          item
+            Name = 'CloseInMemory'
+            ResultType = 'String'
+            Kind = mkFunction
+            OnEval = dwsZipClassesTZipWriterMethodsCloseInMemoryEval
           end>
         OnCleanUp = dwsZipClassesTZipWriterCleanUp
+      end
+      item
+        Name = 'TDeflateCompressor'
+        Constructors = <
+          item
+            Name = 'Create'
+            Parameters = <
+              item
+                Name = 'compression'
+                DataType = 'Integer'
+                HasDefaultValue = True
+                DefaultValue = 7
+              end>
+            OnEval = dwsZipClassesTDeflateCompressorConstructorsCreateEval
+          end>
+        Methods = <
+          item
+            Name = 'WriteData'
+            Parameters = <
+              item
+                Name = 'data'
+                DataType = 'String'
+              end>
+            Kind = mkProcedure
+            OnFastEval = dwsZipClassesTDeflateCompressorMethodsWriteDataFastEval
+          end
+          item
+            Name = 'Flush'
+            ResultType = 'String'
+            Kind = mkFunction
+            OnEval = dwsZipClassesTDeflateCompressorMethodsFlushEval
+          end
+          item
+            Name = 'CRC32'
+            ResultType = 'Integer'
+            Kind = mkFunction
+            OnEval = dwsZipClassesTDeflateCompressorMethodsCRC32Eval
+          end
+          item
+            Name = 'SizeIn'
+            ResultType = 'Integer'
+            Kind = mkFunction
+            OnEval = dwsZipClassesTDeflateCompressorMethodsSizeInEval
+          end
+          item
+            Name = 'SizeOut'
+            ResultType = 'Integer'
+            Kind = mkFunction
+            OnEval = dwsZipClassesTDeflateCompressorMethodsSizeOutEval
+          end>
+        OnCleanUp = dwsZipClassesTDeflateCompressorCleanUp
       end>
     UnitName = 'System.Zip'
     StaticSymbols = True
