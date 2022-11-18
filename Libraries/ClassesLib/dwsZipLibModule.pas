@@ -202,7 +202,6 @@ var
    i : Integer;
    entry : PScriptZipFileEntry;
 begin
-   FillChar(lhr, SizeOf(lhr), 0);
    lhr := Default(TLastHeader);
    lhr.signature := PK_LASTHEADER_SIGNATURE;
    lhr.thisFiles := Count;
