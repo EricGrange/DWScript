@@ -1,0 +1,8 @@
+225
+2
+hello.txt
+10
+50
+empty.bin
+5
+0

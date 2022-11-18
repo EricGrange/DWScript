@@ -3,8 +3,8 @@ unit UdwsClassesTests;
 interface
 
 uses Classes, SysUtils, dwsXPlatformTests, dwsComp, dwsCompiler, dwsExprs,
-   dwsClassesLibModule, dwsXPlatform, dwsSymbols, dwsUtils, dwsInfo,
-   dwsCompilerContext;
+   dwsXPlatform, dwsSymbols, dwsUtils, dwsInfo, dwsCompilerContext,
+   dwsClassesLibModule, dwsZipLibModule;
 
 type
 
@@ -13,6 +13,7 @@ type
          FTests : TStringList;
          FCompiler : TDelphiWebScript;
          FClassesLib : TdwsClassesLib;
+         FZipLib : TdwsZipLib;
 
       public
          procedure SetUp; override;
@@ -57,6 +58,9 @@ begin
 
    FClassesLib:=TdwsClassesLib.Create(nil);
    FClassesLib.Script:=FCompiler;
+
+   FZipLib := TdwsZipLib.Create(nil);
+   FZipLib.dwsZip.Script := FCompiler;
 end;
 
 // TearDown
@@ -64,6 +68,7 @@ end;
 procedure TdwsClassesTests.TearDown;
 begin
    FClassesLib.Free;
+   FZipLib.Free;
 
    FCompiler.Free;
 

@@ -5,8 +5,7 @@ var hello := StringOfString('hello', 10);
 zip.AddData(hello, 1, 'hello.txt');
 zip.AddData('', 0, 'empty.bin');
 
-var data := '';
-zip.CloseInMemory(data);
+var data := zip.CloseInMemory;
 PrintLn(data.Length);
 
 var reader := TZipReader.FromData(data);
