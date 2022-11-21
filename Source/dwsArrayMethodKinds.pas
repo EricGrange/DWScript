@@ -28,7 +28,7 @@ type
       amkLength, amkCount, amkPop, amkPeek, amkDelete, amkInsert, amkSetLength,
       amkClear, amkSwap, amkCopy, amkReverse, amkDimCount, amkKeys, amkMove,
       amkIndexOf, amkContains,
-      amkFilter,
+      amkFilter, amkForEach,
       amkInclude, amkExclude,
       amkByName
    );

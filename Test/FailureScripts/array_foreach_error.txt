@@ -1,0 +1,4 @@
+Syntax Error: There is no overloaded version of "StrToInt" that can be called with these arguments [line: 3, column: 11]
+Syntax Error: Incompatible parameter types - "procedure (Integer)" expected (instead of "Integer") [line: 3, column: 11]
+Syntax Error: Incompatible parameter types - "procedure (Integer)" expected (instead of "function IntToStr(Integer): String") [line: 5, column: 11]
+Syntax Error: More arguments expected [line: 7, column: 11]

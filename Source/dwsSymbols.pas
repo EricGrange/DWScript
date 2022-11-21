@@ -594,7 +594,8 @@ type
 
    TScriptDataSymbolPurpose = (
       sdspGeneral,         // general purpose / unspecified use case
-      sdspLoopIterator     // iterator variable in a for loop
+      sdspLoopIterator,    // iterator variable in a for loop
+      sdspScriptInternal   // internal use for script engine only
    );
 
    // variable: var x: Integer;
@@ -1289,6 +1290,7 @@ type
          FSortFunctionType : TFuncSymbol;
          FMapFunctionType : TFuncSymbol;
          FFilterFunctionType : TFuncSymbol;
+         FForEachFunctionType : TFuncSymbol;
 
       protected
          function ElementSize : Integer;
@@ -1306,6 +1308,7 @@ type
          function SortFunctionType(baseSymbols : TdwsBaseSymbolsContext) : TFuncSymbol; virtual;
          function MapFunctionType(baseSymbols : TdwsBaseSymbolsContext) : TFuncSymbol; virtual;
          function FilterFunctionType(baseSymbols : TdwsBaseSymbolsContext) : TFuncSymbol; virtual;
+         function ForEachFunctionType(baseSymbols : TdwsBaseSymbolsContext) : TFuncSymbol; virtual;
 
          property IndexType : TTypeSymbol read FIndexType write FIndexType;
    end;
@@ -7832,6 +7835,17 @@ begin
    Result := FFilterFunctionType;
 end;
 
+// ForEachFunctionType
+//
+function TArraySymbol.ForEachFunctionType(baseSymbols : TdwsBaseSymbolsContext) : TFuncSymbol;
+begin
+   if FForEachFunctionType = nil then begin
+      FForEachFunctionType := TFuncSymbol.Create('', fkProcedure, 0);
+      FForEachFunctionType.AddParam(TParamSymbol.Create('v', Typ));
+   end;
+   Result := FForEachFunctionType;
+end;
+
 // ------------------
 // ------------------ TDynamicArraySymbol ------------------
 // ------------------
@@ -7915,6 +7929,11 @@ begin
       amkFilter : begin
          Result := TPseudoMethodSymbol.Create(Self, methodName, fkFunction, 0);
          Result.Params.AddSymbol(TParamSymbol.Create('func', FilterFunctionType(baseSymbols)));
+         Result.Typ := Self;
+      end;
+      amkForEach : begin
+         Result := TPseudoMethodSymbol.Create(Self, methodName, fkFunction, 0);
+         Result.Params.AddSymbol(TParamSymbol.Create('func', ForEachFunctionType(baseSymbols)));
          Result.Typ := Self;
       end;
       amkDelete : begin

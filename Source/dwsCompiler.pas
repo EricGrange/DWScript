@@ -7963,6 +7963,7 @@ var
    i : Integer;
    mapFunctionType : TFuncSymbol;
    filterFunctionType : TFuncSymbol;
+   forEachFunctionType : TFuncSymbol;
    methodKind : TArrayMethodKind;
    indexOfClass : TArrayIndexOfExprClass;
    pseudoMethod : TPseudoMethodSymbol;
@@ -8032,6 +8033,9 @@ begin
 
          amkFilter :
             argList.DefaultExpected := TParamSymbol.Create('', arraySym.FilterFunctionType(FCompilerContext));
+
+         amkForEach :
+            argList.DefaultExpected := TParamSymbol.Create('', arraySym.ForEachFunctionType(FCompilerContext));
 
       end;
 
@@ -8302,6 +8306,24 @@ begin
                end;
                if Result = nil then
                   Result := TArrayFilterExpr.Create(FCompilerContext, namePos, baseExpr, nil);
+            end;
+
+            amkForEach : begin
+               CheckRestricted;
+               if CheckArguments(1, 1) then begin
+                  forEachFunctionType := arraySym.ForEachFunctionType(FCompilerContext);
+                  if argList[0].Typ.IsCompatible(forEachFunctionType) then begin
+                     Result := TArrayForEachExpr.Create(FCompilerContext, namePos, baseExpr,
+                                                        TFuncPtrExpr.Create(FCompilerContext, argPosArray[0], argList[0]));
+                     argList.Clear;
+                  end else begin
+                     IncompatibleTypes(argPosArray[0], CPE_IncompatibleParameterTypes,
+                                       forEachFunctionType, argList[0].Typ);
+                     argList.OrphanItems(FCompilerContext)
+                  end;
+               end;
+               if Result = nil then
+                  Result := TArrayForEachExpr.Create(FCompilerContext, namePos, baseExpr, nil);
             end;
 
             amkReverse : begin

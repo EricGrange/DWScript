@@ -698,8 +698,8 @@ end;
 procedure TdwsCodeGen.CompileStatement(expr : TExprBase);
 begin
    Compile(expr);
-   if expr is TNoResultExpr then
-   else WriteStatementEnd;
+   if not (expr is TNoResultExpr) then
+      WriteStatementEnd;
 end;
 
 // CompileNoWrap

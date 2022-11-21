@@ -466,7 +466,7 @@ type
    end;
 
    // Filter a dynamic array
-   TArrayFilterExpr = class(TArrayTypedExpr)
+   TArrayFilterExpr = class(TArrayTypedFluentExpr)
       private
          FFilterFuncExpr : TFuncPtrExpr;
          FItem : TDataSymbol;
@@ -480,10 +480,29 @@ type
                             aBase : TTypedExpr; aFilterFunc : TFuncPtrExpr);
          destructor Destroy; override;
 
-         procedure EvalAsVariant(exec : TdwsExecution; var Result : Variant); override;
          procedure EvalAsScriptDynArray(exec : TdwsExecution; var result : IScriptDynArray); override;
 
          property FilterFuncExpr : TFuncPtrExpr read FFilterFuncExpr write FFilterFuncExpr;
+   end;
+
+   // Applies a function to each element
+   TArrayForEachExpr = class (TArrayPseudoMethodExpr)
+      private
+         FForEachFuncExpr : TFuncPtrExpr;
+         FItem : TDataSymbol;
+
+      protected
+         function GetSubExpr(i : Integer) : TExprBase; override;
+         function GetSubExprCount : Integer; override;
+
+      public
+         constructor Create(context : TdwsCompilerContext; const scriptPos: TScriptPos;
+                            aBase : TTypedExpr; aForEachFunc : TFuncPtrExpr);
+         destructor Destroy; override;
+
+         procedure EvalNoResult(exec : TdwsExecution); override;
+
+         property ForEachFuncExpr : TFuncPtrExpr read FForEachFuncExpr write FForEachFuncExpr;
    end;
 
    // Reverse a dynamic array
@@ -2095,9 +2114,9 @@ begin
    FCompareExpr:=aCompare;
    if aCompare<>nil then begin
       elemTyp:=aCompare.FuncSym.Params[0].Typ;
-      FLeft:=TScriptDataSymbol.Create('', elemTyp);
+      FLeft:=TScriptDataSymbol.Create('', elemTyp, sdspScriptInternal);
       context.Table.AddSymbol(FLeft);
-      FRight:=TScriptDataSymbol.Create('', elemTyp);
+      FRight:=TScriptDataSymbol.Create('', elemTyp, sdspScriptInternal);
       context.Table.AddSymbol(FRight);
       FCompareExpr.AddArg(TVarExpr.CreateTyped(context, scriptPos, FLeft));
       FCompareExpr.AddArg(TVarExpr.CreateTyped(context, scriptPos, FRight));
@@ -2186,7 +2205,7 @@ begin
 
    if aMapFunc<>nil then begin
       elemTyp:=aMapFunc.FuncSym.Params[0].Typ;
-      FItem:=TScriptDataSymbol.Create('', elemTyp);
+      FItem:=TScriptDataSymbol.Create('', elemTyp, sdspScriptInternal);
       context.Table.AddSymbol(FItem);
       FMapFuncExpr.AddArg(TVarExpr.CreateTyped(context, scriptPos, FItem));
       FMapFuncExpr.InitializeResultAddr(context.Prog as TdwsProgram);
@@ -2394,7 +2413,7 @@ begin
 
    if aFilterFunc <> nil then begin
       elemTyp := aFilterFunc.FuncSym.Params[0].Typ;
-      FItem := TScriptDataSymbol.Create('', elemTyp);
+      FItem := TScriptDataSymbol.Create('', elemTyp, sdspScriptInternal);
       context.Table.AddSymbol(FItem);
       FFilterFuncExpr.AddArg(TVarExpr.CreateTyped(context, scriptPos, FItem));
       FFilterFuncExpr.InitializeResultAddr(context.Prog as TdwsProgram);
@@ -2407,16 +2426,6 @@ destructor TArrayFilterExpr.Destroy;
 begin
    inherited;
    FFilterFuncExpr.Free;
-end;
-
-// EvalAsVariant
-//
-procedure TArrayFilterExpr.EvalAsVariant(exec : TdwsExecution; var Result : Variant);
-var
-   dyn : IScriptDynArray;
-begin
-   EvalAsScriptDynArray(exec, dyn);
-   VarCopySafe(Result, dyn);
 end;
 
 // EvalAsScriptDynArray
@@ -2479,6 +2488,86 @@ end;
 // GetSubExprCount
 //
 function TArrayFilterExpr.GetSubExprCount : Integer;
+begin
+   Result := 2;
+end;
+
+// ------------------
+// ------------------ TArrayForEachExpr ------------------
+// ------------------
+
+// Create
+//
+constructor TArrayForEachExpr.Create(context : TdwsCompilerContext; const scriptPos: TScriptPos;
+                                     aBase : TTypedExpr; aForEachFunc : TFuncPtrExpr);
+var
+   elemTyp : TTypeSymbol;
+begin
+   inherited Create(scriptPos, aBase);
+   FForEachFuncExpr := aForEachFunc;
+
+   if aForEachFunc <> nil then begin
+      elemTyp := aForEachFunc.FuncSym.Params[0].Typ;
+      FItem := TScriptDataSymbol.Create('', elemTyp, sdspScriptInternal);
+      context.Table.AddSymbol(FItem);
+      FForEachFuncExpr.AddArg(TVarExpr.CreateTyped(context, scriptPos, FItem));
+   end;
+end;
+
+// Destroy
+//
+destructor TArrayForEachExpr.Destroy;
+begin
+   inherited;
+   FForEachFuncExpr.Free;
+end;
+
+// EvalNoResult
+//
+procedure TArrayForEachExpr.EvalNoResult(exec : TdwsExecution);
+var
+   i, n, elementSize, itemAddr : Integer;
+   funcPointer : IFuncPointer;
+   itemPVariant : PVariant;
+   base : IScriptDynArray;
+begin
+   BaseExpr.EvalAsScriptDynArray(exec, base);
+
+   n := base.ArrayLength;
+   if n = 0 then Exit;
+
+   elementSize := base.ElementSize;
+
+   ForEachFuncExpr.EvalAsFuncPointer(exec, funcPointer);
+
+   itemAddr := exec.Stack.BasePointer + FItem.StackAddr;
+
+   if elementSize = 1 then begin
+      itemPVariant := @exec.Stack.Data[itemAddr];
+      for i := 0 to n-1 do begin
+         base.EvalAsVariant(i, itemPVariant^);
+         funcPointer.EvalNoResult(exec, ForEachFuncExpr);
+      end;
+   end else begin
+      for i := 0 to n-1 do begin
+         (base.GetSelf as TScriptDynamicDataArray).CopyData(i*elementSize, exec.Stack.Data, itemAddr, elementSize);
+         funcPointer.EvalNoResult(exec, ForEachFuncExpr);
+      end;
+   end;
+end;
+
+// GetSubExpr
+//
+function TArrayForEachExpr.GetSubExpr(i : Integer) : TExprBase;
+begin
+   if i = 0 then
+      Result := BaseExpr
+   else Result := ForEachFuncExpr;
+end;
+
+// GetSubExprCount
+//
+function TArrayForEachExpr.GetSubExprCount : Integer;
 begin
    Result := 2;
 end;

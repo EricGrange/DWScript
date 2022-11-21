@@ -1056,6 +1056,7 @@ type
    IFuncPointer = interface
       function GetFuncExpr : TFuncExprBase;
       function SameFunc(const v : Variant) : Boolean;
+      procedure EvalNoResult(exec : TdwsExecution; caller : TFuncExpr);
       procedure EvalAsVariant(exec : TdwsExecution; caller : TFuncExpr; var result : Variant);
       function EvalAsInteger(exec : TdwsExecution; caller : TFuncExpr) : Int64;
       function EvalAsBoolean(exec : TdwsExecution; caller : TFuncExpr) : Boolean;
@@ -1085,6 +1086,7 @@ type
          function GetFuncExpr : TFuncExprBase;
          function SameFunc(const v : Variant) : Boolean;
 
+         procedure EvalNoResult(exec : TdwsExecution; caller : TFuncExpr);
          procedure EvalAsVariant(exec : TdwsExecution; caller : TFuncExpr; var result : Variant);
          function EvalAsInteger(exec : TdwsExecution; caller : TFuncExpr) : Int64;
          function EvalAsBoolean(exec : TdwsExecution; caller : TFuncExpr) : Boolean;
@@ -5583,6 +5585,15 @@ begin
    finally
       FFuncExpr.Args := oldArgs;
    end;
+end;
+
+// EvalNoResult
+//
+procedure TFuncPointer.EvalNoResult(exec : TdwsExecution; caller : TFuncExpr);
+var
+   v : Variant;
+begin
+   EvalAsVariant(exec, caller, v);
 end;
 
 // EvalFuncAsVariant
