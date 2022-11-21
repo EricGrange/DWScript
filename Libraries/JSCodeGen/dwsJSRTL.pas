@@ -174,7 +174,7 @@ uses dwsJSON, dwsXPlatform, SynZip;
 {$R dwsJSRTL.res}
 
 const
-   cJSRTLDependencies : array [1..324{$ifdef JS_BIGINTEGER} + 16{$endif}] of TJSRTLDependency = (
+   cJSRTLDependencies : array [1..325{$ifdef JS_BIGINTEGER} + 16{$endif}] of TJSRTLDependency = (
       // codegen utility functions
       (Name : '$CheckStep';
        Code : 'function $CheckStep(s,z) { if (s>0) return s; throw Exception.Create($New(Exception),"FOR loop STEP should be strictly positive: "+s.toString()+z) }';
@@ -642,6 +642,8 @@ const
 
       (Name : 'array_of_Float$Multiply';
        Code : 'function array_of_Float$Multiply(a,v) { for (var i=0;i<a.length;i++) a[i]*=v; return a }'),
+      (Name : 'array_of_Float$MultiplyAdd';
+       Code : 'function array_of_Float$MultiplyAdd(a,s,o) { for (var i=0;i<a.length;i++) a[i]=a[i]*s+o; return a }'),
       (Name : 'array_of_Float$Offset';
        Code : 'function array_of_Float$Offset(a,v) { for (var i=0;i<a.length;i++) a[i]+=v; return a }'),
       (Name : 'array_of_Float$Reciprocal';

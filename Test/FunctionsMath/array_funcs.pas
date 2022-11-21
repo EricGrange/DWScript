@@ -17,3 +17,7 @@ PrintA;
 a.Offset(-2).Reciprocal;
 
 PrintA;
+
+a.MultiplyAdd(2, 1);
+
+PrintA;
