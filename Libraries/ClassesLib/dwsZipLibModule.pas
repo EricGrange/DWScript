@@ -79,9 +79,29 @@ type
       function CheckedIndex(Info : TProgramInfo) : Integer;
    end;
 
+   TZipCompressor = class
+      FInitialized : Boolean;
+      FDestStream : TStream;
+      FZStream : TZStream;
+      FCRC : Cardinal;
+      FBufferOut : array [Word] of Byte; // a 64 KB buffer
+
+      constructor Create(outStream : TStream; compressionLevel : Integer);
+      destructor Destroy; override;
+
+      function FlushBufferOut : Integer;
+      function Write(const buffer; count : Int64) : Int64;
+      function WriteData(const data : String) : NativeInt;
+      procedure Flush;
+
+      property CRC : Cardinal read FCRC;
+      property SizeIn : Cardinal read FZStream.total_in;
+      property SizeOut : Cardinal read FZStream.total_out;
+   end;
+
    TScriptZipStream = class
       Flushed : Boolean;
-      Compressor : TSynZipCompressor;
+      Compressor : TZipCompressor;
       Stream : TMemoryStream;
       procedure Flush;
    end;
@@ -112,12 +132,13 @@ type
 
       procedure SetHeaderFromCompressor(
          index : Integer; offsetHead : Cardinal;
-         compressor : TSynZipCompressor; const aDateTime : TdwsDateTime
+         compressor : TZipCompressor; const aDateTime : TdwsDateTime
       );
-      function InternalAdd(const zipName : TFileName; buf : Pointer; size : Integer) : Cardinal;
+      function InternalAdd(const zipName : TFileName; buf : Pointer; size : Int64) : Cardinal;
 
       procedure AddFromCompressor(stream : TScriptZipStream; const name : TFileName);
       procedure AddData(data : Pointer; size : Int64; compression : Integer; const name : TFileName);
+      procedure AddString(const data : String; compression : Integer; const name : TFileName);
       procedure AddFile(const aFileName : TFileName; compression : Integer; const nameInZip : TFileName);
       procedure AddFromZip(reader : TZipRead; index : Integer);
    end;
@@ -221,7 +242,7 @@ end;
 //
 procedure TScriptZipWrite.SetHeaderFromCompressor(
       index : Integer; offsetHead : Cardinal;
-      compressor : TSynZipCompressor; const aDateTime : TdwsDateTime
+      compressor : TZipCompressor; const aDateTime : TdwsDateTime
 );
 var
    offsetEnd : Cardinal;
@@ -232,8 +253,13 @@ begin
    fileInfo := @fhr.fileInfo;
    fileInfo.zcrc32 := compressor.CRC;
    fileInfo.zfullSize := compressor.SizeIn;
-   fileInfo.zzipSize := compressor.SizeOut;
-   fileInfo.zzipMethod := Z_DEFLATED;
+   if compressor.SizeIn = 0 then begin
+      fileInfo.zzipSize := 0;
+      fileInfo.zzipMethod := Z_STORED;
+   end else begin
+      fileInfo.zzipSize := compressor.SizeOut;
+      fileInfo.zzipMethod := Z_DEFLATED;
+   end;
    fileInfo.zlastMod := aDateTime.AsDosDateTime;
 
    offsetEnd := ZipStream.Position;
@@ -244,7 +270,7 @@ end;
 
 // InternalAdd
 //
-function TScriptZipWrite.InternalAdd(const zipName : TFileName; buf : Pointer; size : Integer) : Cardinal;
+function TScriptZipWrite.InternalAdd(const zipName : TFileName; buf : Pointer; size : Int64) : Cardinal;
 var
    entry : PScriptZipFileEntry;
    fileHeader : PFileHeader;
@@ -293,16 +319,43 @@ end;
 procedure TScriptZipWrite.AddData(data : Pointer; size : Int64; compression : Integer; const name : TFileName);
 var
    offsetHead : Cardinal;
-   zipCompressor: TSynZipCompressor;
+   zipCompressor : TZipCompressor;
+begin
+   if Int64Rec(size).Hi <> 0 then
+      raise EdwsZIPException.Create('File size limit for zip is 4GB');
+
+   SetLength(Entries, Count+1);
+   offsetHead := InternalAdd(name, nil, 0);
+
+   zipCompressor := TZipCompressor.Create(ZipStream, compression);
+   try
+      if size > 0 then begin
+         zipCompressor.Write(data^, size);
+         zipCompressor.Flush;
+      end;
+      Assert(zipCompressor.SizeIn = size);
+      SetHeaderFromCompressor(Count, offsetHead, zipCompressor, TdwsDateTime.Now);
+   finally
+      zipCompressor.Free;
+   end;
+   Inc(Count);
+end;
+
+// AddString
+//
+procedure TScriptZipWrite.AddString(const data : String; compression : Integer; const name : TFileName);
+var
+   offsetHead : Cardinal;
+   zipCompressor : TZipCompressor;
 begin
    SetLength(Entries, Count+1);
    offsetHead := InternalAdd(name, nil, 0);
 
-   zipCompressor := TSynZipCompressor.Create(ZipStream, compression);
+   zipCompressor := TZipCompressor.Create(ZipStream, compression);
    try
-      zipCompressor.Write(data^, size);
+      zipCompressor.WriteData(data);
       zipCompressor.Flush;
-      Assert(zipCompressor.SizeIn = size);
+      Assert(zipCompressor.SizeIn = NativeUInt(Length(data)));
       SetHeaderFromCompressor(Count, offsetHead, zipCompressor, TdwsDateTime.Now);
    finally
       zipCompressor.Free;
@@ -315,22 +368,29 @@ end;
 procedure TScriptZipWrite.AddFile(const aFileName : TFileName; compression : Integer; const nameInZip : TFileName);
 var
    size : Int64;
-   offsetHead : cardinal;
-   sourceStream : TFileStream;
-   zipCompressor : TSynZipCompressor;
+   offsetHead : Cardinal;
+   zipCompressor : TZipCompressor;
+   fileHandle : THandle;
+   buffer : array [Word] of Byte; // 64kb
+   nbRead : Integer;
 begin
    SetLength(Entries, Count+1);
    offsetHead := InternalAdd(nameInZip, nil, 0);
 
-   sourceStream := TFileStream.Create(aFileName, fmOpenRead or fmShareDenyNone);
+   fileHandle := OpenFileForSequentialReadOnly(aFileName);
    try
-      size := sourceStream.size;
+      if not GetFileSizeEx(fileHandle, size) then
+         RaiseLastOSError;
       if Int64Rec(size).Hi <> 0 then
-         raise ESynZipException.CreateFmt('"%s" file is too big for .zip', [aFileName]);
+         raise EdwsZIPException.Create('File size limit for zip is 4GB');
 
-      zipCompressor := TSynZipCompressor.Create(ZipStream, compression);
+      zipCompressor := TZipCompressor.Create(ZipStream, compression);
       try
-         zipCompressor.CopyFrom(sourceStream, size);
+         while True do begin
+            nbRead := FileRead(fileHandle, @buffer[0], SizeOf(buffer));
+            if nbRead <= 0 then break;
+            zipCompressor.Write(buffer, nbRead)
+         end;
          zipCompressor.Flush;
          Assert(zipCompressor.SizeIn = size);
          SetHeaderFromCompressor(Count, offsetHead, zipCompressor, FileDateTime(aFileName));
@@ -338,7 +398,7 @@ begin
          zipCompressor.Free;
       end;
    finally
-      sourceStream.Free;
+      CloseFileHandle(fileHandle);
    end;
    Inc(Count);
 end;
@@ -361,11 +421,120 @@ begin
 end;
 
 // ------------------
+// ------------------ TZipCompressor ------------------
+// ------------------
+
+function zlibAllocMem(appData : Pointer; items, size : Cardinal) : Pointer; cdecl;
+begin
+   GetMem(result, items*size);
+end;
+
+procedure zlibFreeMem(appData, block : Pointer);  cdecl;
+begin
+   FreeMem(block);
+end;
+
+constructor TZipCompressor.Create(outStream : TStream; compressionLevel : Integer);
+begin
+   FDestStream := outStream;
+
+   FZStream := Default(TZStream);
+   FZStream.zalloc := @zlibAllocMem;
+   FZStream.zfree := @zlibFreeMem;
+
+   FZStream.next_out := @FBufferOut;
+   FZStream.avail_out := SizeOf(FBufferOut);
+   FInitialized := deflateInit2_(FZStream, CompressionLevel, Z_DEFLATED, -MAX_WBITS, DEF_MEM_LEVEL,
+                                 Z_DEFAULT_STRATEGY, ZLIB_VERSION, SizeOf(FZStream)) >= 0
+end;
+
+destructor TZipCompressor.Destroy;
+begin
+   if FInitialized then begin
+      Flush;
+      FZStream.next_out := nil;
+      FZStream.avail_out := 0;
+      deflateEnd(FZStream);
+   end;
+   inherited;
+end;
+
+procedure TZipCompressor.Flush;
+begin
+   if FInitialized then begin
+      while     (Check(deflate(FZStream, Z_FINISH), [ Z_OK, Z_STREAM_END ], 'Flush') <> Z_STREAM_END)
+            and (FZStream.avail_out = 0) do
+         FlushBufferOut;
+      FlushBufferOut;
+   end;
+end;
+
+function TZipCompressor.FlushBufferOut : Integer;
+begin
+   Result := 0;
+   if not FInitialized then
+      Exit;
+   if FZStream.avail_out < SizeOf(FBufferOut) then begin
+      Result := SizeOf(FBufferOut) - FZStream.avail_out;
+      FDestStream.WriteBuffer(FBufferOut, Result);
+      FZStream.next_out := @FBufferOut;
+      FZStream.avail_out := SizeOf(FBufferOut);
+   end;
+end;
+
+function TZipCompressor.Write(const buffer; count : Int64) : Int64;
+begin
+   if (Self = nil) or (not FInitialized) or (count <= 0) then
+      Exit(0);
+   Result := count;
+   FCRC := SynZip.crc32(FCRC, @buffer, count);
+   FZStream.next_in := Pointer(@buffer);
+   FZStream.avail_in := count;
+   while FZStream.avail_in > 0 do begin
+      if Check(deflate(FZStream, Z_NO_FLUSH), [ Z_OK ], 'Write') <> Z_OK then
+         raise EdwsZIPException.Create('ZCompress');
+      if FZStream.avail_out = 0 then
+         FlushBufferOut;
+   end;
+   FZStream.next_in := nil;
+   FZStream.avail_in := 0;
+end;
+
+// WriteData
+//
+function TZipCompressor.WriteData(const data : String) : NativeInt;
+var
+   p : PWordArray;
+   buffer : array [Word] of Byte;
+   size : NativeInt;
+begin
+   Result := Length(data);
+   case Result of
+      0 : Exit(0);
+      1 : begin
+         Write(Pointer(data)^, 1);
+         Exit(1);
+      end
+   else
+      p := Pointer(data);
+      size := Result;
+      while size > SizeOf(buffer) do begin
+         WordsToBytes(p, @buffer, SizeOf(buffer));
+         Dec(size, SizeOf(buffer));
+         Inc(p, size);
+         Write(buffer, SizeOf(buffer));
+      end;
+      if size > 0 then begin
+         WordsToBytes(p, @buffer, size);
+         Write(buffer, size);
+      end;
+   end;
+end;
+
+// ------------------
 // ------------------ TScriptZipStream ------------------
 // ------------------
 
-// Flush
-//
 procedure TScriptZipStream.Flush;
 begin
    if not Flushed then begin
@@ -378,8 +547,6 @@ end;
 // ------------------ TScriptZipRead ------------------
 // ------------------
 
-// CheckedIndex
-//
 function TScriptZipRead.CheckedIndex(Info : TProgramInfo) : Integer;
 begin
    Result := Info.ParamAsInteger[0];
@@ -512,8 +679,8 @@ var
 begin
    z := TScriptZipWrite(ExtObject);
 
-   buf:=Info.ParamAsDataString[0];
-   nameInZip:=Info.ParamAsString[2];
+   buf := Info.ParamAsDataString[0];
+   nameInZip := Info.ParamAsString[2];
 
    z.AddData(Pointer(buf), Length(buf), Info.ParamAsInteger[1], nameInZip);
 end;
@@ -577,7 +744,7 @@ begin
    szs := TScriptZipStream.Create;
    ExtObject := szs;
    szs.Stream := TMemoryStream.Create;
-   szs.Compressor := TSynZipCompressor.Create(szs.Stream, Info.ParamAsInteger[0]);
+   szs.Compressor := TZipCompressor.Create(szs.Stream, Info.ParamAsInteger[0]);
 end;
 
 procedure TdwsZipLib.dwsZipClassesTDeflateCompressorCleanUp(
@@ -603,14 +770,7 @@ begin
    if szs.Flushed then
       raise EdwsZIPException.Create('Compressor already flushed');
    args.EvalAsString(0, buf);
-
-   case Length(buf) of
-      0 : ;
-      1 : szs.Compressor.Write(Pointer(buf)^, 1);
-   else
-      StringWordsToBytes(buf, False);
-      szs.Compressor.Write(Pointer(buf)^, 2*Length(buf));
-   end;
+   szs.Compressor.WriteData(buf);
 end;
 
 procedure TdwsZipLib.dwsZipClassesTDeflateCompressorMethodsCRC32Eval(
@@ -623,11 +783,20 @@ procedure TdwsZipLib.dwsZipClassesTDeflateCompressorMethodsFlushEval(
   Info: TProgramInfo; ExtObject: TObject);
 var
    szs : TScriptZipStream;
+   size : Int64;
    result : String;
+   p : PByteArray;
 begin
    szs := TScriptZipStream(ExtObject);
    szs.Flush;
-   BytesToScriptString(szs.Stream.Memory, szs.Stream.Position, result);
+   size := szs.Stream.Position;
+   p := szs.Stream.Memory;
+   if size > 0 then begin
+      // skip ZIP compression header ($78 + compression level)
+//      p := @p[2];
+//      BytesToScriptString(p, size-2, result);
+      BytesToScriptString(p, size, result);
+   end;
    Info.ResultAsString := result;
 end;
 
