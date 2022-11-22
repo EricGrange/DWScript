@@ -4118,9 +4118,9 @@ var
    srcCond : TSourceCondition;
    endToken : TTokenType;
 begin
+   testStart := FTok.PosPtr;
    repeat
 
-      testStart:=FTok.PosPtr;
       FTok.Test(ttNone);
       hotPos:=FTok.HotPos;
 
@@ -4150,6 +4150,7 @@ begin
          end;
 
          ReadSemiColon(True);
+         testStart := FTok.PosPtr;
 
          srcCond:=TSourceCondition.Create(hotPos, testExpr, msgExpr);
          conditions.AddCondition(srcCond);
