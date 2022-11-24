@@ -11675,7 +11675,9 @@ begin
          if tt in [ ttPLUS_PLUS, ttMINUS_MINUS ] then
             FMsgs.AddCompilerWarningFmt(hotPos, CPW_AmbiguousOperator, [ cTokenStrings[tt] ]);
          Result := ReadTerm; // (redundant) plus sign
-         if ResolveOperatorFor(CurrentProg, ttMINUS, nil, Result.Typ) = nil then
+         if Result = nil then
+            Exit  // ReadTerm will have already notified the error
+         else if ResolveOperatorFor(CurrentProg, ttMINUS, nil, Result.Typ) = nil then
             FMsgs.AddCompilerError(hotPos, CPE_NumericalExpected);
       end;
       ttMINUS : begin
