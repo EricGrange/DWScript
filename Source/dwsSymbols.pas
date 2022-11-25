@@ -1270,6 +1270,8 @@ type
                             aMin, aMax : Integer);
 
          function IsCompatible(typSym : TTypeSymbol) : Boolean; override;
+         function SameType(typSym : TTypeSymbol) : Boolean; override;
+
          procedure InitDataContext(const data : IDataContext; offset : NativeInt); override;
 
          function AssignsAsDataExpr : Boolean; override;
@@ -7592,11 +7594,21 @@ end;
 function TSetOfSymbol.IsCompatible(typSym : TTypeSymbol) : Boolean;
 begin
    typSym := typSym.UnAliasedType;
-   if typSym is TSetOfSymbol then begin
-      Result:=     TSetOfSymbol(typSym).Typ.IsOfType(Typ)
-              and  (TSetOfSymbol(typSym).MinValue=MinValue)
-              and  (TSetOfSymbol(typSym).CountValue=CountValue);
-   end else Result:=False;
+   if typSym.ClassType = TSetOfSymbol then begin
+      Result :=    Typ.SameType(typSym.Typ)
+                or (
+                         typSym.Typ.IsOfType(Typ)
+                    and  (TSetOfSymbol(typSym).MinValue = MinValue)
+                    and  (TSetOfSymbol(typSym).CountValue = CountValue)
+                    );
+   end else Result := False;
+end;
+
+// SameType
+//
+function TSetOfSymbol.SameType(typSym : TTypeSymbol) : Boolean;
+begin
+   Result := Assigned(typSym) and (typSym.ClassType = TSetOfSymbol) and Typ.SameType(typSym.Typ);
 end;
 
 // InitDataContext

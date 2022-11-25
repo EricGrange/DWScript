@@ -9426,16 +9426,16 @@ begin
    if Assigned(indexSym) then begin
       if Assigned(typSym) then begin
          if paramsB.Count<>paramsA.Count+skipB+2 then Exit;
-         if paramsB[paramsA.Count+skipB+1].Typ<>typSym then Exit;
-         if paramsB[paramsA.Count+skipB].Typ<>indexSym then Exit;
+         if not paramsB[paramsA.Count+skipB+1].Typ.SameType(typSym) then Exit;
+         if paramsB[paramsA.Count+skipB].Typ <>indexSym then Exit;
       end else begin
          if paramsB.Count<>paramsA.Count+skipB+1 then Exit
          else if paramsB[paramsA.Count+skipB].Typ<>indexSym then Exit;
       end;
    end else begin
       if Assigned(typSym) then begin
-         if paramsB.Count<>paramsA.Count+skipB+1 then Exit;
-         if paramsB[paramsA.Count+skipB].Typ<>typSym then Exit;
+         if paramsB.Count <> paramsA.Count+skipB+1 then Exit;
+         if not paramsB[paramsA.Count+skipB].Typ.SameType(typSym) then Exit;
       end else begin
          if paramsA.Count+skipB<>paramsB.Count then Exit;
       end;
@@ -9622,7 +9622,12 @@ begin
 
             // error already handled
 
-         else if (not sym.Typ.IsOfType(propSym.Typ)) and not (sym.IsGeneric or propSym.IsGeneric) then begin
+         else if    (sym.Typ = nil)
+                 or (
+                        (not sym.Typ.SameType(propSym.Typ))
+                    and (not sym.Typ.IsOfType(propSym.Typ))
+                    and not (sym.IsGeneric or propSym.IsGeneric)
+                    ) then begin
 
             FMsgs.AddCompilerErrorFmt(FTok.HotPos, CPE_IncompatibleType, [sym.Name])
 
