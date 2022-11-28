@@ -1094,6 +1094,32 @@ end;
 
 // DoProcess
 //
+{$ifdef WIN64_ASM}
+procedure SSE2_MultiplyAdd(p : PDouble; nb : NativeInt; scale, offset : Double);
+// p = rcx, nb = rdx, scale = xmm0, offset = xmm1
+asm
+   unpcklpd xmm0, xmm0
+   unpcklpd xmm1, xmm1
+
+   test rdx, 1
+   jz @@loop2
+   dec rdx
+   movsd xmm2, [rcx]
+   mulsd xmm2, xmm0
+   addsd xmm2, xmm1
+   movsd [rcx], xmm2
+   add rcx, 8
+
+@@loop2:
+   movupd xmm2, [rcx]
+   mulpd xmm2, xmm0
+   addpd xmm2, xmm1
+   movupd [rcx], xmm2
+   add rcx, 16
+   sub rdx, 2
+   jnz @@loop2
+end;
+{$endif}
 procedure TFloatArrayMultiplyAddFunc.DoProcess(p : PDouble; n : NativeInt; stride : Integer; const args : TExprBaseListExec);
 var
    scale, offset : Double;
@@ -1101,6 +1127,12 @@ var
 begin
    scale := args.AsFloat[1];
    offset := args.AsFloat[2];
+   {$ifdef WIN64_ASM}
+   if (n > 4) and (stride = SizeOf(Double)) then begin
+      SSE2_MultiplyAdd(p, n, scale, offset);
+      Exit;
+   end;
+   {$endif}
    for i := 0 to n-1 do begin
       p^ := p^ * scale + offset;
       p := Pointer(IntPtr(p) + stride);
