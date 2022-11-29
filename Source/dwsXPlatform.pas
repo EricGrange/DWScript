@@ -390,6 +390,7 @@ function DirectSet8087CW(newValue : Word) : Word; register;
 function DirectSetMXCSR(newValue : Word) : Word; register;
 
 function SwapBytes(v : Cardinal) : Cardinal;
+procedure SwapBytesBlock(src, dest : PByte; nb : Integer);
 procedure SwapInt64(src, dest : PInt64);
 
 function RDTSC : UInt64;
@@ -2437,6 +2438,19 @@ begin
    TCardinalBytes(Result)[2] := TCardinalBytes(v)[1];
    TCardinalBytes(Result)[3] := TCardinalBytes(v)[0];
 {$endif}
+end;
+
+// SwapBytesBlock
+//
+procedure SwapBytesBlock(src, dest : PByte; nb : Integer);
+begin
+   Inc(dest, nb-1);
+   while nb > 0 do begin
+      dest^ := src^;
+      Inc(src);
+      Dec(dest);
+      Dec(nb);
+   end;
 end;
 
 // SwapInt64
