@@ -42,7 +42,7 @@ const
    cDefaultStackChunkSize = 4096;  // 64 kB in 32bit Delphi, each stack entry is a Variant
 
    // compiler version is date in YYYYMMDD format, dot subversion number
-   cCompilerVersion = 20221104.0;
+   cCompilerVersion = 20221206.0;
 
 type
    TdwsCompiler = class;
@@ -663,7 +663,7 @@ type
 
          function ReadSymbol(expr : TProgramExpr; isWrite : Boolean = False;
                              expecting : TTypeSymbol = nil) : TProgramExpr;
-         function ReadSymbolArrayExpr(var baseExpr : TDataExpr) : TProgramExpr;
+         function ReadSymbolArrayExpr(var baseExpr : TTypedExpr) : TProgramExpr;
          function ReadSymbolAssociativeArrayExpr(var baseExpr : TDataExpr) : TProgramExpr;
          function ReadSymbolMemberExpr(var expr : TProgramExpr;
                                        isWrite : Boolean; expecting : TTypeSymbol) : TProgramExpr;
@@ -761,7 +761,7 @@ type
          function CreateArrayHigh(const aScriptPos : TScriptPos; baseExpr : TProgramExpr; typ : TArraySymbol; captureBase : Boolean) : TTypedExpr;
          function CreateArrayLength(const aScriptPos : TScriptPos; baseExpr : TTypedExpr; typ : TArraySymbol) : TTypedExpr;
          function CreateArrayExpr(const scriptPos : TScriptPos; baseExpr : TDataExpr; indexExpr : TTypedExpr) : TArrayExpr;
-         function CreateDynamicArrayExpr(const scriptPos : TScriptPos; baseExpr : TDataExpr; indexExpr : TTypedExpr) : TDynamicArrayExpr;
+         function CreateDynamicArrayExpr(const scriptPos : TScriptPos; baseExpr : TTypedExpr; indexExpr : TTypedExpr) : TDynamicArrayExpr;
 
          function EnsureLoopVarExpr(const loopPos : TScriptPos;
                                     const loopVarName : String; const loopVarNamePos : TScriptPos;
@@ -5614,8 +5614,8 @@ begin
                      if not (Result is TTypedExpr) then begin
                         OrphanAndNil(Result);
                      end;
-                     if (baseType is TArraySymbol) and (Result is TDataExpr) then begin
-                        Result := ReadSymbolArrayExpr(TDataExpr(Result))
+                     if (baseType is TArraySymbol) and (Result is TTypedExpr) then begin
+                        Result := ReadSymbolArrayExpr(TTypedExpr(Result))
                      end else if TTypedExpr(Result).IsOfType(FCompilerContext.TypString) and (Result is TDataExpr) then begin
                         FTok.KillToken;
                         Result := ReadStringArray(TDataExpr(Result), IsWrite);
@@ -5663,11 +5663,11 @@ end;
 
 // ReadSymbolArrayExpr
 //
-function TdwsCompiler.ReadSymbolArrayExpr(var baseExpr : TDataExpr) : TProgramExpr;
+function TdwsCompiler.ReadSymbolArrayExpr(var baseExpr : TTypedExpr) : TProgramExpr;
 var
    idx : Int64;
    indexExpr, valueExpr : TTypedExpr;
-   newBaseExpr : TDataExpr;
+   newBaseExpr : TTypedExpr;
    baseType : TArraySymbol;
    arraySymbol : TStaticArraySymbol;
    errCount : Integer;
@@ -5709,20 +5709,20 @@ begin
             arraySymbol:=TStaticArraySymbol(baseType);
             if arraySymbol is TOpenArraySymbol then begin
 
-               newBaseExpr := TOpenArrayExpr.Create(FTok.HotPos, baseExpr, indexExpr, arraySymbol);
+               newBaseExpr := TOpenArrayExpr.Create(FTok.HotPos, baseExpr as TDataExpr, indexExpr, arraySymbol);
                indexExpr := nil;
 
             end else begin
 
                if arraySymbol.IndexType.IsOfType(FCompilerContext.TypBoolean) then begin
 
-                  newBaseExpr:=TStaticArrayBoolExpr.Create(FTok.HotPos, baseExpr, indexExpr,
+                  newBaseExpr:=TStaticArrayBoolExpr.Create(FTok.HotPos, baseExpr as TDataExpr, indexExpr,
                                                            arraySymbol);
                   indexExpr := nil;
 
                end else begin
 
-                  newBaseExpr:=TStaticArrayExpr.Create(FTok.HotPos, baseExpr, indexExpr,
+                  newBaseExpr:=TStaticArrayExpr.Create(FTok.HotPos, baseExpr as TDataExpr, indexExpr,
                                                        arraySymbol);
                   if indexExpr.IsConstant and (FMsgs.Count=errCount) then begin
                      idx:=indexExpr.EvalAsInteger(FExec);
@@ -13685,7 +13685,7 @@ end;
 
 // CreateDynamicArrayExpr
 //
-function TdwsCompiler.CreateDynamicArrayExpr(const scriptPos : TScriptPos; baseExpr : TDataExpr; indexExpr : TTypedExpr) : TDynamicArrayExpr;
+function TdwsCompiler.CreateDynamicArrayExpr(const scriptPos : TScriptPos; baseExpr : TTypedExpr; indexExpr : TTypedExpr) : TDynamicArrayExpr;
 var
    baseType : TDynamicArraySymbol;
 begin

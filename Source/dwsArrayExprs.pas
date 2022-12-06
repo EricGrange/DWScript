@@ -61,7 +61,7 @@ type
    // Array expressions x[index]
    TArrayExpr = class(TDataExpr)
       protected
-         FBaseExpr : TDataExpr;
+         FBaseExpr : TTypedExpr;
          FIndexExpr : TTypedExpr;
          FElementSize : Integer;
 
@@ -71,7 +71,7 @@ type
 
       public
          constructor Create(const aScriptPos: TScriptPos;
-                            BaseExpr: TDataExpr; IndexExpr: TTypedExpr;
+                            BaseExpr, IndexExpr: TTypedExpr;
                             arraySymbol : TArraySymbol);
          destructor Destroy; override;
          procedure Orphan(context : TdwsCompilerContext); override;
@@ -80,7 +80,7 @@ type
 
          function SameDataExpr(expr : TTypedExpr) : Boolean; override;
 
-         property BaseExpr : TDataExpr read FBaseExpr;
+         property BaseExpr : TTypedExpr read FBaseExpr;
          property IndexExpr : TTypedExpr read FIndexExpr;
    end;
 
@@ -131,6 +131,10 @@ type
    // Array expressions x[index] for open arrays
    TOpenArrayExpr = class(TArrayExpr)
       public
+         constructor Create(const aScriptPos: TScriptPos;
+                            baseExpr : TDataExpr; indexExpr : TTypedExpr;
+                            arraySymbol : TStaticArraySymbol);
+
          procedure GetDataPtr(exec : TdwsExecution; var result : IDataContext); override;
          function IsWritable : Boolean; override;
    end;
@@ -1012,7 +1016,7 @@ end;
 // Create
 //
 constructor TArrayExpr.Create(const aScriptPos: TScriptPos;
-                              BaseExpr: TDataExpr; IndexExpr: TTypedExpr;
+                              BaseExpr, IndexExpr: TTypedExpr;
                               arraySymbol : TArraySymbol);
 begin
    inherited Create(aScriptPos, arraySymbol.Typ);
@@ -1138,7 +1142,7 @@ var
    arrayData : IDataContext;
    buf : Variant;
 begin
-   FBaseExpr.GetDataPtr(exec, arrayData);
+   TDataExpr(FBaseExpr).GetDataPtr(exec, arrayData);
    expr.EvalAsVariant(exec, buf);
    arrayData.AsVariant[GetIndex(exec)] := buf;
 end;
@@ -1147,28 +1151,28 @@ end;
 //
 procedure TStaticArrayExpr.AssignValueAsInteger(exec : TdwsExecution; const value : Int64);
 begin
-   FBaseExpr.DataPtr[exec].AsInteger[GetIndex(exec)]:=value;
+   TDataExpr(FBaseExpr).DataPtr[exec].AsInteger[GetIndex(exec)]:=value;
 end;
 
 // AssignValueAsBoolean
 //
 procedure TStaticArrayExpr.AssignValueAsBoolean(exec : TdwsExecution; const value : Boolean);
 begin
-   FBaseExpr.DataPtr[exec].AsBoolean[GetIndex(exec)]:=value;
+   TDataExpr(FBaseExpr).DataPtr[exec].AsBoolean[GetIndex(exec)]:=value;
 end;
 
 // AssignValueAsFloat
 //
 procedure TStaticArrayExpr.AssignValueAsFloat(exec : TdwsExecution; const value : Double);
 begin
-   FBaseExpr.DataPtr[exec].AsFloat[GetIndex(exec)]:=value;
+   TDataExpr(FBaseExpr).DataPtr[exec].AsFloat[GetIndex(exec)]:=value;
 end;
 
 // AssignValueAsString
 //
 procedure TStaticArrayExpr.AssignValueAsString(exec : TdwsExecution; const value: String);
 begin
-   FBaseExpr.DataPtr[exec].AsString[GetIndex(exec)]:=value;
+   TDataExpr(FBaseExpr).DataPtr[exec].AsString[GetIndex(exec)]:=value;
 end;
 
 // EvalAsInteger
@@ -1177,7 +1181,7 @@ function TStaticArrayExpr.EvalAsInteger(exec : TdwsExecution) : Int64;
 var
    dc : IDataContext;
 begin
-   FBaseExpr.GetDataPtr(exec, dc);
+   TDataExpr(FBaseExpr).GetDataPtr(exec, dc);
    Result := dc.AsInteger[GetIndex(exec)];
 end;
 
@@ -1187,7 +1191,7 @@ function TStaticArrayExpr.EvalAsFloat(exec : TdwsExecution) : Double;
 var
    dc : IDataContext;
 begin
-   FBaseExpr.GetDataPtr(exec, dc);
+   TDataExpr(FBaseExpr).GetDataPtr(exec, dc);
    Result := dc.AsFloat[GetIndex(exec)];
 end;
 
@@ -1195,28 +1199,28 @@ end;
 //
 function TStaticArrayExpr.EvalAsBoolean(exec : TdwsExecution) : Boolean;
 begin
-   Result:=FBaseExpr.DataPtr[exec].AsBoolean[GetIndex(exec)];
+   Result := TDataExpr(FBaseExpr).DataPtr[exec].AsBoolean[GetIndex(exec)];
 end;
 
 // EvalAsVariant
 //
 procedure TStaticArrayExpr.EvalAsVariant(exec : TdwsExecution; var result : Variant);
 begin
-   FBaseExpr.DataPtr[exec].EvalAsVariant(GetIndex(exec), result);
+   TDataExpr(FBaseExpr).DataPtr[exec].EvalAsVariant(GetIndex(exec), result);
 end;
 
 // EvalAsString
 //
 procedure TStaticArrayExpr.EvalAsString(exec : TdwsExecution; var result : String);
 begin
-   FBaseExpr.DataPtr[exec].EvalAsString(GetIndex(exec), Result);
+   TDataExpr(FBaseExpr).DataPtr[exec].EvalAsString(GetIndex(exec), Result);
 end;
 
 // GetDataPtr
 //
 procedure TStaticArrayExpr.GetDataPtr(exec : TdwsExecution; var result : IDataContext);
 begin
-   FBaseExpr.GetDataPtr(exec, result);
+   TDataExpr(FBaseExpr).GetDataPtr(exec, result);
    result.CreateOffset(GetIndex(exec), result);
 end;
 
@@ -1253,6 +1257,15 @@ end;
 // ------------------ TOpenArrayExpr ------------------
 // ------------------
 
+// Create
+//
+constructor TOpenArrayExpr.Create(const aScriptPos: TScriptPos;
+                            baseExpr : TDataExpr; indexExpr : TTypedExpr;
+                            arraySymbol : TStaticArraySymbol);
+begin
+   inherited Create(aScriptPos, baseExpr, indexExpr, arraySymbol);
+end;
+
 // GetDataPtr
 //
 procedure TOpenArrayExpr.GetDataPtr(exec : TdwsExecution; var result : IDataContext);
@@ -1261,7 +1274,7 @@ var
 begin
    index := FIndexExpr.EvalAsInteger(exec);
 
-   Result := FBaseExpr.DataPtr[exec];
+   Result := TDataExpr(FBaseExpr).DataPtr[exec];
 
    BoundsCheck(exec, Result.DataLength, index);
 
@@ -1401,10 +1414,15 @@ end;
 // SpecializeDataExpr
 //
 function TDynamicArrayExpr.SpecializeDataExpr(const context : ISpecializationContext) : TDataExpr;
+var
+   specializedBaseExpr : TTypedExpr;
 begin
+   if BaseExpr is TDataExpr then
+      specializedBaseExpr := TDataExpr(BaseExpr).SpecializeDataExpr(context)
+   else specializedBaseExpr := BaseExpr.SpecializeTypedExpr(context);
    Result := TDynamicArrayExpr.Create(
       ScriptPos,
-      BaseExpr.SpecializeDataExpr(context), IndexExpr.SpecializeTypedExpr(context),
+      specializedBaseExpr, IndexExpr.SpecializeTypedExpr(context),
       context.SpecializeType(BaseExpr.Typ) as TArraySymbol
       );
 end;
@@ -1523,10 +1541,15 @@ end;
 // SpecializeDataExpr
 //
 function TDynamicArrayVarExpr.SpecializeDataExpr(const context : ISpecializationContext) : TDataExpr;
+var
+   specializedBaseExpr : TTypedExpr;
 begin
+   if BaseExpr is TDataExpr then
+      specializedBaseExpr := TDataExpr(BaseExpr).SpecializeDataExpr(context)
+   else specializedBaseExpr := BaseExpr.SpecializeTypedExpr(context);
    Result := TDynamicArrayVarExpr.Create(
       ScriptPos,
-      BaseExpr.SpecializeDataExpr(context), IndexExpr.SpecializeTypedExpr(context),
+      specializedBaseExpr, IndexExpr.SpecializeTypedExpr(context),
       context.SpecializeType(BaseExpr.Typ) as TArraySymbol
       );
 end;

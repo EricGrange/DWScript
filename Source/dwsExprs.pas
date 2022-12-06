@@ -757,6 +757,7 @@ type
 
          function IsOfType(typSym : TTypeSymbol) : Boolean;
          function IsGeneric : Boolean; virtual;
+         function IsWritable : Boolean; virtual;
          function AssignsAsDataExpr : Boolean; virtual;
 
          function SameDataExpr(expr : TTypedExpr) : Boolean; virtual;
@@ -868,7 +869,7 @@ type
 
          procedure EvalAsVariant(exec : TdwsExecution; var Result : Variant); override;
 
-         function IsWritable : Boolean; virtual;
+         function IsWritable : Boolean; override;
          function IsExternal : Boolean; virtual;
          function AssignsAsDataExpr : Boolean; override;
 
@@ -4188,6 +4189,13 @@ end;
 function TTypedExpr.IsGeneric : Boolean;
 begin
    Result := (Typ <> nil) and (Typ.IsGeneric);
+end;
+
+// IsWritable
+//
+function TTypedExpr.IsWritable : Boolean;
+begin
+   Result := False;
 end;
 
 // AssignsAsDataExpr
