@@ -162,7 +162,7 @@ type
          function AddCookie(const name : String) : TWebResponseCookie;
    end;
 
-   TWebResponseHint = (shStatic, shCompression);
+   TWebResponseHint = (shStatic, shCompression, shLogAsException);
    TWebResponseHints = set of TWebResponseHint;
 
    TWebResponse = class
