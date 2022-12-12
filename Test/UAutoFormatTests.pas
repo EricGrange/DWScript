@@ -11,7 +11,7 @@ uses
    dwsTokenizer, dwsErrors, dwsUtils, Variants, dwsSymbols, dwsSuggestions,
    dwsFunctions, dwsCaseNormalizer, dwsScriptSource, dwsSymbolDictionary,
    dwsCompilerContext, dwsUnicode, dwsJSONConnector, dwsUnitSymbols,
-   dwsAutoFormat;
+   dwsAutoFormat, dwsPascalTokenizer;
 
 type
 
@@ -82,7 +82,7 @@ begin
    FCompiler.Config.CompilerOptions:=FCompiler.Config.CompilerOptions+[coSymbolDictionary, coContextMap];
    FCompiler.OnInclude:=DoInclude;
 
-   FAutoFormat := TdwsAutoFormat.Create;
+   FAutoFormat := TdwsAutoFormat.Create(TPascalTokenizerStateRules.Create);
 end;
 
 // TearDown

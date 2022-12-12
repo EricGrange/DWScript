@@ -1,19 +1,3 @@
-{**********************************************************************}
-{                                                                      }
-{    "The contents of this file are subject to the Mozilla Public      }
-{    License Version 1.1 (the "License"); you may not use this         }
-{    file except in compliance with the License. You may obtain        }
-{    a copy of the License at http://www.mozilla.org/MPL/              }
-{                                                                      }
-{    Software distributed under the License is distributed on an       }
-{    "AS IS" basis, WITHOUT WARRANTY OF ANY KIND, either express       }
-{    or implied. See the License for the specific language             }
-{    governing rights and limitations under the License.               }
-{                                                                      }
-{    Copyright Creative IT.                                            }
-{    Current maintainer: Eric Grange                                   }
-{                                                                      }
-{**********************************************************************}
 unit dwsAutoFormat;
 
 {$I ../dws.inc}
@@ -22,22 +6,24 @@ interface
 
 uses
    Classes, SysUtils,
-   dwsUtils, dwsTokenizer;
+   dwsUtils, dwsTokenizer, dwsCodeDOM;
 
 type
 
    TdwsAutoFormat = class
       private
          FIndent : String;
+         FRules : TTokenizerRules;
 
       protected
 
       public
-         constructor Create;
+         constructor Create(aRules : TTokenizerRules);
          destructor Destroy; override;
 
          function Process(const sourceCode : String) : String;
 
+         property Rules : TTokenizerRules read FRules;
          property Indent : String read FIndent write FIndent;
    end;
 
@@ -55,10 +41,11 @@ implementation
 
 // Create
 //
-constructor TdwsAutoFormat.Create;
+constructor TdwsAutoFormat.Create(aRules : TTokenizerRules);
 begin
-   inherited;
+   inherited Create;
    Indent := #9;
+   FRules := aRules;
 end;
 
 // Destroy
@@ -66,13 +53,27 @@ end;
 destructor TdwsAutoFormat.Destroy;
 begin
    inherited;
+   FRules.Free;
 end;
 
 // Process
 //
 function TdwsAutoFormat.Process(const sourceCode : String) : String;
 begin
-   Result := sourceCode;
+   var dom := TdwsCodeDOM.Create(Rules.CreateTokenizer(nil, nil));
+   try
+      dom.Parse(sourceCode);
+      var output := TdwsCodeDOMOutput.Create;
+      try
+         output.Indent := Indent;
+         dom.WriteToOutput(output);
+         Result := output.ToString;
+      finally
+         output.Free;
+      end;
+   finally
+      dom.Free;
+   end;
 end;
 
 end.
