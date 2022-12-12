@@ -50,6 +50,7 @@ type
 
       procedure AppendChar(c : Char);
       procedure Grow;
+      procedure Clear; inline;
       function LastChar : Char;
       function ToStr : String; overload; inline;
       procedure ToStr(var result : String); overload;
@@ -108,10 +109,15 @@ type
          procedure SetElse(o : TTransition);
    end;
 
-   TConvertAction = (caNone, caClear, caName, caNameEscaped,
-                     caBin, caHex, caInteger, caFloat,
-                     caChar, caCharHex, caString, caMultiLineString,
-                     caSwitch, caDotDot, caAmp, caAmpAmp);
+   TConvertAction = (
+      caNone,
+      caClear,
+      caName, caNameEscaped,
+      caBin, caHex, caInteger, caFloat,
+      caChar, caCharHex, caString, caMultiLineString,
+      caSwitch,
+      caDotDot, caAmp, caAmpAmp
+      );
    TTransitionOptions = set of (toStart, toFinal);
 
    TTransition = class (TRefCountedObject)
@@ -199,6 +205,7 @@ type
    end;
 
    TTokenizerEndSourceFileEvent = procedure (sourceFile : TSourceFile) of object;
+   TTokenizerActionEvent = procedure (tokenizer : TTokenizer; action : TConvertAction) of object;
 
    TTokenizer = class
       private
@@ -218,6 +225,7 @@ type
 
          FSourceStack : array of TTokenizerSourceInfo;
          FOnEndSourceFile : TTokenizerEndSourceFileEvent;
+         FOnBeforeAction : TTokenizerActionEvent;
 
          procedure AllocateToken;
          procedure ReleaseToken;
@@ -245,6 +253,9 @@ type
          function GetToken : TToken; inline;
          function HasTokens : Boolean;
          procedure KillToken; inline;
+
+         function RawTokenBuffer : String;
+         function RawTokenBufferNameToType : TTokenType;
 
          function Test(t : TTokenType) : Boolean;
          function TestAny(const t : TTokenTypes) : TTokenType;
@@ -279,7 +290,9 @@ type
          property SwitchHandler : TSwitchHandler read FSwitchHandler write FSwitchHandler;
          property SwitchProcessor : TSwitchHandler read FSwitchProcessor write FSwitchProcessor;
          property ConditionalDefines : IAutoStrings read FConditionalDefines write FConditionalDefines;
+
          property OnEndSourceFile : TTokenizerEndSourceFileEvent read FOnEndSourceFile write FOnEndSourceFile;
+         property OnBeforeAction : TTokenizerActionEvent read FOnBeforeAction write FOnBeforeAction;
    end;
 
 // ------------------------------------------------------------------
@@ -317,6 +330,13 @@ begin
       Capacity:=256
    else Capacity:=Capacity*2;
    SetLength(Buffer, Capacity);
+end;
+
+// Clear
+//
+procedure TTokenBuffer.Clear;
+begin
+   Len := 0;
 end;
 
 // LastChar
@@ -1616,6 +1636,9 @@ begin
 
       // The characters in 's' have to be converted
       if trns.Action<>caNone then begin
+         if Assigned(FOnBeforeAction) then
+            FOnBeforeAction(Self, trns.Action);
+
          if DoAction(trns.Action) then begin
             state:=FRules.StartState;
             pch:=PosPtr;
@@ -1642,6 +1665,20 @@ end;
 procedure TTokenizer.KillToken;
 begin
    ReleaseToken;
+end;
+
+// RawTokenBuffer
+//
+function TTokenizer.RawTokenBuffer : String;
+begin
+   FTokenBuf.ToStr(Result);
+end;
+
+// RawTokenBufferNameToType
+//
+function TTokenizer.RawTokenBufferNameToType : TTokenType;
+begin
+   Result := FTokenBuf.ToType;
 end;
 
 // AllocateToken
