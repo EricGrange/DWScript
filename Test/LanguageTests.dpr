@@ -79,7 +79,8 @@ uses
   UdwsCSSPackTests in 'UdwsCSSPackTests.pas',
   UdwsIniFileTests in 'UdwsIniFileTests.pas',
   UdwsCustomDataTests in 'UdwsCustomDataTests.pas',
-  UdwsTimeSeriesTests in 'UdwsTimeSeriesTests.pas';
+  UdwsTimeSeriesTests in 'UdwsTimeSeriesTests.pas',
+  UAutoFormatTests in 'UAutoFormatTests.pas';
 
 {$R *.res}
 
