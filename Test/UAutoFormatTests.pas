@@ -141,6 +141,10 @@ begin
       FAutoFormat.Process('i'#9' := '#9' a+'#9#9'b'#9'  ;'#9#9)
    );
    CheckEquals(
+      'abc := +2;'#10,
+      FAutoFormat.Process(' abc:=+2;')
+   );
+   CheckEquals(
       'ab := 0.1e+10;'#10'cd := -45e-1;'#10,
       FAutoFormat.Process(' ab:=0.1e+10;cd:=-45e-1;'#10)
    );
@@ -184,7 +188,7 @@ begin
    );
    CheckEquals(
       'procedure PrintBool(v : Variant);'#10'begin'#10#9'PrintLn(if v then ''True'' else ''False'');'#10'end;'#10,
-      FAutoFormat.Process('procedure PrintBool(v:Variant);begin PrintLn(if v then''True''else''False'');end;')
+      FAutoFormat.Process('procedure PrintBool(v:Variant);begin PrintLn(if v then''True'' else''False'');end;')
    );
 end;
 
@@ -207,7 +211,7 @@ begin
       FAutoFormat.Process('i:=1;// begin'#10'i:=2;'#10'// end')
    );
    CheckEquals(
-      '(* /* *)'#10'i := 1; // begin i:=1'#10'i *= 2 /*end*/1;'#10,
+      '(* /* *)'#10'i := 1; // begin i:=1'#10'i *= 2 /*end*/ 1;'#10,
       FAutoFormat.Process('(* /* *)'#10'i:=1; // begin i:=1'#10'i*=2/*end*/1;'#10)
    )
 end;
@@ -217,7 +221,7 @@ end;
 procedure TAutoFormatTests.SimpleClass;
 begin
    CheckEquals(
-      'type TMy = class end;'#10'type TMyClass = class of TMy;'#10,
+      'type TMy = class'#10'end;'#10'type TMyClass = class of TMy;'#10,
       FAutoFormat.Process('type TMy=class end;type TMyClass=class of TMy;')
    );
 end;
