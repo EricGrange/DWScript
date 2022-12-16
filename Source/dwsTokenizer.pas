@@ -80,10 +80,11 @@ type
          FNext : TToken;
 
       public
-         FScriptPos : TScriptPos;
          FFloat : Double;
          FInteger : Int64;
          FTyp : TTokenType;
+         FScriptPos : TScriptPos;
+         FPosPtr : PChar;
 
          property AsString : String read FString;
 
@@ -1306,6 +1307,7 @@ begin
    AllocateToken;
    FToken.FTyp:=t;
    FToken.FScriptPos:=scriptPos;
+   FToken.FPosPtr:=nil;
 end;
 
 // SimulateStringToken
@@ -1482,6 +1484,7 @@ procedure TTokenizer.ConsumeToken;
          caClear : begin
             FTokenBuf.Len:=0;
             FToken.FScriptPos:=DefaultPos;
+            FToken.FPosPtr:=nil;
          end;
 
          // Convert name to token
@@ -1531,18 +1534,21 @@ procedure TTokenizer.ConsumeToken;
             if HandleSwitch then Exit(True);
 
          caDotDot : begin
+            FToken.FPosPtr:=PosPtr;
             FToken.FScriptPos:=CurrentPos;
             FToken.FScriptPos.Col:=FToken.FScriptPos.Col-1;
             FToken.FTyp:=ttDOTDOT;
          end;
 
          caAmp : begin
+            FToken.FPosPtr:=PosPtr;
             FToken.FScriptPos:=CurrentPos;
             FToken.FScriptPos.Col:=FToken.FScriptPos.Col-1;
             FToken.FTyp:=ttAMP;
          end;
 
          caAmpAmp : begin
+            FToken.FPosPtr:=PosPtr;
             FToken.FScriptPos:=CurrentPos;
             FToken.FScriptPos.Col:=FToken.FScriptPos.Col-2;
             FToken.FTyp:=ttAMP_AMP;
@@ -1608,8 +1614,10 @@ begin
       end;
 
       // A new token begins
-      if trns.Start and (FToken.FScriptPos.Col=0) then
+      if trns.Start and (FToken.FScriptPos.Col=0) then begin
          FToken.FScriptPos:=CurrentPos;
+         FToken.FPosPtr:=PosPtr;
+      end;
 
       // Proceed to the next character
       if trns.Seek then begin
