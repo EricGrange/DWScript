@@ -27,7 +27,7 @@ type
 
    TTokenType =
      (
-     ttNone, ttStrVal, ttIntVal, ttFloatVal, ttNAME, ttSWITCH,
+     ttNone, ttStrVal, ttIntVal, ttFloatVal, ttNAME, ttSWITCH, ttCOMMENT,
      ttLAZY, ttVAR, ttCONST, ttRESOURCESTRING,
      ttTYPE, ttRECORD, ttARRAY, ttSET, ttDOT, ttDOTDOT, ttOF, ttENUM, ttFLAGS,
      ttTRY, ttEXCEPT, ttRAISE, ttFINALLY, ttON,
@@ -71,7 +71,7 @@ type
 
 const
    cTokenStrings : array [TTokenType] of String = (
-     '', 'UnicodeString Literal', 'Integer Literal', 'Float Literal', 'name', 'switch',
+     '', 'UnicodeString Literal', 'Integer Literal', 'Float Literal', 'name', 'switch', 'comment',
      'lazy', 'var', 'const', 'resourcestring',
      'type', 'record', 'array', 'set', '.', '..', 'of', 'enum', 'flags',
      'try', 'except', 'raise', 'finally', 'on',
