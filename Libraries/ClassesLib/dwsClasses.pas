@@ -454,7 +454,7 @@ var
    characterSize : Integer;
    buffer : String;
 begin
-   characterSize := (Stream.characterSize - Stream.Position) div SizeOf(Char);
+   characterSize := (Stream.Size - Stream.Position) div SizeOf(Char);
    SetString(buffer, nil, characterSize);
    Stream.Read(Pointer(buffer)^, characterSize*SizeOf(Char));
    SetTextStr(buffer);
