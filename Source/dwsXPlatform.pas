@@ -91,6 +91,9 @@ type
    {$HINTS OFF}
    {$ifdef UNIX}
    TdwsCriticalSection = class (TCriticalSection);
+      public
+         function TryEnterOrTimeout(delayMSec : Integer) : Boolean;
+   end;
    {$else}
    TdwsCriticalSection = class
       private
@@ -105,6 +108,7 @@ type
          procedure Leave;
 
          function TryEnter : Boolean;
+         function TryEnterOrTimeout(delayMSec : Integer) : Boolean;
    end;
    {$endif}
 
@@ -2744,6 +2748,29 @@ begin
    Result:=TryEnterCriticalSection(FCS);
 end;
 {$endif}
+
+// TryEnterOrTimeout
+//
+function TdwsCriticalSection.TryEnterOrTimeout(delayMSec : Integer) : Boolean;
+
+   function EnterWait : Boolean;
+   var
+      success : Boolean;
+      timeout : Int64;
+   begin
+      Result := False;
+      timeout := GetSystemMilliseconds + delayMSec;
+      repeat
+         Sleep(10);
+         Result := TryEnter;
+      until Result or (GetSystemTimeMilliseconds > delayMSec);
+   end;
+
+begin
+   Result := TryEnter;
+   if not Result then
+      Result := EnterWait;
+end;
 
 // ------------------
 // ------------------ TPath ------------------
