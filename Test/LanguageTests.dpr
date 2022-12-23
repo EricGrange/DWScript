@@ -80,7 +80,9 @@ uses
   UdwsIniFileTests in 'UdwsIniFileTests.pas',
   UdwsCustomDataTests in 'UdwsCustomDataTests.pas',
   UdwsTimeSeriesTests in 'UdwsTimeSeriesTests.pas',
-  UAutoFormatTests in 'UAutoFormatTests.pas';
+  UAutoFormatTests in 'UAutoFormatTests.pas',
+  dwsCodeDOM in '..\Source\SourceUtils\dwsCodeDOM.pas',
+  dwsCodeDOMNodes in '..\Source\SourceUtils\dwsCodeDOMNodes.pas';
 
 {$R *.res}
 
