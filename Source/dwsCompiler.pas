@@ -5808,8 +5808,11 @@ begin
       hotPos := FTok.HotPos;
       keyExpr := ReadExpr;
 
-      if keyExpr.Typ <> baseType.KeyType then
-         FCompilerContext.WrapWithImplicitCast(baseType.KeyType, hotPos, keyExpr);
+      if not keyExpr.Typ.IsOfType(baseType.KeyType) then
+         keyExpr := CompilerUtils.WrapWithImplicitConversion(
+            FCompilerContext, keyExpr, baseType.KeyType,
+            hotPos, CPE_ArrayIndexMismatch
+         );
 
       if    (keyExpr.Typ=nil)
          or not (   (keyExpr.Typ.IsCompatible(baseType.KeyType))
