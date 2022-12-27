@@ -107,6 +107,8 @@ const
      'program', 'library',
      'register', 'pascal', 'cdecl', 'safecall', 'stdcall', 'fastcall', 'reference'
      );
+   cWordTokenTypes = [ ttLAZY..ttSAR, ttIMPLIES, ttIMPLICIT, ttDEFAULT..ttREFERENCE ];
+
 
 function TokenTypesToString(const tt : TTokenTypes) : String;
 
