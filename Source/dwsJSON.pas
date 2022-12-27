@@ -3250,7 +3250,7 @@ procedure TdwsJSONBeautifiedWriter.WriteIndents;
 var
    target, current : Integer;
 begin
-   target := FSpaces * FSpacesPerIndent * FSpaceCharacter.Length;
+   target := FSpaces * FSpaceCharacter.Length;
    current := Length(FIndents);
    if current <> target then begin
       if current > target then
