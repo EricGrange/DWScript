@@ -2755,15 +2755,13 @@ function TdwsCriticalSection.TryEnterOrTimeout(delayMSec : Integer) : Boolean;
 
    function EnterWait : Boolean;
    var
-      success : Boolean;
       timeout : Int64;
    begin
-      Result := False;
       timeout := GetSystemMilliseconds + delayMSec;
       repeat
          Sleep(10);
          Result := TryEnter;
-      until Result or (GetSystemTimeMilliseconds > delayMSec);
+      until Result or (GetSystemTimeMilliseconds > timeout);
    end;
 
 begin
