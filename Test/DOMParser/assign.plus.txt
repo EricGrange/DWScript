@@ -1,0 +1,12 @@
+Main
+   StatementList
+      Assignment
+         Reference
+            Token name <<a>>
+         Token :=
+         BinaryOperator
+            Reference
+               Token name <<a>>
+            Token +
+            Token Integer Literal <<1>>
+      Token ;

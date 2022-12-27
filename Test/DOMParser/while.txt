@@ -1,0 +1,19 @@
+Main
+   StatementList
+      Repeat
+         Token while
+         BinaryOperator
+            Reference
+               Token name <<a>>
+            Token >
+            Token Integer Literal <<0>>
+         Token do
+         Call
+            Reference
+               Token name <<Dec>>
+            Token (
+            Node
+               Reference
+                  Token name <<a>>
+            Token )
+      Token ;

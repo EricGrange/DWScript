@@ -6,12 +6,12 @@ interface
 
 uses
    Classes, SysUtils,
-   dwsXPlatformTests, dwsXplatform,
+   dwsXPlatformTests, dwsXPlatform,
    dwsComp, dwsCompiler, dwsExprs, dwsDataContext,
    dwsTokenizer, dwsErrors, dwsUtils, Variants, dwsSymbols, dwsSuggestions,
    dwsFunctions, dwsCaseNormalizer, dwsScriptSource, dwsSymbolDictionary,
    dwsCompilerContext, dwsUnicode, dwsJSONConnector, dwsUnitSymbols,
-   dwsAutoFormat, dwsPascalTokenizer;
+   dwsAutoFormat, dwsPascalTokenizer, dwsCodeDOMParser, dwsCodeDOMPascalParser;
 
 type
 
@@ -20,6 +20,8 @@ type
          FCompiler : TDelphiWebScript;
          FTests : TStringList;
          FAutoFormat : TdwsAutoFormat;
+         FPascalRules : TdwsCodeDOMPascalParser;
+         FTokRules : TTokenizerRules;
 
          procedure DoInclude(const scriptName: String; var scriptSource: String);
 
@@ -82,7 +84,12 @@ begin
    FCompiler.Config.CompilerOptions:=FCompiler.Config.CompilerOptions+[coSymbolDictionary, coContextMap];
    FCompiler.OnInclude:=DoInclude;
 
-   FAutoFormat := TdwsAutoFormat.Create(TPascalTokenizerStateRules.Create);
+   FPascalRules := TdwsCodeDOMPascalParser.Create;
+   FTokRules := TPascalTokenizerStateRules.Create;
+
+   FAutoFormat := TdwsAutoFormat.Create(
+      TdwsParser.Create(FTokRules.CreateTokenizer(nil, nil), FPascalRules.CreateRules)
+   );
 end;
 
 // TearDown
@@ -90,6 +97,8 @@ end;
 procedure TAutoFormatTests.TearDown;
 begin
    FAutoFormat.Free;
+   FTokRules.Free;
+   FPascalRules.Free;
    FCompiler.Free;
    FTests.Free;
 end;
@@ -221,7 +230,7 @@ end;
 procedure TAutoFormatTests.SimpleClass;
 begin
    CheckEquals(
-      'type TMy = class'#10'end;'#10'type TMyClass = class of TMy;'#10,
+      'type TMy = class end;'#10'type TMyClass = class of TMy;'#10,
       FAutoFormat.Process('type TMy=class end;type TMyClass=class of TMy;')
    );
 end;

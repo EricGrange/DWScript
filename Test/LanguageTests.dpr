@@ -82,7 +82,10 @@ uses
   UdwsTimeSeriesTests in 'UdwsTimeSeriesTests.pas',
   UAutoFormatTests in 'UAutoFormatTests.pas',
   dwsCodeDOM in '..\Source\SourceUtils\dwsCodeDOM.pas',
-  dwsCodeDOMNodes in '..\Source\SourceUtils\dwsCodeDOMNodes.pas';
+  dwsCodeDOMNodes in '..\Source\SourceUtils\dwsCodeDOMNodes.pas',
+  dwsCodeDOMParser in '..\Source\SourceUtils\dwsCodeDOMParser.pas',
+  dwsCodeDOMPascalParser in '..\Source\SourceUtils\dwsCodeDOMPascalParser.pas',
+  UCodeDOMTests in 'UCodeDOMTests.pas';
 
 {$R *.res}
 

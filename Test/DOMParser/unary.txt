@@ -1,0 +1,20 @@
+Main
+   StatementList
+      Assignment
+         Reference
+            Token name <<a>>
+         Token :=
+         UnaryOperator -
+            Token Integer Literal <<123>>
+      Token ;
+      Assignment
+         Reference
+            Token name <<b>>
+         Token :=
+         BinaryOperator
+            Reference
+               Token name <<a>>
+            Token +
+            UnaryOperator +
+               Token Integer Literal <<123>>
+      Token ;

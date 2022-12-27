@@ -1,0 +1,21 @@
+Main
+   StatementList
+      Block
+         Assignment
+            Reference
+               Token name <<i>>
+            Token :=
+            Token Integer Literal <<1>>
+         Token ;
+         Call
+            Reference
+               Token name <<a>>
+            Token (
+            Node
+               Reference
+                  Token name <<i>>
+               Token ,
+               Token Integer Literal <<2>>
+            Token )
+         Token ;
+      Token ;

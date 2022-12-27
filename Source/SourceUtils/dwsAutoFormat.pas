@@ -6,24 +6,26 @@ interface
 
 uses
    Classes, SysUtils,
-   dwsUtils, dwsTokenizer, dwsCodeDOM, dwsScriptSource;
+   dwsUtils, dwsTokenizer, dwsCodeDOM, dwsScriptSource, dwsCodeDOMParser;
+
 type
 
    TdwsAutoFormat = class
       private
          FIndent : String;
-         FRules : TTokenizerRules;
+         FParser : TdwsParser;
 
       protected
 
       public
-         constructor Create(aRules : TTokenizerRules);
+         constructor Create(aParser : TdwsParser);
          destructor Destroy; override;
 
          function Process(const sourceCode : String) : String; overload;
          function Process(const sourceFile : TSourceFile) : String; overload;
 
-         property Rules : TTokenizerRules read FRules;
+         property Parser : TdwsParser read FParser;
+
          property Indent : String read FIndent write FIndent;
    end;
 
@@ -41,11 +43,11 @@ implementation
 
 // Create
 //
-constructor TdwsAutoFormat.Create(aRules : TTokenizerRules);
+constructor TdwsAutoFormat.Create(aParser : TdwsParser);
 begin
    inherited Create;
    Indent := #9;
-   FRules := aRules;
+   FParser := aParser;
 end;
 
 // Destroy
@@ -53,7 +55,7 @@ end;
 destructor TdwsAutoFormat.Destroy;
 begin
    inherited;
-   FRules.Free;
+   FParser.Free;
 end;
 
 // Process (String)
@@ -73,13 +75,13 @@ end;
 //
 function TdwsAutoFormat.Process(const sourceFile : TSourceFile) : String;
 begin
-   var dom := TdwsCodeDOM.Create(Rules.CreateTokenizer(nil, nil));
+   var dom := Parser.Parse(sourceFile);
    try
-      dom.Parse(sourceFile);
       var output := TdwsCodeDOMOutput.Create;
       try
          output.Indent := Indent;
-         dom.Root.WriteToOutput(output);
+         if dom.Root <> nil then
+            dom.Root.WriteToOutput(output);
          Result := output.ToString;
       finally
          output.Free;
@@ -87,6 +89,21 @@ begin
    finally
       dom.Free;
    end;
+
+//   var dom := TdwsCodeDOM.Create(Rules.CreateTokenizer(nil, nil));
+//   try
+//      dom.Parse(sourceFile);
+//      var output := TdwsCodeDOMOutput.Create;
+//      try
+//         output.Indent := Indent;
+//         dom.Root.WriteToOutput(output);
+//         Result := output.ToString;
+//      finally
+//         output.Free;
+//      end;
+//   finally
+//      dom.Free;
+//   end;
 end;
 
 end.
