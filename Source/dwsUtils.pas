@@ -852,6 +852,7 @@ type
          procedure WriteUTF8String(const utf8String : RawByteString); overload; inline;
          procedure WriteCRLF; inline;
          procedure WriteAsciiCRLF; inline;
+         procedure WriteIndent(nb : Integer; indentChar : WideChar = ' ');
          procedure WriteChar(utf16Char : WideChar); inline;
          procedure WriteDigits(value : Int64; digits : Integer); overload;
          procedure WriteDigits(value : Cardinal; digits : Integer); overload;
@@ -5520,6 +5521,16 @@ end;
 procedure TWriteOnlyBlockStream.WriteAsciiCRLF;
 begin
    WriteBuf(@cAsciiCRLF[0], 2*SizeOf(AnsiChar));
+end;
+
+// WriteIndent
+//
+procedure TWriteOnlyBlockStream.WriteIndent(nb : Integer; indentChar : WideChar = ' ');
+begin
+   while nb > 0 do begin
+      WriteChar(indentChar);
+      Dec(nb);
+   end;
 end;
 
 // ------------------
