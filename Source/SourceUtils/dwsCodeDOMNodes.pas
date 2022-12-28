@@ -160,6 +160,18 @@ type
    TdwsCodeDOMFunctionImpl = class (TdwsCodeDOMNode)
    end;
 
+   TdwsCodeDOMTypeDecl = class (TdwsCodeDOMNode)
+   end;
+
+   TdwsCodeDOMClassInh = class (TdwsCodeDOMNode)
+   end;
+
+   TdwsCodeDOMClassFwd = class (TdwsCodeDOMTypeDecl)
+   end;
+
+   TdwsCodeDOMClassDecl = class (TdwsCodeDOMTypeDecl)
+   end;
+
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------

@@ -30,6 +30,7 @@ type
          procedure SimpleAssignment;
          procedure LiteralString;
          procedure TailComment;
+         procedure SimpleClassDecl;
    end;
 
 // ------------------------------------------------------------------
@@ -141,6 +142,16 @@ begin
    CheckEquals(
       'Main,StatementList,Call,Reference,Token name <<a>>,Token (,Token ),Token ;,Token comment <<// here>> [LF]',
       ToOutline('a(); // here', True)
+   );
+end;
+
+// SimpleClassDecl
+//
+procedure TCodeDOMTests.SimpleClassDecl;
+begin
+   CheckEquals(
+      'Main,StatementList,TypeSection,Token type,ClassFwd,Token name <<TTest>>,Token =,Token class,Token ;',
+      ToOutline('type TTest = class;', True)
    );
 end;
 

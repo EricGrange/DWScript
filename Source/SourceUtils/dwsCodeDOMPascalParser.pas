@@ -211,27 +211,63 @@ begin
    ;
 
    var parameter_decl := Result.NewRuleNode('parameter_decl', TdwsCodeDOMParameterDecl)
+      .AddMatchTokenTypes([ ttCONST, ttVAR, ttLAZY ], [ rifOptional ])
       .AddSubRule(name_list)
       .AddMatchTokenType(ttCOLON)
       .AddSubRule(reference)
    ;
    var parameter_decl_list := Result.NewRuleNode('parameter_decl_list', TdwsCodeDOMParameterDeclList)
+      .AddMatchTokenType(ttBLEFT)
       .AddSubRule(parameter_decl)
-      .AddMatchTokenType(ttSEMI, [ rifOptional, rifRestart ])
+      .AddMatchTokenType(ttSEMI, [ rifOptional, rifGoToStep1 ])
+      .AddMatchTokenType(ttBRIGHT)
    ;
 
    var function_decl := Result.NewRuleNode('function_decl', TdwsCodeDOMFunctionDecl)
-      .AddMatchTokenType(ttPROCEDURE)
+      .AddMatchTokenType(ttCLASS, [ rifOptional ])
+      .AddMatchTokenTypes([ ttPROCEDURE, ttFUNCTION, ttMETHOD ])
       .AddSubRule(reference)
-      .AddMatchTokenType(ttBLEFT, [ rifEndIfNotPresent ])
-      .AddSubRule(parameter_decl_list)
-      .AddMatchTokenType(ttBRIGHT)
+      .AddSubRule(parameter_decl_list, [ rifOptional ])
+      .AddMatchTokenType(ttCOLON, [ rifEndIfNotPresent ])
+      .AddSubRule(reference)
    ;
 
    var function_impl := Result.NewRuleNode('function_impl', TdwsCodeDOMFunctionImpl)
       .AddSubRule(function_decl)
       .AddMatchTokenType(ttSEMI)
       .AddSubRule(block)
+   ;
+
+   var class_type_fwd := Result.NewRuleNode('class_type_fwd', TdwsCodeDOMClassFwd)
+      .AddMatchName
+      .AddMatchTokenType(ttEQ)
+      .AddMatchTokenTypes([ ttPARTIAL, ttSTATIC ], [ rifOptional ])
+      .AddMatchTokenType(ttCLASS)
+      .AddMatchTokenType(ttSTATIC, [ rifOptional ])
+      .AddMatchTokenTypes([ ttABSTRACT, ttSEALED ], [ rifOptional ])
+      .AddMatchTokenType(ttEXTERNAL, [ rifOptional ])
+      .AddMatchTokenType(ttPARTIAL, [ rifOptional ])
+   ;
+   var class_type_inh := Result.NewRuleNode('class_type_inh', TdwsCodeDOMClassInh)
+      .AddMatchTokenType(ttBLEFT)
+      .AddSubRule(reference)
+      .AddMatchTokenType(ttCOMMA, [ rifOptional, rifGoToStep1 ])
+      .AddMatchTokenType(ttBRIGHT)
+   ;
+   var class_type_decl := Result.NewRuleNode('class_type_decl', TdwsCodeDOMClassDecl)
+      .AddSubRule(class_type_fwd)
+      .AddSubRule(class_type_inh, [ rifOptional ])
+      .AddMatchTokenType(ttEND)
+   ;
+
+   var type_decl := Result.NewRuleAlternative('type_decl')
+      .AddSubRule(class_type_decl)
+      .AddSubRule(class_type_fwd)
+   ;
+
+   var type_decl_inline := Result.NewRuleNode('type_inline', TdwsCodeDOMTypeSection)
+      .AddMatchTokenType(ttTYPE)
+      .AddSubRule(type_decl)
    ;
 
    statement
@@ -241,6 +277,7 @@ begin
       .AddSubRule(block)
       .AddSubRule(var_inline)
       .AddSubRule(function_impl)
+      .AddSubRule(type_decl_inline)
       .AddSubRule(assignment)
       .AddSubRule(expression)
    ;

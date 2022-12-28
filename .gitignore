@@ -61,3 +61,5 @@
 __recovery
 /Chromium*
 
+/Source/SourceUtils/__history
+/Test/__history

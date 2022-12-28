@@ -26,7 +26,11 @@ uses
    dwsCodeDOM, dwsCodeDOMNodes;
 
 type
-   TdwsRuleItemFlag = ( rifOptional, rifRestart, rifSkipSnippet, rifEndIfNotPresent );
+   TdwsRuleItemFlag = (
+      rifOptional,
+      rifRestart, rifGoToStep1,
+      rifSkipSnippet, rifEndIfNotPresent
+   );
    TdwsRuleItemFlags = set of TdwsRuleItemFlag;
 
    TdwsRuleItem = class (TRefCountedObject)
@@ -322,7 +326,9 @@ begin
       end;
       context.Debug('   Passed %s[%d]', [ name, i-1 ]);
       if rifRestart in ruleItem.Flags then
-         i := 0;
+         i := 0
+      else if rifGoToStep1 in ruleItem.Flags then
+         i := 1;
       if Result = nil then
          Result := DOMNodeClass.Create;
       if rifSkipSnippet in ruleItem.Flags then
