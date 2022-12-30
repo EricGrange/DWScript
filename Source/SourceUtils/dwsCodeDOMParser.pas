@@ -23,7 +23,7 @@ interface
 uses
    Classes, SysUtils,
    dwsUtils, dwsTokenTypes, dwsTokenizer, dwsScriptSource,
-   dwsCodeDOM, dwsCodeDOMNodes;
+   dwsCodeDOM, dwsCodeDOMNodes, dwsErrors;
 
 type
    TdwsRuleItemFlag = (
@@ -33,11 +33,15 @@ type
    );
    TdwsRuleItemFlags = set of TdwsRuleItemFlag;
 
+   TdwsParserRule = class;
+
    TdwsRuleItem = class (TRefCountedObject)
       private
          FFlags : TdwsRuleItemFlags;
+         FRule : TdwsParserRule;
 
       public
+         property Rule : TdwsParserRule read FRule;
          property Flags : TdwsRuleItemFlags read FFlags;
          function SetFlags(aFlags : TdwsRuleItemFlags) : TdwsRuleItem;
 
@@ -49,11 +53,14 @@ type
    TdwsParserRuleFlag = ( prfRoot, prfReplaceBySingleChild );
    TdwsParserRuleFlags = set of TdwsParserRuleFlag;
 
+   TdwsParser = class;
+
    TdwsParserRule = class (TRefCountedObject)
       private
          FName : String;
          FItems : TdwsRuleItems;
          FFlags : TdwsParserRuleFlags;
+         FParser : TdwsParser;
 
          FLastFailedAttemptAt : TScriptPos;
 
@@ -68,6 +75,7 @@ type
 
          property Name : String read FName;
          property Flags : TdwsParserRuleFlags read FFlags;
+         property Parser : TdwsParser read FParser;
 
          property Items[index : Integer] : TdwsRuleItem read GetItem;
          function ItemCount : Integer; inline;
@@ -76,6 +84,7 @@ type
          function AddMatchName : TdwsParserRule;
          function AddMatchTokenType(aTokenType : TTokenType; const flags : TdwsRuleItemFlags = []) : TdwsParserRule;
          function AddMatchTokenTypes(aTokenTypes : TTokenTypes; const flags : TdwsRuleItemFlags = []) : TdwsParserRule;
+         function AddMatchAnyExceptTokenTypes(aTokenTypes : TTokenTypes; const flags : TdwsRuleItemFlags = []) : TdwsParserRule;
          function AddMatchStatementEnd : TdwsParserRule;
          function AddSubRule(aRule : TdwsParserRule; const flags : TdwsRuleItemFlags = []) : TdwsParserRule;
 
@@ -102,10 +111,20 @@ type
    TdwsParserRuleArray = array of TdwsParserRule;
 
    TdwsParserRules = class (TObjectList<TdwsParserRule>)
+      private
+         FParser : TdwsParser;
+         FSymbolTokens : TTokenTypes;
+         FReservedTokens : TTokenTypes;
+
       protected
          procedure ResetStates;
 
       public
+         property Parser : TdwsParser read FParser;
+
+         property SymbolTokens : TTokenTypes read FSymbolTokens write FSymbolTokens;
+         property ReservedTokens : TTokenTypes read FReservedTokens write FReservedTokens;
+
          function RuleByName(const aName : String) : TdwsParserRule;
 
          function NewRuleNode(const aName : String; aDOMNodeClass : TdwsCodeDOMNodeClass;
@@ -118,6 +137,7 @@ type
          FTokenizer : TTokenizer;
          FRules : TdwsParserRules;
          FRootRules : TdwsParserRuleArray;
+         FMessages : TdwsCompileMessageList;
 
       protected
          procedure PrepareRootRules;
@@ -128,6 +148,7 @@ type
 
          property Tokenizer : TTokenizer read FTokenizer;
          property Rules : TdwsParserRules read FRules;
+         property Messages : TdwsCompileMessageList read FMessages;
 
          function Parse(const source : TSourceFile) : TdwsCodeDOM;
    end;
@@ -142,6 +163,11 @@ type
          function Parse(context : TdwsCodeDOMContext) : TdwsCodeDOMNode; override;
 
          property TokenTypes : TTokenTypes read FTokenTypes;
+   end;
+
+   TdwsRuleItem_MatchAnyExceptTokenType = class (TdwsRuleItem_MatchTokenType)
+      public
+         function Parse(context : TdwsCodeDOMContext) : TdwsCodeDOMNode; override;
    end;
 
    TdwsRuleItem_MatchStatementEnd = class (TdwsRuleItem)
@@ -237,6 +263,7 @@ end;
 function TdwsParserRule.Add(anItem : TdwsRuleItem) : TdwsParserRule;
 begin
    FItems.Add(anItem);
+   anItem.FRule := Self;
    Result := Self;
 end;
 
@@ -261,6 +288,13 @@ begin
    Result := Add(TdwsRuleItem_MatchTokenType.Create(aTokenTypes).SetFlags(flags));
 end;
 
+// AddMatchAnyExceptTokenTypes
+//
+function TdwsParserRule.AddMatchAnyExceptTokenTypes(aTokenTypes : TTokenTypes; const flags : TdwsRuleItemFlags = []) : TdwsParserRule;
+begin
+   Result := Add(TdwsRuleItem_MatchAnyExceptTokenType.Create(aTokenTypes).SetFlags(flags));
+end;
+
 // AddMatchStatementEnd
 //
 function TdwsParserRule.AddMatchStatementEnd : TdwsParserRule;
@@ -272,6 +306,9 @@ end;
 //
 function TdwsParserRule.AddSubRule(aRule : TdwsParserRule; const flags : TdwsRuleItemFlags = []) : TdwsParserRule;
 begin
+   if aRule.Parser = nil then
+      aRule.FParser := Parser
+   else Assert(aRule.Parser = Parser);
    Result := Add(TdwsRuleItem_SubRule.Create(aRule).SetFlags(flags));
 end;
 
@@ -404,6 +441,19 @@ begin
 end;
 
 // ------------------
+// ------------------ TdwsRuleItem_MatchAnyExceptTokenType ------------------
+// ------------------
+
+// Parse
+//
+function TdwsRuleItem_MatchAnyExceptTokenType.Parse(context : TdwsCodeDOMContext) : TdwsCodeDOMNode;
+begin
+   if context.TokenType in TokenTypes then
+      Result := nil
+   else Result := TdwsCodeDOMSnippet.ParseFromContext(context)
+end;
+
+// ------------------
 // ------------------ TdwsRuleItem_MatchStatementEnd ------------------
 // ------------------
 
@@ -475,6 +525,7 @@ function TdwsParserRules.NewRuleNode(const aName : String; aDOMNodeClass : TdwsC
                               aFlags : TdwsParserRuleFlags = []) : TdwsParserRuleNode;
 begin
    Result := TdwsParserRuleNode.Create(aName, aDOMNodeClass, aFlags);
+   Result.FParser := Parser;
    Add(Result);
 end;
 
@@ -483,6 +534,7 @@ end;
 function TdwsParserRules.NewRuleAlternative(const aName : String; aFlags : TdwsParserRuleFlags = []) : TdwsParserRuleAlternative;
 begin
    Result := TdwsParserRuleAlternative.Create(aName, aFlags);
+   Result.FParser := Parser;
    Add(Result);
 end;
 
@@ -494,10 +546,14 @@ end;
 //
 constructor TdwsParser.Create(aTokenizer : TTokenizer; aRules : TdwsParserRules);
 begin
+   Assert(aRules.Parser = nil);
+
    inherited Create;
    FTokenizer := aTokenizer;
    FRules := aRules;
+   FRules.FParser := Self;
    PrepareRootRules;
+   FMessages := TdwsCompileMessageList.Create;
 end;
 
 // Destroy
@@ -507,6 +563,7 @@ begin
    inherited;
    FTokenizer.Free;
    FRules.Free;
+   FMessages.Free;
 end;
 
 // Parse
@@ -515,9 +572,10 @@ function TdwsParser.Parse(const source : TSourceFile) : TdwsCodeDOM;
 begin
    Result := TdwsCodeDOM.Create;
 
+   Messages.Clear;
    Rules.ResetStates;
 
-   var context := TdwsCodeDOMContext.Create;
+   var context := TdwsCodeDOMContext.Create(Messages);
    try
       FTokenizer.BeginSourceFile(source);
       FTokenizer.OnBeforeAction := context.DoBeforeTokenizerAction;
@@ -541,6 +599,7 @@ begin
          end;
          if node = nil then begin
             Assert(context.Token <> nil);
+            context.Messages.AddCompilerError(context.TokenBeginPos, 'No applicable rule');
             Result.Root.AddChildSnippet(context);
          end else Result.Root.AddChild(node);
       end;

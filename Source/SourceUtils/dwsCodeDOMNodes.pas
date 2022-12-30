@@ -26,6 +26,11 @@ uses
 
 type
 
+   TdwsCodeDOMSwitch = class (TdwsCodeDOMNode)
+      public
+         procedure WriteToOutput(output : TdwsCodeDOMOutput); override;
+   end;
+
    TdwsCodeDOMSection = class (TdwsCodeDOMNode);
 
    TdwsCodeDOMTypeSection = class (TdwsCodeDOMSection)
@@ -69,7 +74,7 @@ type
          procedure WriteToOutput(output : TdwsCodeDOMOutput); override;
    end;
 
-   TdwsCodeDOMBlock = class (TdwsCodeDOMStatementList)
+   TdwsCodeDOMBeginEnd = class (TdwsCodeDOMStatementList)
       protected
          procedure Prepare; override;
       public
@@ -83,16 +88,12 @@ type
 
    TdwsCodeDOMWhile = class (TdwsCodeDOMStatement)
       public
+         procedure WriteToOutput(output : TdwsCodeDOMOutput); override;
    end;
 
    TdwsCodeDOMIfThenElseStmt = class (TdwsCodeDOMStatement)
-      private
-         FHasElse : Boolean;
-
       public
          procedure WriteToOutput(output : TdwsCodeDOMOutput); override;
-
-         property HasElse : Boolean read FHasElse write FHasElse;
    end;
 
    TdwsCodeDOMNameList = class (TdwsCodeDOMNode)
@@ -172,6 +173,12 @@ type
    TdwsCodeDOMClassDecl = class (TdwsCodeDOMTypeDecl)
    end;
 
+   TdwsCodeDOMClassBody = class (TdwsCodeDOMNode)
+   end;
+
+   TdwsCodeDOMTypeVisibilitySection = class (TdwsCodeDOMNode)
+   end;
+
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
@@ -179,6 +186,18 @@ implementation
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
+
+// ------------------
+// ------------------ TdwsCodeDOMSwitch ------------------
+// ------------------
+
+// WriteToOutput
+//
+procedure TdwsCodeDOMSwitch.WriteToOutput(output : TdwsCodeDOMOutput);
+begin
+   output.WriteString('{$');
+   inherited;
+end;
 
 // ------------------
 // ------------------ TdwsCodeDOMStatement ------------------
@@ -293,12 +312,12 @@ begin
 end;
 
 // ------------------
-// ------------------ TdwsCodeDOMBlock ------------------
+// ------------------ TdwsCodeDOMBeginEnd ------------------
 // ------------------
 
 // Prepare
 //
-procedure TdwsCodeDOMBlock.Prepare;
+procedure TdwsCodeDOMBeginEnd.Prepare;
 begin
    if ChildCount <> 1 then Exit;
    if Child[0].ClassType = TdwsCodeDOMStatementList then begin
@@ -311,13 +330,13 @@ end;
 
 // WriteToOutput
 //
-procedure TdwsCodeDOMBlock.WriteToOutput(output : TdwsCodeDOMOutput);
+procedure TdwsCodeDOMBeginEnd.WriteToOutput(output : TdwsCodeDOMOutput);
 begin
-   output.WriteString(cTokenStrings[ttBEGIN]);
+   output.WriteTokenString(ttBEGIN);
    output.IncIndentNewLine;
    inherited;
    output.DecIndentNewLine;
-   output.WriteString(cTokenStrings[ttEND]);
+   output.WriteTokenString(ttEND);
 end;
 
 // ------------------
@@ -328,12 +347,33 @@ end;
 //
 procedure TdwsCodeDOMRepeat.WriteToOutput(output : TdwsCodeDOMOutput);
 begin
-   output.WriteString(cTokenStrings[ttREPEAT]);
+   output.WriteTokenString(ttREPEAT);
    output.IncIndentNewLine;
    var i := 0;
    WriteChildrenUntilToken(output, i, ttUNTIL);
    output.DecIndentNewLine;
    WriteChildren(output, i);
+end;
+
+// ------------------
+// ------------------ TdwsCodeDOMWhile ------------------
+// ------------------
+
+// WriteToOutput
+//
+procedure TdwsCodeDOMWhile.WriteToOutput(output : TdwsCodeDOMOutput);
+begin
+   output.WriteTokenString(ttWHILE);
+   var i := 0;
+   WriteChildrenUntilToken(output, i, ttDO);
+   output.WriteTokenString(ttDO);
+   Inc(i);
+   var indent := not ChildIsOfClass(i, TdwsCodeDOMBeginEnd);
+   if indent then
+      output.IncIndentNewLine;
+   WriteChildren(output, i);
+   if indent then
+      output.DecIndent;
 end;
 
 // ------------------
@@ -355,19 +395,22 @@ end;
 //
 procedure TdwsCodeDOMIfThenElseStmt.WriteToOutput(output : TdwsCodeDOMOutput);
 begin
-   inherited;
-//   output.WriteTokenString(ttIF);
-//
-//   var i := 0;
-//   WriteChildrenUntilClass(output, i, TdwsCodeDOMExpression);
-//
-//   output.WriteTokenString(ttTHEN);
-//   WriteChildrenUntilClass(output, i, TdwsCodeDOMStatement);
-//
-//   if HasElse then begin
-//      output.WriteTokenString(ttELSE);
-//      WriteChildrenUntilClass(output, i, TdwsCodeDOMStatement);
-//   end;
+   output.WriteTokenString(ttIF);
+   var i := 0;
+   WriteChildrenUntilToken(output, i, ttTHEN);
+   output.WriteTokenString(ttTHEN);
+   Inc(i);
+   var indent := not ChildIsOfClass(i, TdwsCodeDOMBeginEnd);
+   if indent then
+      output.IncIndentNewLine;
+   WriteChildrenUntilToken(output, i, ttELSE);
+   if indent then
+      output.DecIndentNewLine;
+   if i < ChildCount then begin
+      output.WriteTokenString(ttELSE);
+      Inc(i);
+      WriteChildren(output, i);
+   end;
 end;
 
 // ------------------

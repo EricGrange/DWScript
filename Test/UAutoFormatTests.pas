@@ -35,10 +35,13 @@ type
          procedure SimpleNewLines;
          procedure SimpleBeginEndBlocks;
          procedure SimpleRepeat;
+         procedure SimpleWhile;
+         procedure SimpleIfThenElse;
          procedure SimpleFuncs;
          procedure SimpleStrings;
          procedure SkipComments;
          procedure SimpleClass;
+         procedure Conditionals;
 
    end;
 
@@ -187,6 +190,30 @@ begin
    );
 end;
 
+// SimpleWhile
+//
+procedure TAutoFormatTests.SimpleWhile;
+begin
+   CheckEquals(
+      'while i > 0 do'#10#9'i -= 1;'#10'Done()'#10,
+      FAutoFormat.Process('While i>0 do i-=1;Done()')
+   );
+   CheckEquals(
+      'while i > 0 do begin'#10#9'i -= 1;'#10'end;'#10'Done()'#10,
+      FAutoFormat.Process('While i>0 do begin i-=1;end;Done()')
+   );
+end;
+
+// SimpleIfThenElse
+//
+procedure TAutoFormatTests.SimpleIfThenElse;
+begin
+   CheckEquals(
+      'if b then'#10#9'doit()'#10'else dont();'#10'done()'#10,
+      FAutoFormat.Process('if b then doit() else dont();done()')
+   );
+end;
+
 // SimpleFuncs
 //
 procedure TAutoFormatTests.SimpleFuncs;
@@ -232,6 +259,20 @@ begin
    CheckEquals(
       'type TMy = class end;'#10'type TMyClass = class of TMy;'#10,
       FAutoFormat.Process('type TMy=class end;type TMyClass=class of TMy;')
+   );
+end;
+
+// Conditionals
+//
+procedure TAutoFormatTests.Conditionals;
+begin
+   CheckEquals(
+      '{$ifdef A}'#10'b;'#10'{$endif}'#10,
+      FAutoFormat.Process('{$ifdef A}'#10'b;'#10'{$endif}'#10)
+   );
+   CheckEquals(
+      '{$ifdef A}b;{$endif}'#10,
+      FAutoFormat.Process('{$ifdef A}b;{$endif}'#10)
    );
 end;
 

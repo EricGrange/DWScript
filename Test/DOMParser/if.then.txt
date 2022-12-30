@@ -1,7 +1,6 @@
 Main
    StatementList
       IfThenElseStmt
-         Token if
          Token False <<false>>
          Token then
          Call

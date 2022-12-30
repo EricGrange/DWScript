@@ -1,7 +1,6 @@
 Main
    StatementList
-      Repeat
-         Token while
+      While
          BinaryOperator
             Reference
                Token name <<a>>

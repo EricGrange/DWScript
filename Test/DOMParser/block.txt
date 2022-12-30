@@ -1,6 +1,6 @@
 Main
    StatementList
-      Block
+      BeginEnd
          Assignment
             Reference
                Token name <<i>>

@@ -1646,7 +1646,6 @@ begin
       if trns.Action<>caNone then begin
          if Assigned(FOnBeforeAction) then
             FOnBeforeAction(Self, trns.Action);
-
          if DoAction(trns.Action) then begin
             state:=FRules.StartState;
             pch:=PosPtr;

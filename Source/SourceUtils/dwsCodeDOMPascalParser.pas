@@ -21,7 +21,8 @@ interface
 uses
    Classes, SysUtils,
    dwsUtils, dwsTokenTypes,
-   dwsCodeDOM, dwsCodeDOMNodes, dwsCodeDOMParser;
+   dwsCodeDOM, dwsCodeDOMNodes, dwsCodeDOMParser,
+   dwsPascalTokenizer;
 
 type
 
@@ -60,6 +61,15 @@ const
 function TdwsCodeDOMPascalParser.CreateRules : TdwsParserRules;
 begin
    Result := TdwsParserRules.Create;
+   Result.ReservedTokens := cPascalReservedNames;
+   Result.SymbolTokens := cPascalSymbolTokens;
+
+
+   var switch := Result.NewRuleNode('switch', TdwsCodeDOMSwitch)
+      .AddMatchTokenType(ttSWITCH)
+      .AddMatchAnyExceptTokenTypes([ ttCRIGHT ], [ rifOptional, rifGoToStep1 ])
+      .AddMatchTokenType(ttCRIGHT)
+   ;
 
    var expression := Result.NewRuleAlternative('expression');
 
@@ -182,7 +192,7 @@ begin
    var statementList := Result.NewRuleNode('statement_list', TdwsCodeDOMStatementList, [ prfRoot, prfReplaceBySingleChild ]);
 
    var if_then_else_stmt := Result.NewRuleNode('if_then_else_stmt', TdwsCodeDOMIfThenElseStmt)
-      .AddMatchTokenType(ttIF)
+      .AddMatchTokenType(ttIF, [ rifSkipSnippet ])
       .AddSubRule(expression)
       .AddMatchTokenType(ttTHEN)
       .AddSubRule(statement)
@@ -197,14 +207,14 @@ begin
       .AddSubRule(expression)
    ;
 
-   var while_do := Result.NewRuleNode('while_do', TdwsCodeDOMRepeat)
-      .AddMatchTokenType(ttWHILE)
+   var while_do := Result.NewRuleNode('while_do', TdwsCodeDOMWhile)
+      .AddMatchTokenType(ttWHILE, [ rifSkipSnippet ])
       .AddSubRule(expression)
       .AddMatchTokenType(ttDO)
       .AddSubRule(statement)
    ;
 
-   var block := Result.NewRuleNode('block', TdwsCodeDOMBlock)
+   var block := Result.NewRuleNode('block', TdwsCodeDOMBeginEnd)
       .AddMatchTokenType(ttBEGIN, [ rifSkipSnippet ])
       .AddSubRule(statementList)
       .AddMatchTokenType(ttEND, [ rifSkipSnippet ])
@@ -238,6 +248,19 @@ begin
       .AddSubRule(block)
    ;
 
+   var type_inner_decl := Result.NewRuleNode('type_inner_decl', TdwsCodeDOMClassBody)
+      .AddSubRule(Result.NewRuleAlternative('type_inner_decl_alt')
+         .AddSubRule(function_decl)
+         .AddSubRule(var_decl)
+         , [ rifOptional, rifRestart ])
+   ;
+
+
+   var type_visibility_section := Result.NewRuleNode('class_type_visib_section', TdwsCodeDOMTypeVisibilitySection)
+      .AddMatchTokenTypes([ ttPRIVATE, ttPROTECTED, ttPUBLIC, ttPUBLISHED ])
+      .AddSubRule(type_inner_decl)
+   ;
+
    var class_type_fwd := Result.NewRuleNode('class_type_fwd', TdwsCodeDOMClassFwd)
       .AddMatchName
       .AddMatchTokenType(ttEQ)
@@ -254,10 +277,23 @@ begin
       .AddMatchTokenType(ttCOMMA, [ rifOptional, rifGoToStep1 ])
       .AddMatchTokenType(ttBRIGHT)
    ;
+
+   var class_type_body := Result.NewRuleNode('class_type_body', TdwsCodeDOMClassBody)
+      .AddSubRule(type_inner_decl, [ rifOptional ])
+      .AddSubRule(type_visibility_section, [ rifOptional, rifGoToStep1 ])
+      .AddMatchTokenType(ttEND)
+   ;
+
    var class_type_decl := Result.NewRuleNode('class_type_decl', TdwsCodeDOMClassDecl)
       .AddSubRule(class_type_fwd)
-      .AddSubRule(class_type_inh, [ rifOptional ])
-      .AddMatchTokenType(ttEND)
+      .AddSubRule(Result.NewRuleAlternative('class_body_alt')
+         .AddSubRule(Result.NewRuleNode('class_inh_body', TdwsCodeDOMNode)
+            .AddSubRule(class_type_inh)
+            .AddSubRule(class_type_body)
+         )
+         .AddSubRule(class_type_inh)
+         .AddSubRule(class_type_body)
+      )
    ;
 
    var type_decl := Result.NewRuleAlternative('type_decl')
@@ -271,6 +307,7 @@ begin
    ;
 
    statement
+      .AddSubRule(switch)
       .AddSubRule(if_then_else_stmt)
       .AddSubRule(repeat_until)
       .AddSubRule(while_do)

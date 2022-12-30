@@ -22,7 +22,7 @@ interface
 
 uses
    Classes, SysUtils, Windows,
-   dwsUtils, dwsTokenizer, dwsTokenTypes, dwsScriptSource;
+   dwsUtils, dwsTokenizer, dwsTokenTypes, dwsScriptSource, dwsErrors;
 
 type
 
@@ -51,10 +51,12 @@ type
          FHeadToken : TdwsCodeDOMToken;
          FTailToken : TdwsCodeDOMToken;
          FDebug : TStrings;
+         FMessages : TdwsCompileMessageList;
 
          procedure AppendToken(newToken : TdwsCodeDOMToken);
 
       public
+         constructor Create(aMessages : TdwsCompileMessageList);
          destructor Destroy; override;
 
          procedure DoBeforeTokenizerAction(Sender : TTokenizer; action : TConvertAction);
@@ -62,6 +64,7 @@ type
          procedure Clear;
 
          procedure Debug(const msgFmt : String; const args : array of const);
+         property Messages : TdwsCompileMessageList read FMessages;
 
          property Token : TdwsCodeDOMToken read FToken write FToken;
          function TokenType : TTokenType; inline;
@@ -141,6 +144,7 @@ type
          function Extract(index : Integer) : TdwsCodeDOMNode; overload;
          function ExtractTokenType(index : Integer) : TTokenType;
          procedure ExtractAndEnsureTokenType(index : Integer; const allowedTypes : TTokenTypes);
+         function ChildIsOfClass(index : Integer; nodeClass : TdwsCodeDOMNodeClass) : Boolean;
 
          procedure AddChildrenFrom(node : TdwsCodeDOMNode);
 
@@ -201,6 +205,15 @@ uses dwsCodeDOMNodes;
 // ------------------
 // ------------------ TdwsCodeDOMContext ------------------
 // ------------------
+
+// Create
+//
+constructor TdwsCodeDOMContext.Create(aMessages : TdwsCompileMessageList);
+begin
+   inherited Create;
+   Assert(aMessages <> nil);
+   FMessages := aMessages;
+end;
 
 // Destroy
 //
@@ -270,6 +283,12 @@ begin
       caNone : token.FTokenType := ttNone;
       caClear : begin
          token.FTokenType := ttCOMMENT;
+         case tokenEndPosPtr^ of
+            #13, #10 : Inc(tokenEndPosPtr);
+         end;
+      end;
+      caSwitch : begin
+         token.FTokenType := ttSWITCH;
          case tokenEndPosPtr^ of
             #13, #10 : Inc(tokenEndPosPtr);
          end;
@@ -367,10 +386,10 @@ begin
    if s = '' then Exit;
    case FTailChar of
       #10 : FStream.WriteString(FIndentBuf);
-      #0..#9, #11..' ', '(', ')', '[', ']' : ;
+      #0..#9, #11..' ', '(', ')', '[', ']', '$', '{', '}', '#' : ;
    else
       case s[1] of
-         ',', ';', '.', '(', ')', '[', ']' : ;
+         ',', ';', '.', '(', ')', '[', ']', '$', '{', '}', '#' : ;
       else
          FStream.WriteString(' ');
       end;
@@ -614,6 +633,13 @@ begin
    Assert(tt in allowedTypes);
 end;
 
+// ChildIsOfClass
+//
+function TdwsCodeDOMNode.ChildIsOfClass(index : Integer; nodeClass : TdwsCodeDOMNodeClass) : Boolean;
+begin
+   Result := (index < ChildCount) and Child[index].InheritsFrom(nodeClass);
+end;
+
 // AddChild
 //
 function TdwsCodeDOMNode.AddChild(node : TdwsCodeDOMNode) : Integer;
@@ -716,9 +742,13 @@ begin
       FNewLine := True;
    end;
    FTokenType := context.TokenType;
-   if context.Next then
-      if (not NewLine) and (context.TokenType = ttCOMMENT) and (context.Token.BeginPos.Line = line) then
+   if context.Next and (not NewLine) then begin
+      // special cases of newline preservation (or not)
+      if (context.TokenType = ttCOMMENT) and (context.Token.BeginPos.Line = line) then
          AddChild(TdwsCodeDOMSnippet.ParseFromContext(context))
+      else if (TokenType = ttCRIGHT) and (context.Token.BeginPos.Line > line) then
+         FNewLine := True;
+   end;
 end;
 
 // WriteToOutput
