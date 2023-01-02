@@ -75,7 +75,7 @@ type
          function GetItem(index : Integer) : TdwsRuleItem; inline;
 
          procedure ResetState;
-         procedure Prepare; virtual; abstract;
+         function Prepare : Boolean; virtual; abstract;
 
       public
          constructor Create(const aName : String; aFlags : TdwsParserRuleFlags = []);
@@ -105,7 +105,7 @@ type
          FDOMNodeClass : TdwsCodeDOMNodeClass;
 
       protected
-         procedure Prepare; override;
+         function Prepare : Boolean; override;
 
       public
          constructor Create(const aName : String; aDOMNodeClass : TdwsCodeDOMNodeClass; aFlags : TdwsParserRuleFlags = []);
@@ -117,7 +117,7 @@ type
 
    TdwsParserRuleAlternative = class (TdwsParserRule)
       protected
-         procedure Prepare; override;
+         function Prepare : Boolean; override;
 
       public
          function Parse(context : TdwsCodeDOMContext) : TdwsCodeDOMNode; override;
@@ -385,15 +385,16 @@ begin
    while i < ItemCount do begin
       ruleItem := Items[i];
       Inc(i);
-      // if context.TokenType in ruleItem.StartTokens then
-      subNode := ruleItem.Parse(context);
+      if context.TokenType in ruleItem.StartTokens then
+         subNode := ruleItem.Parse(context)
+      else subNode := nil;
       if subNode = nil then begin
          if rifOptional in ruleItem.Flags then continue;
          if (Result <> nil) and Parser.ParseComments(context, Result) then continue;
          if rifEndIfNotPresent in ruleItem.FFlags then break;
          FLastFailedAttemptAt := context.TokenBeginPos;
          if Result <> nil then begin
-            FreeAndNil(Result);
+            context.Release(Result);
             context.Token := initialToken;
          end;
          Exit;
@@ -420,7 +421,7 @@ begin
       if (prfReplaceBySingleChild in Flags) and (Result.ChildCount = 1) then begin
          var child := Result.Child[0];
          Result.Extract(child);
-         Result.Free;
+         context.Release(Result);
          Result := child;
       end;
    end else begin
@@ -430,14 +431,15 @@ end;
 
 // Prepare
 //
-procedure TdwsParserRuleNode.Prepare;
+function TdwsParserRuleNode.Prepare : Boolean;
 begin
-   FStartTokens := [];
+   var oldTokens := FStartTokens;
    for var i := 0 to ItemCount-1 do begin
       var ruleItem := Items[i];
       FStartTokens := FStartTokens + ruleItem.StartTokens;
       if not (rifOptional in ruleItem.Flags) then Break;
    end;
+   Result := (FStartTokens <> oldTokens);
 end;
 
 // ------------------
@@ -446,13 +448,14 @@ end;
 
 // Prepare
 //
-procedure TdwsParserRuleAlternative.Prepare;
+function TdwsParserRuleAlternative.Prepare : Boolean;
 begin
-   FStartTokens := [];
+   var oldTokens := FStartTokens;
    for var i := 0 to ItemCount-1 do begin
       var ruleItem := Items[i];
       FStartTokens := FStartTokens + ruleItem.StartTokens;
    end;
+   Result := (FStartTokens <> oldTokens);
 end;
 
 // Parse
@@ -749,6 +752,16 @@ begin
    end;
    SetLength(FRootRules, kRoot);
    SetLength(FCommentRules, kTail);
+
+   var changed : Boolean;
+   repeat
+      changed := False;
+      for var i := 0 to Rules.Count-1 do begin
+         var rule := Rules[i];
+         if rule.Prepare then
+            changed := True;
+      end;
+   until not changed;
 end;
 
 // ------------------

@@ -31,6 +31,7 @@ type
 
       published
          procedure CodeStillCompiles;
+         procedure CodeStillExecutes;
 
          procedure SimpleNewLines;
          procedure SimpleBeginEndBlocks;
@@ -141,6 +142,89 @@ begin
       end;
 
    finally
+      source.Free;
+   end;
+end;
+
+// CodeStillExecutes
+//
+procedure TAutoFormatTests.CodeStillExecutes;
+
+   function AsInfoWithoutPosition(msgs : TdwsMessageList) : String;
+   begin
+      if msgs.Count = 0 then Exit;
+      Result := msgs[0].Text + #10;
+      for var i := 1 to msgs.Count-1 do
+         Result := #0 + msgs[i].Text;
+   end;
+
+   function FilterLocations(const s : String) : String;
+   begin
+      Result := s;
+      repeat
+         var p := Pos('[line', Result);
+         if p <= 0 then Exit;
+         var p2 := Pos(']', Result, p+5);
+         if p2 <= 0 then Exit;
+         Result := Copy(Result, 1, p) + Copy(Result, p2);
+      until False;
+   end;
+
+var
+   source, expectedResult : TStringList;
+   i : Integer;
+   prog : IdwsProgram;
+   exec : IdwsProgramExecution;
+begin
+   source:=TStringList.Create;
+   expectedResult := TStringList.Create;
+   try
+
+      for i:=0 to FTests.Count-1 do begin
+
+         source.LoadFromFile(FTests[i]);
+
+         prog := FCompiler.Compile(
+            source.Text,
+            'Test\'+ExtractFileName(FTests[i])
+         );
+
+         CheckEquals(
+            False, prog.Msgs.HasErrors,
+            FTests[i] + ' fail pre-processed compilation'#13#10 + prog.Msgs.AsInfo
+         );
+
+         exec := prog.Execute;
+         var originalOutput := exec.Result.ToString;
+         if exec.Msgs.Count > 0 then
+            originalOutput := originalOutput+#13#10+'>>> Runtime Error: '+AsInfoWithoutPosition(exec.Msgs);
+
+         var processed := FAutoFormat.Process(source.Text);
+
+         prog := FCompiler.Compile(
+            processed,
+            'Test\'+ExtractFileName(FTests[i])
+         );
+
+         CheckEquals(
+            False, prog.Msgs.HasErrors,
+            FTests[i] + ' fails post-formatting' + #13#10 + prog.Msgs.AsInfo + #13#10 + processed
+         );
+
+         exec := prog.Execute;
+         var output := exec.Result.ToString;
+         if exec.Msgs.Count>0 then
+            output:=output+#13#10+'>>> Runtime Error: '+AsInfoWithoutPosition(exec.Msgs);
+
+         originalOutput := FilterLocations(originalOutput);
+         output := FilterLocations(output);
+
+         CheckEquals(originalOutput, output, FTests[i]);
+
+      end;
+
+   finally
+      expectedResult.Free;
       source.Free;
    end;
 end;
