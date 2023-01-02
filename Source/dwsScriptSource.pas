@@ -67,6 +67,7 @@ type
          function Defined : Boolean;
 
          procedure IncCol; inline;
+         procedure DecCol; inline;
          procedure NewLine; inline;
          procedure SetColLine(aCol, aLine : Integer); inline;
          procedure SetLineCol(const aPos : TScriptPos); inline;
@@ -229,6 +230,13 @@ end;
 procedure TScriptPos.IncCol;
 begin
    Inc(Col);
+end;
+
+// DecCol
+//
+procedure TScriptPos.DecCol;
+begin
+   Dec(Col);
 end;
 
 // NewLine
