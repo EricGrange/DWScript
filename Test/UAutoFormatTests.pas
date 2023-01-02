@@ -42,6 +42,7 @@ type
          procedure SkipComments;
          procedure SimpleClass;
          procedure Conditionals;
+         procedure CaseOf;
 
    end;
 
@@ -127,12 +128,16 @@ begin
       for i:=0 to FTests.Count-1 do begin
 
          source.LoadFromFile(FTests[i]);
+         var processed := FAutoFormat.Process(source.Text);
          prog := FCompiler.Compile(
-            FAutoFormat.Process(source.Text),
+            processed,
             'Test\'+ExtractFileName(FTests[i])
          );
 
-         CheckEquals(False, prog.Msgs.HasErrors, FTests[i]+#13#10+prog.Msgs.AsInfo);
+         CheckEquals(
+            False, prog.Msgs.HasErrors,
+            FTests[i] + #13#10 + prog.Msgs.AsInfo + #13#10 + processed
+         );
       end;
 
    finally
@@ -208,9 +213,13 @@ end;
 //
 procedure TAutoFormatTests.SimpleIfThenElse;
 begin
+//   CheckEquals(
+//      'if b then'#10#9'doit()'#10'else dont();'#10'done()'#10,
+//      FAutoFormat.Process('if b then doit() else dont();done()')
+//   );
    CheckEquals(
-      'if b then'#10#9'doit()'#10'else dont();'#10'done()'#10,
-      FAutoFormat.Process('if b then doit() else dont();done()')
+      'if b then begin'#10#9'if not b then begin'#10#9'end else begin'#10#9'end'#10'end'#10,
+      FAutoFormat.Process('if b then begin if not b then begin end else begin end end')
    );
 end;
 
@@ -235,6 +244,10 @@ begin
    CheckEquals(
       's := '''';'#10'b := "Hello";'#10,
       FAutoFormat.Process('s:='''';b:="Hello";')
+   );
+   CheckEquals(
+      's := #9"abc"#10'#10,
+      FAutoFormat.Process('s:=#9"abc"#10')
    );
 end;
 
@@ -273,6 +286,16 @@ begin
    CheckEquals(
       '{$ifdef A}b;{$endif}'#10,
       FAutoFormat.Process('{$ifdef A}b;{$endif}'#10)
+   );
+end;
+
+// CaseOf
+//
+procedure TAutoFormatTests.CaseOf;
+begin
+   CheckEquals(
+      'case a of'#10#9'-1..+1 : b'#10'end'#10,
+      FAutoFormat.Process('case a of -1..+1:b end'#10)
    );
 end;
 

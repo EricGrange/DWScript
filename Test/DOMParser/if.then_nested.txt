@@ -1,0 +1,23 @@
+Main
+   IfThenElseStmt
+      Token if
+      Reference
+         Token name <<b>>
+      Token then
+      BeginEnd
+         Token begin
+         IfThenElseStmt
+            Token if
+            UnaryOperator not
+               Token not
+               Reference
+                  Token name <<b>>
+            Token then
+            BeginEnd
+               Token begin
+               Token end
+            Token else
+            BeginEnd
+               Token begin
+               Token end
+         Token end

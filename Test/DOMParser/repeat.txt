@@ -1,17 +1,18 @@
 Main
    Repeat
+      Token repeat [LF]
       StatementList
          Assignment
             Reference
                Token name <<a>>
             Token :=
             Token Integer Literal <<1>>
-         Token ;
+         Token ; [LF]
          Call
             Reference
                Token name <<b>>
             Token (
-            Token )
+            Token ) [LF]
       Token until
       BinaryOperator
          Reference

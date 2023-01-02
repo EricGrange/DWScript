@@ -31,6 +31,9 @@ type
          procedure WriteToOutput(output : TdwsCodeDOMOutput); override;
    end;
 
+   TdwsCodeDOMComment = class (TdwsCodeDOMNode)
+   end;
+
    TdwsCodeDOMSection = class (TdwsCodeDOMNode);
 
    TdwsCodeDOMTypeSection = class (TdwsCodeDOMSection)
@@ -41,6 +44,9 @@ type
    TdwsCodeDOMVarSection = class (TdwsCodeDOMSection)
       public
          procedure WriteToOutput(output : TdwsCodeDOMOutput); override;
+   end;
+
+   TdwsCodeDOMConstSection = class (TdwsCodeDOMSection)
    end;
 
    TdwsCodeDOMMain = class (TdwsCodeDOMNode)
@@ -96,6 +102,29 @@ type
          procedure WriteToOutput(output : TdwsCodeDOMOutput); override;
    end;
 
+   TdwsCodeDOMCaseOf = class (TdwsCodeDOMStatement)
+      public
+         procedure WriteToOutput(output : TdwsCodeDOMOutput); override;
+   end;
+   TdwsCodeDOMCaseOfAlternative = class (TdwsCodeDOMNode)
+   end;
+   TdwsCodeDOMCaseOfAlternatives = class (TdwsCodeDOMNode)
+   end;
+   TdwsCodeDOMCaseOfAlternativeCase = class (TdwsCodeDOMNode)
+   end;
+   TdwsCodeDOMCaseOfAlternativeCaseRange = class (TdwsCodeDOMNode)
+   end;
+   TdwsCodeDOMCaseOfAlternativeCases = class (TdwsCodeDOMNode)
+   end;
+
+   TdwsCodeDOMForLoop = class (TdwsCodeDOMStatement)
+   end;
+   TdwsCodeDOMForLoopStep = class (TdwsCodeDOMNode)
+   end;
+
+   TdwsCodeDOMForIn = class (TdwsCodeDOMStatement)
+   end;
+
    TdwsCodeDOMNameList = class (TdwsCodeDOMNode)
    end;
 
@@ -106,11 +135,17 @@ type
    end;
 
    TdwsCodeDOMLiteral = class (TdwsCodeDOMExpression)
+   end;
+
+   TdwsCodeDOMLiteralStr = class (TdwsCodeDOMExpression)
       public
          procedure WriteToOutput(output : TdwsCodeDOMOutput); override;
    end;
 
    TdwsCodeDOMReference = class (TdwsCodeDOMExpression)
+   end;
+
+   TdwsCodeDOMRange = class (TdwsCodeDOMNode)
    end;
 
    TdwsCodeDOMCall = class (TdwsCodeDOMExpression)
@@ -177,6 +212,16 @@ type
    end;
 
    TdwsCodeDOMTypeVisibilitySection = class (TdwsCodeDOMNode)
+   end;
+
+   TdwsCodeDOMArrayDecl = class (TdwsCodeDOMTypeDecl)
+   end;
+
+   TdwsCodeDOMArrayRange = class (TdwsCodeDOMNode)
+   end;
+   TdwsCodeDOMArrayRangeNum = class (TdwsCodeDOMArrayRange)
+   end;
+   TdwsCodeDOMArrayRangeType = class (TdwsCodeDOMArrayRange)
    end;
 
 // ------------------------------------------------------------------
@@ -279,15 +324,17 @@ begin
 end;
 
 // ------------------
-// ------------------ TdwsCodeDOMLiteral ------------------
+// ------------------ TdwsCodeDOMLiteralStr ------------------
 // ------------------
 
 // WriteToOutput
 //
-procedure TdwsCodeDOMLiteral.WriteToOutput(output : TdwsCodeDOMOutput);
+procedure TdwsCodeDOMLiteralStr.WriteToOutput(output : TdwsCodeDOMOutput);
 begin
-   inherited;
-//   output.WriteString(AsString);
+   for var i := 0 to ChildCount-1 do begin
+      Child[i].WriteToOutput(output);
+      output.SkipSpace;
+   end;
 end;
 
 // ------------------
@@ -319,6 +366,7 @@ end;
 //
 procedure TdwsCodeDOMBeginEnd.Prepare;
 begin
+   inherited;
    if ChildCount <> 1 then Exit;
    if Child[0].ClassType = TdwsCodeDOMStatementList then begin
       var list := Child[0];
@@ -332,11 +380,13 @@ end;
 //
 procedure TdwsCodeDOMBeginEnd.WriteToOutput(output : TdwsCodeDOMOutput);
 begin
-   output.WriteTokenString(ttBEGIN);
-   output.IncIndentNewLine;
-   inherited;
-   output.DecIndentNewLine;
-   output.WriteTokenString(ttEND);
+   var i := 0;
+   output
+      .WriteChild(Self, i)
+      .IncIndentNewLine
+      .WriteChildrenBeforeToken(Self, i, ttEND)
+      .DecIndentNewLine
+      .WriteChildren(Self, i);
 end;
 
 // ------------------
@@ -347,12 +397,13 @@ end;
 //
 procedure TdwsCodeDOMRepeat.WriteToOutput(output : TdwsCodeDOMOutput);
 begin
-   output.WriteTokenString(ttREPEAT);
-   output.IncIndentNewLine;
    var i := 0;
-   WriteChildrenUntilToken(output, i, ttUNTIL);
-   output.DecIndentNewLine;
-   WriteChildren(output, i);
+   output
+      .WriteChild(Self, i)
+      .IncIndentNewLine
+      .WriteChildrenBeforeToken(Self, i, ttUNTIL)
+      .DecIndentNewLine
+      .WriteChildren(Self, i);
 end;
 
 // ------------------
@@ -363,15 +414,12 @@ end;
 //
 procedure TdwsCodeDOMWhile.WriteToOutput(output : TdwsCodeDOMOutput);
 begin
-   output.WriteTokenString(ttWHILE);
    var i := 0;
-   WriteChildrenUntilToken(output, i, ttDO);
-   output.WriteTokenString(ttDO);
-   Inc(i);
+   output.WriteChildrenUntilToken(Self, i, ttDO);
    var indent := not ChildIsOfClass(i, TdwsCodeDOMBeginEnd);
    if indent then
       output.IncIndentNewLine;
-   WriteChildren(output, i);
+   output.WriteChildren(Self, i);
    if indent then
       output.DecIndent;
 end;
@@ -395,22 +443,32 @@ end;
 //
 procedure TdwsCodeDOMIfThenElseStmt.WriteToOutput(output : TdwsCodeDOMOutput);
 begin
-   output.WriteTokenString(ttIF);
    var i := 0;
-   WriteChildrenUntilToken(output, i, ttTHEN);
-   output.WriteTokenString(ttTHEN);
-   Inc(i);
+   output.WriteChildrenUntilToken(Self, i, ttTHEN);
    var indent := not ChildIsOfClass(i, TdwsCodeDOMBeginEnd);
    if indent then
       output.IncIndentNewLine;
-   WriteChildrenUntilToken(output, i, ttELSE);
+   output.WriteChildrenBeforeToken(Self, i, ttELSE);
    if indent then
       output.DecIndentNewLine;
-   if i < ChildCount then begin
-      output.WriteTokenString(ttELSE);
-      Inc(i);
-      WriteChildren(output, i);
-   end;
+   output.WriteChildren(Self, i);
+end;
+
+// ------------------
+// ------------------ TdwsCodeDOMCaseOf ------------------
+// ------------------
+
+// WriteToOutput
+//
+procedure TdwsCodeDOMCaseOf.WriteToOutput(output : TdwsCodeDOMOutput);
+begin
+   var i := 0;
+   output
+      .WriteChildrenUntilToken(Self, i, ttOF)
+      .IncIndentNewLine
+         .WriteChildrenBeforeToken(Self, i, ttEND)
+      .DecIndentNewLine
+      .WriteChildren(Self, i);
 end;
 
 // ------------------
@@ -469,7 +527,8 @@ end;
 //
 procedure TdwsCodeDOMUnaryOperator.Prepare;
 begin
-   OperatorType := ExtractTokenType(0);
+   inherited;
+   OperatorType := (Child[0] as TdwsCodeDOMSnippet).TokenType;
 end;
 
 // WritePropertiesToOutline
@@ -486,10 +545,11 @@ end;
 //
 procedure TdwsCodeDOMUnaryOperator.WriteToOutput(output : TdwsCodeDOMOutput);
 begin
-   output.WriteTokenString(OperatorType);
+   var i := 0;
+   output.WriteChild(Self, i);
    if not (OperatorType in cWordTokenTypes) then
       output.SkipSpace;
-   inherited;
+   output.WriteChildren(Self, i);
 end;
 
 end.

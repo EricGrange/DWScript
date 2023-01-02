@@ -1,0 +1,25 @@
+Main
+   StatementList
+      ConstSection
+         Token const [LF]
+         Comment
+            Token comment <<{ hello }>> [LF]
+         VarDeclaration
+            Token name <<cWorld>>
+            Token =
+            Token Integer Literal <<3>>
+      Token ;
+         Comment
+            Token comment <<// here>> [LF]
+      Comment
+         Token comment <<// there>> [LF]
+   StatementList
+      ConstSection
+         Token const
+         VarDeclaration
+            Token name <<cTwo>>
+               Comment
+                  Token comment <</* 2 */>>
+            Token =
+            Token Integer Literal <<2>>
+      Token ;

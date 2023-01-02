@@ -1,21 +1,24 @@
 Main
    StatementList
       BeginEnd
-         Assignment
-            Reference
-               Token name <<i>>
-            Token :=
-            Token Integer Literal <<1>>
-         Token ;
-         Call
-            Reference
-               Token name <<a>>
-            Token (
-            Node
+         Token begin [LF]
+         StatementList
+            Assignment
                Reference
                   Token name <<i>>
-               Token ,
-               Token Integer Literal <<2>>
-            Token )
-         Token ;
+               Token :=
+               Token Integer Literal <<1>>
+            Token ; [LF]
+            Call
+               Reference
+                  Token name <<a>>
+               Token (
+               Node
+                  Reference
+                     Token name <<i>>
+                  Token ,
+                  Token Integer Literal <<2>>
+               Token )
+            Token ; [LF]
+         Token end
       Token ;

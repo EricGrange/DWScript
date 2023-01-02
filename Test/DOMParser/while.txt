@@ -1,12 +1,13 @@
 Main
    StatementList
       While
+         Token while
          BinaryOperator
             Reference
                Token name <<a>>
             Token >
             Token Integer Literal <<0>>
-         Token do
+         Token do [LF]
          Call
             Reference
                Token name <<Dec>>

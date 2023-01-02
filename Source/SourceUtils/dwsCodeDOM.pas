@@ -50,7 +50,6 @@ type
          FToken : TdwsCodeDOMToken;
          FHeadToken : TdwsCodeDOMToken;
          FTailToken : TdwsCodeDOMToken;
-         FDebug : TStrings;
          FMessages : TdwsCompileMessageList;
 
          procedure AppendToken(newToken : TdwsCodeDOMToken);
@@ -63,13 +62,15 @@ type
 
          procedure Clear;
 
-         procedure Debug(const msgFmt : String; const args : array of const);
          property Messages : TdwsCompileMessageList read FMessages;
 
          property Token : TdwsCodeDOMToken read FToken write FToken;
          function TokenType : TTokenType; inline;
 
          function TokenBeginPos : TScriptPos; inline;
+         function TokenBeginPosLine : Integer;
+         function TokenEndPosLine : Integer;
+         function PreviousTokenEndPosLine : Integer;
 
          function Next : Boolean; inline;
          function Prev : Boolean; inline;
@@ -77,40 +78,9 @@ type
          property HeadToken : TdwsCodeDOMToken read FHeadToken;
    end;
 
-   TdwsCodeDOMOutput = class
-      private
-         FStream : TWriteOnlyBlockStream;
-         FIndent : String;
-         FIndentBuf : String;
-         FIndentDepth : Integer;
-         FTailChar : Char;
-
-      protected
-
-      public
-         constructor Create;
-         destructor Destroy; override;
-
-         procedure WriteString(const s : String);
-         procedure WriteTokenString(tt : TTokenType);
-         procedure WriteNewLine;
-         procedure WriteSemi;
-         procedure SkipSpace;
-
-         property Indent : String read FIndent write FIndent;
-         property IndentDepth : Integer read FIndentDepth;
-
-         procedure IncIndent;
-         procedure DecIndent;
-
-         procedure IncIndentNewLine;
-         procedure DecIndentNewLine;
-
-         function ToString : String; override;
-   end;
-
    TdwsCodeDOMNodeClass = class of TdwsCodeDOMNode;
    TdwsCodeDOMSnippet = class;
+   TdwsCodeDOMOutput = class;
 
    TdwsCodeDOMNode = class (TRefCountedObject)
       private
@@ -120,8 +90,6 @@ type
       protected
          function GetChild(idx : Integer) : TdwsCodeDOMNode;
 
-         procedure WriteChildren(output : TdwsCodeDOMOutput; var i : Integer);
-         procedure WriteChildrenUntilToken(output : TdwsCodeDOMOutput; var i : Integer; token : TTokenType);
          procedure WritePropertiesToOutline(wobs : TWriteOnlyBlockStream; indent : Integer); virtual;
          procedure Prepare; virtual;
 
@@ -151,6 +119,43 @@ type
          function AddChild(node : TdwsCodeDOMNode) : Integer;
          function AddChildSnippet(context : TdwsCodeDOMContext) : TdwsCodeDOMSnippet;
          procedure AddChildSnippetsUntil(context : TdwsCodeDOMContext; tokens : TTokenTypes);
+   end;
+
+   TdwsCodeDOMOutput = class
+      private
+         FStream : TWriteOnlyBlockStream;
+         FIndent : String;
+         FIndentBuf : String;
+         FIndentDepth : Integer;
+         FTailChar : Char;
+
+      protected
+
+      public
+         constructor Create;
+         destructor Destroy; override;
+
+         procedure WriteString(const s : String);
+         procedure WriteTokenString(tt : TTokenType);
+         function WriteNewLine : TdwsCodeDOMOutput;
+         procedure WriteSemi;
+         procedure SkipSpace;
+
+         function WriteChild(node : TdwsCodeDOMNode; var i : Integer) : TdwsCodeDOMOutput;
+         function WriteChildren(node : TdwsCodeDOMNode; var i : Integer) : TdwsCodeDOMOutput;
+         function WriteChildrenBeforeToken(node : TdwsCodeDOMNode; var i : Integer; token : TTokenType) : TdwsCodeDOMOutput;
+         function WriteChildrenUntilToken(node : TdwsCodeDOMNode; var i : Integer; token : TTokenType) : TdwsCodeDOMOutput;
+
+         property Indent : String read FIndent write FIndent;
+         property IndentDepth : Integer read FIndentDepth;
+
+         function IncIndent : TdwsCodeDOMOutput;
+         function DecIndent : TdwsCodeDOMOutput;
+
+         function IncIndentNewLine : TdwsCodeDOMOutput;
+         function DecIndentNewLine : TdwsCodeDOMOutput;
+
+         function ToString : String; override;
    end;
 
    TdwsCodeDOMSnippet = class (TdwsCodeDOMNode)
@@ -221,15 +226,12 @@ destructor TdwsCodeDOMContext.Destroy;
 begin
    inherited;
    Clear;
-   FDebug.Free;
 end;
 
 // Clear
 //
 procedure TdwsCodeDOMContext.Clear;
 begin
-   if FDebug <> nil then
-      FDebug.Clear;
    var p := FHeadToken;
    while p <> nil do begin
       var pNext := p.Next;
@@ -239,25 +241,6 @@ begin
    FHeadToken := nil;
    FTailToken := nil;
    FToken := nil;
-end;
-
-// Debug
-//
-procedure TdwsCodeDOMContext.Debug(const msgFmt : String; const args: array of const);
-begin
-   if FDebug = nil then
-      FDebug := TStringList.Create;
-   if Token <> nil then begin
-      FDebug.Add(
-           Format(msgFmt, args) + ' '
-         + IntToStr(Token.BeginPos.Line) + ',' + IntToStr(Token.BeginPos.Col)
-         + ' (' + Token.RawString + ')'
-      );
-   end else begin
-      FDebug.Add(
-           Format(msgFmt, args) + ' EOS'
-      );
-   end;
 end;
 
 // DoBeforeTokenizerAction
@@ -296,6 +279,20 @@ begin
       caString, caChar, caCharHex, caMultiLineString : token.FTokenType := ttStrVal;
       caBin, caHex, caInteger : token.FTokenType := ttIntVal;
       caFloat : token.FTokenType := ttFloatVal;
+      caDotDot : begin
+         token.FTokenType := ttDOTDOT;
+         if     (FTailToken <> nil) and (FTailToken.TokenType = ttIntVal)
+            and StrEndsWith(FTailToken.FRawString, '.') then begin
+            SetLength(FTailToken.FRawString, Length(FTailToken.FRawString)-1);
+            token.FEndPos.DecCol;
+            Dec(tokenEndPosPtr);
+         end;
+      end;
+      caNameEscaped : begin
+         token.FTokenType := ttNAME;
+         token.FBeginPos.DecCol;
+         Dec(tok.FPosPtr);
+      end;
    else
       token.FTokenType := Sender.RawTokenBufferNameToType;
    end;
@@ -340,6 +337,33 @@ begin
    else Result := cNullPos;
 end;
 
+// TokenBeginPosLine
+//
+function TdwsCodeDOMContext.TokenBeginPosLine : Integer;
+begin
+   if FToken <> nil then
+      Result := FToken.BeginPos.Line
+   else Result := 0;
+end;
+
+// TokenEndPosLine
+//
+function TdwsCodeDOMContext.TokenEndPosLine : Integer;
+begin
+   if FToken <> nil then
+      Result := FToken.EndPos.Line
+   else Result := 0;
+end;
+
+// PreviousTokenEndPosLine
+//
+function TdwsCodeDOMContext.PreviousTokenEndPosLine : Integer;
+begin
+   if (FToken <> nil) and (FToken.FPrev <> nil) then
+      Result := FToken.FPrev.EndPos.Line
+   else Result := 0;
+end;
+
 // Next
 //
 function TdwsCodeDOMContext.Next : Boolean;
@@ -356,118 +380,6 @@ begin
    if FToken <> nil then
       FToken := FToken.Prev;
    Result := FToken <> nil;
-end;
-
-// ------------------
-// ------------------ TdwsCodeDOMOutput ------------------
-// ------------------
-
-// Create
-//
-constructor TdwsCodeDOMOutput.Create;
-begin
-   inherited;
-   FStream := TWriteOnlyBlockStream.AllocFromPool;
-   FTailChar := #0;
-end;
-
-// Destroy
-//
-destructor TdwsCodeDOMOutput.Destroy;
-begin
-   inherited;
-   FStream.ReturnToPool;
-end;
-
-// WriteString
-//
-procedure TdwsCodeDOMOutput.WriteString(const s : String);
-begin
-   if s = '' then Exit;
-   case FTailChar of
-      #10 : FStream.WriteString(FIndentBuf);
-      #0..#9, #11..' ', '(', ')', '[', ']', '$', '{', '}', '#' : ;
-   else
-      case s[1] of
-         ',', ';', '.', '(', ')', '[', ']', '$', '{', '}', '#' : ;
-      else
-         FStream.WriteString(' ');
-      end;
-   end;
-   FStream.WriteString(s);
-   FTailChar := s[Length(s)];
-end;
-
-// WriteTokenString
-//
-procedure TdwsCodeDOMOutput.WriteTokenString(tt : TTokenType);
-begin
-   WriteString(cTokenStrings[tt]);
-end;
-
-// WriteNewLine
-//
-procedure TdwsCodeDOMOutput.WriteNewLine;
-begin
-   if FTailChar <> #10 then begin
-      FStream.WriteChar(#10);
-      FTailChar := #10;
-   end;
-end;
-
-// WriteSemi
-//
-procedure TdwsCodeDOMOutput.WriteSemi;
-begin
-   WriteString(';');
-end;
-
-// SkipSpace
-//
-procedure TdwsCodeDOMOutput.SkipSpace;
-begin
-   FTailChar := #0;
-end;
-
-// IncIndent
-//
-procedure TdwsCodeDOMOutput.IncIndent;
-begin
-   Inc(FIndentDepth);
-   FIndentBuf := FIndentBuf + FIndent;
-end;
-
-// DecIndent
-//
-procedure TdwsCodeDOMOutput.DecIndent;
-begin
-   Assert(FIndentDepth > 0);
-   Dec(FIndentDepth);
-   SetLength(FIndentBuf, Length(FIndentBuf) - Length(FIndent));
-end;
-
-// IncIndentNewLine
-//
-procedure TdwsCodeDOMOutput.IncIndentNewLine;
-begin
-   IncIndent;
-   WriteNewLine;
-end;
-
-// DecIndentNewLine
-//
-procedure TdwsCodeDOMOutput.DecIndentNewLine;
-begin
-   DecIndent;
-   WriteNewLine;
-end;
-
-// ToString
-//
-function TdwsCodeDOMOutput.ToString : String;
-begin
-   WriteNewLine;
-   Result := FStream.ToString;
 end;
 
 // ------------------
@@ -554,29 +466,6 @@ end;
 function TdwsCodeDOMNode.GetChild(idx : Integer) : TdwsCodeDOMNode;
 begin
    Result := FChildren[idx];
-end;
-
-// WriteChildren
-//
-procedure TdwsCodeDOMNode.WriteChildren(output : TdwsCodeDOMOutput; var i : Integer);
-begin
-   while i < ChildCount do begin
-      var c := Child[i];
-      c.WriteToOutput(output);
-      Inc(i);
-   end;
-end;
-
-// WriteChildrenUntilToken
-//
-procedure TdwsCodeDOMNode.WriteChildrenUntilToken(output : TdwsCodeDOMOutput; var i : Integer; token : TTokenType);
-begin
-   while i < ChildCount do begin
-      var c := Child[i];
-      if c.InheritsFrom(TdwsCodeDOMSnippet) and (TdwsCodeDOMSnippet(c).TokenType = token) then Break;
-      c.WriteToOutput(output);
-      Inc(i);
-   end;
 end;
 
 // ChildCount
@@ -679,6 +568,164 @@ begin
 end;
 
 // ------------------
+// ------------------ TdwsCodeDOMOutput ------------------
+// ------------------
+
+// Create
+//
+constructor TdwsCodeDOMOutput.Create;
+begin
+   inherited;
+   FStream := TWriteOnlyBlockStream.AllocFromPool;
+   FTailChar := #0;
+end;
+
+// Destroy
+//
+destructor TdwsCodeDOMOutput.Destroy;
+begin
+   inherited;
+   FStream.ReturnToPool;
+end;
+
+// WriteString
+//
+procedure TdwsCodeDOMOutput.WriteString(const s : String);
+begin
+   if s = '' then Exit;
+   case FTailChar of
+      #10 : FStream.WriteString(FIndentBuf);
+      #0..#9, #11..' ', '(', '[', '$', '{', '}', '#', '.' : ;
+   else
+      case s[1] of
+         ',', ';', '.', '(', ')', '[', ']', '{', '}' : ;
+      else
+         FStream.WriteString(' ');
+      end;
+   end;
+   FStream.WriteString(s);
+   FTailChar := s[Length(s)];
+end;
+
+// WriteTokenString
+//
+procedure TdwsCodeDOMOutput.WriteTokenString(tt : TTokenType);
+begin
+   WriteString(cTokenStrings[tt]);
+end;
+
+// WriteNewLine
+//
+function TdwsCodeDOMOutput.WriteNewLine : TdwsCodeDOMOutput;
+begin
+   if FTailChar <> #10 then begin
+      FStream.WriteChar(#10);
+      FTailChar := #10;
+   end;
+   Result := Self;
+end;
+
+// WriteSemi
+//
+procedure TdwsCodeDOMOutput.WriteSemi;
+begin
+   WriteString(';');
+end;
+
+// SkipSpace
+//
+procedure TdwsCodeDOMOutput.SkipSpace;
+begin
+   FTailChar := #0;
+end;
+
+// WriteChild
+//
+function TdwsCodeDOMOutput.WriteChild(node : TdwsCodeDOMNode; var i : Integer) : TdwsCodeDOMOutput;
+begin
+   if i < node.ChildCount then begin
+      node.Child[i].WriteToOutput(Self);
+      Inc(i);
+   end;
+   Result := Self;
+end;
+
+// WriteChildren
+//
+function TdwsCodeDOMOutput.WriteChildren(node : TdwsCodeDOMNode; var i : Integer) : TdwsCodeDOMOutput;
+begin
+   while i < node.ChildCount do begin
+      node.Child[i].WriteToOutput(Self);
+      Inc(i);
+   end;
+   Result := Self;
+end;
+
+// WriteChildrenBeforeToken
+//
+function TdwsCodeDOMOutput.WriteChildrenBeforeToken(node : TdwsCodeDOMNode; var i : Integer; token : TTokenType) : TdwsCodeDOMOutput;
+begin
+   while i < node.ChildCount do begin
+      var c := node.Child[i];
+      if c.InheritsFrom(TdwsCodeDOMSnippet) and (TdwsCodeDOMSnippet(c).TokenType = token) then Break;
+      c.WriteToOutput(Self);
+      Inc(i);
+   end;
+   Result := Self;
+end;
+
+// WriteChildrenUntilToken
+//
+function TdwsCodeDOMOutput.WriteChildrenUntilToken(node : TdwsCodeDOMNode; var i : Integer; token : TTokenType) : TdwsCodeDOMOutput;
+begin
+   WriteChildrenBeforeToken(node, i, token);
+   Result := WriteChild(node, i);
+end;
+
+// IncIndent
+//
+function TdwsCodeDOMOutput.IncIndent : TdwsCodeDOMOutput;
+begin
+   Inc(FIndentDepth);
+   FIndentBuf := FIndentBuf + FIndent;
+   Result := Self;
+end;
+
+// DecIndent
+//
+function TdwsCodeDOMOutput.DecIndent : TdwsCodeDOMOutput;
+begin
+   Assert(FIndentDepth > 0);
+   Dec(FIndentDepth);
+   SetLength(FIndentBuf, Length(FIndentBuf) - Length(FIndent));
+   Result := Self;
+end;
+
+// IncIndentNewLine
+//
+function TdwsCodeDOMOutput.IncIndentNewLine : TdwsCodeDOMOutput;
+begin
+   IncIndent;
+   Result := WriteNewLine;
+end;
+
+// DecIndentNewLine
+//
+function TdwsCodeDOMOutput.DecIndentNewLine : TdwsCodeDOMOutput;
+begin
+   DecIndent;
+   Result := WriteNewLine;
+end;
+
+// ToString
+//
+function TdwsCodeDOMOutput.ToString : String;
+begin
+   WriteNewLine;
+   Result := FStream.ToString;
+end;
+
+// ------------------
 // ------------------ TdwsCodeDOM ------------------
 // ------------------
 
@@ -744,9 +791,7 @@ begin
    FTokenType := context.TokenType;
    if context.Next and (not NewLine) then begin
       // special cases of newline preservation (or not)
-      if (context.TokenType = ttCOMMENT) and (context.Token.BeginPos.Line = line) then
-         AddChild(TdwsCodeDOMSnippet.ParseFromContext(context))
-      else if (TokenType = ttCRIGHT) and (context.Token.BeginPos.Line > line) then
+      if (context.Token.BeginPos.Line > line) then
          FNewLine := True;
    end;
 end;

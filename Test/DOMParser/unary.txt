@@ -5,8 +5,9 @@ Main
             Token name <<a>>
          Token :=
          UnaryOperator -
+            Token -
             Token Integer Literal <<123>>
-      Token ;
+      Token ; [LF]
       Assignment
          Reference
             Token name <<b>>
@@ -16,5 +17,6 @@ Main
                Token name <<a>>
             Token +
             UnaryOperator +
+               Token +
                Token Integer Literal <<123>>
       Token ;

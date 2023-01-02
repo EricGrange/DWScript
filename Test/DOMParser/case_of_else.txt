@@ -1,0 +1,44 @@
+Main
+   StatementList
+      CaseOf
+         Token case
+         BinaryOperator
+            Reference
+               Token name <<a>>
+            Token +
+            Reference
+               Token name <<a>>
+         Token of [LF]
+         CaseOfAlternatives
+            CaseOfAlternative
+               CaseOfAlternativeCases
+                  Range
+                     Token Integer Literal <<1>>
+                     Token .. <<1..>>
+                     Token Integer Literal <<2>>
+                  Token ,
+                  Token Integer Literal <<3>>
+               Token :
+               Reference
+                  Token name <<c>>
+            Token ; [LF]
+            CaseOfAlternative
+               CaseOfAlternativeCases
+                  Token Integer Literal <<4>>
+               Token :
+               Reference
+                  Token name <<d>>
+            Token ; [LF]
+         Token else [LF]
+         StatementList
+            Reference
+               Token name <<e>>
+            Token ; [LF]
+            Call
+               Reference
+                  Token name <<f>>
+               Token (
+               Token )
+            Token ; [LF]
+         Token end
+      Token ;

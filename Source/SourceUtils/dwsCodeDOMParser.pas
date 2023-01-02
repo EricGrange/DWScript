@@ -29,7 +29,8 @@ type
    TdwsRuleItemFlag = (
       rifOptional,
       rifRestart, rifGoToStep1,
-      rifSkipSnippet, rifEndIfNotPresent
+      rifEndIfNotPresent,
+      rifMergeChildren
    );
    TdwsRuleItemFlags = set of TdwsRuleItemFlag;
 
@@ -46,11 +47,16 @@ type
          function SetFlags(aFlags : TdwsRuleItemFlags) : TdwsRuleItem;
 
          function Parse(context : TdwsCodeDOMContext) : TdwsCodeDOMNode; virtual; abstract;
+         function StartTokens : TTokenTypes; virtual; abstract;
    end;
 
    TdwsRuleItems = class (TObjectList<TdwsRuleItem>);
 
-   TdwsParserRuleFlag = ( prfRoot, prfReplaceBySingleChild );
+   TdwsParserRuleFlag = (
+      prfRoot,
+      prfComment,
+      prfReplaceBySingleChild
+   );
    TdwsParserRuleFlags = set of TdwsParserRuleFlag;
 
    TdwsParser = class;
@@ -61,6 +67,7 @@ type
          FItems : TdwsRuleItems;
          FFlags : TdwsParserRuleFlags;
          FParser : TdwsParser;
+         FStartTokens : TTokenTypes;
 
          FLastFailedAttemptAt : TScriptPos;
 
@@ -68,6 +75,7 @@ type
          function GetItem(index : Integer) : TdwsRuleItem; inline;
 
          procedure ResetState;
+         procedure Prepare; virtual; abstract;
 
       public
          constructor Create(const aName : String; aFlags : TdwsParserRuleFlags = []);
@@ -76,12 +84,13 @@ type
          property Name : String read FName;
          property Flags : TdwsParserRuleFlags read FFlags;
          property Parser : TdwsParser read FParser;
+         property StartTokens : TTokenTypes read FStartTokens;
 
          property Items[index : Integer] : TdwsRuleItem read GetItem;
          function ItemCount : Integer; inline;
          function Add(anItem : TdwsRuleItem) : TdwsParserRule; inline;
 
-         function AddMatchName : TdwsParserRule;
+         function AddMatchName(const aName : String = '') : TdwsParserRule;
          function AddMatchTokenType(aTokenType : TTokenType; const flags : TdwsRuleItemFlags = []) : TdwsParserRule;
          function AddMatchTokenTypes(aTokenTypes : TTokenTypes; const flags : TdwsRuleItemFlags = []) : TdwsParserRule;
          function AddMatchAnyExceptTokenTypes(aTokenTypes : TTokenTypes; const flags : TdwsRuleItemFlags = []) : TdwsParserRule;
@@ -95,6 +104,9 @@ type
       private
          FDOMNodeClass : TdwsCodeDOMNodeClass;
 
+      protected
+         procedure Prepare; override;
+
       public
          constructor Create(const aName : String; aDOMNodeClass : TdwsCodeDOMNodeClass; aFlags : TdwsParserRuleFlags = []);
 
@@ -104,6 +116,9 @@ type
    end;
 
    TdwsParserRuleAlternative = class (TdwsParserRule)
+      protected
+         procedure Prepare; override;
+
       public
          function Parse(context : TdwsCodeDOMContext) : TdwsCodeDOMNode; override;
    end;
@@ -137,10 +152,12 @@ type
          FTokenizer : TTokenizer;
          FRules : TdwsParserRules;
          FRootRules : TdwsParserRuleArray;
+         FCommentRules : TdwsParserRuleArray;
+         FCommentStartTokens : TTokenTypes;
          FMessages : TdwsCompileMessageList;
 
       protected
-         procedure PrepareRootRules;
+         procedure PrepareRules;
 
       public
          constructor Create(aTokenizer : TTokenizer; aRules : TdwsParserRules);
@@ -151,6 +168,7 @@ type
          property Messages : TdwsCompileMessageList read FMessages;
 
          function Parse(const source : TSourceFile) : TdwsCodeDOM;
+         function ParseComments(context : TdwsCodeDOMContext; base : TdwsCodeDOMNode) : Boolean;
    end;
 
    TdwsRuleItem_MatchTokenType = class (TdwsRuleItem)
@@ -161,6 +179,7 @@ type
          constructor Create(aTokenTypes : TTokenTypes);
 
          function Parse(context : TdwsCodeDOMContext) : TdwsCodeDOMNode; override;
+         function StartTokens : TTokenTypes; override;
 
          property TokenTypes : TTokenTypes read FTokenTypes;
    end;
@@ -168,16 +187,30 @@ type
    TdwsRuleItem_MatchAnyExceptTokenType = class (TdwsRuleItem_MatchTokenType)
       public
          function Parse(context : TdwsCodeDOMContext) : TdwsCodeDOMNode; override;
+         function StartTokens : TTokenTypes; override;
    end;
 
    TdwsRuleItem_MatchStatementEnd = class (TdwsRuleItem)
       public
          function Parse(context : TdwsCodeDOMContext) : TdwsCodeDOMNode; override;
+         function StartTokens : TTokenTypes; override;
    end;
 
    TdwsRuleItem_MatchName = class (TdwsRuleItem)
+      private
+         FName : String;
+
+      public
+         constructor Create(const aName : String);
+         function Parse(context : TdwsCodeDOMContext) : TdwsCodeDOMNode; override;
+         function StartTokens : TTokenTypes; override;
+         property Name : String read FName;
+   end;
+
+   TdwsRuleItem_MatchAnyName = class (TdwsRuleItem)
       public
          function Parse(context : TdwsCodeDOMContext) : TdwsCodeDOMNode; override;
+         function StartTokens : TTokenTypes; override;
    end;
 
    TdwsRuleItem_Rule = class (TdwsRuleItem)
@@ -193,6 +226,7 @@ type
    TdwsRuleItem_SubRule = class (TdwsRuleItem_Rule)
       public
          function Parse(context : TdwsCodeDOMContext) : TdwsCodeDOMNode; override;
+         function StartTokens : TTokenTypes; override;
    end;
 
 // ------------------------------------------------------------------
@@ -202,6 +236,9 @@ implementation
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
+
+const
+   cAllValidTokens : TTokenTypes = [ Succ(ttNone)..High(TTokenType) ];
 
 // ------------------
 // ------------------ TdwsRuleItem ------------------
@@ -269,9 +306,11 @@ end;
 
 // AddMatchName
 //
-function TdwsParserRule.AddMatchName : TdwsParserRule;
+function TdwsParserRule.AddMatchName(const aName : String = '') : TdwsParserRule;
 begin
-   Result := Add(TdwsRuleItem_MatchName.Create);
+   if aName = '' then
+      Result := Add(TdwsRuleItem_MatchAnyName.Create)
+   else Result := Add(TdwsRuleItem_MatchName.Create(aName));
 end;
 
 // AddMatchTokenType
@@ -336,11 +375,8 @@ begin
    Assert(ItemCount > 0, 'Rule ' + Name + ' undefined');
 
    if FLastFailedAttemptAt.SamePosAs(context.TokenBeginPos) then begin
-      context.Debug('Skipping %s', [ name ]);
       Exit(nil);
    end;
-
-   context.Debug('Parsing %s', [ name ]);
 
    initialToken := context.Token;
 
@@ -349,11 +385,12 @@ begin
    while i < ItemCount do begin
       ruleItem := Items[i];
       Inc(i);
+      // if context.TokenType in ruleItem.StartTokens then
       subNode := ruleItem.Parse(context);
       if subNode = nil then begin
          if rifOptional in ruleItem.Flags then continue;
+         if (Result <> nil) and Parser.ParseComments(context, Result) then continue;
          if rifEndIfNotPresent in ruleItem.FFlags then break;
-         context.Debug('   FAILED %s[%d]', [ name, i ]);
          FLastFailedAttemptAt := context.TokenBeginPos;
          if Result <> nil then begin
             FreeAndNil(Result);
@@ -361,20 +398,25 @@ begin
          end;
          Exit;
       end;
-      context.Debug('   Passed %s[%d]', [ name, i-1 ]);
       if rifRestart in ruleItem.Flags then
          i := 0
       else if rifGoToStep1 in ruleItem.Flags then
          i := 1;
       if Result = nil then
          Result := DOMNodeClass.Create;
-      if rifSkipSnippet in ruleItem.Flags then
-         subNode.Free
-      else Result.AddChild(subNode);
+      if rifMergeChildren in ruleItem.Flags then begin
+         Result.AddChildrenFrom(subNode);
+         FreeAndNil(subNode);
+         if not (prfComment in Flags) then
+            Parser.ParseComments(context, Result)
+      end else begin
+         Result.AddChild(subNode);
+         if not (prfComment in Flags) then
+            Parser.ParseComments(context, subNode);
+      end;
    end;
 
    if Result <> nil then begin
-      context.Debug('   Passed %s', [ name ]);
       if (prfReplaceBySingleChild in Flags) and (Result.ChildCount = 1) then begin
          var child := Result.Child[0];
          Result.Extract(child);
@@ -382,14 +424,36 @@ begin
          Result := child;
       end;
    end else begin
-      context.Debug('   FAILED %s', [ name ]);
       context.Token := initialToken;
+   end;
+end;
+
+// Prepare
+//
+procedure TdwsParserRuleNode.Prepare;
+begin
+   FStartTokens := [];
+   for var i := 0 to ItemCount-1 do begin
+      var ruleItem := Items[i];
+      FStartTokens := FStartTokens + ruleItem.StartTokens;
+      if not (rifOptional in ruleItem.Flags) then Break;
    end;
 end;
 
 // ------------------
 // ------------------ TdwsParserRuleAlternative ------------------
 // ------------------
+
+// Prepare
+//
+procedure TdwsParserRuleAlternative.Prepare;
+begin
+   FStartTokens := [];
+   for var i := 0 to ItemCount-1 do begin
+      var ruleItem := Items[i];
+      FStartTokens := FStartTokens + ruleItem.StartTokens;
+   end;
+end;
 
 // Parse
 //
@@ -400,10 +464,8 @@ var
 begin
    Assert(ItemCount > 0, 'Rule ' + Name + ' undefined');
    if FLastFailedAttemptAt.SamePosAs(context.TokenBeginPos) then begin
-      context.Debug('Skipping %s', [ name ]);
       Exit(nil);
    end;
-   context.Debug('Parsing %s', [ name ]);
 
    Result := nil;
 
@@ -411,11 +473,9 @@ begin
       ruleItem := Items[i];
       Result := ruleItem.Parse(context);
       if Result <> nil then begin
-         context.Debug('   Passed %s[%d]', [ name, i ]);
          Exit;
       end;
    end;
-   context.Debug('   FAILED %s', [ name ]);
    FLastFailedAttemptAt := context.TokenBeginPos;
 end;
 
@@ -429,6 +489,13 @@ constructor TdwsRuleItem_MatchTokenType.Create(aTokenTypes : TTokenTypes);
 begin
    inherited Create;
    FTokenTypes := aTokenTypes;
+end;
+
+// StartTokens
+//
+function TdwsRuleItem_MatchTokenType.StartTokens : TTokenTypes;
+begin
+   Result := FTokenTypes;
 end;
 
 // Parse
@@ -453,6 +520,13 @@ begin
    else Result := TdwsCodeDOMSnippet.ParseFromContext(context)
 end;
 
+// StartTokens
+//
+function TdwsRuleItem_MatchAnyExceptTokenType.StartTokens : TTokenTypes;
+begin
+   Result := cAllValidTokens - TokenTypes;
+end;
+
 // ------------------
 // ------------------ TdwsRuleItem_MatchStatementEnd ------------------
 // ------------------
@@ -471,6 +545,13 @@ begin
    else
       Result := nil;
    end;
+end;
+
+// StartTokens
+//
+function TdwsRuleItem_MatchStatementEnd.StartTokens : TTokenTypes;
+begin
+   Result := [ ttSEMI, ttELSE, ttEND, ttNone ];
 end;
 
 // ------------------
@@ -494,6 +575,13 @@ end;
 function TdwsRuleItem_SubRule.Parse(context : TdwsCodeDOMContext) : TdwsCodeDOMNode;
 begin
    Result := FRule.Parse(context);
+end;
+
+// StartTokens
+//
+function TdwsRuleItem_SubRule.StartTokens : TTokenTypes;
+begin
+   Result := FRule.StartTokens;
 end;
 
 // ------------------
@@ -552,7 +640,7 @@ begin
    FTokenizer := aTokenizer;
    FRules := aRules;
    FRules.FParser := Self;
-   PrepareRootRules;
+   PrepareRules;
    FMessages := TdwsCompileMessageList.Create;
 end;
 
@@ -611,35 +699,104 @@ begin
 
 end;
 
-// PrepareRootRules
+// ParseComments
 //
-procedure TdwsParser.PrepareRootRules;
+function TdwsParser.ParseComments(context : TdwsCodeDOMContext; base : TdwsCodeDOMNode) : Boolean;
+begin
+   Result := False;
+   if not (context.TokenType in FCommentStartTokens) then Exit;
+   var prevLine := context.PreviousTokenEndPosLine;
+   while context.Token <> nil do begin
+      var line := context.TokenBeginPosLine;
+      for var i := 0 to High(FCommentRules) do begin
+         var node := FCommentRules[i].Parse(context);
+         if node <> nil then begin
+            if (line = prevLine) or (base.Parent = nil) then
+               base.AddChild(node)
+            else base.Parent.AddChild(node);
+            Result := True;
+            continue;
+         end;
+      end;
+      break;
+   end;
+end;
+
+// PrepareRules
+//
+procedure TdwsParser.PrepareRules;
 var
-   i, k : Integer;
+   kRoot, kTail : Integer;
 begin
    SetLength(FRootRules, Rules.Count);
-   k := 0;
-   for i := 0 to Rules.Count-1 do begin
+   SetLength(FCommentRules, Rules.Count);
+   FCommentStartTokens := [];
+   kRoot := 0;
+   kTail := 0;
+   for var i := 0 to Rules.Count-1 do begin
       var rule := Rules[i];
+      rule.FParser := Self;
+      rule.Prepare;
       if prfRoot in rule.Flags then begin
-         FRootRules[k] := rule;
-         Inc(k);
+         FRootRules[kRoot] := rule;
+         Inc(kRoot);
+      end;
+      if prfComment in rule.Flags then begin
+         FCommentRules[kTail] := rule;
+         FCommentStartTokens := FCommentStartTokens + rule.StartTokens;
+         Inc(kTail);
       end;
    end;
-   SetLength(FRootRules, k);
+   SetLength(FRootRules, kRoot);
+   SetLength(FCommentRules, kTail);
 end;
 
 // ------------------
 // ------------------ TdwsRuleItem_MatchName ------------------
 // ------------------
 
+// Create
+//
+constructor TdwsRuleItem_MatchName.Create(const aName : String);
+begin
+   inherited Create;
+   FName := aName;
+end;
+
 // Parse
 //
 function TdwsRuleItem_MatchName.Parse(context : TdwsCodeDOMContext) : TdwsCodeDOMNode;
 begin
+   if (context.TokenType = ttNAME) and SameText(context.Token.RawString, Name) then begin
+      Result := TdwsCodeDOMSnippet.ParseFromContext(context);
+   end else Result := nil;
+end;
+
+// StartTokens
+//
+function TdwsRuleItem_MatchName.StartTokens : TTokenTypes;
+begin
+   Result := [ ttNAME ];
+end;
+
+// ------------------
+// ------------------ TdwsRuleItem_MatchAnyName ------------------
+// ------------------
+
+// Parse
+//
+function TdwsRuleItem_MatchAnyName.Parse(context : TdwsCodeDOMContext) : TdwsCodeDOMNode;
+begin
    if context.TokenType = ttNAME then begin
       Result := TdwsCodeDOMSnippet.ParseFromContext(context);
    end else Result := nil;
+end;
+
+// StartTokens
+//
+function TdwsRuleItem_MatchAnyName.StartTokens : TTokenTypes;
+begin
+   Result := [ ttNAME ];
 end;
 
 end.
