@@ -202,12 +202,12 @@ begin
    sStart.AddTransition(['<'], TConsumeTransition.Create(sSmallerF, [toStart], caNone));
    sStart.AddTransition(['>'], TConsumeTransition.Create(sGreaterF, [toStart], caNone));
    sStart.AddTransition(['.'], TConsumeTransition.Create(sDotDot, [toStart], caNone));
-   sStart.AddTransition(['{'], TSeekTransition.Create(sComment, [], caNone));
+   sStart.AddTransition(['{'], TSeekTransition.Create(sComment, [toStart], caNone));
    sStart.AddTransition(['$'], TConsumeTransition.Create(sHex, [toStart], caNone));
    sStart.SetElse(TErrorTransition.Create(TOK_InvalidChar));
 
    sComment.AddTransition(['}'], TSeekTransition.Create(sStart, [], caClear));
-   sComment.AddTransition(['$'], TSeekTransition.Create(sSwitch, [], caNone));
+   sComment.AddTransition(['$'], TSeekTransition.Create(sSwitch, [toStart], caNone));
    sComment.SetElse(TSeekTransition.Create(sCommentF, [], caNone));
 
    sCommentF.AddTransition(['}'], TSeekTransition.Create(sStart, [], caClear));

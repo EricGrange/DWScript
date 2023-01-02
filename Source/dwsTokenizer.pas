@@ -1614,7 +1614,7 @@ begin
       end;
 
       // A new token begins
-      if trns.Start and (FToken.FScriptPos.Col=0) then begin
+      if trns.Start then begin
          FToken.FScriptPos:=CurrentPos;
          FToken.FPosPtr:=PosPtr;
       end;
