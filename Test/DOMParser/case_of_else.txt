@@ -14,7 +14,7 @@ Main
                CaseOfAlternativeCases
                   Range
                      Token Integer Literal <<1>>
-                     Token .. <<1..>>
+                     Token ..
                      Token Integer Literal <<2>>
                   Token ,
                   Token Integer Literal <<3>>

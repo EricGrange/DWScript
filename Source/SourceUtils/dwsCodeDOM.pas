@@ -261,6 +261,7 @@ begin
    token.FRawString := tok.AsString;
 
    var tokenEndPosPtr := Sender.PosPtr;
+   var tokPosPtr := tok.FPosPtr;
 
    case action of
       caNone : token.FTokenType := ttNone;
@@ -284,22 +285,24 @@ begin
          if     (FTailToken <> nil) and (FTailToken.TokenType = ttIntVal)
             and StrEndsWith(FTailToken.FRawString, '.') then begin
             SetLength(FTailToken.FRawString, Length(FTailToken.FRawString)-1);
-            token.FEndPos.DecCol;
-            Dec(tokenEndPosPtr);
+            FTailToken.FEndPos.DecCol;
+            tokPosPtr := tokenEndPosPtr;
+            token.FBeginPos.IncCol;
+            Dec(tokPosPtr, 2);
          end;
       end;
       caNameEscaped : begin
          token.FTokenType := ttNAME;
          token.FBeginPos.DecCol;
-         Dec(tok.FPosPtr);
+         Dec(tokPosPtr);
       end;
    else
       token.FTokenType := Sender.RawTokenBufferNameToType;
    end;
 
    SetString(
-      token.FRawString, tok.FPosPtr,
-      (IntPtr(tokenEndPosPtr) - IntPtr(tok.FPosPtr)) div SizeOf(Char)
+      token.FRawString, tokPosPtr,
+      (IntPtr(tokenEndPosPtr) - IntPtr(tokPosPtr)) div SizeOf(Char)
    );
 
    AppendToken(token);

@@ -19,7 +19,7 @@ Main
                      UnaryOperator -
                         Token -
                         Token Integer Literal <<1>>
-                     Token .. <<1..>>
+                     Token ..
                      UnaryOperator +
                         Token +
                         Token Integer Literal <<2>>

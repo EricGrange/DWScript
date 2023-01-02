@@ -236,8 +236,8 @@ end;
 procedure TCodeDOMTests.CaseOf;
 begin
    CheckEquals(
-      'Main,1CaseOf,2Token case,2Reference,3Token name <<a>>,2Token of,2CaseOfAlternatives,'
-      +'3CaseOfAlternative,4CaseOfAlternativeCases,5Range,6UnaryOperator -,7Token -,7Token Integer Literal <<1>>,6Token .. <<1..>>,6UnaryOperator +,7Token +,7Token Integer Literal <<1>>,4Token :,4Reference,5Token name <<b>>,2Token end',
+      'Main,1CaseOf,2Token case,2Reference,3Token name <<a>>,2Token of,2CaseOfAlternatives,3CaseOfAlternative,'
+      +'4CaseOfAlternativeCases,5Range,6UnaryOperator -,7Token -,7Token Integer Literal <<1>>,6Token ..,6UnaryOperator +,7Token +,7Token Integer Literal <<1>>,4Token :,4Reference,5Token name <<b>>,2Token end',
       ToOutline('case a of -1..+1 : b end', True)
    );
 end;
