@@ -26,13 +26,9 @@ uses
 
 type
 
-   TdwsCodeDOMSwitch = class (TdwsCodeDOMNode)
-      public
-         procedure WriteToOutput(output : TdwsCodeDOMOutput); override;
-   end;
+   TdwsCodeDOMSwitch = class (TdwsCodeDOMNode);
 
-   TdwsCodeDOMComment = class (TdwsCodeDOMNode)
-   end;
+   TdwsCodeDOMComment = class (TdwsCodeDOMNode);
 
    TdwsCodeDOMSection = class (TdwsCodeDOMNode);
 
@@ -72,8 +68,13 @@ type
    TdwsCodeDOMStatementList = class (TdwsCodeDOMStatement)
    end;
 
-   TdwsCodeDOMAssignment = class (TdwsCodeDOMStatement)
-   end;
+   TdwsCodeDOMInstruction = class (TdwsCodeDOMStatement);
+
+   TdwsCodeDOMAssignment = class (TdwsCodeDOMStatement);
+
+   TdwsCodeDOMTryExceptFinally = class (TdwsCodeDOMStatement);
+
+   TdwsCodeDOMExceptOnClause = class (TdwsCodeDOMStatement);
 
    TdwsCodeDOMNop = class (TdwsCodeDOMStatement)
       public
@@ -106,47 +107,44 @@ type
       public
          procedure WriteToOutput(output : TdwsCodeDOMOutput); override;
    end;
-   TdwsCodeDOMCaseOfAlternative = class (TdwsCodeDOMNode)
-   end;
-   TdwsCodeDOMCaseOfAlternatives = class (TdwsCodeDOMNode)
-   end;
-   TdwsCodeDOMCaseOfAlternativeCase = class (TdwsCodeDOMNode)
-   end;
-   TdwsCodeDOMCaseOfAlternativeCaseRange = class (TdwsCodeDOMNode)
-   end;
-   TdwsCodeDOMCaseOfAlternativeCases = class (TdwsCodeDOMNode)
+   TdwsCodeDOMCaseOfAlternative = class (TdwsCodeDOMNode);
+   TdwsCodeDOMCaseOfAlternatives = class (TdwsCodeDOMNode);
+   TdwsCodeDOMCaseOfAlternativeCase = class (TdwsCodeDOMNode);
+   TdwsCodeDOMCaseOfAlternativeCaseRange = class (TdwsCodeDOMNode);
+   TdwsCodeDOMCaseOfAlternativeCases = class (TdwsCodeDOMNode);
+
+   TdwsCodeDOMFor = class (TdwsCodeDOMStatement)
+      public
+         procedure WriteToOutput(output : TdwsCodeDOMOutput); override;
    end;
 
-   TdwsCodeDOMForLoop = class (TdwsCodeDOMStatement)
-   end;
-   TdwsCodeDOMForLoopStep = class (TdwsCodeDOMNode)
-   end;
+   TdwsCodeDOMForLoop = class (TdwsCodeDOMFor);
+   TdwsCodeDOMForLoopStep = class (TdwsCodeDOMNode);
 
-   TdwsCodeDOMForIn = class (TdwsCodeDOMStatement)
-   end;
+   TdwsCodeDOMForIn = class (TdwsCodeDOMFor);
 
-   TdwsCodeDOMNameList = class (TdwsCodeDOMNode)
-   end;
+   TdwsCodeDOMNameList = class (TdwsCodeDOMNode);
 
-   TdwsCodeDOMVarDeclaration = class (TdwsCodeDOMStatement)
-   end;
+   TdwsCodeDOMVarDeclaration = class (TdwsCodeDOMStatement);
 
-   TdwsCodeDOMExpression = class (TdwsCodeDOMNode)
-   end;
+   TdwsCodeDOMExpression = class (TdwsCodeDOMNode);
 
-   TdwsCodeDOMLiteral = class (TdwsCodeDOMExpression)
-   end;
+   TdwsCodeDOMTuple = class (TdwsCodeDOMNode);
+
+   TdwsCodeDOMLiteral = class (TdwsCodeDOMExpression);
 
    TdwsCodeDOMLiteralStr = class (TdwsCodeDOMExpression)
       public
          procedure WriteToOutput(output : TdwsCodeDOMOutput); override;
    end;
 
-   TdwsCodeDOMReference = class (TdwsCodeDOMExpression)
-   end;
+   TdwsCodeDOMParenthesis = class (TdwsCodeDOMExpression);
+   TdwsCodeDOMBrackets = class (TdwsCodeDOMExpression);
+   TdwsCodeDOMBracketsElements = class (TdwsCodeDOMNode);
 
-   TdwsCodeDOMRange = class (TdwsCodeDOMNode)
-   end;
+   TdwsCodeDOMReference = class (TdwsCodeDOMExpression);
+
+   TdwsCodeDOMRange = class (TdwsCodeDOMNode);
 
    TdwsCodeDOMCall = class (TdwsCodeDOMExpression)
       public
@@ -174,6 +172,10 @@ type
          procedure WriteToOutput(output : TdwsCodeDOMOutput); override;
    end;
 
+   TdwsCodeDOMTerm = class (TdwsCodeDOMExpression);
+
+   TdwsCodeDOMIndexed = class (TdwsCodeDOMExpression);
+
    TdwsCodeDOMIfThenElseExpr = class (TdwsCodeDOMExpression)
       private
          FHasElse : Boolean;
@@ -184,45 +186,40 @@ type
          property HasElse : Boolean read FHasElse write FHasElse;
    end;
 
-   TdwsCodeDOMParameterDecl = class (TdwsCodeDOMNode)
-   end;
+   TdwsCodeDOMParameterDecl = class (TdwsCodeDOMNode);
+   TdwsCodeDOMParameterDeclList = class (TdwsCodeDOMNode);
 
-   TdwsCodeDOMParameterDeclList = class (TdwsCodeDOMNode)
-   end;
+   TdwsCodeDOMFunctionDecl = class (TdwsCodeDOMNode);
+   TdwsCodeDOMFunctionReturnDecl = class (TdwsCodeDOMNode);
+   TdwsCodeDOMFunctionQualifier = class (TdwsCodeDOMNode);
+   TdwsCodeDOMFunctionImpl = class (TdwsCodeDOMNode);
 
-   TdwsCodeDOMFunctionDecl = class (TdwsCodeDOMNode)
-   end;
+   TdwsCodeDOMTypeDecl = class (TdwsCodeDOMNode);
 
-   TdwsCodeDOMFunctionImpl = class (TdwsCodeDOMNode)
-   end;
+   TdwsCodeDOMClassInh = class (TdwsCodeDOMNode);
+   TdwsCodeDOMClassFwd = class (TdwsCodeDOMTypeDecl);
+   TdwsCodeDOMClassDecl = class (TdwsCodeDOMTypeDecl);
+   TdwsCodeDOMClassBody = class (TdwsCodeDOMNode);
 
-   TdwsCodeDOMTypeDecl = class (TdwsCodeDOMNode)
-   end;
+   TdwsCodeDOMTypeVisibilitySection = class (TdwsCodeDOMNode);
 
-   TdwsCodeDOMClassInh = class (TdwsCodeDOMNode)
-   end;
+   TdwsCodeDOMClassOfDecl = class (TdwsCodeDOMTypeDecl);
 
-   TdwsCodeDOMClassFwd = class (TdwsCodeDOMTypeDecl)
-   end;
+   TdwsCodeDOMPropertyDecl = class (TdwsCodeDOMNode);
+   TdwsCodeDOMPropertyArrayDecl = class (TdwsCodeDOMNode);
+   TdwsCodeDOMPropertyReadDecl = class (TdwsCodeDOMNode);
+   TdwsCodeDOMPropertyWriteDecl = class (TdwsCodeDOMNode);
 
-   TdwsCodeDOMClassDecl = class (TdwsCodeDOMTypeDecl)
-   end;
+   TdwsCodeDOMInterfaceDecl = class (TdwsCodeDOMTypeDecl);
 
-   TdwsCodeDOMClassBody = class (TdwsCodeDOMNode)
-   end;
+   TdwsCodeDOMArrayDecl = class (TdwsCodeDOMTypeDecl);
+   TdwsCodeDOMArrayRange = class (TdwsCodeDOMNode);
+   TdwsCodeDOMArrayRangeNum = class (TdwsCodeDOMArrayRange);
+   TdwsCodeDOMArrayRangeType = class (TdwsCodeDOMArrayRange);
 
-   TdwsCodeDOMTypeVisibilitySection = class (TdwsCodeDOMNode)
-   end;
-
-   TdwsCodeDOMArrayDecl = class (TdwsCodeDOMTypeDecl)
-   end;
-
-   TdwsCodeDOMArrayRange = class (TdwsCodeDOMNode)
-   end;
-   TdwsCodeDOMArrayRangeNum = class (TdwsCodeDOMArrayRange)
-   end;
-   TdwsCodeDOMArrayRangeType = class (TdwsCodeDOMArrayRange)
-   end;
+   TdwsCodeDOMEnumDecl = class (TdwsCodeDOMTypeDecl);
+   TdwsCodeDOMEnumElements = class (TdwsCodeDOMNode);
+   TdwsCodeDOMEnumElementValue = class (TdwsCodeDOMNode);
 
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
@@ -231,18 +228,6 @@ implementation
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
-
-// ------------------
-// ------------------ TdwsCodeDOMSwitch ------------------
-// ------------------
-
-// WriteToOutput
-//
-procedure TdwsCodeDOMSwitch.WriteToOutput(output : TdwsCodeDOMOutput);
-begin
-   output.WriteString('{$');
-   inherited;
-end;
 
 // ------------------
 // ------------------ TdwsCodeDOMStatement ------------------
@@ -466,9 +451,35 @@ begin
    output
       .WriteChildrenUntilToken(Self, i, ttOF)
       .IncIndentNewLine
-         .WriteChildrenBeforeToken(Self, i, ttEND)
+      .WriteChildrenBeforeTokens(Self, i, [ ttELSE, ttEND ]);
+   if ChildIsTokenType(i, ttELSE) then begin
+      output
+         .DecIndentNewLine
+         .WriteChild(Self, i)
+         .IncIndentNewLine;
+   end;
+   output
+      .WriteChildrenBeforeToken(Self, i, ttEND)
       .DecIndentNewLine
       .WriteChildren(Self, i);
+end;
+
+// ------------------
+// ------------------ TdwsCodeDOMFor ------------------
+// ------------------
+
+// WriteToOutput
+//
+procedure TdwsCodeDOMFor.WriteToOutput(output : TdwsCodeDOMOutput);
+begin
+   var i := 0;
+   output.WriteChildrenUntilToken(Self, i, ttDO);
+   var indent := not ChildIsOfClass(i, TdwsCodeDOMBeginEnd);
+   if indent then
+      output.IncIndentNewLine;
+   output.WriteChildren(Self, i);
+   if indent then
+      output.DecIndent;
 end;
 
 // ------------------

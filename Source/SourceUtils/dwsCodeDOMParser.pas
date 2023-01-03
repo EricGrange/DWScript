@@ -28,7 +28,7 @@ uses
 type
    TdwsRuleItemFlag = (
       rifOptional,
-      rifRestart, rifGoToStep1,
+      rifRestart, rifGoToStep1, rifRepeat,
       rifEndIfNotPresent,
       rifMergeChildren
    );
@@ -402,7 +402,9 @@ begin
       if rifRestart in ruleItem.Flags then
          i := 0
       else if rifGoToStep1 in ruleItem.Flags then
-         i := 1;
+         i := 1
+      else if rifRepeat in ruleItem.Flags then
+         Dec(i);
       if Result = nil then
          Result := DOMNodeClass.Create;
       if rifMergeChildren in ruleItem.Flags then begin
@@ -461,22 +463,20 @@ end;
 // Parse
 //
 function TdwsParserRuleAlternative.Parse(context : TdwsCodeDOMContext) : TdwsCodeDOMNode;
-var
-   ruleItem : TdwsRuleItem;
-   i : Integer;
 begin
    Assert(ItemCount > 0, 'Rule ' + Name + ' undefined');
-   if FLastFailedAttemptAt.SamePosAs(context.TokenBeginPos) then begin
-      Exit(nil);
-   end;
-
    Result := nil;
 
-   for i := 0 to ItemCount-1 do begin
-      ruleItem := Items[i];
-      Result := ruleItem.Parse(context);
-      if Result <> nil then begin
-         Exit;
+   if FLastFailedAttemptAt.SamePosAs(context.TokenBeginPos) then
+      Exit;
+
+   for var i := 0 to ItemCount-1 do begin
+      var ruleItem := Items[i];
+      if context.TokenType in ruleItem.StartTokens then begin
+         Result := ruleItem.Parse(context);
+         if Result <> nil then begin
+            Exit;
+         end;
       end;
    end;
    FLastFailedAttemptAt := context.TokenBeginPos;
@@ -685,14 +685,24 @@ begin
       while context.Token <> nil do begin
          var node : TdwsCodeDOMNode := nil;
          for var i := 0 to High(FRootRules) do begin
-            node := FRootRules[i].Parse(context);
-            if node <> nil then Break;
+            var rule := FRootRules[i];
+            if context.TokenType in rule.StartTokens then begin
+               node := FRootRules[i].Parse(context);
+               if node <> nil then Break;
+            end;
          end;
-         if node = nil then begin
-            Assert(context.Token <> nil);
-            context.Messages.AddCompilerError(context.TokenBeginPos, 'No applicable rule');
-            Result.Root.AddChildSnippet(context);
-         end else Result.Root.AddChild(node);
+         if node = nil then Break;
+         Result.Root.AddChild(node);
+      end;
+      if context.Token <> nil then begin
+         context.Messages.AddCompilerError(context.TokenBeginPos, 'No applicable rule');
+         var previousSnippet := Result.Root.AddChildSnippet(context);
+         repeat
+            if (context.TokenType = ttStrVal) and (previousSnippet.TokenType = ttStrVal) then begin
+               previousSnippet.Snippet := previousSnippet.Snippet + context.Token.RawString;
+               context.Next;
+            end else previousSnippet := Result.Root.AddChildSnippet(context);
+         until context.Token = nil;
       end;
 
       Result.Prepare;

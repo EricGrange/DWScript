@@ -47,6 +47,7 @@ const
    cMultOperators = [ ttTIMES, ttDIVIDE, ttMOD, ttDIV, ttAND,
                       ttCARET, ttAS, ttLESS_LESS, ttGTR_GTR, ttQUESTION_QUESTION,
                       ttSHL, ttSHR, ttSAR ];
+   cAddOperators = [ ttPLUS, ttMINUS, ttOR, ttXOR, ttNOT ];
    cComparisonOperators = [ ttEQ, ttNOT_EQ, ttEQ_EQ, ttEXCL_EQ, ttEQ_EQ_EQ,
                             ttLESS, ttLESS_EQ, ttGTR, ttGTR_EQ,
                             ttIN, ttIS, ttIMPLEMENTS, ttIMPLIES,
@@ -76,7 +77,7 @@ begin
 
    var expression := Result.NewRuleAlternative('expression');
 
-   var expr_list := Result.NewRuleNode('expr_list', TdwsCodeDOMNode)
+   var tuple := Result.NewRuleNode('tuple', TdwsCodeDOMTuple)
       .AddSubRule(expression)
       .AddMatchTokenType(ttCOMMA, [ rifOptional, rifRestart ]);
 
@@ -90,7 +91,7 @@ begin
       .AddMatchTokenType(ttCOMMA, [ rifOptional, rifRestart ])
    ;
 
-   var range := Result.NewRuleNode('name_list', TdwsCodeDOMRange)
+   var range := Result.NewRuleNode('range', TdwsCodeDOMRange)
       .AddSubRule(expression)
       .AddMatchTokenType(ttDOTDOT)
       .AddSubRule(expression)
@@ -142,16 +143,31 @@ begin
       .AddSubRule(literal_str)
    ;
 
-   var parenthesis := Result.NewRuleNode('parenthesis', TdwsCodeDOMExpression)
+   var parenthesis := Result.NewRuleNode('parenthesis', TdwsCodeDOMParenthesis)
       .AddMatchTokenType(ttBLEFT)
       .AddSubRule(expression)
       .AddMatchTokenType(ttBRIGHT)
    ;
 
+   var case_of_alternative_case := Result.NewRuleAlternative('case_of_alternative_case')
+      .AddSubRule(range)
+      .AddSubRule(expression)
+   ;
+   var case_of_alternative_cases := Result.NewRuleNode('case_of_alternative_cases', TdwsCodeDOMCaseOfAlternativeCases)
+      .AddSubRule(case_of_alternative_case)
+      .AddMatchTokenType(ttCOMMA, [ rifOptional, rifRestart ])
+   ;
+
+   var brackets := Result.NewRuleNode('brackets', TdwsCodeDOMBrackets)
+      .AddMatchTokenType(ttALEFT)
+      .AddSubRule(case_of_alternative_cases)
+      .AddMatchTokenType(ttARIGHT)
+   ;
+
    var call := Result.NewRuleNode('call', TdwsCodeDOMCall)
       .AddSubRule(reference)
       .AddMatchTokenType(ttBLEFT)
-      .AddSubRule(expr_list, [ rifOptional ])
+      .AddSubRule(tuple, [ rifOptional ])
       .AddMatchTokenType(ttBRIGHT)
    ;
 
@@ -169,45 +185,70 @@ begin
       .AddSubRule(expression)
    ;
 
-   var term := Result.NewRuleAlternative('term')
-      .AddSubRule(parenthesis)
-      .AddSubRule(literal)
-      .AddSubRule(if_then_else_expr)
-      .AddSubRule(call)
-      .AddSubRule(unary)
-      .AddSubRule(reference)
+   var term := Result.NewRuleNode('term', TdwsCodeDOMIndexed, [ prfReplaceBySingleChild ])
+      .AddSubRule(Result.NewRuleAlternative('term')
+         .AddSubRule(if_then_else_expr)
+         .AddSubRule(parenthesis)
+         .AddSubRule(brackets)
+         .AddSubRule(unary)
+         .AddSubRule(literal)
+         .AddSubRule(call)
+         .AddSubRule(reference)
+      ).AddMatchTokenType(ttALEFT, [ rifEndIfNotPresent ])
+      .AddSubRule(tuple)
+      .AddMatchTokenType(ttARIGHT)
    ;
 
-   var exprmult := Result.NewRuleAlternative('expr_mult')
-      .AddSubRule(Result.NewRuleNode('expr_mult_op', TdwsCodeDOMBinaryOperator)
-         .AddSubRule(term)
-         .AddMatchTokenTypes(cMultOperators)
-         .AddSubRule(term)
-      ).AddSubRule(term)
+//   var exprmult := Result.NewRuleAlternative('expr_mult')
+//      .AddSubRule(Result.NewRuleNode('expr_mult_op', TdwsCodeDOMBinaryOperator)
+//         .AddSubRule(term)
+//         .AddMatchTokenTypes(cMultOperators)
+//         .AddSubRule(term)
+//      ).AddSubRule(term)
+//   ;
+//   var expradd := Result.NewRuleAlternative('expr_add')
+//      .AddSubRule(Result.NewRuleNode('expr_add_op', TdwsCodeDOMBinaryOperator)
+//         .AddSubRule(exprmult)
+//         .AddMatchTokenTypes([ ttPLUS, ttMINUS, ttOR, ttXOR, ttNOT ])
+//         .AddSubRule(exprmult)
+//      ).AddSubRule(exprmult)
+//   ;
+
+//   var exprcmp := Result.NewRuleNode('expr_cmp', TdwsCodeDOMBinaryOperator)
+//      .AddSubRule(expradd)
+//      .AddMatchTokenTypes(cComparisonOperators)
+//      .AddSubRule(expradd)
+//   ;
+//
+
+   var exprmult := Result.NewRuleNode('expr_mult', TdwsCodeDOMBinaryOperator, [ prfReplaceBySingleChild ]);
+   exprmult
+      .AddSubRule(term)
+      .AddMatchTokenTypes(cMultOperators, [ rifEndIfNotPresent ])
+      .AddSubRule(exprmult)
    ;
 
-   var expradd := Result.NewRuleAlternative('expr_add')
-      .AddSubRule(Result.NewRuleNode('expr_add_op', TdwsCodeDOMBinaryOperator)
-         .AddSubRule(exprmult)
-         .AddMatchTokenTypes([ ttPLUS, ttMINUS, ttOR, ttXOR, ttNOT ])
-         .AddSubRule(exprmult)
-      ).AddSubRule(term)
-   ;
-
-   var exprcmp := Result.NewRuleNode('expr_cmp', TdwsCodeDOMBinaryOperator)
+   var expradd := Result.NewRuleNode('expr_add', TdwsCodeDOMBinaryOperator, [ prfReplaceBySingleChild ]);
+   expradd
+      .AddSubRule(exprmult)
+      .AddMatchTokenTypes(cAddOperators, [ rifEndIfNotPresent ])
       .AddSubRule(expradd)
-      .AddMatchTokenTypes(cComparisonOperators)
+   ;
+
+   var exprcmp := Result.NewRuleNode('expr_cmp', TdwsCodeDOMBinaryOperator, [ prfReplaceBySingleChild ])
+      .AddSubRule(expradd)
+      .AddMatchTokenTypes(cComparisonOperators, [ rifEndIfNotPresent ])
       .AddSubRule(expradd)
    ;
 
    expression
       .AddSubRule(exprcmp)
-      .AddSubRule(expradd)
-      .AddSubRule(exprmult)
+//      .AddSubRule(expradd)
+//      .AddSubRule(exprmult)
    ;
 
    var assignment := Result.NewRuleNode('assignment', TdwsCodeDOMAssignment)
-      .AddSubRule(reference)
+      .AddSubRule(term)
       .AddMatchTokenTypes(cAssignments)
       .AddSubRule(expression)
    ;
@@ -244,14 +285,6 @@ begin
       .AddMatchTokenType(ttEND)
    ;
 
-   var case_of_alternative_case := Result.NewRuleAlternative('case_of_alternative_case')
-      .AddSubRule(range)
-      .AddSubRule(expression)
-   ;
-   var case_of_alternative_cases := Result.NewRuleNode('case_of_alternative_cases', TdwsCodeDOMCaseOfAlternativeCases)
-      .AddSubRule(case_of_alternative_case)
-      .AddMatchTokenType(ttCOMMA, [ rifOptional, rifRestart ])
-   ;
    var case_of_alternative := Result.NewRuleNode('case_of_alternative', TdwsCodeDOMCaseOfAlternative)
       .AddSubRule(case_of_alternative_cases)
       .AddMatchTokenType(ttCOLON)
@@ -294,6 +327,7 @@ begin
       .AddMatchTokenType(ttVAR, [ rifOptional ])
       .AddMatchName
       .AddMatchTokenType(ttIN)
+      .AddSubRule(expression)
       .AddMatchTokenType(ttDO)
       .AddSubRule(statement, [ rifOptional ]);
 
@@ -310,13 +344,25 @@ begin
       .AddMatchTokenType(ttBRIGHT)
    ;
 
+   var qualifier := Result.NewRuleNode('qualifier', TdwsCodeDOMFunctionQualifier)
+      .AddMatchTokenType(ttSEMI)
+      .AddMatchTokenTypes([
+         ttVIRTUAL, ttABSTRACT, ttOVERRIDE,
+         ttOVERLOAD, ttREINTRODUCE, ttFORWARD,
+         ttSAFECALL, ttSTDCALL, ttCDECL, ttREGISTER, ttPASCAL
+         ])
+   ;
+
    var function_decl := Result.NewRuleNode('function_decl', TdwsCodeDOMFunctionDecl)
       .AddMatchTokenType(ttCLASS, [ rifOptional ])
       .AddMatchTokenTypes([ ttPROCEDURE, ttFUNCTION, ttMETHOD ])
       .AddSubRule(reference)
       .AddSubRule(parameter_decl_list, [ rifOptional ])
-      .AddMatchTokenType(ttCOLON, [ rifEndIfNotPresent ])
-      .AddSubRule(reference)
+      .AddSubRule(Result.NewRuleNode('function_return_decl', TdwsCodeDOMFunctionReturnDecl)
+         .AddMatchTokenType(ttCOLON)
+         .AddSubRule(reference)
+         , [ rifOptional ])
+      .AddSubRule(qualifier, [ rifOptional, rifRepeat ])
    ;
 
    var function_impl := Result.NewRuleNode('function_impl', TdwsCodeDOMFunctionImpl)
@@ -325,13 +371,38 @@ begin
       .AddSubRule(block)
    ;
 
-   var type_inner_decl := Result.NewRuleNode('type_inner_decl', TdwsCodeDOMClassBody)
-      .AddSubRule(Result.NewRuleAlternative('type_inner_decl_alt')
-         .AddSubRule(function_decl)
-         .AddSubRule(var_decl)
-         , [ rifOptional, rifRestart ])
+   var property_decl := Result.NewRuleNode('property_decl', TdwsCodeDOMPropertyDecl)
+      .AddMatchTokenType(ttCLASS, [ rifOptional ])
+      .AddMatchTokenType(ttPROPERTY)
+      .AddMatchName
+      .AddSubRule(Result.NewRuleNode('property_index_decl', TdwsCodeDOMPropertyArrayDecl)
+         .AddMatchTokenType(ttALEFT)
+         .AddSubRule(parameter_decl)
+         .AddMatchTokenType(ttSEMI, [ rifOptional, rifGoToStep1 ])
+         .AddMatchTokenType(ttARIGHT)
+         , [ rifOptional ])
+      .AddMatchTokenType(ttCOLON, [ rifEndIfNotPresent ])
+      .AddSubRule(reference)
+      .AddSubRule(Result.NewRuleNode('property_read_decl', TdwsCodeDOMPropertyReadDecl)
+         .AddMatchTokenType(ttREAD)
+         .AddSubRule(expression)
+         , [ rifOptional ])
+      .AddSubRule(Result.NewRuleNode('property_write_decl', TdwsCodeDOMPropertyWriteDecl)
+         .AddMatchTokenType(ttWRITE)
+         .AddSubRule(expression)
+         , [ rifOptional ])
    ;
 
+   var type_inner_decl := Result.NewRuleNode('type_inner_decl', TdwsCodeDOMNode)
+      .AddSubRule(Result.NewRuleAlternative('type_inner_decl_alt')
+         .AddSubRule(property_decl)
+         .AddSubRule(function_impl)
+         .AddSubRule(function_decl)
+         .AddSubRule(var_decl)
+         .AddSubRule(block)
+         , [ rifOptional ])
+      .AddMatchTokenType(ttSEMI, [ rifOptional, rifRestart ])
+   ;
 
    var type_visibility_section := Result.NewRuleNode('class_type_visib_section', TdwsCodeDOMTypeVisibilitySection)
       .AddMatchTokenTypes([ ttPRIVATE, ttPROTECTED, ttPUBLIC, ttPUBLISHED ])
@@ -371,6 +442,17 @@ begin
       )
    ;
 
+   var class_of_decl := Result.NewRuleNode('class_of_decl', TdwsCodeDOMClassOfDecl)
+      .AddMatchTokenType(ttCLASS)
+      .AddMatchTokenType(ttOF)
+      .AddSubRule(reference)
+   ;
+
+   var interface_type_decl := Result.NewRuleNode('interface_type_decl', TdwsCodeDOMInterfaceDecl)
+      .AddMatchTokenType(ttINTERFACE)
+      .AddMatchTokenType(ttEND)
+   ;
+
    var array_type_range_num := Result.NewRuleNode('array_type_range_num', TdwsCodeDOMArrayRangeNum)
       .AddMatchTokenType(ttALEFT)
       .AddSubRule(range)
@@ -393,10 +475,28 @@ begin
       .AddSubRule(type_decl_type)
    ;
 
+   var enum_type_elements := Result.NewRuleNode('enum_type_elements', TdwsCodeDOMEnumElements)
+      .AddMatchName
+      .AddSubRule(Result.NewRuleNode('enum_type_element_value', TdwsCodeDOMEnumElementValue)
+         .AddMatchTokenType(ttEQ)
+         .AddSubRule(expression),
+         [ rifOptional ])
+      .AddMatchTokenType(ttCOMMA, [ rifOptional, rifRestart ])
+   ;
+   var enum_type_decl := Result.NewRuleNode('enum_type_decl', TdwsCodeDOMEnumDecl)
+      .AddMatchTokenTypes([ ttENUM, ttFLAGS ], [ rifOptional ])
+      .AddMatchTokenType(ttBLEFT)
+      .AddSubRule(enum_type_elements)
+      .AddMatchTokenType(ttBRIGHT)
+   ;
+
    type_decl_type
+      .AddSubRule(class_of_decl)
       .AddSubRule(class_type_decl)
       .AddSubRule(class_type_fwd)
+      .AddSubRule(interface_type_decl)
       .AddSubRule(array_type_decl)
+      .AddSubRule(enum_type_decl)
       .AddSubRule(reference)
    ;
    var type_decl := Result.NewRuleNode('type_decl', TdwsCodeDOMTypeDecl)
@@ -408,6 +508,37 @@ begin
    var type_decl_inline := Result.NewRuleNode('type_inline', TdwsCodeDOMTypeSection)
       .AddMatchTokenType(ttTYPE)
       .AddSubRule(type_decl)
+   ;
+
+   var instructions := Result.NewRuleAlternative('instructions')
+      .AddSubRule(Result.NewRuleNode('flow_control', TdwsCodeDOMInstruction)
+         .AddMatchTokenTypes([ ttCONTINUE, ttBREAK ])
+      ).AddSubRule(Result.NewRuleNode('exit', TdwsCodeDOMInstruction)
+         .AddMatchTokenType(ttEXIT)
+         .AddMatchTokenType(ttBLEFT, [ rifEndIfNotPresent ])
+         .AddSubRule(expression, [ rifOptional ])
+         .AddMatchTokenType(ttBRIGHT)
+      ).AddSubRule(Result.NewRuleNode('raise', TdwsCodeDOMInstruction)
+         .AddMatchTokenType(ttRaise)
+         .AddSubRule(expression, [ rifOptional ])
+      )
+   ;
+
+   var on_clause := Result.NewRuleNode('on_clause', TdwsCodeDOMExceptOnClause)
+      .AddMatchTokenType(ttON)
+      .AddMatchName
+      .AddMatchTokenType(ttCOLON)
+      .AddSubRule(reference)
+      .AddMatchTokenType(ttDO)
+      .AddSubRule(statement, [ rifOptional ])
+   ;
+
+   var try_except_finally := Result.NewRuleNode('try', TdwsCodeDOMTryExceptFinally)
+      .AddMatchTokenType(ttTRY)
+      .AddSubRule(statementList, [ rifOptional ])
+      .AddMatchTokenTypes([ ttEXCEPT, ttFINALLY ])
+      .AddSubRule(statementList, [ rifOptional ])
+      .AddMatchTokenType(ttEND)
    ;
 
    statement
@@ -423,7 +554,11 @@ begin
       .AddSubRule(var_inline)
       .AddSubRule(const_inline)
       .AddSubRule(function_impl)
+      .AddSubRule(function_decl)
       .AddSubRule(type_decl_inline)
+      .AddSubRule(instructions)
+      .AddSubRule(try_except_finally)
+      .AddSubRule(on_clause)
       .AddSubRule(assignment)
       .AddSubRule(expression)
    ;

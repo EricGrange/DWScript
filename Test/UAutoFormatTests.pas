@@ -44,6 +44,7 @@ type
          procedure SimpleClass;
          procedure Conditionals;
          procedure CaseOf;
+         procedure ForLoop;
 
    end;
 
@@ -380,6 +381,20 @@ begin
    CheckEquals(
       'case a of'#10#9'-1..+1 : b'#10'end'#10,
       FAutoFormat.Process('case a of -1..+1:b end'#10)
+   );
+   CheckEquals(
+      'case a of'#10#9'1, 2 : b;'#10#9'3 : c;'#10'else'#10#9'd()'#10'end;'#10,
+      FAutoFormat.Process('case a of 1,2:b;3:c;else d()end;')
+   );
+end;
+
+// ForLoop
+//
+procedure TAutoFormatTests.ForLoop;
+begin
+   CheckEquals(
+      'for i := 1 to 9 do'#10#9'PrintLn(i);'#10,
+      FAutoFormat.Process('for i:=1 to 9 do PrintLn(i);'#10)
    );
 end;
 

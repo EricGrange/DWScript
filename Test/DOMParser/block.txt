@@ -13,7 +13,7 @@ Main
                Reference
                   Token name <<a>>
                Token (
-               Node
+               Tuple
                   Reference
                      Token name <<i>>
                   Token ,

@@ -122,7 +122,9 @@ type
          function IndexOfChild(node : TdwsCodeDOMNode) : Integer;
          function Extract(node : TdwsCodeDOMNode) : Integer; overload;
          function Extract(index : Integer) : TdwsCodeDOMNode; overload;
+
          function ChildIsOfClass(index : Integer; nodeClass : TdwsCodeDOMNodeClass) : Boolean;
+         function ChildIsTokenType(index : Integer; tokenType : TTokenType) : Boolean;
 
          procedure AddChildrenFrom(node : TdwsCodeDOMNode);
 
@@ -154,6 +156,7 @@ type
          function WriteChild(node : TdwsCodeDOMNode; var i : Integer) : TdwsCodeDOMOutput;
          function WriteChildren(node : TdwsCodeDOMNode; var i : Integer) : TdwsCodeDOMOutput;
          function WriteChildrenBeforeToken(node : TdwsCodeDOMNode; var i : Integer; token : TTokenType) : TdwsCodeDOMOutput;
+         function WriteChildrenBeforeTokens(node : TdwsCodeDOMNode; var i : Integer; const tokens : TTokenTypes) : TdwsCodeDOMOutput;
          function WriteChildrenUntilToken(node : TdwsCodeDOMNode; var i : Integer; token : TTokenType) : TdwsCodeDOMOutput;
 
          property Indent : String read FIndent write FIndent;
@@ -323,6 +326,7 @@ begin
       end;
       caSwitch : begin
          token.FTokenType := ttSWITCH;
+         Dec(tokPosPtr, 2);
          case tokenEndPosPtr^ of
             #13, #10 : Inc(tokenEndPosPtr);
          end;
@@ -587,6 +591,17 @@ begin
    Result := (index < ChildCount) and Child[index].InheritsFrom(nodeClass);
 end;
 
+// ChildIsTokenType
+//
+function TdwsCodeDOMNode.ChildIsTokenType(index : Integer; tokenType : TTokenType) : Boolean;
+begin
+   if index < ChildCount then begin
+      var c := Child[index];
+      Result :=     c.InheritsFrom(TdwsCodeDOMSnippet)
+                and (TdwsCodeDOMSnippet(c).TokenType = tokenType);
+   end else Result := False;
+end;
+
 // AddChild
 //
 function TdwsCodeDOMNode.AddChild(node : TdwsCodeDOMNode) : Integer;
@@ -726,6 +741,19 @@ begin
    while i < node.ChildCount do begin
       var c := node.Child[i];
       if c.InheritsFrom(TdwsCodeDOMSnippet) and (TdwsCodeDOMSnippet(c).TokenType = token) then Break;
+      c.WriteToOutput(Self);
+      Inc(i);
+   end;
+   Result := Self;
+end;
+
+// WriteChildrenBeforeTokens
+//
+function TdwsCodeDOMOutput.WriteChildrenBeforeTokens(node : TdwsCodeDOMNode; var i : Integer; const tokens : TTokenTypes) : TdwsCodeDOMOutput;
+begin
+   while i < node.ChildCount do begin
+      var c := node.Child[i];
+      if c.InheritsFrom(TdwsCodeDOMSnippet) and (TdwsCodeDOMSnippet(c).TokenType in tokens) then Break;
       c.WriteToOutput(Self);
       Inc(i);
    end;

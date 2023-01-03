@@ -12,7 +12,7 @@ Main
             Reference
                Token name <<Dec>>
             Token (
-            Node
+            Tuple
                Reference
                   Token name <<a>>
             Token )

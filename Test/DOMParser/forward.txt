@@ -1,0 +1,28 @@
+Main
+   StatementList
+      FunctionDecl
+         Token procedure
+         Reference
+            Token name <<Test>>
+         FunctionQualifier
+            Token ;
+            Token overload
+         FunctionQualifier
+            Token ;
+            Token forward
+      Token ; [LF]
+      FunctionDecl
+         Token procedure
+         Reference
+            Token name <<Tests>>
+         FunctionQualifier
+            Token ;
+            Token overload
+         FunctionQualifier
+            Token ;
+            Token pascal
+      Token ; [LF]
+      BeginEnd
+         Token begin [LF]
+         Token end
+      Token ;

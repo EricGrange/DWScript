@@ -1,0 +1,33 @@
+﻿Main
+   StatementList
+      FunctionImpl
+         FunctionDecl
+            Token procedure
+            Reference
+               Token name <<Hello>>
+            ParameterDeclList
+               Token (
+               ParameterDecl
+                  NameList
+                     Token name <<a>>
+                  Token :
+                  Reference
+                     Token name <<Integer>>
+               Token )
+         Token ; [LF]
+         BeginEnd
+            Token begin [LF]
+            StatementList
+               Call
+                  Reference
+                     Token name <<PrintLn>>
+                  Token (
+                  Tuple
+                     Reference
+                        Token name <<a>>
+                  Token )
+               Token ; [LF]
+            Token end
+      Token ; [LF]
+      Comment
+         Token comment <<// tail comment>> [LF]
