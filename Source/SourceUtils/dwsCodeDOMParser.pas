@@ -93,6 +93,7 @@ type
          function AddMatchName(const aName : String = '') : TdwsParserRule;
          function AddMatchTokenType(aTokenType : TTokenType; const flags : TdwsRuleItemFlags = []) : TdwsParserRule;
          function AddMatchTokenTypes(aTokenTypes : TTokenTypes; const flags : TdwsRuleItemFlags = []) : TdwsParserRule;
+         function AddMatchTokenTypePair(aTokenType1, aTokenType2 : TTokenType; const flags : TdwsRuleItemFlags = []) : TdwsParserRule;
          function AddMatchAnyExceptTokenTypes(aTokenTypes : TTokenTypes; const flags : TdwsRuleItemFlags = []) : TdwsParserRule;
          function AddMatchStatementEnd : TdwsParserRule;
          function AddSubRule(aRule : TdwsParserRule; const flags : TdwsRuleItemFlags = []) : TdwsParserRule;
@@ -188,6 +189,21 @@ type
       public
          function Parse(context : TdwsCodeDOMContext) : TdwsCodeDOMNode; override;
          function StartTokens : TTokenTypes; override;
+   end;
+
+   TdwsRuleItem_MatchTokenTypePair = class (TdwsRuleItem)
+      private
+         FTokenType1 : TTokenType;
+         FTokenType2 : TTokenType;
+
+      public
+         constructor Create(aTokenType1, aTokenType2 : TTokenType);
+
+         function Parse(context : TdwsCodeDOMContext) : TdwsCodeDOMNode; override;
+         function StartTokens : TTokenTypes; override;
+
+         property TokenType1 : TTokenType read FTokenType1;
+         property TokenType2 : TTokenType read FTokenType2;
    end;
 
    TdwsRuleItem_MatchStatementEnd = class (TdwsRuleItem)
@@ -325,6 +341,13 @@ end;
 function TdwsParserRule.AddMatchTokenTypes(aTokenTypes : TTokenTypes; const flags : TdwsRuleItemFlags = []) : TdwsParserRule;
 begin
    Result := Add(TdwsRuleItem_MatchTokenType.Create(aTokenTypes).SetFlags(flags));
+end;
+
+// AddMatchTokenTypePair
+//
+function TdwsParserRule.AddMatchTokenTypePair(aTokenType1, aTokenType2 : TTokenType; const flags : TdwsRuleItemFlags = []) : TdwsParserRule;
+begin
+   Result := Add(TdwsRuleItem_MatchTokenTypePair.Create(aTokenType1, aTokenType2).SetFlags(flags));
 end;
 
 // AddMatchAnyExceptTokenTypes
@@ -531,6 +554,42 @@ begin
 end;
 
 // ------------------
+// ------------------ TdwsRuleItem_MatchTokenTypePair ------------------
+// ------------------
+
+// Create
+//
+constructor TdwsRuleItem_MatchTokenTypePair.Create(aTokenType1, aTokenType2 : TTokenType);
+begin
+   inherited Create;
+   FTokenType1 := aTokenType1;
+   FTokenType2 := aTokenType2;
+end;
+
+// Parse
+//
+function TdwsRuleItem_MatchTokenTypePair.Parse(context : TdwsCodeDOMContext) : TdwsCodeDOMNode;
+begin
+   if context.TokenType = TokenType1 then begin
+      var initialToken := context.Token;
+      Result := TdwsCodeDOMSnippet.ParseFromContext(context);
+      if context.TokenType = TokenType2 then
+         Result.AddChild(TdwsCodeDOMSnippet.ParseFromContext(context))
+      else begin
+         context.Release(Result);
+         context.Token := initialToken;
+      end;
+   end else Result := nil;
+end;
+
+// StartTokens
+//
+function TdwsRuleItem_MatchTokenTypePair.StartTokens : TTokenTypes;
+begin
+   Result := [ TokenType1 ];
+end;
+
+// ------------------
 // ------------------ TdwsRuleItem_MatchStatementEnd ------------------
 // ------------------
 
@@ -721,17 +780,19 @@ begin
    var prevLine := context.PreviousTokenEndPosLine;
    while context.Token <> nil do begin
       var line := context.TokenBeginPosLine;
+      var node : TdwsCodeDOMNode := nil;
       for var i := 0 to High(FCommentRules) do begin
-         var node := FCommentRules[i].Parse(context);
+         node := FCommentRules[i].Parse(context);
          if node <> nil then begin
             if (line = prevLine) or (base.Parent = nil) then
                base.AddChild(node)
             else base.Parent.AddChild(node);
             Result := True;
-            continue;
+            Break;
          end;
       end;
-      break;
+      if node = nil then
+         Break;
    end;
 end;
 

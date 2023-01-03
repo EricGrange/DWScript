@@ -126,6 +126,8 @@ type
    TdwsCodeDOMNameList = class (TdwsCodeDOMNode);
 
    TdwsCodeDOMVarDeclaration = class (TdwsCodeDOMStatement);
+   TdwsCodeDOMConstDeclaration = class (TdwsCodeDOMStatement);
+   TdwsCodeDOMConstDeclarationType = class (TdwsCodeDOMStatement);
 
    TdwsCodeDOMExpression = class (TdwsCodeDOMNode);
 
@@ -150,6 +152,7 @@ type
       public
          procedure WriteToOutput(output : TdwsCodeDOMOutput); override;
    end;
+   TdwsCodeDOMCallInherited = class (TdwsCodeDOMCall);
 
    TdwsCodeDOMOperator = class (TdwsCodeDOMExpression)
       private
@@ -172,9 +175,13 @@ type
          procedure WriteToOutput(output : TdwsCodeDOMOutput); override;
    end;
 
+   TdwsCodeDOMNew = class (TdwsCodeDOMUnaryOperator);
+
    TdwsCodeDOMTerm = class (TdwsCodeDOMExpression);
 
    TdwsCodeDOMIndexed = class (TdwsCodeDOMExpression);
+
+   TdwsCodeDOMDotted = class (TdwsCodeDOMBinaryOperator);
 
    TdwsCodeDOMIfThenElseExpr = class (TdwsCodeDOMExpression)
       private
@@ -199,7 +206,11 @@ type
    TdwsCodeDOMClassInh = class (TdwsCodeDOMNode);
    TdwsCodeDOMClassFwd = class (TdwsCodeDOMTypeDecl);
    TdwsCodeDOMClassDecl = class (TdwsCodeDOMTypeDecl);
+
    TdwsCodeDOMClassBody = class (TdwsCodeDOMNode);
+   TdwsCodeDOMClassConst = class (TdwsCodeDOMNode);
+   TdwsCodeDOMClassVar = class (TdwsCodeDOMNode);
+   TdwsCodeDOMClassOperator = class (TdwsCodeDOMNode);
 
    TdwsCodeDOMTypeVisibilitySection = class (TdwsCodeDOMNode);
 

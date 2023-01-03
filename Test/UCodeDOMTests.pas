@@ -50,6 +50,7 @@ type
          procedure BinOps;
          procedure Booleans;
          procedure TryFinally;
+         procedure DotOperator;
    end;
 
 // ------------------------------------------------------------------
@@ -93,6 +94,9 @@ begin
    CollectFiles(basePath+'GenericsPass'+PathDelim, cFilter, FTests);
    CollectFiles(basePath+'InnerClassesPass'+PathDelim, cFilter, FTests);
    CollectFiles(basePath+'Algorithms'+PathDelim, cFilter, FTests);
+
+   for var i := FTests.Count-1 downto 0 do
+      if StrEndsWith(FTests[i], 'conditionals_ifndef.pas') then FTests.Delete(i);
 end;
 
 // TearDown
@@ -274,6 +278,10 @@ begin
       'Main,1Switch,2Token switch <<{$ifdef>>,2Token name <<a>>,2Token },1Switch,2Token switch <<{$define>>,2Token name <<a>>,2Token },1Switch,2Token switch <<{$endif>>,2Token }',
       ToOutline('{$ifdef a}{$define a}{$endif}')
    );
+   CheckEquals(
+      'Main,1StatementList,2Assignment,3Reference,4Token name <<a>>,3Token :=,4Switch,5Token switch <<{$ifdef>>,5Token name <<TEST>>,5Token },4Switch,5Token switch <<{$endif>>,5Token },3Token Integer Literal <<1>>,2Token ;',
+      ToOutline('a := {$ifdef TEST}{$endif}1;')
+   );
 end;
 
 // ArrayTypes
@@ -379,6 +387,10 @@ begin
       'Main,1Call,2Reference,3Token name <<a>>,2Token (,2Tuple,3BinaryOperator,4Reference,5Token name <<b>>,4Token +,4BinaryOperator,5Token Integer Literal <<1>>,5Token -,5Reference,6Token name <<c>>,2Token )',
       ToOutline('a(b + 1 - c)')
    );
+   CheckEquals(
+      'Main,1Assignment,2Reference,3Token name <<a>>,2Token :=,2BinaryOperator,3Reference,4Token name <<b>>,3Token not,4Token in,3Reference,4Token name <<c>>',
+      ToOutline('a := b not in c')
+   );
 end;
 
 // Booleans
@@ -398,6 +410,28 @@ begin
    CheckEquals(
       'Main,1TryExceptFinally,2Token try,2Token finally,2Token end',
       ToOutline('try finally end')
+   );
+end;
+
+// DotOperator
+//
+procedure TCodeDOMTests.DotOperator;
+begin
+   CheckEquals(
+      'Main,1Dotted,2Call,3Reference,4Token name <<a>>,3Token (,3Token ),2Token .,2Reference,3Token name <<b>>',
+      ToOutline('a().b')
+   );
+   CheckEquals(
+      'Main,1Dotted,2Indexed,3Reference,4Token name <<a>>,3Token [,3Tuple,4Token Integer Literal <<1>>,3Token ],2Token .,2Reference,3Token name <<b>>',
+      ToOutline('a[1].b')
+   );
+   CheckEquals(
+      'Main,1Indexed,2Reference,3Token name <<a>>,2Token [,2Tuple,3Token Integer Literal <<1>>,2Token ],2Token [,2Tuple,3Token Integer Literal <<2>>,2Token ]',
+      ToOutline('a[1][2]')
+   );
+   CheckEquals(
+      'Main,1Dotted,2Indexed,3Reference,4Token name <<a>>,3Token [,3Tuple,4Token Integer Literal <<1>>,3Token ],2Token .,2Indexed,3Reference,4Token name <<b>>,3Token [,3Tuple,4Token Integer Literal <<2>>,3Token ]',
+      ToOutline('a[1].b[2]')
    );
 end;
 
