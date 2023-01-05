@@ -46,6 +46,7 @@ type
          procedure EscapedNames;
          procedure Enums;
          procedure FunctionDecl;
+         procedure FunctionType;
          procedure ArrayIndex;
          procedure BinOps;
          procedure Booleans;
@@ -358,6 +359,16 @@ begin
    CheckEquals(
       'Main,1StatementList,2FunctionDecl,3Token procedure,3Reference,4Token name <<Test>>,3FunctionQualifier,4Token ;,4Token forward,2Token ;',
       ToOutline('procedure Test; forward;')
+   );
+end;
+
+// FunctionType
+//
+procedure TCodeDOMTests.FunctionType;
+begin
+   CheckEquals(
+      '',
+      ToOutline('var a : procedure;')
    );
 end;
 

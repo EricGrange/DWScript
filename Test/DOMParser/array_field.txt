@@ -1,0 +1,29 @@
+Main
+   Call
+      Reference
+         Token name <<PrintLn>>
+      Token (
+      Tuple
+         Dotted
+            Indexed
+               Reference
+                  Token name <<a>>
+               Token [
+               Tuple
+                  Reference
+                     Token name <<i>>
+               Token ]
+            Token .
+            Dotted
+               Indexed
+                  Reference
+                     Token name <<a>>
+                  Token [
+                  Tuple
+                     Reference
+                        Token name <<j>>
+                  Token ]
+               Token .
+               Reference
+                  Token name <<x>>
+      Token )

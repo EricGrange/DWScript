@@ -255,6 +255,7 @@ implementation
 
 const
    cAllValidTokens : TTokenTypes = [ Succ(ttNone)..High(TTokenType) ];
+   cNameTokens = [ ttNAME, ttDEFAULT ];
 
 // ------------------
 // ------------------ TdwsRuleItem ------------------
@@ -756,12 +757,12 @@ begin
       if context.Token <> nil then begin
          context.Messages.AddCompilerError(context.TokenBeginPos, 'No applicable rule');
          var previousSnippet := Result.Root.AddChildSnippet(context);
-         repeat
+         while context.Token <> nil do begin
             if (context.TokenType = ttStrVal) and (previousSnippet.TokenType = ttStrVal) then begin
                previousSnippet.Snippet := previousSnippet.Snippet + context.Token.RawString;
                context.Next;
             end else previousSnippet := Result.Root.AddChildSnippet(context);
-         until context.Token = nil;
+         end;
       end;
 
       Result.Prepare;
@@ -871,7 +872,7 @@ end;
 //
 function TdwsRuleItem_MatchAnyName.Parse(context : TdwsCodeDOMContext) : TdwsCodeDOMNode;
 begin
-   if context.TokenType = ttNAME then begin
+   if context.TokenType in cNameTokens then begin
       Result := TdwsCodeDOMSnippet.ParseFromContext(context);
    end else Result := nil;
 end;
@@ -880,7 +881,7 @@ end;
 //
 function TdwsRuleItem_MatchAnyName.StartTokens : TTokenTypes;
 begin
-   Result := [ ttNAME ];
+   Result := cNameTokens;
 end;
 
 end.

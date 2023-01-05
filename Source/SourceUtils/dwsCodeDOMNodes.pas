@@ -132,6 +132,7 @@ type
    TdwsCodeDOMExpression = class (TdwsCodeDOMNode);
 
    TdwsCodeDOMTuple = class (TdwsCodeDOMNode);
+   TdwsCodeDOMNamedTuple = class (TdwsCodeDOMNode);
 
    TdwsCodeDOMLiteral = class (TdwsCodeDOMExpression);
 
@@ -193,6 +194,14 @@ type
          property HasElse : Boolean read FHasElse write FHasElse;
    end;
 
+   TdwsCodeDOMDeprecatedQualifier = class (TdwsCodeDOMNode);
+
+   TdwsCodeDOMContractDescription = class (TdwsCodeDOMNode);
+   TdwsCodeDOMContractClause = class (TdwsCodeDOMNode);
+   TdwsCodeDOMContractClauses = class (TdwsCodeDOMNode);
+   TdwsCodeDOMContractRequire = class (TdwsCodeDOMContractClauses);
+   TdwsCodeDOMContractEnsure = class (TdwsCodeDOMContractClauses);
+
    TdwsCodeDOMParameterDecl = class (TdwsCodeDOMNode);
    TdwsCodeDOMParameterDeclList = class (TdwsCodeDOMNode);
 
@@ -222,6 +231,8 @@ type
    TdwsCodeDOMPropertyWriteDecl = class (TdwsCodeDOMNode);
 
    TdwsCodeDOMInterfaceDecl = class (TdwsCodeDOMTypeDecl);
+
+   TdwsCodeDOMRecordDecl = class (TdwsCodeDOMTypeDecl);
 
    TdwsCodeDOMArrayDecl = class (TdwsCodeDOMTypeDecl);
    TdwsCodeDOMArrayRange = class (TdwsCodeDOMNode);
@@ -380,9 +391,16 @@ begin
    output
       .WriteChild(Self, i)
       .IncIndentNewLine
-      .WriteChildrenBeforeToken(Self, i, ttEND)
-      .DecIndentNewLine
-      .WriteChildren(Self, i);
+      .WriteChildrenBeforeTokens(Self, i, [ ttENSURE, ttEND ])
+      .DecIndentNewLine;
+   if ChildIsTokenType(i, ttENSURE) then begin
+      output
+         .WriteChild(Self, i)
+         .IncIndentNewLine
+         .WriteChildrenBeforeToken(Self, i, ttEND)
+         .DecIndentNewLine;
+   end;
+   output.WriteChildren(Self, i);
 end;
 
 // ------------------
