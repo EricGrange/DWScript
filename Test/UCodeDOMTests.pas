@@ -367,7 +367,7 @@ end;
 procedure TCodeDOMTests.FunctionType;
 begin
    CheckEquals(
-      '',
+      'Main,1StatementList,2VarSection,3Token var,3VarDeclaration,4NameList,5Token name <<a>>,4Token :,4FunctionDecl,5Token procedure,2Token ;',
       ToOutline('var a : procedure;')
    );
 end;

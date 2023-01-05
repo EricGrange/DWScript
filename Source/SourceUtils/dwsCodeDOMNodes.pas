@@ -73,6 +73,7 @@ type
    TdwsCodeDOMAssignment = class (TdwsCodeDOMStatement);
 
    TdwsCodeDOMTryExceptFinally = class (TdwsCodeDOMStatement);
+   TdwsCodeDOMTryExceptElse = class (TdwsCodeDOMNode);
 
    TdwsCodeDOMExceptOnClause = class (TdwsCodeDOMStatement);
 
@@ -87,6 +88,8 @@ type
       public
          procedure WriteToOutput(output : TdwsCodeDOMOutput); override;
    end;
+
+   TdwsCodeDOMAsmBlock = class (TdwsCodeDOMBeginEnd);
 
    TdwsCodeDOMRepeat = class (TdwsCodeDOMStatement)
       public
@@ -195,6 +198,7 @@ type
    end;
 
    TdwsCodeDOMDeprecatedQualifier = class (TdwsCodeDOMNode);
+   TdwsCodeDOMExternalQualifier = class (TdwsCodeDOMNode);
 
    TdwsCodeDOMContractDescription = class (TdwsCodeDOMNode);
    TdwsCodeDOMContractClause = class (TdwsCodeDOMNode);
@@ -211,6 +215,8 @@ type
    TdwsCodeDOMFunctionImpl = class (TdwsCodeDOMNode);
 
    TdwsCodeDOMTypeDecl = class (TdwsCodeDOMNode);
+
+   TdwsCodeDOMFunctionTypeDecl = class (TdwsCodeDOMTypeDecl);
 
    TdwsCodeDOMClassInh = class (TdwsCodeDOMNode);
    TdwsCodeDOMClassFwd = class (TdwsCodeDOMTypeDecl);

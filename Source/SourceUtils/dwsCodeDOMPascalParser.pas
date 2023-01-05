@@ -108,6 +108,10 @@ begin
       .AddMatchTokenType(ttDEPRECATED)
       .AddMatchTokenType(ttStrVal, [ rifOptional ])
    ;
+   var external_qualifier := Result.NewRuleNode('external', TdwsCodeDOMDeprecatedQualifier)
+      .AddMatchTokenType(ttEXTERNAL)
+      .AddMatchTokenType(ttStrVal, [ rifOptional ])
+   ;
 
    var type_decl_type := Result.NewRuleAlternative('type_decl_type');
 
@@ -337,10 +341,16 @@ begin
       .AddMatchTokenType(ttEND)
    ;
 
+   var asm_block := Result.NewRuleNode('asm', TdwsCodeDOMAsmBlock)
+      .AddMatchTokenType(ttASM)
+      .AddMatchAnyExceptTokenTypes([ ttEND ], [ rifOptional, rifRepeat ])
+      .AddMatchTokenType(ttEND)
+   ;
+
    var case_of_alternative := Result.NewRuleNode('case_of_alternative', TdwsCodeDOMCaseOfAlternative)
       .AddSubRule(case_of_alternative_cases)
       .AddMatchTokenType(ttCOLON)
-      .AddSubRule(statement)
+      .AddSubRule(statement, [ rifOptional ])
    ;
    var case_of_alternatives := Result.NewRuleNode('case_of_alternatives', TdwsCodeDOMCaseOfAlternatives)
       .AddSubRule(case_of_alternative,  [ rifEndIfNotPresent ])
@@ -359,6 +369,11 @@ begin
       .AddMatchTokenType(ttEND)
    ;
 
+   var for_step := Result.NewRuleNode('for_loop_step', TdwsCodeDOMForLoopStep)
+      .AddMatchName('step')
+      .AddSubRule(expression)
+   ;
+
    var for_loop := Result.NewRuleNode('for_loop', TdwsCodeDOMForLoop)
       .AddMatchTokenType(ttFOR)
       .AddMatchTokenType(ttVAR, [ rifOptional ])
@@ -367,10 +382,7 @@ begin
       .AddSubRule(expression)
       .AddMatchTokenTypes([ ttTO, ttDOWNTO ])
       .AddSubRule(expression)
-      .AddSubRule(Result.NewRuleNode('for_loop_step', TdwsCodeDOMForLoopStep)
-         .AddMatchName('step')
-         .AddSubRule(expression)
-         , [ rifOptional ])
+      .AddSubRule(for_step, [ rifOptional ])
       .AddMatchTokenType(ttDO)
       .AddSubRule(statement, [ rifOptional ]);
 
@@ -380,6 +392,7 @@ begin
       .AddMatchName
       .AddMatchTokenType(ttIN)
       .AddSubRule(expression)
+      .AddSubRule(for_step, [ rifOptional ])
       .AddMatchTokenType(ttDO)
       .AddSubRule(statement, [ rifOptional ]);
 
@@ -400,11 +413,14 @@ begin
 
    var qualifier := Result.NewRuleNode('qualifier', TdwsCodeDOMFunctionQualifier)
       .AddMatchTokenType(ttSEMI)
-      .AddMatchTokenTypes([
-         ttVIRTUAL, ttABSTRACT, ttOVERRIDE,
-         ttOVERLOAD, ttREINTRODUCE, ttFORWARD, ttEMPTY,
-         ttSAFECALL, ttSTDCALL, ttCDECL, ttREGISTER, ttPASCAL
-         ])
+      .AddSubRule(Result.NewRuleAlternative('qualifier_alt')
+         .AddMatchTokenTypes([
+            ttVIRTUAL, ttABSTRACT, ttOVERRIDE,
+            ttOVERLOAD, ttREINTRODUCE, ttFORWARD, ttEMPTY,
+            ttSAFECALL, ttSTDCALL, ttCDECL, ttREGISTER, ttPASCAL, ttINLINE
+            ])
+         .AddSubRule(external_qualifier)
+      )
    ;
 
    var contract_description := Result.NewRuleNode('contract_description', TdwsCodeDOMContractDescription)
@@ -438,6 +454,17 @@ begin
       .AddMatchTokenType(ttCLASS, [ rifOptional ])
       .AddMatchTokenTypes([ ttPROCEDURE, ttFUNCTION, ttMETHOD, ttCONSTRUCTOR, ttDESTRUCTOR ])
       .AddSubRule(reference)
+      .AddSubRule(parameter_decl_list, [ rifOptional ])
+      .AddSubRule(Result.NewRuleNode('function_return_decl', TdwsCodeDOMFunctionReturnDecl)
+         .AddMatchTokenType(ttCOLON)
+         .AddSubRule(reference)
+         , [ rifOptional ])
+      .AddSubRule(qualifier, [ rifOptional, rifRepeat ])
+   ;
+
+   var function_type_decl := Result.NewRuleNode('function_type_decl', TdwsCodeDOMFunctionDecl)
+      .AddMatchTokenType(ttCLASS, [ rifOptional ])
+      .AddMatchTokenTypes([ ttPROCEDURE, ttFUNCTION, ttMETHOD, ttCONSTRUCTOR, ttDESTRUCTOR ])
       .AddSubRule(parameter_decl_list, [ rifOptional ])
       .AddSubRule(Result.NewRuleNode('function_return_decl', TdwsCodeDOMFunctionReturnDecl)
          .AddMatchTokenType(ttCOLON)
@@ -515,7 +542,7 @@ begin
 
    var type_visibility_section := Result.NewRuleNode('class_type_visib_section', TdwsCodeDOMTypeVisibilitySection)
       .AddMatchTokenTypes([ ttPRIVATE, ttPROTECTED, ttPUBLIC, ttPUBLISHED ])
-      .AddSubRule(type_inner_decl)
+      .AddSubRule(type_inner_decl, [ rifOptional ])
    ;
 
    var class_type_fwd := Result.NewRuleNode('class_type_fwd', TdwsCodeDOMClassFwd)
@@ -523,7 +550,7 @@ begin
       .AddMatchTokenType(ttCLASS)
       .AddMatchTokenType(ttSTATIC, [ rifOptional ])
       .AddMatchTokenTypes([ ttABSTRACT, ttSEALED ], [ rifOptional ])
-      .AddMatchTokenType(ttEXTERNAL, [ rifOptional ])
+      .AddSubRule(external_qualifier, [ rifOptional ])
       .AddMatchTokenType(ttPARTIAL, [ rifOptional ])
    ;
    var class_type_inh := Result.NewRuleNode('class_type_inh', TdwsCodeDOMClassInh)
@@ -618,7 +645,7 @@ begin
       .AddSubRule(record_type_decl)
       .AddSubRule(array_type_decl)
       .AddSubRule(enum_type_decl)
-      .AddSubRule(function_decl)
+      .AddSubRule(function_type_decl)
       .AddSubRule(reference)
    ;
    var type_decl := Result.NewRuleNode('type_decl', TdwsCodeDOMTypeDecl)
@@ -648,9 +675,7 @@ begin
          .AddMatchTokenTypes([ ttCONTINUE, ttBREAK ])
       ).AddSubRule(Result.NewRuleNode('exit', TdwsCodeDOMInstruction)
          .AddMatchTokenType(ttEXIT)
-         .AddMatchTokenType(ttBLEFT, [ rifEndIfNotPresent ])
          .AddSubRule(expression, [ rifOptional ])
-         .AddMatchTokenType(ttBRIGHT)
       ).AddSubRule(Result.NewRuleNode('raise', TdwsCodeDOMInstruction)
          .AddMatchTokenType(ttRaise)
          .AddSubRule(expression, [ rifOptional ])
@@ -671,7 +696,11 @@ begin
       .AddSubRule(statementList, [ rifOptional ])
       .AddMatchTokenTypes([ ttEXCEPT, ttFINALLY ])
       .AddSubRule(statementList, [ rifOptional ])
-      .AddMatchTokenType(ttEND)
+      .AddSubRule(Result.NewRuleNode('try_else', TdwsCodeDOMTryExceptElse)
+         .AddMatchTokenType(ttELSE)
+         .AddSubRule(statementList)
+         , [ rifOptional ]
+      ).AddMatchTokenType(ttEND)
    ;
 
    statement
@@ -684,6 +713,7 @@ begin
       .AddSubRule(for_loop)
       .AddSubRule(for_in)
       .AddSubRule(block)
+      .AddSubRule(asm_block)
       .AddSubRule(var_inline)
       .AddSubRule(const_inline)
       .AddSubRule(function_impl)
