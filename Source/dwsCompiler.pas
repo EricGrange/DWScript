@@ -9675,7 +9675,7 @@ begin
             else if not CheckPropertyFuncParams(propSym.ArrayIndices, TMethodSymbol(sym), indexTyp, propSym.Typ) then
                FMsgs.AddCompilerErrorFmt(FTok.HotPos, CPE_IncompatibleParameters, [sym.Name]);
 
-         end else if propSym.Typ <> sym.Typ then begin
+         end else if (propSym.Typ = nil) or not propSym.Typ.SameType(sym.Typ) then begin
 
             FMsgs.AddCompilerErrorFmt(FTok.HotPos, CPE_IncompatibleWriteSymbol, [sym.Name]);
 
