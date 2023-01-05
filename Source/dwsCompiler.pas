@@ -1784,6 +1784,7 @@ var
    unitMain : TUnitMainSymbol;
    dependencies : TStringList;
    unitSource, unitLocation : String;
+   resolvedUnitName : String;
    srcUnit : TSourceUnit;
    oldContext : TdwsSourceContext;
 begin
@@ -1791,38 +1792,49 @@ begin
       if UnicodeSameText(FUnitsFromStack.Items[i], unitName) then
          FMsgs.AddCompilerStop(scriptPos, CPE_UnitCircularReference);
 
-   Result:=TUnitSymbol(CurrentProg.Table.FindLocalOfClass(unitName, TUnitSymbol));
+   Result := TUnitSymbol(CurrentProg.Table.FindLocalOfClass(unitName, TUnitSymbol));
    if (Result<>nil) and (Result.Main<>nil) then begin
       // ignore multiple requests (for now)
       Exit;
    end;
 
    i := FCompilerContext.UnitList.IndexOfName(unitName);
-   if i<0 then begin
-      if Assigned(FOnNeedUnit) then
+   if i < 0 then begin
+      if Assigned(FOnNeedUnit) then begin
          unitResolved := FOnNeedUnit(unitName, unitSource, unitLocation);
-      if unitResolved<>nil then
+         if (unitResolved = nil) and (unitLocation <> '') then begin
+            resolvedUnitName := ChangeFileExt(ExtractFileName(unitLocation), '');
+            if not UnicodeSameText(resolvedUnitName, unitName) then
+               resolvedUnitName := unitName
+            else if resolvedUnitName <> unitName then
+               FMsgs.AddCompilerHint(scriptPos, CPH_UnitNameCaseDoesntMatch)
+         end;
+      end;
+      if unitResolved <> nil then
          FCompilerContext.UnitList.Add(unitResolved)
       else begin
-         if unitSource='' then
-            unitSource:=GetScriptSource(unitName+'.pas');
-         if unitSource<>'' then begin
-            srcUnit:=TSourceUnit.Create(unitName, CurrentProg.Root.RootTable, CurrentProg.UnitMains);
-            unitResolved:=srcUnit;
+         if unitSource = '' then
+            unitSource := GetScriptSource(unitName + '.pas');
+         if unitSource <> '' then begin
+            if resolvedUnitName = '' then
+               resolvedUnitName := unitName;
+            srcUnit := TSourceUnit.Create(resolvedUnitName, CurrentProg.Root.RootTable, CurrentProg.UnitMains);
+            unitResolved := srcUnit;
             FCompilerContext.UnitList.Add(unitResolved);
-            oldContext:=FSourceContextMap.SuspendContext;
+            oldContext := FSourceContextMap.SuspendContext;
             SwitchTokenizerToUnit(srcUnit, unitSource, unitLocation);
             FSourceContextMap.ResumeContext(oldContext);
          end;
       end;
-      if unitResolved=nil then begin
+      if unitResolved = nil then begin
          if FUnitsFromStack.Count=0 then
-            FMsgs.AddCompilerErrorFmt(scriptPos, CPE_UnknownUnit, [unitName])
+            FMsgs.AddCompilerErrorFmt(scriptPos, CPE_UnknownUnit, [ unitName ])
          else FMsgs.AddCompilerErrorFmt(scriptPos, CPE_UnitNotFound,
-                                        [unitName, FUnitsFromStack.Peek]);
+                                        [ unitName, FUnitsFromStack.Peek ]);
          Exit;
       end;
    end else unitResolved := FCompilerContext.UnitList[i];
+   resolvedUnitName := unitResolved.GetUnitName;
 
    dependencies := unitResolved.GetDependencies;
    for i:=0 to dependencies.Count-1 do begin
@@ -1834,13 +1846,16 @@ begin
       end;
    end;
 
-   unitMain:=CurrentProg.UnitMains.Find(unitName);
-   if unitMain=nil then begin
-      unitTable:=nil;
+   unitMain := CurrentProg.UnitMains.Find(resolvedUnitName);
+   if unitMain = nil then begin
+      unitTable := nil;
       try
-         unitTable:=(unitResolved as IdwsUnitTableFactory).GetUnitTable(FSystemTable, CurrentProg.UnitMains, FOperators, CurrentProg.RootTable);
-         unitMain:=TUnitMainSymbol.Create(unitName, unitTable, CurrentProg.UnitMains);
-         unitMain.DeprecatedMessage:=unitResolved.GetDeprecatedMessage;
+         unitTable := (unitResolved as IdwsUnitTableFactory).GetUnitTable(
+            FSystemTable, CurrentProg.UnitMains,
+            FOperators, CurrentProg.RootTable
+         );
+         unitMain := TUnitMainSymbol.Create(resolvedUnitName, unitTable, CurrentProg.UnitMains);
+         unitMain.DeprecatedMessage := unitResolved.GetDeprecatedMessage;
       except
          unitTable.Free;
          raise;

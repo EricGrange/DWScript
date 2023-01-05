@@ -22,6 +22,7 @@ type
          procedure SetUp; override;
          procedure TearDown; override;
          procedure DoOnInclude(const scriptName : String; var scriptSource : String);
+         function  DoOnNeedUnit(const unitName : String; var unitSource, unitLocation : String) : IdwsUnit;
          procedure DoOnResource(compiler : TdwsCompiler; const resName : String);
 
          procedure ReExec(info : TProgramInfo);
@@ -208,6 +209,8 @@ var
    roundTripFuncParam : TdwsParameter;
 begin
    FCompiler:=TDelphiWebScript.Create(nil);
+   FCompiler.OnInclude := DoOnInclude;
+   FCompiler.OnNeedUnitEx := DoOnNeedUnit;
 
    FUnit:=TdwsUnit.Create(nil);
    FUnit.UnitName:='CornerCases';
@@ -348,6 +351,18 @@ begin
    else begin
       CheckEquals('test.dummy', scriptName, 'DoOnInclude');
       scriptSource:='Print(''hello'');';
+   end;
+end;
+
+// DoOnNeedUnit
+//
+function TCornerCasesTests.DoOnNeedUnit(const unitName : String; var unitSource, unitLocation : String) : IdwsUnit;
+begin
+   if SameText(unitName, 'HelloWorld') then begin
+      unitSource := 'unit HelloWorld;';
+      unitLocation := 'HelloWorld.pas';
+   end else begin
+      unitSource := 'error';
    end;
 end;
 
@@ -529,7 +544,6 @@ procedure TCornerCasesTests.IncludeCommentStart;
 var
    prog : IdwsProgram;
 begin
-   FCompiler.OnInclude:=DoOnInclude;
    prog:=FCompiler.Compile('{$include "comment.inc"}');
 
    CheckEquals( 'Syntax Error: Unexpected end of file (unfinished comment) '
@@ -2154,6 +2168,12 @@ begin
    CheckEquals('', prog.Msgs.AsInfo);
 
    prog := FCompiler.Compile('unit Hello.World;', 'Hello.world.pas');
+   CheckEquals('Hint: Unit name case does not match file name [line: 1, column: 6]'#13#10, prog.Msgs.AsInfo);
+
+   prog := FCompiler.Compile('uses HelloWorld;');
+   CheckEquals('', prog.Msgs.AsInfo);
+
+   prog := FCompiler.Compile('uses Helloworld;');
    CheckEquals('Hint: Unit name case does not match file name [line: 1, column: 6]'#13#10, prog.Msgs.AsInfo);
 end;
 
