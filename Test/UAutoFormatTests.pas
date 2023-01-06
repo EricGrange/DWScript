@@ -39,12 +39,15 @@ type
          procedure SimpleWhile;
          procedure SimpleIfThenElse;
          procedure SimpleFuncs;
+         procedure FuncCalls;
          procedure SimpleStrings;
          procedure SkipComments;
          procedure SimpleClass;
          procedure Conditionals;
          procedure CaseOf;
          procedure ForLoop;
+         procedure ArrayAccess;
+         procedure BreakupArrayConst;
 
    end;
 
@@ -298,13 +301,17 @@ end;
 //
 procedure TAutoFormatTests.SimpleIfThenElse;
 begin
-//   CheckEquals(
-//      'if b then'#10#9'doit()'#10'else dont();'#10'done()'#10,
-//      FAutoFormat.Process('if b then doit() else dont();done()')
-//   );
+   CheckEquals(
+      'if b then'#10#9'doit()'#10'else dont();'#10'done()'#10,
+      FAutoFormat.Process('if b then doit() else dont();done()')
+   );
    CheckEquals(
       'if b then begin'#10#9'if not b then begin'#10#9'end else begin'#10#9'end'#10'end'#10,
       FAutoFormat.Process('if b then begin if not b then begin end else begin end end')
+   );
+   CheckEquals(
+      'for a in b do'#10#9'if c then'#10#9#9'd;'#10,
+      FAutoFormat.Process('for a in b do if c then d;')
    );
 end;
 
@@ -319,6 +326,20 @@ begin
    CheckEquals(
       'procedure PrintBool(v : Variant);'#10'begin'#10#9'PrintLn(if v then ''True'' else ''False'');'#10'end;'#10,
       FAutoFormat.Process('procedure PrintBool(v:Variant);begin PrintLn(if v then''True'' else''False'');end;')
+   );
+end;
+
+// FuncCalls
+//
+procedure TAutoFormatTests.FuncCalls;
+begin
+   CheckEquals(
+      'procedure Hello;'#10'begin'#10#9'i := 1'#10'end;'#10,
+      FAutoFormat.Process('procedure Hello;begin i:=1 end;')
+   );
+   CheckEquals(
+      'if a then'#10#9'b(0)'#10'else c(1)'#10,
+      FAutoFormat.Process('if a then b(0)'#10'else c(1)')
    );
 end;
 
@@ -347,6 +368,10 @@ begin
    CheckEquals(
       '(* /* *)'#10'i := 1; // begin i:=1'#10'i *= 2 /*end*/ 1;'#10,
       FAutoFormat.Process('(* /* *)'#10'i:=1; // begin i:=1'#10'i*=2/*end*/1;'#10)
+   );
+   CheckEquals(
+      'a'#10#10'/* bla'#10'bla */'#10,
+      FAutoFormat.Process('a'#10#10'/* bla'#10'bla */')
    )
 end;
 
@@ -355,8 +380,16 @@ end;
 procedure TAutoFormatTests.SimpleClass;
 begin
    CheckEquals(
-      'type TMy = class end;'#10'type TMyClass = class of TMy;'#10,
+      'type'#10#9'TMy = class'#10#9'end;'#10'type'#10#9'TMyClass = class of TMy;'#10,
       FAutoFormat.Process('type TMy=class end;type TMyClass=class of TMy;')
+   );
+   CheckEquals(
+      'type'#10#9'TMy = class'#10#9#9'FField : Integer'#10#9'end;'#10'/*done'#10,
+      FAutoFormat.Process('type TMy=class  FField:Integer end;'#10'/*done')
+   );
+   CheckEquals(
+      'type'#10#9'TMy = class'#10#9#9'public'#10#9#9#9'FField : Integer;'#10#9'end;'#10'/*done'#10,
+      FAutoFormat.Process('type TMy=class public FField:Integer; end;'#10'/*done')
    );
 end;
 
@@ -369,7 +402,7 @@ begin
       FAutoFormat.Process('{$ifdef A}'#10'b;'#10'{$endif}'#10)
    );
    CheckEquals(
-      '{$ifdef A}b;{$endif}'#10,
+      '{$ifdef A} b; {$endif}'#10,
       FAutoFormat.Process('{$ifdef A}b;{$endif}'#10)
    );
 end;
@@ -395,6 +428,47 @@ begin
    CheckEquals(
       'for i := 1 to 9 do'#10#9'PrintLn(i);'#10,
       FAutoFormat.Process('for i:=1 to 9 do PrintLn(i);'#10)
+   );
+end;
+
+// ArrayAccess
+//
+procedure TAutoFormatTests.ArrayAccess;
+begin
+   CheckEquals(
+      'f()[1].b[2]()'#10,
+      FAutoFormat.Process('f () [1] . b [2] ()'#10)
+   );
+end;
+
+// BreakupArrayConst
+//
+procedure TAutoFormatTests.BreakupArrayConst;
+begin
+   CheckEquals(
+      'const S = ['#10
+       + #9'0x63, 0x7c, 0x77, 0x7b, 0xf2, 0x6b, 0x6f, 0xc5, 0x30, 0x01, 0x67, 0x2b, 0xfe, 0xd7,'#10
+       + #9'0xab, 0x76, 0xca, 0x82, 0xc9, 0x7d, 0xfa, 0x59, 0x47, 0xf0, 0xad, 0xd4, 0xa2, 0xaf,'#10
+       + #9'0x9c, 0xa4, 0x72, 0xc0, 0xb7, 0xfd, 0x93, 0x26, 0x36, 0x3f, 0xf7, 0xcc, 0x34, 0xa5,'#10
+       + #9'0xe5, 0xf1, 0x71, 0xd8, 0x31, 0x15'#10
+      + '];'#10,
+      FAutoFormat.Process(
+          'const S = [0x63, 0x7c, 0x77, 0x7b, 0xf2, 0x6b, 0x6f, 0xc5, 0x30, 0x01, 0x67, 0x2b, 0xfe, 0xd7, 0xab, 0x76,'
+        + '0xca, 0x82, 0xc9, 0x7d, 0xfa, 0x59, 0x47, 0xf0, 0xad, 0xd4, 0xa2, 0xaf, 0x9c, 0xa4, 0x72, 0xc0,'
+        + '0xb7, 0xfd, 0x93, 0x26, 0x36, 0x3f, 0xf7, 0xcc, 0x34, 0xa5, 0xe5, 0xf1, 0x71, 0xd8, 0x31, 0x15];'
+      )
+   );
+   CheckEquals(
+      'const S = ['#10
+       + #9'0x63, 0x7c, 0x77, 0x7b, 0xf2, 0x6b, 0x6f, 0xc5, 0x30, 0x01, 0x67, 0x2b, 0xfe, 0xd7, 0xab, 0x76,'#10
+       + #9'0xca, 0x82, 0xc9, 0x7d, 0xfa, 0x59, 0x47, 0xf0, 0xad, 0xd4, 0xa2, 0xaf, 0x9c, 0xa4, 0x72, 0xc0,'#10
+       + #9'0xb7, 0xfd, 0x93, 0x26, 0x36, 0x3f, 0xf7, 0xcc, 0x34, 0xa5, 0xe5, 0xf1, 0x71, 0xd8, 0x31, 0x15'#10
+      + '];'#10,
+      FAutoFormat.Process(
+          'const S = [0x63, 0x7c, 0x77, 0x7b, 0xf2, 0x6b, 0x6f, 0xc5, 0x30, 0x01, 0x67, 0x2b, 0xfe, 0xd7, 0xab, 0x76,'#10
+        + '0xca, 0x82, 0xc9, 0x7d, 0xfa, 0x59, 0x47, 0xf0, 0xad, 0xd4, 0xa2, 0xaf, 0x9c, 0xa4, 0x72, 0xc0,'#10
+        + '0xb7, 0xfd, 0x93, 0x26, 0x36, 0x3f, 0xf7, 0xcc, 0x34, 0xa5, 0xe5, 0xf1, 0x71, 0xd8, 0x31, 0x15];'
+      )
    );
 end;
 

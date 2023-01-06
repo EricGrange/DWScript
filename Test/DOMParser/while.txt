@@ -11,9 +11,10 @@ Main
          Call
             Reference
                Token name <<Dec>>
-            Token (
-            Tuple
-               Reference
-                  Token name <<a>>
-            Token )
+            Parameters
+               Token (
+               Tuple
+                  Reference
+                     Token name <<a>>
+               Token )
       Token ;

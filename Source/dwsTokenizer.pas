@@ -117,7 +117,8 @@ type
       caBin, caHex, caInteger, caFloat,
       caChar, caCharHex, caString, caMultiLineString,
       caSwitch,
-      caDotDot, caAmp, caAmpAmp
+      caDotDot, caAmp, caAmpAmp,
+      caEndOfText
       );
    TTransitionOptions = set of (toStart, toFinal);
 
@@ -1602,6 +1603,8 @@ begin
 
       // Handle Errors
       if trns.IsError then begin
+         if Assigned(FOnBeforeAction) and (state <> FStartState) then
+            FOnBeforeAction(Self, caEndOfText);
          DoErrorTransition(trns as TErrorTransition, pch^);
          state := FStartState;
          FTokenBuf.Len:=0;

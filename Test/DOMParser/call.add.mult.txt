@@ -2,13 +2,14 @@ Main
    Call
       Reference
          Token name <<call>>
-      Token (
-      Tuple
-         BinaryOperator
-            Token Integer Literal <<1>>
-            Token +
+      Parameters
+         Token (
+         Tuple
             BinaryOperator
-               Token Integer Literal <<2>>
-               Token *
-               Token Integer Literal <<3>>
-      Token )
+               Token Integer Literal <<1>>
+               Token +
+               BinaryOperator
+                  Token Integer Literal <<2>>
+                  Token *
+                  Token Integer Literal <<3>>
+         Token )

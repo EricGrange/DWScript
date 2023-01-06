@@ -37,8 +37,9 @@ Main
             Call
                Reference
                   Token name <<f>>
-               Token (
-               Token )
+               Parameters
+                  Token (
+                  Token )
             Token ; [LF]
          Token end
       Token ;

@@ -48,22 +48,30 @@ type
    TdwsCodeDOMNode = class;
    TdwsCodeDOMSnippet = class;
 
+   TdwsCodeDOMSnippetPool = class
+      private
+         FPool : TdwsCodeDOMNode;
+
+      public
+         destructor Destroy; override;
+
+         procedure Clear;
+         function Allocate : TdwsCodeDOMSnippet;
+         procedure Release(aSnippet : TdwsCodeDOMSnippet);
+   end;
+
    TdwsCodeDOMContext = class
       private
          FToken : TdwsCodeDOMToken;
          FHeadToken : TdwsCodeDOMToken;
          FTailToken : TdwsCodeDOMToken;
          FMessages : TdwsCompileMessageList;
-         FSnippetPool : TdwsCodeDOMNode;
+         FSnippetPool : TdwsCodeDOMSnippetPool;
 
          procedure AppendToken(newToken : TdwsCodeDOMToken);
 
-         procedure ClearSnippetPool;
-         function AllocateSnippet : TdwsCodeDOMSnippet;
-         procedure ReleaseSnippet(aSnippet : TdwsCodeDOMSnippet);
-
       public
-         constructor Create(aMessages : TdwsCompileMessageList);
+         constructor Create(aMessages : TdwsCompileMessageList; pool : TdwsCodeDOMSnippetPool);
          destructor Destroy; override;
 
          procedure DoBeforeTokenizerAction(Sender : TTokenizer; action : TConvertAction);
@@ -73,6 +81,10 @@ type
          procedure Clear;
 
          property Messages : TdwsCompileMessageList read FMessages;
+
+         property SnippetPool : TdwsCodeDOMSnippetPool read FSnippetPool;
+         function AllocateSnippet : TdwsCodeDOMSnippet; inline;
+         procedure ReleaseSnippet(aSnippet : TdwsCodeDOMSnippet); inline;
 
          property Token : TdwsCodeDOMToken read FToken write FToken;
          function TokenType : TTokenType; inline;
@@ -131,6 +143,7 @@ type
          function AddChild(node : TdwsCodeDOMNode) : Integer;
          function AddChildSnippet(context : TdwsCodeDOMContext) : TdwsCodeDOMSnippet;
          procedure AddChildSnippetsUntil(context : TdwsCodeDOMContext; tokens : TTokenTypes);
+         procedure InsertChild(index : Integer; node : TdwsCodeDOMNode);
    end;
 
    TdwsCodeDOMOutput = class
@@ -140,6 +153,12 @@ type
          FIndentBuf : String;
          FIndentDepth : Integer;
          FTailChar : Char;
+         FLine : Integer;
+         FCol : Integer;
+         FColMax : Integer;
+         FMaxDesiredColumn : Integer;
+         FMaxToleranceColumn : Integer;
+         FTabSize : Integer;
 
       protected
 
@@ -148,10 +167,10 @@ type
          destructor Destroy; override;
 
          procedure WriteString(const s : String);
-         procedure WriteTokenString(tt : TTokenType);
+         function WritePreLine : TdwsCodeDOMOutput;
          function WriteNewLine : TdwsCodeDOMOutput;
          procedure WriteSemi;
-         procedure SkipSpace;
+         function SkipSpace : TdwsCodeDOMOutput;
 
          function WriteChild(node : TdwsCodeDOMNode; var i : Integer) : TdwsCodeDOMOutput;
          function WriteChildren(node : TdwsCodeDOMNode; var i : Integer) : TdwsCodeDOMOutput;
@@ -161,6 +180,14 @@ type
 
          property Indent : String read FIndent write FIndent;
          property IndentDepth : Integer read FIndentDepth;
+
+         property Line : Integer read FLine;
+         property Col : Integer read FCol;
+         property ColMax : Integer read FColMax;
+
+         property MaxDesiredColumn : Integer read FMaxDesiredColumn write FMaxDesiredColumn;
+         property MaxToleranceColumn : Integer read FMaxToleranceColumn write FMaxToleranceColumn;
+         property TabSize : Integer read FTabSize write FTabSize;
 
          function IncIndent : TdwsCodeDOMOutput;
          function DecIndent : TdwsCodeDOMOutput;
@@ -175,6 +202,7 @@ type
       private
          FSnippet : String;
          FTokenType : TTokenType;
+         FPreLine : Boolean;
          FNewLine : Boolean;
 
       protected
@@ -189,6 +217,7 @@ type
 
          property Snippet : String read FSnippet write FSnippet;
          property TokenType : TTokenType read FTokenType write FTokenType;
+         property PreLine : Boolean read FPreLine write FPreLine;
          property NewLine : Boolean read FNewLine write FNewLine;
    end;
 
@@ -223,16 +252,67 @@ implementation
 uses dwsCodeDOMNodes;
 
 // ------------------
+// ------------------ TdwsCodeDOMSnippetPool ------------------
+// ------------------
+
+// Destroy
+//
+destructor TdwsCodeDOMSnippetPool.Destroy;
+begin
+   inherited;
+   Clear;
+end;
+
+// Clear
+//
+procedure TdwsCodeDOMSnippetPool.Clear;
+begin
+   while FPool <> nil do begin
+      var snip := FPool;
+      FPool := snip.FParent;
+      snip.FParent := nil;
+      snip.Free;
+   end;
+end;
+
+// Allocate
+//
+function TdwsCodeDOMSnippetPool.Allocate : TdwsCodeDOMSnippet;
+begin
+   if FPool = nil then
+      Result := TdwsCodeDOMSnippet.Create
+   else begin
+      Result := TdwsCodeDOMSnippet(FPool);
+      FPool := Result.FParent;
+      Result.FParent := nil;
+   end;
+end;
+
+// Release
+//
+procedure TdwsCodeDOMSnippetPool.Release(aSnippet : TdwsCodeDOMSnippet);
+begin
+   Assert(aSnippet.FChildren.Count = 0);
+   aSnippet.FParent := FPool;
+   aSnippet.FTokenType := ttNone;
+   aSnippet.FNewLine := False;
+   aSnippet.FPreLine := False;
+   aSnippet.FSnippet := '';
+   FPool := aSnippet;
+end;
+
+// ------------------
 // ------------------ TdwsCodeDOMContext ------------------
 // ------------------
 
 // Create
 //
-constructor TdwsCodeDOMContext.Create(aMessages : TdwsCompileMessageList);
+constructor TdwsCodeDOMContext.Create(aMessages : TdwsCompileMessageList; pool : TdwsCodeDOMSnippetPool);
 begin
    inherited Create;
    Assert(aMessages <> nil);
    FMessages := aMessages;
+   FSnippetPool := pool;
 end;
 
 // Destroy
@@ -241,44 +321,6 @@ destructor TdwsCodeDOMContext.Destroy;
 begin
    inherited;
    Clear;
-   ClearSnippetPool;
-end;
-
-// ClearSnippetPool
-//
-procedure TdwsCodeDOMContext.ClearSnippetPool;
-begin
-   while FSnippetPool <> nil do begin
-      var snip := FSnippetPool;
-      FSnippetPool := snip.FParent;
-      snip.FParent := nil;
-      snip.Free;
-   end;
-end;
-
-// AllocateSnippet
-//
-function TdwsCodeDOMContext.AllocateSnippet : TdwsCodeDOMSnippet;
-begin
-   if FSnippetPool = nil then
-      Result := TdwsCodeDOMSnippet.Create
-   else begin
-      Result := TdwsCodeDOMSnippet(FSnippetPool);
-      FSnippetPool := Result.FParent;
-      Result.FParent := nil;
-   end;
-end;
-
-// ReleaseSnippet
-//
-procedure TdwsCodeDOMContext.ReleaseSnippet(aSnippet : TdwsCodeDOMSnippet);
-begin
-   Assert(aSnippet.FChildren.Count = 0);
-   aSnippet.FParent := FSnippetPool;
-   aSnippet.FTokenType := ttNone;
-   aSnippet.FNewLine := False;
-   aSnippet.FSnippet := '';
-   FSnippetPool := aSnippet;
 end;
 
 // Clear
@@ -294,6 +336,20 @@ begin
    FHeadToken := nil;
    FTailToken := nil;
    FToken := nil;
+end;
+
+// AllocateSnippet
+//
+function TdwsCodeDOMContext.AllocateSnippet : TdwsCodeDOMSnippet;
+begin
+   Result := FSnippetPool.Allocate;
+end;
+
+// ReleaseSnippet
+//
+procedure TdwsCodeDOMContext.ReleaseSnippet(aSnippet : TdwsCodeDOMSnippet);
+begin
+   FSnippetPool.Release(aSnippet);
 end;
 
 // DoBeforeTokenizerAction
@@ -322,6 +378,15 @@ begin
          token.FTokenType := ttCOMMENT;
          case tokenEndPosPtr^ of
             #13, #10 : Inc(tokenEndPosPtr);
+         end;
+      end;
+      caEndOfText : begin
+         if tokPosPtr <> nil then begin
+            // treat unfinished tokens stuff as a comment
+            token.FTokenType := ttCOMMENT;
+         end else begin
+            token.Free;
+            Exit;
          end;
       end;
       caSwitch : begin
@@ -640,6 +705,15 @@ begin
       AddChildSnippet(context);
 end;
 
+// InsertChild
+//
+procedure TdwsCodeDOMNode.InsertChild(index : Integer; node : TdwsCodeDOMNode);
+begin
+   Assert(node.Parent = nil);
+   node.FParent := Self;
+   FChildren.Insert(index, node);
+end;
+
 // ------------------
 // ------------------ TdwsCodeDOMOutput ------------------
 // ------------------
@@ -651,6 +725,12 @@ begin
    inherited;
    FStream := TWriteOnlyBlockStream.AllocFromPool;
    FTailChar := #0;
+   FLine := 1;
+   FCol := 1;
+   FColMax := 1;
+   FMaxDesiredColumn := 80;
+   FMaxToleranceColumn := 90;
+   FTabSize := 3;
 end;
 
 // Destroy
@@ -667,24 +747,50 @@ procedure TdwsCodeDOMOutput.WriteString(const s : String);
 begin
    if s = '' then Exit;
    case FTailChar of
-      #10 : FStream.WriteString(FIndentBuf);
-      #0..#9, #11..' ', '(', '[', '$', '{', '}', '#', '.' : ;
+      #10 : begin
+         FStream.WriteString(FIndentBuf);
+         Inc(FCol, Length(FIndentBuf));
+      end;
+      #0..#9, #11..' ', '(', '[', '$', '{', '#', '.' : ;
    else
       case s[1] of
-         ',', ';', '.', '(', ')', '[', ']', '{', '}' : ;
+         ',', ';', '.', ')', ']', '}' : //, '(', ')', '[', ']', '{', '}' : ;
       else
          FStream.WriteString(' ');
+         Inc(FCol);
       end;
    end;
+   var p := PChar(s);
+   while p^ <> #0 do begin
+      case p^ of
+         #10 : begin
+            Inc(FLine);
+            if FCol > FColMax then
+               FColMax := FCol;
+            FCol := 1;
+         end;
+         #9 : Inc(FCol, TabSize);
+      else
+         Inc(FCol);
+      end;
+      Inc(p);
+   end;
+   if FCol > FColMax then
+      FColMax := FCol;
+
    FStream.WriteString(s);
    FTailChar := s[Length(s)];
 end;
 
-// WriteTokenString
+// WritePreLine
 //
-procedure TdwsCodeDOMOutput.WriteTokenString(tt : TTokenType);
+function TdwsCodeDOMOutput.WritePreLine : TdwsCodeDOMOutput;
 begin
-   WriteString(cTokenStrings[tt]);
+   FStream.WriteChar(#10);
+   FTailChar := #10;
+   Result := Self;
+   Inc(FLine);
+   FCol := 1;
 end;
 
 // WriteNewLine
@@ -694,6 +800,8 @@ begin
    if FTailChar <> #10 then begin
       FStream.WriteChar(#10);
       FTailChar := #10;
+      Inc(FLine);
+      FCol := 1;
    end;
    Result := Self;
 end;
@@ -707,9 +815,10 @@ end;
 
 // SkipSpace
 //
-procedure TdwsCodeDOMOutput.SkipSpace;
+function TdwsCodeDOMOutput.SkipSpace : TdwsCodeDOMOutput;
 begin
    FTailChar := #0;
+   Result := Self;
 end;
 
 // WriteChild
@@ -828,26 +937,6 @@ end;
 procedure TdwsCodeDOM.Parse(const source : TSourceFile);
 begin
    FreeAndNil(FRoot);
-
-//   var context := TdwsCodeDOMContext.Create;
-//   try
-//      FTokenizer.BeginSourceFile(source);
-//      FTokenizer.OnBeforeAction := context.DoBeforeTokenizerAction;
-//      try
-//         while FTokenizer.HasTokens do
-//            FTokenizer.KillToken;
-//      finally
-//         FTokenizer.OnBeforeAction := nil;
-//         FTokenizer.EndSourceFile;
-//      end;
-//
-//      context.FToken := context.FHeadToken;
-//
-//      FRoot := TdwsCodeDOMMain.Create;
-//      FRoot.DoParse(context);
-//   finally
-//      context.Free;
-//   end;
 end;
 
 // Prepare
@@ -870,6 +959,8 @@ begin
    Result := context.AllocateSnippet;
    Result.FSnippet := context.Token.RawString;
    var line := context.Token.EndPos.Line;
+   if (context.Token.Prev <> nil) and (context.Token.Prev.EndPos.Line < context.Token.BeginPos.Line-1) then
+      Result.FPreLine := True;
    if StrEndsWith(Result.FSnippet, #$0D) or StrEndsWith(Result.FSnippet, #$0A) then begin
       Result.FSnippet := TrimRight(Result.FSnippet);
       Result.FNewLine := True;
@@ -893,19 +984,21 @@ end;
 //
 procedure TdwsCodeDOMSnippet.WriteToOutput(output : TdwsCodeDOMOutput);
 begin
+   if PreLine then
+      output.WritePreLine;
    case TokenType of
       ttIntVal, ttFloatVal, ttNAME, ttSWITCH, ttCOMMENT :
          output.WriteString(Snippet);
       ttStrVal :
          output.WriteString(Snippet);
       ttSEMI : begin
-         output.WriteTokenString(TokenType);
+         output.WriteString(';');
          inherited;
          output.WriteNewLine;
          Exit;
       end;
    else
-      output.WriteTokenString(TokenType);
+      output.WriteString(cTokenStrings[TokenType]);
    end;
    inherited;
    if NewLine then
@@ -924,6 +1017,8 @@ begin
       wobs.WriteString(Snippet);
       wobs.WriteString('>>');
    end;
+   if PreLine then
+      wobs.WriteString(' [PL]');
    if NewLine then
       wobs.WriteString(' [LF]');
    wobs.WriteCRLF;

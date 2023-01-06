@@ -12,13 +12,14 @@ Main
             Call
                Reference
                   Token name <<a>>
-               Token (
-               Tuple
-                  Reference
-                     Token name <<i>>
-                  Token ,
-                  Token Integer Literal <<2>>
-               Token )
+               Parameters
+                  Token (
+                  Tuple
+                     Reference
+                        Token name <<i>>
+                     Token ,
+                     Token Integer Literal <<2>>
+                  Token )
             Token ; [LF]
          Token end
       Token ;

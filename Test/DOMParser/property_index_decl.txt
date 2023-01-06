@@ -1,0 +1,41 @@
+Main
+   StatementList
+      TypeInline
+         Token type
+         TypeDecl
+            Reference
+               Token name <<TTest>>
+            Token =
+            ClassDecl
+               ClassFwd
+                  Token class [LF]
+               ClassBody
+                  Node
+                     PropertyDecl
+                        Token property
+                        Token name <<Field>>
+                        PropertyArrayDecl
+                           Token [
+                           ParameterDecl
+                              NameList
+                                 Token name <<idx>>
+                              Token :
+                              Reference
+                                 Token name <<Integer>>
+                           Token ]
+                        Token :
+                        Reference
+                           Token name <<String>>
+                        PropertyReadDecl
+                           Token read
+                           Reference
+                              Token name <<Getter>>
+                        PropertyWriteDecl
+                           Token write
+                           Reference
+                              Token name <<Setter>>
+                        Token ;
+                           Token default
+                     Token ; [LF]
+                  Token end
+      Token ;

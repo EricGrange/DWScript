@@ -7,13 +7,12 @@ Main
          Token in
          Brackets
             Token [
-            CaseOfAlternativeCases
-               Token Integer Literal <<1>>
-               Token ,
-               Range
-                  Token Integer Literal <<2>>
-                  Token ..
-                  Token Integer Literal <<3>>
+            Token Integer Literal <<1>>
+            Token ,
+            Range
+               Token Integer Literal <<2>>
+               Token ..
+               Token Integer Literal <<3>>
             Token ]
       Token then
       Reference

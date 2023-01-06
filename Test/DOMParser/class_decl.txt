@@ -1,9 +1,10 @@
 Main
    StatementList
-      TypeSection
+      TypeInline
          Token type [LF]
          TypeDecl
-            Token name <<TTest>>
+            Reference
+               Token name <<TTest>>
             Token =
             ClassDecl
                ClassFwd
@@ -45,7 +46,7 @@ Main
       Token ; [LF]
       FunctionImpl
          FunctionDecl
-            Token function
+            Token function [PL]
             Reference
                Token name <<TTest>>
                Token .

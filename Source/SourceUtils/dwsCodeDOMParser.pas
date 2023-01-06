@@ -90,7 +90,7 @@ type
          function ItemCount : Integer; inline;
          function Add(anItem : TdwsRuleItem) : TdwsParserRule; inline;
 
-         function AddMatchName(const aName : String = '') : TdwsParserRule;
+         function AddMatchName(const aName : String = ''; const flags : TdwsRuleItemFlags = []) : TdwsParserRule;
          function AddMatchTokenType(aTokenType : TTokenType; const flags : TdwsRuleItemFlags = []) : TdwsParserRule;
          function AddMatchTokenTypes(aTokenTypes : TTokenTypes; const flags : TdwsRuleItemFlags = []) : TdwsParserRule;
          function AddMatchTokenTypePair(aTokenType1, aTokenType2 : TTokenType; const flags : TdwsRuleItemFlags = []) : TdwsParserRule;
@@ -124,6 +124,14 @@ type
          function Parse(context : TdwsCodeDOMContext) : TdwsCodeDOMNode; override;
    end;
 
+   TdwsParserRuleWrap = class (TdwsParserRule)
+      protected
+         function Prepare : Boolean; override;
+
+      public
+         function Parse(context : TdwsCodeDOMContext) : TdwsCodeDOMNode; override;
+   end;
+
    TdwsParserRuleArray = array of TdwsParserRule;
 
    TdwsParserRules = class (TObjectList<TdwsParserRule>)
@@ -146,6 +154,7 @@ type
          function NewRuleNode(const aName : String; aDOMNodeClass : TdwsCodeDOMNodeClass;
                               aFlags : TdwsParserRuleFlags = []) : TdwsParserRuleNode;
          function NewRuleAlternative(const aName : String; aFlags : TdwsParserRuleFlags = []) : TdwsParserRuleAlternative;
+         function NewRuleWrap(const aName : String; aFlags : TdwsParserRuleFlags = []) : TdwsParserRuleWrap;
    end;
 
    TdwsParser = class
@@ -156,6 +165,7 @@ type
          FCommentRules : TdwsParserRuleArray;
          FCommentStartTokens : TTokenTypes;
          FMessages : TdwsCompileMessageList;
+         FSnippetPool : TdwsCodeDOMSnippetPool;
 
       protected
          procedure PrepareRules;
@@ -255,7 +265,11 @@ implementation
 
 const
    cAllValidTokens : TTokenTypes = [ Succ(ttNone)..High(TTokenType) ];
-   cNameTokens = [ ttNAME, ttDEFAULT ];
+   cNameTokens = [
+      ttNAME,
+      ttDEFAULT, ttEMPTY, ttINDEX,
+      ttPASCAL, ttOLD, ttSET
+   ];
 
 // ------------------
 // ------------------ TdwsRuleItem ------------------
@@ -323,11 +337,11 @@ end;
 
 // AddMatchName
 //
-function TdwsParserRule.AddMatchName(const aName : String = '') : TdwsParserRule;
+function TdwsParserRule.AddMatchName(const aName : String = ''; const flags : TdwsRuleItemFlags = []) : TdwsParserRule;
 begin
    if aName = '' then
-      Result := Add(TdwsRuleItem_MatchAnyName.Create)
-   else Result := Add(TdwsRuleItem_MatchName.Create(aName));
+      Result := Add(TdwsRuleItem_MatchAnyName.Create.SetFlags(flags))
+   else Result := Add(TdwsRuleItem_MatchName.Create(aName).SetFlags(flags));
 end;
 
 // AddMatchTokenType
@@ -503,7 +517,57 @@ begin
          end;
       end;
    end;
+
    FLastFailedAttemptAt := context.TokenBeginPos;
+end;
+
+// ------------------
+// ------------------ TdwsParserRuleWrap ------------------
+// ------------------
+
+// Prepare
+//
+function TdwsParserRuleWrap.Prepare : Boolean;
+begin
+   var oldTokens := FStartTokens;
+   if ItemCount > 0 then
+      FStartTokens := FStartTokens + Items[0].StartTokens;
+   Result := (FStartTokens <> oldTokens);
+end;
+
+// Parse
+//
+function TdwsParserRuleWrap.Parse(context : TdwsCodeDOMContext) : TdwsCodeDOMNode;
+begin
+   Assert(ItemCount > 1, 'Rule ' + Name + ' incomplete');
+   Result := nil;
+
+   if FLastFailedAttemptAt.SamePosAs(context.TokenBeginPos) then
+      Exit;
+
+   var initialToken := context.Token;
+
+   Result := Items[0].Parse(context);
+   if Result = nil then begin
+      FLastFailedAttemptAt := context.TokenBeginPos;
+      context.Token := initialToken;
+      Exit;
+   end;
+
+   var i := 1;
+   while i < ItemCount do begin
+      var ruleItem := Items[i];
+      if context.TokenType in ruleItem.StartTokens then begin
+         var sub := ruleItem.Parse(context);
+         if sub <> nil then begin
+            sub.InsertChild(0, Result);
+            Result := sub;
+            if rifRepeat in ruleItem.Flags then
+               i := 0;
+         end;
+      end;
+      Inc(i);
+   end;
 end;
 
 // ------------------
@@ -571,15 +635,13 @@ end;
 //
 function TdwsRuleItem_MatchTokenTypePair.Parse(context : TdwsCodeDOMContext) : TdwsCodeDOMNode;
 begin
-   if context.TokenType = TokenType1 then begin
-      var initialToken := context.Token;
+   if     (context.TokenType = TokenType1)
+      and (context.Token.Next <> nil)
+      and (context.Token.Next.TokenType = TokenType2) then begin
+
       Result := TdwsCodeDOMSnippet.ParseFromContext(context);
-      if context.TokenType = TokenType2 then
-         Result.AddChild(TdwsCodeDOMSnippet.ParseFromContext(context))
-      else begin
-         context.Release(Result);
-         context.Token := initialToken;
-      end;
+      Result.AddChild(TdwsCodeDOMSnippet.ParseFromContext(context))
+
    end else Result := nil;
 end;
 
@@ -689,6 +751,15 @@ begin
    Add(Result);
 end;
 
+// NewRuleWrap
+//
+function TdwsParserRules.NewRuleWrap(const aName : String; aFlags : TdwsParserRuleFlags = []) : TdwsParserRuleWrap;
+begin
+   Result := TdwsParserRuleWrap.Create(aName, aFlags);
+   Result.FParser := Parser;
+   Add(Result);
+end;
+
 // ------------------
 // ------------------ TdwsParserRules ------------------
 // ------------------
@@ -705,6 +776,7 @@ begin
    FRules.FParser := Self;
    PrepareRules;
    FMessages := TdwsCompileMessageList.Create;
+   FSnippetPool := TdwsCodeDOMSnippetPool.Create;
 end;
 
 // Destroy
@@ -715,6 +787,7 @@ begin
    FTokenizer.Free;
    FRules.Free;
    FMessages.Free;
+   FSnippetPool.Free;
 end;
 
 // Parse
@@ -726,7 +799,7 @@ begin
    Messages.Clear;
    Rules.ResetStates;
 
-   var context := TdwsCodeDOMContext.Create(Messages);
+   var context := TdwsCodeDOMContext.Create(Messages, FSnippetPool);
    try
       FTokenizer.BeginSourceFile(source);
       FTokenizer.OnBeforeAction := context.DoBeforeTokenizerAction;
@@ -769,7 +842,6 @@ begin
    finally
       context.Free;
    end;
-
 end;
 
 // ParseComments

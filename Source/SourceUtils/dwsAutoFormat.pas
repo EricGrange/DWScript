@@ -37,6 +37,8 @@ implementation
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
 
+uses dwsErrors;
+
 // ------------------
 // ------------------ TdwsAutoFormat ------------------
 // ------------------
@@ -77,6 +79,8 @@ function TdwsAutoFormat.Process(const sourceFile : TSourceFile) : String;
 begin
    var dom := Parser.Parse(sourceFile);
    try
+      if Parser.Messages.Count > 0 then
+         Exit(sourceFile.Code);
       var output := TdwsCodeDOMOutput.Create;
       try
          output.Indent := Indent;

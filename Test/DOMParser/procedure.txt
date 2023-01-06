@@ -21,13 +21,14 @@
                Call
                   Reference
                      Token name <<PrintLn>>
-                  Token (
-                  Tuple
-                     Reference
-                        Token name <<a>>
-                  Token )
+                  Parameters
+                     Token (
+                     Tuple
+                        Reference
+                           Token name <<a>>
+                     Token )
                Token ; [LF]
             Token end
       Token ; [LF]
       Comment
-         Token comment <<// tail comment>> [LF]
+         Token comment <<// tail comment>> [PL] [LF]

@@ -36,14 +36,19 @@ type
       public
          procedure WriteToOutput(output : TdwsCodeDOMOutput); override;
    end;
+   TdwsCodeDOMTypeInline = class (TdwsCodeDOMSection)
+      public
+         procedure WriteToOutput(output : TdwsCodeDOMOutput); override;
+   end;
 
    TdwsCodeDOMVarSection = class (TdwsCodeDOMSection)
       public
          procedure WriteToOutput(output : TdwsCodeDOMOutput); override;
    end;
 
-   TdwsCodeDOMConstSection = class (TdwsCodeDOMSection)
-   end;
+   TdwsCodeDOMConstSection = class (TdwsCodeDOMSection);
+
+   TdwsCodeDOMResourceStringSection = class (TdwsCodeDOMSection);
 
    TdwsCodeDOMMain = class (TdwsCodeDOMNode)
       private
@@ -60,20 +65,21 @@ type
    TdwsCodeDOMMainInitialization = class (TdwsCodeDOMMain);
    TdwsCodeDOMMainFinalization = class (TdwsCodeDOMMain);
 
-   TdwsCodeDOMStatement = class (TdwsCodeDOMNode)
+   TdwsCodeDOMStatement = class (TdwsCodeDOMNode);
+
+   TdwsCodeDOMStatementList = class (TdwsCodeDOMStatement);
+
+   TdwsCodeDOMInstruction = class (TdwsCodeDOMStatement);
+
+   TdwsCodeDOMAssignment = class (TdwsCodeDOMStatement)
       public
          procedure WriteToOutput(output : TdwsCodeDOMOutput); override;
    end;
 
-   TdwsCodeDOMStatementList = class (TdwsCodeDOMStatement)
-   end;
-
-   TdwsCodeDOMInstruction = class (TdwsCodeDOMStatement);
-
-   TdwsCodeDOMAssignment = class (TdwsCodeDOMStatement);
-
-   TdwsCodeDOMTryExceptFinally = class (TdwsCodeDOMStatement);
+   TdwsCodeDOMTry = class (TdwsCodeDOMStatement);
+   TdwsCodeDOMTryExcept = class (TdwsCodeDOMStatement);
    TdwsCodeDOMTryExceptElse = class (TdwsCodeDOMNode);
+   TdwsCodeDOMTryFinally = class (TdwsCodeDOMStatement);
 
    TdwsCodeDOMExceptOnClause = class (TdwsCodeDOMStatement);
 
@@ -90,6 +96,8 @@ type
    end;
 
    TdwsCodeDOMAsmBlock = class (TdwsCodeDOMBeginEnd);
+
+   TdwsCodeDOMWith = class (TdwsCodeDOMStatement);
 
    TdwsCodeDOMRepeat = class (TdwsCodeDOMStatement)
       public
@@ -131,6 +139,7 @@ type
    TdwsCodeDOMVarDeclaration = class (TdwsCodeDOMStatement);
    TdwsCodeDOMConstDeclaration = class (TdwsCodeDOMStatement);
    TdwsCodeDOMConstDeclarationType = class (TdwsCodeDOMStatement);
+   TdwsCodeDOMResourceString = class (TdwsCodeDOMStatement);
 
    TdwsCodeDOMExpression = class (TdwsCodeDOMNode);
 
@@ -145,18 +154,21 @@ type
    end;
 
    TdwsCodeDOMParenthesis = class (TdwsCodeDOMExpression);
-   TdwsCodeDOMBrackets = class (TdwsCodeDOMExpression);
+   TdwsCodeDOMBrackets = class (TdwsCodeDOMExpression)
+      public
+         procedure WriteToOutput(output : TdwsCodeDOMOutput); override;
+   end;
    TdwsCodeDOMBracketsElements = class (TdwsCodeDOMNode);
 
    TdwsCodeDOMReference = class (TdwsCodeDOMExpression);
 
    TdwsCodeDOMRange = class (TdwsCodeDOMNode);
 
-   TdwsCodeDOMCall = class (TdwsCodeDOMExpression)
-      public
-         procedure WriteToOutput(output : TdwsCodeDOMOutput); override;
-   end;
+   TdwsCodeDOMCall = class (TdwsCodeDOMExpression);
    TdwsCodeDOMCallInherited = class (TdwsCodeDOMCall);
+
+   TdwsCodeDOMField = class (TdwsCodeDOMExpression);
+   TdwsCodeDOMIndex = class (TdwsCodeDOMExpression);
 
    TdwsCodeDOMOperator = class (TdwsCodeDOMExpression)
       private
@@ -183,10 +195,6 @@ type
 
    TdwsCodeDOMTerm = class (TdwsCodeDOMExpression);
 
-   TdwsCodeDOMIndexed = class (TdwsCodeDOMExpression);
-
-   TdwsCodeDOMDotted = class (TdwsCodeDOMBinaryOperator);
-
    TdwsCodeDOMIfThenElseExpr = class (TdwsCodeDOMExpression)
       private
          FHasElse : Boolean;
@@ -199,6 +207,7 @@ type
 
    TdwsCodeDOMDeprecatedQualifier = class (TdwsCodeDOMNode);
    TdwsCodeDOMExternalQualifier = class (TdwsCodeDOMNode);
+   TdwsCodeDOMHelperQualifier = class (TdwsCodeDOMNode);
 
    TdwsCodeDOMContractDescription = class (TdwsCodeDOMNode);
    TdwsCodeDOMContractClause = class (TdwsCodeDOMNode);
@@ -207,14 +216,35 @@ type
    TdwsCodeDOMContractEnsure = class (TdwsCodeDOMContractClauses);
 
    TdwsCodeDOMParameterDecl = class (TdwsCodeDOMNode);
-   TdwsCodeDOMParameterDeclList = class (TdwsCodeDOMNode);
+   TdwsCodeDOMParameterDeclList = class (TdwsCodeDOMNode)
+      public
+         procedure WriteToOutput(output : TdwsCodeDOMOutput); override;
+   end;
+
+   TdwsCodeDOMParameters = class (TdwsCodeDOMNode)
+      public
+         procedure WriteToOutput(output : TdwsCodeDOMOutput); override;
+   end;
+
+   TdwsCodeDOMIndexes = class (TdwsCodeDOMNode)
+      public
+         procedure WriteToOutput(output : TdwsCodeDOMOutput); override;
+   end;
 
    TdwsCodeDOMFunctionDecl = class (TdwsCodeDOMNode);
    TdwsCodeDOMFunctionReturnDecl = class (TdwsCodeDOMNode);
    TdwsCodeDOMFunctionQualifier = class (TdwsCodeDOMNode);
    TdwsCodeDOMFunctionImpl = class (TdwsCodeDOMNode);
 
+   TdwsCodeDOMLambda = class (TdwsCodeDOMExpression);
+   TdwsCodeDOMLambdaParameters = class (TdwsCodeDOMParameters);
+   TdwsCodeDOMLambdaExpression = class (TdwsCodeDOMNode);
+   TdwsCodeDOMLambdaStatements = class (TdwsCodeDOMStatementList);
+
    TdwsCodeDOMTypeDecl = class (TdwsCodeDOMNode);
+   TdwsCodeDOMTypeGeneric = class (TdwsCodeDOMNode);
+   TdwsCodeDOMTypeGenericParameters = class (TdwsCodeDOMNode);
+   TdwsCodeDOMTypeGenericConstraint = class (TdwsCodeDOMNode);
 
    TdwsCodeDOMFunctionTypeDecl = class (TdwsCodeDOMTypeDecl);
 
@@ -222,12 +252,19 @@ type
    TdwsCodeDOMClassFwd = class (TdwsCodeDOMTypeDecl);
    TdwsCodeDOMClassDecl = class (TdwsCodeDOMTypeDecl);
 
-   TdwsCodeDOMClassBody = class (TdwsCodeDOMNode);
+   TdwsCodeDOMClassBody = class (TdwsCodeDOMNode)
+      public
+         procedure WriteToOutput(output : TdwsCodeDOMOutput); override;
+   end;
+
    TdwsCodeDOMClassConst = class (TdwsCodeDOMNode);
    TdwsCodeDOMClassVar = class (TdwsCodeDOMNode);
    TdwsCodeDOMClassOperator = class (TdwsCodeDOMNode);
 
-   TdwsCodeDOMTypeVisibilitySection = class (TdwsCodeDOMNode);
+   TdwsCodeDOMTypeVisibilitySection = class (TdwsCodeDOMNode)
+      public
+         procedure WriteToOutput(output : TdwsCodeDOMOutput); override;
+   end;
 
    TdwsCodeDOMClassOfDecl = class (TdwsCodeDOMTypeDecl);
 
@@ -235,10 +272,16 @@ type
    TdwsCodeDOMPropertyArrayDecl = class (TdwsCodeDOMNode);
    TdwsCodeDOMPropertyReadDecl = class (TdwsCodeDOMNode);
    TdwsCodeDOMPropertyWriteDecl = class (TdwsCodeDOMNode);
+   TdwsCodeDOMPropertyWriteStmt = class (TdwsCodeDOMNode);
 
    TdwsCodeDOMInterfaceDecl = class (TdwsCodeDOMTypeDecl);
+   TdwsCodeDOMInterfaceDeclInh = class (TdwsCodeDOMNode);
+   TdwsCodeDOMInterfaceDeclBody = class (TdwsCodeDOMNode);
 
    TdwsCodeDOMRecordDecl = class (TdwsCodeDOMTypeDecl);
+
+   TdwsCodeDOMOperatorDecl = class (TdwsCodeDOMNode);
+   TdwsCodeDOMOperatorDeclParameters = class (TdwsCodeDOMNode);
 
    TdwsCodeDOMArrayDecl = class (TdwsCodeDOMTypeDecl);
    TdwsCodeDOMArrayRange = class (TdwsCodeDOMNode);
@@ -249,6 +292,11 @@ type
    TdwsCodeDOMEnumElements = class (TdwsCodeDOMNode);
    TdwsCodeDOMEnumElementValue = class (TdwsCodeDOMNode);
 
+   TdwsCodeDOMSetDecl = class (TdwsCodeDOMTypeDecl);
+
+   TdwsCodeDOMHelperDecl = class (TdwsCodeDOMTypeDecl);
+   TdwsCodeDOMHelperBody = class (TdwsCodeDOMNode);
+
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
@@ -257,28 +305,69 @@ implementation
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
 
+uses dwsCodeDOMPascalParser;
+
+procedure OutputSeperatedChildren(
+   output : TdwsCodeDOMOutput; node : TdwsCodeDOMNode;
+   beginToken, separatorToken, endToken : TTokenType
+);
+begin
+   var subOutput := TdwsCodeDOMOutput.Create;
+   try
+      var i := 0;
+      subOutput.WriteChildrenBeforeToken(node, i, endToken);
+      if subOutput.Line > 1 then begin
+         // preformatted table
+         i := 0;
+         if beginToken <> ttNone then
+            output.WriteChildrenUntilToken(node, i, beginToken);
+         output
+            .IncIndentNewLine
+            .WriteChildrenBeforeToken(node, i, endToken)
+            .DecIndentNewLine
+            .WriteChildren(node, i)
+      end else  if subOutput.ColMax + output.Col + Length(cTokenStrings[endToken]) + 1 >= output.MaxToleranceColumn then begin
+         // reformat
+         i := 0;
+         if beginToken <> ttNone then
+            output.WriteChildrenUntilToken(node, i, beginToken);
+         output.IncIndentNewLine;
+         while (i < node.ChildCount) and not node.ChildIsTokenType(i, endToken)  do begin
+            output.WriteChildrenBeforeTokens(node, i, [ separatorToken, endToken ]);
+            if node.ChildIsTokenType(i, endToken) then break;
+            output.WriteChild(node, i);
+            if output.Col >= output.MaxDesiredColumn then
+               output.WriteNewLine;
+         end;
+         output
+            .DecIndentNewLine
+            .WriteChildren(node, i);
+      end else begin
+         // small enough, output inline
+         i := 0;
+         output.WriteChildren(node, i);
+      end;
+   finally
+      subOutput.Free;
+   end;
+
+end;
+
+
 // ------------------
-// ------------------ TdwsCodeDOMStatement ------------------
+// ------------------ TdwsCodeDOMAssignment ------------------
 // ------------------
 
 // WriteToOutput
 //
-procedure TdwsCodeDOMStatement.WriteToOutput(output : TdwsCodeDOMOutput);
+procedure TdwsCodeDOMAssignment.WriteToOutput(output : TdwsCodeDOMOutput);
 begin
-   inherited;
-//   if ChildCount = 0 then Exit;
-//
-//   for var i := 0 to ChildCount-2 do
-//      Child[i].WriteToOutput(output);
-//
-//   var lastChild := Child[ChildCount-1];
-//   if (lastChild is TdwsCodeDOMSnippet) and (TdwsCodeDOMSnippet(lastChild).TokenType = ttCOMMENT) then begin
-//      lastChild.WriteToOutput(output);
-//      output.WriteNewLine;
-//   end else begin
-//      lastChild.WriteToOutput(output);
-//      output.WriteNewLine;
-//   end;
+   var i := 0;
+   output
+      .WriteChildrenBeforeTokens(Self, i, cAssignments)
+      .IncIndent
+      .WriteChildren(Self, i)
+      .DecIndent;
 end;
 
 // ------------------
@@ -300,17 +389,29 @@ end;
 //
 procedure TdwsCodeDOMTypeSection.WriteToOutput(output : TdwsCodeDOMOutput);
 begin
-   inherited;
-//   output.WriteTokenString(ttTYPE);
+   var i := 0;
+   output
+      .WriteChild(Self, i)
+      .WriteNewLine
+      .IncIndentNewLine
+      .WriteChildren(Self, i)
+      .DecIndent;
+end;
+
+// ------------------
+// ------------------ TdwsCodeDOMTypeInline ------------------
+// ------------------
+
+// WriteToOutput
 //
-//   var inInterface := ParentOfClass(TdwsCodeDOMMainInterface) <> nil;
-//
-//   output.IncIndent;
-//   if inInterface then
-//      output.WriteNewLine;
-//
-//   inherited WriteToOutput(output);
-//   output.DecIndent;
+procedure TdwsCodeDOMTypeInline.WriteToOutput(output : TdwsCodeDOMOutput);
+begin
+   var i := 0;
+   output
+      .WriteChild(Self, i)
+      .IncIndentNewLine
+      .WriteChildren(Self, i)
+      .DecIndent;
 end;
 
 // ------------------
@@ -470,7 +571,9 @@ begin
       output.IncIndentNewLine;
    output.WriteChildrenBeforeToken(Self, i, ttELSE);
    if indent then
-      output.DecIndentNewLine;
+      if ChildIsTokenType(i, ttELSE) then
+         output.DecIndentNewLine
+      else output.DecIndent;
    output.WriteChildren(Self, i);
 end;
 
@@ -541,31 +644,6 @@ begin
 end;
 
 // ------------------
-// ------------------ TdwsCodeDOMCall ------------------
-// ------------------
-
-// WriteToOutput
-//
-procedure TdwsCodeDOMCall.WriteToOutput(output : TdwsCodeDOMOutput);
-begin
-   inherited;
-//   Child[0].WriteToOutput(output);
-//
-//   output.WriteTokenString(ttBLEFT);
-//   output.IncIndent;
-//
-//   var i := 1;
-//   while i < ChildCount do begin
-//      if i > 1 then
-//         output.WriteTokenString(ttCOMMA);
-//      WriteChildrenUntilClass(output, i, TdwsCodeDOMExpression);
-//   end;
-//
-//   output.DecIndent;
-//   output.WriteTokenString(ttBRIGHT);
-end;
-
-// ------------------
 // ------------------ TdwsCodeDOMUnaryOperator ------------------
 // ------------------
 
@@ -596,6 +674,85 @@ begin
    if not (OperatorType in cWordTokenTypes) then
       output.SkipSpace;
    output.WriteChildren(Self, i);
+end;
+
+// ------------------
+// ------------------ TdwsCodeDOMParameterDeclList ------------------
+// ------------------
+
+// WriteToOutput
+//
+procedure TdwsCodeDOMParameterDeclList.WriteToOutput(output : TdwsCodeDOMOutput);
+begin
+   output.SkipSpace;
+   inherited;
+end;
+
+// ------------------
+// ------------------ TdwsCodeDOMParameters ------------------
+// ------------------
+
+// WriteToOutput
+//
+procedure TdwsCodeDOMParameters.WriteToOutput(output : TdwsCodeDOMOutput);
+begin
+   output.SkipSpace;
+   OutputSeperatedChildren(output, Self, ttBLEFT, ttCOMMA, ttBRIGHT);
+end;
+
+// ------------------
+// ------------------ TdwsCodeDOMIndexes ------------------
+// ------------------
+
+// WriteToOutput
+//
+procedure TdwsCodeDOMIndexes.WriteToOutput(output : TdwsCodeDOMOutput);
+begin
+   output.SkipSpace;
+   OutputSeperatedChildren(output, Self, ttALEFT, ttCOMMA, ttARIGHT);
+end;
+
+// ------------------
+// ------------------ TdwsCodeDOMClassBody ------------------
+// ------------------
+
+// WriteToOutput
+//
+procedure TdwsCodeDOMClassBody.WriteToOutput(output : TdwsCodeDOMOutput);
+begin
+   var i := 0;
+   output
+      .IncIndentNewLine
+      .WriteChildrenBeforeToken(Self, i, ttEND)
+      .DecIndentNewLine
+      .WriteChildren(Self, i);
+end;
+
+// ------------------
+// ------------------ TdwsCodeDOMTypeVisibilitySection ------------------
+// ------------------
+
+// WriteToOutput
+//
+procedure TdwsCodeDOMTypeVisibilitySection.WriteToOutput(output : TdwsCodeDOMOutput);
+begin
+   var i := 0;
+   output
+      .WriteChild(Self, i)
+      .IncIndentNewLine
+      .WriteChildren(Self, i)
+      .DecIndentNewLine
+end;
+
+// ------------------
+// ------------------ TdwsCodeDOMBrackets ------------------
+// ------------------
+
+// WriteToOutput
+//
+procedure TdwsCodeDOMBrackets.WriteToOutput(output : TdwsCodeDOMOutput);
+begin
+   OutputSeperatedChildren(output, Self, ttALEFT, ttCOMMA, ttARIGHT);
 end;
 
 end.
