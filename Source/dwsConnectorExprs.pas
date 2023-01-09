@@ -915,7 +915,8 @@ begin
    FValueExpr.EvalAsVariant(exec, data[0]);
    try
       FConnectorMember.Write(tmp, data);
-      FBaseExpr.AssignValue(exec, tmp);
+      if FBaseExpr.IsWritable then
+         FBaseExpr.AssignValue(exec, tmp);
    except
       on e: EScriptError do begin
          EScriptError(e).ScriptPos := FScriptPos;
