@@ -27,14 +27,14 @@ uses
   Windows, Messages, SysUtils, Classes, Graphics, Controls, Forms, Dialogs,
   ExtCtrls, StdCtrls, Menus, StdActns, ActnList, ExtDlgs, ComCtrls,
   Types, SyncObjs, ImgList, dwsComp, dwsExprs, dwsSymbols, dwsErrors,
-  dwsSuggestions, dwsRTTIConnector, dwsVCLGUIFunctions, dwsStrings,
+  dwsSuggestions, dwsRTTIConnector, dwsRTTIFunctions, dwsVCLGUIFunctions, dwsStrings,
   dwsUnitSymbols, dwsCompilerContext,
   {$IFDEF LLVM}dwsLLVMCodeGen, dwsLLVM, {$ENDIF}
   {$IFDEF JS}dwsJSCodeGen, dwsJSLibModule, {$ENDIF}
   SynEdit, SynEditHighlighter,
   SynHighlighterDWS, SynCompletionProposal, SynEditMiscClasses, SynEditSearch,
   SynEditOptionsDialog, SynEditPlugins, SynMacroRecorder, System.Actions,
-  System.ImageList, dwsJSONConnector;
+  System.ImageList, System.UITypes, dwsJSONConnector;
 
 type
   TRescanThread = class(TThread)
@@ -371,10 +371,14 @@ begin
     Exit;
 
   try
-    ExecutedProgram := FCompiledProgram.Execute;
+    if FCompiledProgram.Msgs.HasErrors then begin
+       StatusBar.SimpleText := 'Error';
+    end else begin
+       ExecutedProgram := FCompiledProgram.Execute;
 
-    ListBoxOutput.Items.Text := ExecutedProgram.Result.ToString;
-    StatusBar.SimpleText := 'Executed';
+       ListBoxOutput.Items.Text := ExecutedProgram.Result.ToString;
+       StatusBar.SimpleText := 'Executed';
+    end
   except
     StatusBar.SimpleText := 'Error';
   end;

@@ -1,2 +1,8 @@
-type
-  TClassTest =
+// simple 'Hello World' example 
+PrintLn('Hello World');
+
+// change width of entire IDE
+Self.Width := 800;
+
+// change background color if SynEdit
+Self.SynEdit.Color := $EFFFFF;

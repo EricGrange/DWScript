@@ -727,4 +727,9 @@ object FrmBasic: TFrmBasic
     Left = 72
     Top = 128
   end
+  object dwsJSONLibModule1: TdwsJSONLibModule
+    Script = DelphiWebScript
+    Left = 352
+    Top = 128
+  end
 end
