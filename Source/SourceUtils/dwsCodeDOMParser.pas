@@ -166,6 +166,7 @@ type
          FCommentStartTokens : TTokenTypes;
          FMessages : TdwsCompileMessageList;
          FSnippetPool : TdwsCodeDOMSnippetPool;
+         FTokenPool : TdwsCodeDOMTokenPool;
 
       protected
          procedure PrepareRules;
@@ -432,7 +433,7 @@ begin
          if rifEndIfNotPresent in ruleItem.FFlags then break;
          FLastFailedAttemptAt := context.TokenBeginPos;
          if Result <> nil then begin
-            context.Release(Result);
+            context.ReleaseNode(Result);
             context.Token := initialToken;
          end;
          Exit;
@@ -461,7 +462,7 @@ begin
       if (prfReplaceBySingleChild in Flags) and (Result.ChildCount = 1) then begin
          var child := Result.Child[0];
          Result.Extract(child);
-         context.Release(Result);
+         context.ReleaseNode(Result);
          Result := child;
       end;
    end else begin
@@ -777,6 +778,7 @@ begin
    PrepareRules;
    FMessages := TdwsCompileMessageList.Create;
    FSnippetPool := TdwsCodeDOMSnippetPool.Create;
+   FTokenPool := TdwsCodeDOMTokenPool.Create;
 end;
 
 // Destroy
@@ -788,6 +790,7 @@ begin
    FRules.Free;
    FMessages.Free;
    FSnippetPool.Free;
+   FTokenPool.Free;
 end;
 
 // Parse
@@ -799,7 +802,7 @@ begin
    Messages.Clear;
    Rules.ResetStates;
 
-   var context := TdwsCodeDOMContext.Create(Messages, FSnippetPool);
+   var context := TdwsCodeDOMContext.Create(Messages, FSnippetPool, FTokenPool);
    try
       FTokenizer.BeginSourceFile(source);
       FTokenizer.OnBeforeAction := context.DoBeforeTokenizerAction;

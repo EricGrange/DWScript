@@ -36,6 +36,8 @@ type
          FNext : TdwsCodeDOMToken;
 
       public
+         procedure Clear;
+
          property BeginPos : TScriptPos read FBeginPos write FBeginPos;
          property EndPos : TScriptPos read FEndPos write FEndPos;
          property TokenType : TTokenType read FTokenType write FTokenType;
@@ -44,6 +46,19 @@ type
          property Prev : TdwsCodeDOMToken read FPrev;
          property Next : TdwsCodeDOMToken read FNext;
    end;
+
+   TdwsCodeDOMTokenPool = class
+      private
+         FPool : TdwsCodeDOMToken;
+
+      public
+         destructor Destroy; override;
+
+         procedure Clear;
+         function Allocate : TdwsCodeDOMToken;
+         procedure Release(aSnippet : TdwsCodeDOMToken);
+   end;
+
 
    TdwsCodeDOMNode = class;
    TdwsCodeDOMSnippet = class;
@@ -67,16 +82,19 @@ type
          FTailToken : TdwsCodeDOMToken;
          FMessages : TdwsCompileMessageList;
          FSnippetPool : TdwsCodeDOMSnippetPool;
+         FTokenPool : TdwsCodeDOMTokenPool;
 
          procedure AppendToken(newToken : TdwsCodeDOMToken);
 
       public
-         constructor Create(aMessages : TdwsCompileMessageList; pool : TdwsCodeDOMSnippetPool);
+         constructor Create(
+            aMessages : TdwsCompileMessageList;
+            snippetPool : TdwsCodeDOMSnippetPool;
+            tokenPool : TdwsCodeDOMTokenPool
+         );
          destructor Destroy; override;
 
          procedure DoBeforeTokenizerAction(Sender : TTokenizer; action : TConvertAction);
-
-         procedure Release(var token : TdwsCodeDOMNode);
 
          procedure Clear;
 
@@ -84,7 +102,13 @@ type
 
          property SnippetPool : TdwsCodeDOMSnippetPool read FSnippetPool;
          function AllocateSnippet : TdwsCodeDOMSnippet; inline;
-         procedure ReleaseSnippet(aSnippet : TdwsCodeDOMSnippet); inline;
+         procedure ReleaseSnippet(var aSnippet : TdwsCodeDOMSnippet); inline;
+
+         property TokenPool : TdwsCodeDOMTokenPool read FTokenPool;
+         function AllocateToken : TdwsCodeDOMToken; inline;
+         procedure ReleaseToken(var token : TdwsCodeDOMToken); inline;
+
+         procedure ReleaseNode(var node : TdwsCodeDOMNode); inline;
 
          property Token : TdwsCodeDOMToken read FToken write FToken;
          function TokenType : TTokenType; inline;
@@ -252,6 +276,62 @@ implementation
 uses dwsCodeDOMNodes;
 
 // ------------------
+// ------------------ TdwsCodeDOMToken ------------------
+// ------------------
+
+// Clear
+//
+procedure TdwsCodeDOMToken.Clear;
+begin
+   FBeginPos.Clear;
+   FEndPos.Clear;
+   FTokenType := ttNone;
+   FRawString := '';
+   FPrev := nil;
+   FNext := nil;
+end;
+
+// ------------------
+// ------------------ TdwsCodeDOMTokenPool ------------------
+// ------------------
+
+// Destroy
+//
+destructor TdwsCodeDOMTokenPool.Destroy;
+begin
+   Clear;
+   inherited;
+end;
+
+// Clear
+//
+procedure TdwsCodeDOMTokenPool.Clear;
+begin
+   while FPool <> nil do
+      Allocate.Free;
+end;
+
+// Allocate
+//
+function TdwsCodeDOMTokenPool.Allocate : TdwsCodeDOMToken;
+begin
+   if FPool <> nil then begin
+      Result := FPool;
+      FPool := Result.Next;
+      Result.FNext := nil;
+   end else Result := TdwsCodeDOMToken.Create;
+end;
+
+// Release
+//
+procedure TdwsCodeDOMTokenPool.Release(aSnippet : TdwsCodeDOMToken);
+begin
+   aSnippet.Clear;
+   aSnippet.FNext := FPool;
+   FPool := aSnippet;
+end;
+
+// ------------------
 // ------------------ TdwsCodeDOMSnippetPool ------------------
 // ------------------
 
@@ -307,12 +387,17 @@ end;
 
 // Create
 //
-constructor TdwsCodeDOMContext.Create(aMessages : TdwsCompileMessageList; pool : TdwsCodeDOMSnippetPool);
+constructor TdwsCodeDOMContext.Create(
+   aMessages : TdwsCompileMessageList;
+   snippetPool : TdwsCodeDOMSnippetPool;
+   tokenPool : TdwsCodeDOMTokenPool
+);
 begin
    inherited Create;
    Assert(aMessages <> nil);
    FMessages := aMessages;
-   FSnippetPool := pool;
+   FSnippetPool := snippetPool;
+   FTokenPool := tokenPool;
 end;
 
 // Destroy
@@ -330,7 +415,7 @@ begin
    var p := FHeadToken;
    while p <> nil do begin
       var pNext := p.Next;
-      p.Free;
+      TokenPool.Release(p);
       p := pNext;
    end;
    FHeadToken := nil;
@@ -347,16 +432,42 @@ end;
 
 // ReleaseSnippet
 //
-procedure TdwsCodeDOMContext.ReleaseSnippet(aSnippet : TdwsCodeDOMSnippet);
+procedure TdwsCodeDOMContext.ReleaseSnippet(var aSnippet : TdwsCodeDOMSnippet);
 begin
    FSnippetPool.Release(aSnippet);
+   aSnippet := nil;
+end;
+
+// AllocateToken
+//
+function TdwsCodeDOMContext.AllocateToken : TdwsCodeDOMToken;
+begin
+   Result := TokenPool.Allocate;
+end;
+
+// ReleaseToken
+//
+procedure TdwsCodeDOMContext.ReleaseToken(var token : TdwsCodeDOMToken);
+begin
+   TokenPool.Release(token);
+   token := nil;
+end;
+
+// ReleaseNode
+//
+procedure TdwsCodeDOMContext.ReleaseNode(var node : TdwsCodeDOMNode);
+begin
+   if node = nil then Exit;
+   node.ReleaseChildren(Self);
+   node.ReleaseSelf(Self);
+   node := nil;
 end;
 
 // DoBeforeTokenizerAction
 //
 procedure TdwsCodeDOMContext.DoBeforeTokenizerAction(Sender : TTokenizer; action : TConvertAction);
 begin
-   var token := TdwsCodeDOMToken.Create;
+   var token := AllocateToken;
    var tok := Sender.GetToken;
 
 //   if (FTailToken <> nil) and (FTailToken.EndPos.Line < tok.FScriptPos.Line) then begin
@@ -425,16 +536,6 @@ begin
    );
 
    AppendToken(token);
-end;
-
-// Release
-//
-procedure TdwsCodeDOMContext.Release(var token : TdwsCodeDOMNode);
-begin
-   if token = nil then Exit;
-   token.ReleaseChildren(Self);
-   token.ReleaseSelf(Self);
-   token := nil;
 end;
 
 // AppendToken
@@ -619,7 +720,7 @@ procedure TdwsCodeDOMNode.ReleaseChildren(context : TdwsCodeDOMContext);
 begin
    for var i := 0 to ChildCount-1 do begin
       var c := Child[i];
-      context.Release(c);
+      context.ReleaseNode(c);
    end;
    FChildren.Clear;
 end;
