@@ -50,6 +50,8 @@ type
 
    TdwsCodeDOMResourceStringSection = class (TdwsCodeDOMSection);
 
+   TdwsCodeDOMUses = class (TdwsCodeDOMNode);
+
    TdwsCodeDOMMain = class (TdwsCodeDOMNode)
       private
          FMainType : TTokenType;
@@ -59,6 +61,8 @@ type
 
          property MainType : TTokenType read FMainType;
    end;
+
+   TdwsCodeDOMUniteNamespace = class (TdwsCodeDOMMain);
 
    TdwsCodeDOMMainInterface = class (TdwsCodeDOMMain);
    TdwsCodeDOMMainImplementation = class (TdwsCodeDOMMain);

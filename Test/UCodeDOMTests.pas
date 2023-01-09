@@ -85,22 +85,25 @@ begin
    var basePath := ExtractFilePath(ParamStr(0));
    CollectFiles(basePath+'SimpleScripts'+PathDelim, cFilter, FTests);
    CollectFiles(basePath+'ArrayPass'+PathDelim, cFilter, FTests);
-   CollectFiles(basePath+'LambdaPass'+PathDelim, cFilter, FTests);
+   CollectFiles(basePath+'AssociativePass'+PathDelim, cFilter, FTests);
+   CollectFiles(basePath+'HelpersPass'+PathDelim, cFilter, FTests);
+   CollectFiles(basePath+'InnerClassesPass'+PathDelim, cFilter, FTests);
    CollectFiles(basePath+'InterfacesPass'+PathDelim, cFilter, FTests);
+   CollectFiles(basePath+'LambdaPass'+PathDelim, cFilter, FTests);
    CollectFiles(basePath+'OperatorOverloadPass'+PathDelim, cFilter, FTests);
    CollectFiles(basePath+'OverloadsPass'+PathDelim, cFilter, FTests);
-   CollectFiles(basePath+'HelpersPass'+PathDelim, cFilter, FTests);
    CollectFiles(basePath+'PropertyExpressionsPass'+PathDelim, cFilter, FTests);
-   CollectFiles(basePath+'SetOfPass'+PathDelim, cFilter, FTests);
-   CollectFiles(basePath+'AssociativePass'+PathDelim, cFilter, FTests);
    CollectFiles(basePath+'GenericsPass'+PathDelim, cFilter, FTests);
-   CollectFiles(basePath+'InnerClassesPass'+PathDelim, cFilter, FTests);
+   CollectFiles(basePath+'SetOfPass'+PathDelim, cFilter, FTests);
    CollectFiles(basePath+'Algorithms'+PathDelim, cFilter, FTests);
+   CollectFiles(basePath+'BuildScripts'+PathDelim, cFilter, FTests);
 
-   // these tests require conditionals & switch processing
+   // these tests require conditionals & switch processing or have expected failure
    for var i := FTests.Count-1 downto 0 do begin
       if StrEndsWith(FTests[i], 'conditionals_ifndef.pas') then FTests.Delete(i);
       if StrEndsWith(FTests[i], 'include_expr.pas') then FTests.Delete(i);
+      if StrEndsWith(FTests[i], 'Sections.pas') then FTests.Delete(i);
+      if StrEndsWith(FTests[i], 'UnfinishedDirective.pas') then FTests.Delete(i);
    end;
 end;
 

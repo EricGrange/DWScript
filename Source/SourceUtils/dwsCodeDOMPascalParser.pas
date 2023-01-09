@@ -114,6 +114,7 @@ begin
    var external_qualifier := Result.NewRuleNode('external_qualifier', TdwsCodeDOMDeprecatedQualifier)
       .AddMatchTokenType(ttEXTERNAL)
       .AddMatchTokenType(ttStrVal, [ rifOptional ])
+      .AddMatchTokenType(ttPROPERTY, [ rifOptional ])
    ;
    var helper_qualifier := Result.NewRuleNode('helper_qualifier', TdwsCodeDOMHelperQualifier)
       .AddMatchTokenType(ttHELPER)
@@ -870,6 +871,12 @@ begin
       .AddSubRule(reference)
    ;
 
+   var uses_clause := Result.NewRuleNode('uses', TdwsCodeDOMUses)
+      .AddMatchTokenType(ttUSES)
+      .AddSubRule(reference)
+      .AddMatchTokenType(ttCOMMA, [ rifOptional, rifGoToStep1 ])
+   ;
+
    statement
       .AddSubRule(switch)
       .AddSubRule(comment)
@@ -891,6 +898,7 @@ begin
       .AddSubRule(instructions)
       .AddSubRule(try_except_finally)
       .AddSubRule(on_clause)
+      .AddSubRule(uses_clause)
       .AddSubRule(assignment)
       .AddSubRule(call_inherited)
       .AddSubRule(operator_decl)
@@ -902,6 +910,11 @@ begin
       .AddMatchTokenType(ttSEMI, [ rifOptional, rifRestart ])
    ;
 
+   var uses_section_clause := Result.NewRuleNode('uses_section', TdwsCodeDOMUses)
+      .AddSubRule(uses_clause, [ rifMergeChildren ])
+      .AddMatchTokenType(ttSEMI, [ rifOptional ])
+   ;
+
    var interface_section := Result.NewRuleNode('interface_section', TdwsCodeDOMMainInterface)
       .AddMatchTokenType(ttINTERFACE)
       .AddSubRule(Result.NewRuleAlternative('interface_section_alt')
@@ -909,6 +922,7 @@ begin
          .AddSubRule(var_section)
          .AddSubRule(const_section)
          .AddSubRule(resourcestring_section)
+         .AddSubRule(uses_section_clause)
          .AddSubRule(function_decl)
       , [ rifOptional, rifRepeat ])
       .AddMatchTokenType(ttSEMI, [ rifOptional, rifGoToStep1 ])
@@ -919,6 +933,7 @@ begin
       .AddSubRule(var_section)
       .AddSubRule(const_section)
       .AddSubRule(resourcestring_section)
+      .AddSubRule(uses_section_clause)
       .AddSubRule(Result.NewRuleNode('implementation_func', TdwsCodeDOMMainImplementation)
          .AddSubRule(Result.NewRuleAlternative('implementation_func_alt')
             .AddSubRule(function_impl)
@@ -941,9 +956,18 @@ begin
       .AddSubRule(statement_list, [ rifOptional ])
    ;
 
+   var unit_namespace := Result.NewRuleNode('unit_namespace', TdwsCodeDOMUniteNamespace)
+      .AddMatchTokenTypePair(ttUNIT, ttNAMESPACE)
+      .AddSubRule(reference)
+      .AddSubRule(deprecated_qualifier, [ rifOptional ])
+      .AddMatchTokenType(ttSEMI)
+      .AddSubRule(uses_section_clause, [ rifOptional, rifRepeat ])
+   ;
+
    var unit_or_library := Result.NewRuleNode('unit_or_library', TdwsCodeDOMMain)
       .AddMatchTokenTypes([ ttUNIT, ttLIBRARY ])
       .AddSubRule(reference)
+      .AddSubRule(deprecated_qualifier, [ rifOptional ])
       .AddMatchTokenType(ttSEMI)
       .AddSubRule(interface_section, [ rifOptional ])
       .AddSubRule(implementation_section, [ rifOptional ])
@@ -963,6 +987,7 @@ begin
    ;
 
    var root := Result.NewRuleAlternative('root', [ prfRoot ])
+      .AddSubRule(unit_namespace)
       .AddSubRule(unit_or_library)
       .AddSubRule(program_main)
       .AddSubRule(statement_list)
