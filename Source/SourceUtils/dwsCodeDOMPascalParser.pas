@@ -533,7 +533,7 @@ begin
       .AddSubRule(contract_clause, [ rifOptional, rifRepeat ])
    ;
 
-   var function_block := Result.NewRuleNode('function_block', TdwsCodeDOMBeginEnd)
+   var function_block := Result.NewRuleNode('function_block', TdwsCodeDOMFunctionBlock)
       .AddMatchTokenType(ttBEGIN)
       .AddSubRule(statement_list, [ rifOptional ])
       .AddSubRule(ensure_section, [ rifOptional ])

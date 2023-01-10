@@ -12,7 +12,8 @@ type
 
    TdwsAutoFormat = class
       private
-         FIndent : String;
+         FIndentChar : Char;
+         FIndentSize : Integer;
          FParser : TdwsParser;
 
       protected
@@ -26,7 +27,8 @@ type
 
          property Parser : TdwsParser read FParser;
 
-         property Indent : String read FIndent write FIndent;
+         property IndentChar : Char read FIndentChar write FIndentChar;
+         property IndentSize : Integer read FIndentSize write FIndentSize;
    end;
 
 // ------------------------------------------------------------------
@@ -48,7 +50,8 @@ uses dwsErrors;
 constructor TdwsAutoFormat.Create(aParser : TdwsParser);
 begin
    inherited Create;
-   Indent := #9;
+   IndentChar := #9;
+   IndentSize := 1;
    FParser := aParser;
 end;
 
@@ -83,7 +86,8 @@ begin
          Exit(sourceFile.Code);
       var output := TdwsCodeDOMOutput.Create;
       try
-         output.Indent := Indent;
+         output.IndentChar := IndentChar;
+         output.IndentSize := IndentSize;
          if dom.Root <> nil then
             dom.Root.WriteToOutput(output);
          Result := output.ToString;

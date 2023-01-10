@@ -75,10 +75,7 @@ type
 
    TdwsCodeDOMInstruction = class (TdwsCodeDOMStatement);
 
-   TdwsCodeDOMAssignment = class (TdwsCodeDOMStatement)
-      public
-         procedure WriteToOutput(output : TdwsCodeDOMOutput); override;
-   end;
+   TdwsCodeDOMAssignment = class (TdwsCodeDOMStatement);
 
    TdwsCodeDOMTry = class (TdwsCodeDOMStatement);
    TdwsCodeDOMTryExcept = class (TdwsCodeDOMStatement);
@@ -98,6 +95,8 @@ type
       public
          procedure WriteToOutput(output : TdwsCodeDOMOutput); override;
    end;
+
+   TdwsCodeDOMFunctionBlock = class (TdwsCodeDOMBeginEnd);
 
    TdwsCodeDOMAsmBlock = class (TdwsCodeDOMBeginEnd);
 
@@ -238,7 +237,10 @@ type
    TdwsCodeDOMFunctionDecl = class (TdwsCodeDOMNode);
    TdwsCodeDOMFunctionReturnDecl = class (TdwsCodeDOMNode);
    TdwsCodeDOMFunctionQualifier = class (TdwsCodeDOMNode);
-   TdwsCodeDOMFunctionImpl = class (TdwsCodeDOMNode);
+   TdwsCodeDOMFunctionImpl = class (TdwsCodeDOMNode)
+      public
+         procedure WriteToOutput(output : TdwsCodeDOMOutput); override;
+   end;
 
    TdwsCodeDOMLambda = class (TdwsCodeDOMExpression);
    TdwsCodeDOMLambdaParameters = class (TdwsCodeDOMParameters);
@@ -355,23 +357,6 @@ begin
       subOutput.Free;
    end;
 
-end;
-
-
-// ------------------
-// ------------------ TdwsCodeDOMAssignment ------------------
-// ------------------
-
-// WriteToOutput
-//
-procedure TdwsCodeDOMAssignment.WriteToOutput(output : TdwsCodeDOMOutput);
-begin
-   var i := 0;
-   output
-      .WriteChildrenBeforeTokens(Self, i, cAssignments)
-      .IncIndent
-      .WriteChildren(Self, i)
-      .DecIndent;
 end;
 
 // ------------------
@@ -757,6 +742,18 @@ end;
 procedure TdwsCodeDOMBrackets.WriteToOutput(output : TdwsCodeDOMOutput);
 begin
    OutputSeperatedChildren(output, Self, ttALEFT, ttCOMMA, ttARIGHT);
+end;
+
+// ------------------
+// ------------------ TdwsCodeDOMFunctionImpl ------------------
+// ------------------
+
+// WriteToOutput
+//
+procedure TdwsCodeDOMFunctionImpl.WriteToOutput(output : TdwsCodeDOMOutput);
+begin
+   inherited;
+   output.SkipExtraLineAfterNextNewLine;
 end;
 
 end.

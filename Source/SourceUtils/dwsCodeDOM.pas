@@ -142,7 +142,6 @@ type
          procedure ReleaseChildren(context : TdwsCodeDOMContext);
 
       public
-         constructor Create;
          destructor Destroy; override;
 
          procedure WriteToOutput(output : TdwsCodeDOMOutput); virtual;
@@ -170,31 +169,44 @@ type
          procedure InsertChild(index : Integer; node : TdwsCodeDOMNode);
    end;
 
+   TdwsCodeDOMOutputFlag = (
+      ofSkipExtraLineAfterNextNewLine
+   );
+   TdwsCodeDOMOutputFlags = set of TdwsCodeDOMOutputFlag;
+
+   TdwsCodeDOMOutputState = record
+      Position : Integer;
+      Line, Col : Integer;
+      ColMax : Integer;
+      IndentDepth : Integer;
+      TailChar : Char;
+      Flags : TdwsCodeDOMOutputFlags;
+   end;
+
    TdwsCodeDOMOutput = class
       private
-         FStream : TWriteOnlyBlockStream;
-         FIndent : String;
-         FIndentBuf : String;
-         FIndentDepth : Integer;
-         FTailChar : Char;
-         FLine : Integer;
-         FCol : Integer;
-         FColMax : Integer;
+         FOutputBuffer : array of Char;
+         FState : TdwsCodeDOMOutputState;
          FMaxDesiredColumn : Integer;
          FMaxToleranceColumn : Integer;
+         FIndentBuf : String;
+         FIndentChar : Char;
          FTabSize : Integer;
+         FIndentSize : Integer;
 
       protected
+         procedure Write(const buf : String);
 
       public
          constructor Create;
-         destructor Destroy; override;
 
          procedure WriteString(const s : String);
          function WritePreLine : TdwsCodeDOMOutput;
          function WriteNewLine : TdwsCodeDOMOutput;
          procedure WriteSemi;
+
          function SkipSpace : TdwsCodeDOMOutput;
+         procedure SkipExtraLineAfterNextNewLine;
 
          function WriteChild(node : TdwsCodeDOMNode; var i : Integer) : TdwsCodeDOMOutput;
          function WriteChildren(node : TdwsCodeDOMNode; var i : Integer) : TdwsCodeDOMOutput;
@@ -202,16 +214,21 @@ type
          function WriteChildrenBeforeTokens(node : TdwsCodeDOMNode; var i : Integer; const tokens : TTokenTypes) : TdwsCodeDOMOutput;
          function WriteChildrenUntilToken(node : TdwsCodeDOMNode; var i : Integer; token : TTokenType) : TdwsCodeDOMOutput;
 
-         property Indent : String read FIndent write FIndent;
-         property IndentDepth : Integer read FIndentDepth;
+         property Position : Integer read FState.Position;
+         property Line : Integer read FState.Line;
+         property Col : Integer read FState.Col;
+         property ColMax : Integer read FState.ColMax;
+         property IndentDepth : Integer read FState.IndentDepth;
 
-         property Line : Integer read FLine;
-         property Col : Integer read FCol;
-         property ColMax : Integer read FColMax;
+         function SaveState : TdwsCodeDOMOutputState;
+         procedure RestoreState(const aState : TdwsCodeDOMOutputState);
+
+         property IndentChar : Char read FIndentChar write FIndentChar;
+         property IndentSize : Integer read FIndentSize write FIndentSize;
+         property TabSize : Integer read FTabSize write FTabSize;
 
          property MaxDesiredColumn : Integer read FMaxDesiredColumn write FMaxDesiredColumn;
          property MaxToleranceColumn : Integer read FMaxToleranceColumn write FMaxToleranceColumn;
-         property TabSize : Integer read FTabSize write FTabSize;
 
          function IncIndent : TdwsCodeDOMOutput;
          function DecIndent : TdwsCodeDOMOutput;
@@ -619,13 +636,6 @@ end;
 // ------------------ TdwsCodeDOMNode ------------------
 // ------------------
 
-// Create
-//
-constructor TdwsCodeDOMNode.Create;
-begin
-   inherited;
-end;
-
 // Destroy
 //
 destructor TdwsCodeDOMNode.Destroy;
@@ -824,22 +834,46 @@ end;
 constructor TdwsCodeDOMOutput.Create;
 begin
    inherited;
-   FStream := TWriteOnlyBlockStream.AllocFromPool;
-   FTailChar := #0;
-   FLine := 1;
-   FCol := 1;
-   FColMax := 1;
+   SetLength(FOutputBuffer, 256);
+   FState.TailChar := #0;
+   FState.Line := 1;
+   FState.Col := 1;
+   FState.ColMax := 1;
    FMaxDesiredColumn := 80;
    FMaxToleranceColumn := 90;
    FTabSize := 3;
 end;
 
-// Destroy
+// Write
 //
-destructor TdwsCodeDOMOutput.Destroy;
+procedure TdwsCodeDOMOutput.Write(const buf : String);
 begin
-   inherited;
-   FStream.ReturnToPool;
+   if buf = '' then Exit;
+   var n := Length(buf);
+   var capacity := Length(FOutputBuffer);
+   if FState.Position + n > capacity then
+      SetLength(FOutputBuffer, capacity + (capacity shr 2) + n);
+
+   var pBuf := PChar(buf);
+   System.Move(pBuf^, FOutputBuffer[FState.Position], n*SizeOf(Char));
+   Inc(FState.Position, n);
+
+   while pBuf^ <> #0 do begin
+      case pBuf^ of
+         #10 : begin
+            Inc(FState.Line);
+            if FState.Col > FState.ColMax then
+               FState.ColMax := FState.Col;
+            FState.Col := 1;
+         end;
+         #9 : Inc(FState.Col, TabSize);
+      else
+         Inc(FState.Col);
+      end;
+      Inc(pBuf);
+   end;
+   if FState.Col > FState.ColMax then
+      FState.ColMax := FState.Col;
 end;
 
 // WriteString
@@ -847,62 +881,40 @@ end;
 procedure TdwsCodeDOMOutput.WriteString(const s : String);
 begin
    if s = '' then Exit;
-   case FTailChar of
-      #10 : begin
-         FStream.WriteString(FIndentBuf);
-         Inc(FCol, Length(FIndentBuf));
-      end;
+   case FState.TailChar of
+      #10 : Write(FIndentBuf);
       #0..#9, #11..' ', '(', '[', '$', '{', '#', '.' : ;
    else
       case s[1] of
          ',', ';', '.', ')', ']', '}' : //, '(', ')', '[', ']', '{', '}' : ;
       else
-         FStream.WriteString(' ');
-         Inc(FCol);
+         Write(' ');
       end;
    end;
-   var p := PChar(s);
-   while p^ <> #0 do begin
-      case p^ of
-         #10 : begin
-            Inc(FLine);
-            if FCol > FColMax then
-               FColMax := FCol;
-            FCol := 1;
-         end;
-         #9 : Inc(FCol, TabSize);
-      else
-         Inc(FCol);
-      end;
-      Inc(p);
-   end;
-   if FCol > FColMax then
-      FColMax := FCol;
 
-   FStream.WriteString(s);
-   FTailChar := s[Length(s)];
+   Write(s);
+   FState.TailChar := s[Length(s)];
 end;
 
 // WritePreLine
 //
 function TdwsCodeDOMOutput.WritePreLine : TdwsCodeDOMOutput;
 begin
-   FStream.WriteChar(#10);
-   FTailChar := #10;
+   Write(#10);
+   FState.TailChar := #10;
    Result := Self;
-   Inc(FLine);
-   FCol := 1;
 end;
 
 // WriteNewLine
 //
 function TdwsCodeDOMOutput.WriteNewLine : TdwsCodeDOMOutput;
 begin
-   if FTailChar <> #10 then begin
-      FStream.WriteChar(#10);
-      FTailChar := #10;
-      Inc(FLine);
-      FCol := 1;
+   if FState.TailChar <> #10 then begin
+      if ofSkipExtraLineAfterNextNewLine in FState.Flags then begin
+         Exclude(FState.Flags, ofSkipExtraLineAfterNextNewLine);
+         Write(#10#10);
+      end else Write(#10);
+      FState.TailChar := #10;
    end;
    Result := Self;
 end;
@@ -911,15 +923,22 @@ end;
 //
 procedure TdwsCodeDOMOutput.WriteSemi;
 begin
-   WriteString(';');
+   Write(';');
 end;
 
 // SkipSpace
 //
 function TdwsCodeDOMOutput.SkipSpace : TdwsCodeDOMOutput;
 begin
-   FTailChar := #0;
+   FState.TailChar := #0;
    Result := Self;
+end;
+
+// SkipExtraLineAfterNextNewLine
+//
+procedure TdwsCodeDOMOutput.SkipExtraLineAfterNextNewLine;
+begin
+   Include(FState.Flags, ofSkipExtraLineAfterNextNewLine);
 end;
 
 // WriteChild
@@ -978,12 +997,29 @@ begin
    Result := WriteChild(node, i);
 end;
 
+// SaveState
+//
+function TdwsCodeDOMOutput.SaveState : TdwsCodeDOMOutputState;
+begin
+   Result := FState;
+end;
+
+// RestoreState
+//
+procedure TdwsCodeDOMOutput.RestoreState(const aState : TdwsCodeDOMOutputState);
+begin
+   // can only restore backwards
+   Assert(Cardinal(aState.Position) <= Cardinal(FState.Position));
+   FState := aState;
+   FIndentBuf := StringOfChar(IndentChar, IndentDepth*IndentSize);
+end;
+
 // IncIndent
 //
 function TdwsCodeDOMOutput.IncIndent : TdwsCodeDOMOutput;
 begin
-   Inc(FIndentDepth);
-   FIndentBuf := FIndentBuf + FIndent;
+   Inc(FState.IndentDepth);
+   FIndentBuf := StringOfChar(IndentChar, IndentDepth*IndentSize);
    Result := Self;
 end;
 
@@ -991,9 +1027,9 @@ end;
 //
 function TdwsCodeDOMOutput.DecIndent : TdwsCodeDOMOutput;
 begin
-   Assert(FIndentDepth > 0);
-   Dec(FIndentDepth);
-   SetLength(FIndentBuf, Length(FIndentBuf) - Length(FIndent));
+   Assert(FState.IndentDepth > 0);
+   Dec(FState.IndentDepth);
+   SetLength(FIndentBuf, Length(FIndentBuf) - FIndentSize);
    Result := Self;
 end;
 
@@ -1018,7 +1054,7 @@ end;
 function TdwsCodeDOMOutput.ToString : String;
 begin
    WriteNewLine;
-   Result := FStream.ToString;
+   SetString(Result, PChar(FOutputBuffer), FState.Position);
 end;
 
 // ------------------

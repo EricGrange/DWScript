@@ -18,6 +18,7 @@ type
    TAutoFormatTests = class (TTestCase)
       private
          FCompiler : TDelphiWebScript;
+         FAutoFormatTests : TStringList;
          FTests : TStringList;
          FAutoFormat : TdwsAutoFormat;
          FPascalRules : TdwsCodeDOMPascalParser;
@@ -32,6 +33,8 @@ type
       published
          procedure CodeStillCompiles;
          procedure CodeStillExecutes;
+
+         procedure AutoFormat;
 
          procedure SimpleNewLines;
          procedure SimpleBeginEndBlocks;
@@ -68,13 +71,16 @@ implementation
 procedure TAutoFormatTests.SetUp;
 const
    cFilter = '*.pas';
-var
-   basePath : String;
 begin
+   var basePath := ExtractFilePath(ParamStr(0));
+
+   FAutoFormatTests := TStringList.Create;
+   CollectFiles(basePath + 'AutoFormat' + PathDelim, cFilter, FAutoFormatTests);
+   for var i := FAutoFormatTests.Count-1 downto 0 do
+      if StrEndsWith(FAutoFormatTests[i], '.fmt.pas') then
+         FAutoFormatTests.Delete(i);
+
    FTests:=TStringList.Create;
-
-   basePath:=ExtractFilePath(ParamStr(0));
-
    CollectFiles(basePath+'SimpleScripts'+PathDelim, cFilter, FTests);
    CollectFiles(basePath+'ArrayPass'+PathDelim, cFilter, FTests);
    CollectFiles(basePath+'LambdaPass'+PathDelim, cFilter, FTests);
@@ -110,6 +116,7 @@ begin
    FPascalRules.Free;
    FCompiler.Free;
    FTests.Free;
+   FAutoFormatTests.Free;
 end;
 
 // DoInclude
@@ -233,6 +240,20 @@ begin
    end;
 end;
 
+// AutoFormat
+//
+procedure TAutoFormatTests.AutoFormat;
+begin
+   for var i := 0 to FAutoFormatTests.Count-1 do begin
+      var code := LoadTextFromFile(FAutoFormatTests[i]);
+      var expected := StringReplace(
+         LoadTextFromFile(ChangeFileExt(FAutoFormatTests[i], '.fmt.pas')),
+         #13#10, #10, [ rfReplaceAll ]
+      );
+      CheckEquals(TrimRight(expected), TrimRight(FAutoFormat.Process(code)), FAutoFormatTests[i]);
+   end;
+end;
+
 // SimpleNewLines
 //
 procedure TAutoFormatTests.SimpleNewLines;
@@ -320,11 +341,11 @@ end;
 procedure TAutoFormatTests.SimpleFuncs;
 begin
    CheckEquals(
-      'procedure Hello;'#10'begin'#10#9'i := 1'#10'end;'#10,
+      'procedure Hello;'#10'begin'#10#9'i := 1'#10'end;'#10#10,
       FAutoFormat.Process('procedure Hello;begin i:=1 end;')
    );
    CheckEquals(
-      'procedure PrintBool(v : Variant);'#10'begin'#10#9'PrintLn(if v then ''True'' else ''False'');'#10'end;'#10,
+      'procedure PrintBool(v : Variant);'#10'begin'#10#9'PrintLn(if v then ''True'' else ''False'');'#10'end;'#10#10,
       FAutoFormat.Process('procedure PrintBool(v:Variant);begin PrintLn(if v then''True'' else''False'');end;')
    );
 end;
@@ -334,7 +355,7 @@ end;
 procedure TAutoFormatTests.FuncCalls;
 begin
    CheckEquals(
-      'procedure Hello;'#10'begin'#10#9'i := 1'#10'end;'#10,
+      'procedure Hello;'#10'begin'#10#9'i := 1'#10'end;'#10#10,
       FAutoFormat.Process('procedure Hello;begin i:=1 end;')
    );
    CheckEquals(

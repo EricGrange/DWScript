@@ -78,11 +78,12 @@ begin
 
    FParser := TdwsParser.Create(FTokRules.CreateTokenizer(nil, nil), FPascalRules.CreateRules);
 
+   var basePath := ExtractFilePath(ParamStr(0));
+
    FDOMTests := TStringList.Create;
-   CollectFiles(ExtractFilePath(ParamStr(0)) + 'DOMParser' + PathDelim, cFilter, FDOMTests);
+   CollectFiles(basePath + 'DOMParser' + PathDelim, cFilter, FDOMTests);
 
    FTests := TStringList.Create;
-   var basePath := ExtractFilePath(ParamStr(0));
    CollectFiles(basePath+'SimpleScripts'+PathDelim, cFilter, FTests);
    CollectFiles(basePath+'ArrayPass'+PathDelim, cFilter, FTests);
    CollectFiles(basePath+'AssociativePass'+PathDelim, cFilter, FTests);
