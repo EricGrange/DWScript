@@ -419,6 +419,8 @@ type
          procedure AddNull;
          procedure Delete(index : Integer);
 
+         procedure AddFrom(other : TdwsJSONArray);
+
          procedure Sort(const aCompareMethod : TdwsJSONValueCompareMethod);
          procedure Swap(index1, index2 : Integer);
 
@@ -2271,6 +2273,22 @@ begin
    DeleteIndex(index);
 end;
 
+// AddFrom
+//
+procedure TdwsJSONArray.AddFrom(other : TdwsJSONArray);
+begin
+   if other.FCount = 0 then Exit;
+
+   for var i := 0 to other.FCount-1 do begin
+      var elem := other.FElements^[i];
+      if FCount=FCapacity then Grow;
+      FElements^[FCount] := other.FElements^[i];
+      elem.FOwner := Self;
+      Inc(FCount);
+   end;
+   other.FCount := 0;
+end;
+
 // Sort
 //
 type
@@ -2444,7 +2462,12 @@ end;
 //
 procedure TdwsJSONArray.DoExtend(other : TdwsJSONValue);
 begin
-   RaiseJSONException('Cannot extend arrays (yet)');
+   if other.ClassType<>TdwsJSONArray then
+      RaiseJSONException('Can only extend Array with Array');
+   var otherArr := TdwsJSONArray(other);
+   for var i := 0 to otherArr.FCount-1 do
+      Add(otherArr.FElements^[i].Clone);
+
 end;
 
 // ------------------

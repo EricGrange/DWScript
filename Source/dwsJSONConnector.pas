@@ -72,6 +72,7 @@ type
          FExtendCall : IConnectorCall;
          FAddCall : IConnectorCall;
          FDeleteCall : IConnectorCall;
+         FAddFromCall : IConnectorCall;
          FSwapCall : IConnectorCall;
          FToStringCall : IConnectorCall;
          FLengthMember : IConnectorMember;
@@ -160,6 +161,11 @@ type
    end;
 
    TdwsJSONDeleteCall = class (TdwsJSONFastCallBase, IConnectorFastCall)
+      public
+         procedure FastCall(const args : TExprBaseListExec; var result : Variant); override;
+   end;
+
+   TdwsJSONAddFromCall = class (TdwsJSONFastCallBase, IConnectorFastCall)
       public
          procedure FastCall(const args : TExprBaseListExec; var result : Variant); override;
    end;
@@ -694,6 +700,7 @@ begin
    FExtendCall:=TdwsJSONExtendCall.Create;
    FAddCall:=TdwsJSONAddCall.Create;
    FDeleteCall:=TdwsJSONDeleteCall.Create;
+   FAddFromCall := TdwsJSONAddFromCall.Create;
    FSwapCall:=TdwsJSONSwapCall.Create;
    FToStringCall:=TdwsJSONToStringCall.Create;
 
@@ -795,6 +802,17 @@ begin
          raise ECompileException.CreateFmt(CPE_BadParameterType, [0, SYS_STRING + ' or ' + SYS_INTEGER, paramTyp.Caption]);
 
       Result:=FDeleteCall;
+      typSym:=nil;
+
+   end else if UnicodeSameText(methodName, 'addfrom') then begin
+
+      if Length(params)<>1 then
+         raise ECompileException.CreateFmt(CPE_BadNumberOfParameters, [1, Length(params)]);
+      paramTyp := params[0].TypSym;
+      if paramTyp.UnAliasedType <> TypJSONVariant then
+         raise ECompileException.CreateFmt(CPE_BadParameterType, [0, SYS_JSONVARIANT, paramTyp.Caption]);
+
+      Result:=FAddFromCall;
       typSym:=nil;
 
    end else if UnicodeSameText(methodName, 'swap') then begin
@@ -1168,6 +1186,29 @@ begin
    else
       raise EdwsJSONException.Create('JSON Object or Array required for Delete method');
    end;
+end;
+
+// ------------------
+// ------------------ TdwsJSONAddFromCall ------------------
+// ------------------
+
+// FastCall
+//
+procedure TdwsJSONAddFromCall.FastCall(const args : TExprBaseListExec; var result : Variant);
+var
+   base, arg : Variant;
+   baseValue, argValue : TdwsJSONValue;
+begin
+   args.EvalAsVariant(0, base);
+   args.EvalAsVariant(1, arg);
+   baseValue := TBoxedJSONValue.UnBox(base);
+   argValue := TBoxedJSONValue.UnBox(arg);
+   if baseValue.ValueType <> jvtArray then
+      raise EdwsJSONException.Create('JSON Array required for AddFrom method');
+   if argValue.ValueType <> jvtArray then
+      raise EdwsJSONException.Create('JSON Array required for AddFrom argument');
+
+   TdwsJSONArray(baseValue).AddFrom(TdwsJSONArray(argValue));
 end;
 
 // ------------------
