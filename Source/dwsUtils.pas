@@ -1182,6 +1182,7 @@ function PopCount64(p : PInt64; nbInt64s : Integer) : Integer;
 function PopCount(p : PByte; n : Integer) : Integer;
 
 procedure SwapInt64(var a, b : Int64); inline;
+procedure SwapSingles(var a, b : Single); inline;
 procedure SwapDoubles(var a, b : Double); inline;
 procedure SwapPointers(var a, b : Pointer); inline;
 
@@ -7884,6 +7885,17 @@ end;
 procedure SwapInt64(var a, b : Int64);
 var
    buf : Int64;
+begin
+   buf := a;
+   a := b;
+   b := buf;
+end;
+
+// SwapSingles
+//
+procedure SwapSingles(var a, b : Single); inline;
+var
+   buf : Single;
 begin
    buf := a;
    a := b;
