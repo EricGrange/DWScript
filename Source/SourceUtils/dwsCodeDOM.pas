@@ -170,7 +170,9 @@ type
    end;
 
    TdwsCodeDOMOutputFlag = (
-      ofSkipExtraLineAfterNextNewLine
+      ofSkipNewLine,
+      ofSkipExtraLineAfterNextNewLine,
+      ofLastWasExtraLine
    );
    TdwsCodeDOMOutputFlags = set of TdwsCodeDOMOutputFlag;
 
@@ -203,9 +205,11 @@ type
          procedure WriteString(const s : String);
          function WritePreLine : TdwsCodeDOMOutput;
          function WriteNewLine : TdwsCodeDOMOutput;
-         procedure WriteSemi;
 
          function SkipSpace : TdwsCodeDOMOutput;
+         function SkipNewLine : TdwsCodeDOMOutput;
+         function DiscardSkipNewLine : TdwsCodeDOMOutput;
+
          procedure SkipExtraLineAfterNextNewLine;
 
          function WriteChild(node : TdwsCodeDOMNode; var i : Integer) : TdwsCodeDOMOutput;
@@ -894,14 +898,18 @@ begin
 
    Write(s);
    FState.TailChar := s[Length(s)];
+   Exclude(FState.Flags, ofLastWasExtraLine);
 end;
 
 // WritePreLine
 //
 function TdwsCodeDOMOutput.WritePreLine : TdwsCodeDOMOutput;
 begin
-   Write(#10);
-   FState.TailChar := #10;
+   if not (ofLastWasExtraLine in FState.Flags) then begin
+      Write(#10);
+      FState.TailChar := #10;
+      Include(FState.Flags, ofLastWasExtraLine);
+   end;
    Result := Self;
 end;
 
@@ -909,21 +917,20 @@ end;
 //
 function TdwsCodeDOMOutput.WriteNewLine : TdwsCodeDOMOutput;
 begin
-   if FState.TailChar <> #10 then begin
+   if ofSkipNewLine in FState.Flags then
+      Exclude(FState.Flags, ofSkipNewLine)
+   else if FState.TailChar <> #10 then begin
       if ofSkipExtraLineAfterNextNewLine in FState.Flags then begin
          Exclude(FState.Flags, ofSkipExtraLineAfterNextNewLine);
          Write(#10#10);
-      end else Write(#10);
+         Include(FState.Flags, ofLastWasExtraLine);
+      end else begin
+         Write(#10);
+         Exclude(FState.Flags, ofLastWasExtraLine);
+      end;
       FState.TailChar := #10;
    end;
    Result := Self;
-end;
-
-// WriteSemi
-//
-procedure TdwsCodeDOMOutput.WriteSemi;
-begin
-   Write(';');
 end;
 
 // SkipSpace
@@ -931,6 +938,22 @@ end;
 function TdwsCodeDOMOutput.SkipSpace : TdwsCodeDOMOutput;
 begin
    FState.TailChar := #0;
+   Result := Self;
+end;
+
+// SkipNewLine
+//
+function TdwsCodeDOMOutput.SkipNewLine : TdwsCodeDOMOutput;
+begin
+   Include(FState.Flags, ofSkipNewLine);
+   Result := Self;
+end;
+
+// DiscardSkipNewLine
+//
+function TdwsCodeDOMOutput.DiscardSkipNewLine : TdwsCodeDOMOutput;
+begin
+   Exclude(FState.Flags, ofSkipNewLine);
    Result := Self;
 end;
 

@@ -1466,7 +1466,7 @@ procedure TTokenizer.ConsumeToken;
    // don't trigger error for EOF
    procedure DoErrorTransition(trns : TErrorTransition; ch : Char);
    begin
-      if trns.ErrorMessage<>'' then begin
+      if trns.ErrorMessage <> '' then begin
          case ch of
             #0 :
                FMsgs.AddCompilerError(CurrentPos, trns.ErrorMessage);

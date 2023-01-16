@@ -628,7 +628,7 @@ begin
 
    var type_decl_inline := Result.NewRuleNode('type_inline', TdwsCodeDOMTypeInline);
 
-   var type_inner_decl := Result.NewRuleNode('type_inner_decl', TdwsCodeDOMNode)
+   var type_inner_decl := Result.NewRuleNode('type_inner_decl', TdwsCodeDOMTypeInnerDecl)
       .AddSubRule(Result.NewRuleAlternative('type_inner_decl_alt')
          .AddSubRule(property_decl)
          .AddSubRule(function_impl)

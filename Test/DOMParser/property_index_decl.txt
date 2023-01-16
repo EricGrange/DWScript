@@ -10,7 +10,7 @@ Main
                ClassFwd
                   Token class [LF]
                ClassBody
-                  Node
+                  TypeInnerDecl
                      PropertyDecl
                         Token property
                         Token name <<Field>>

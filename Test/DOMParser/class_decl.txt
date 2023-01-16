@@ -10,7 +10,7 @@ Main
                ClassFwd
                   Token class [LF]
                ClassBody
-                  Node
+                  TypeInnerDecl
                      VarDeclaration
                         NameList
                            Token name <<FField>>
@@ -56,7 +56,7 @@ Main
                Reference
                   Token name <<Integer>>
          Token ; [LF]
-         BeginEnd
+         FunctionBlock
             Token begin [LF]
             StatementList
                Assignment

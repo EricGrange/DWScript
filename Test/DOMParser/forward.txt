@@ -23,7 +23,7 @@ Main
                Token ;
                Token pascal
          Token ; [LF]
-         BeginEnd
+         FunctionBlock
             Token begin [LF]
             Token end
       Token ;

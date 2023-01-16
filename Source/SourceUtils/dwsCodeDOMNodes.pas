@@ -234,7 +234,10 @@ type
          procedure WriteToOutput(output : TdwsCodeDOMOutput); override;
    end;
 
-   TdwsCodeDOMFunctionDecl = class (TdwsCodeDOMNode);
+   TdwsCodeDOMFunctionDecl = class (TdwsCodeDOMNode)
+      public
+         procedure WriteToOutput(output : TdwsCodeDOMOutput); override;
+   end;
    TdwsCodeDOMFunctionReturnDecl = class (TdwsCodeDOMNode);
    TdwsCodeDOMFunctionQualifier = class (TdwsCodeDOMNode);
    TdwsCodeDOMFunctionImpl = class (TdwsCodeDOMNode)
@@ -266,6 +269,11 @@ type
    TdwsCodeDOMClassConst = class (TdwsCodeDOMNode);
    TdwsCodeDOMClassVar = class (TdwsCodeDOMNode);
    TdwsCodeDOMClassOperator = class (TdwsCodeDOMNode);
+
+   TdwsCodeDOMTypeInnerDecl = class (TdwsCodeDOMNode)
+      public
+         procedure WriteToOutput(output : TdwsCodeDOMOutput); override;
+   end;
 
    TdwsCodeDOMTypeVisibilitySection = class (TdwsCodeDOMNode)
       public
@@ -338,12 +346,18 @@ begin
          if beginToken <> ttNone then
             output.WriteChildrenUntilToken(node, i, beginToken);
          output.IncIndentNewLine;
+         var wroteAtLeastOne := False;
          while (i < node.ChildCount) and not node.ChildIsTokenType(i, endToken)  do begin
+            var beforeState := output.SaveState;
+            var beforeI := i;
             output.WriteChildrenBeforeTokens(node, i, [ separatorToken, endToken ]);
             if node.ChildIsTokenType(i, endToken) then break;
             output.WriteChild(node, i);
-            if output.Col >= output.MaxDesiredColumn then
+            if wroteAtLeastOne and (output.Col >= output.MaxDesiredColumn) then begin
+               output.RestoreState(beforeState);
+               i := beforeI;
                output.WriteNewLine;
+            end else wroteAtLeastOne := True;
          end;
          output
             .DecIndentNewLine
@@ -709,12 +723,56 @@ end;
 //
 procedure TdwsCodeDOMClassBody.WriteToOutput(output : TdwsCodeDOMOutput);
 begin
+   var firstVisibilitySection := True;
    var i := 0;
+   output.IncIndentNewLine;
+
+   while (i < ChildCount) and not ChildIsTokenType(i, ttEND) do begin
+      if ChildIsOfClass(i, TdwsCodeDOMTypeVisibilitySection) then begin
+         if firstVisibilitySection then
+            firstVisibilitySection := False
+         else output.WritePreLine;
+      end;
+      output.WriteChild(Self, i);
+   end;
+
    output
-      .IncIndentNewLine
-      .WriteChildrenBeforeToken(Self, i, ttEND)
       .DecIndentNewLine
-      .WriteChildren(Self, i);
+      .WriteChildren(Self, i)
+      .SkipExtraLineAfterNextNewLine;
+end;
+
+
+// ------------------
+// ------------------ TdwsCodeDOMTypeInnerDecl ------------------
+// ------------------
+
+// WriteToOutput
+//
+procedure TdwsCodeDOMTypeInnerDecl.WriteToOutput(output : TdwsCodeDOMOutput);
+type
+   TLineCategory = ( catNone, catMethod, catProperty, catOthers );
+begin
+   var i := 0;
+   var prevCat := catNone;
+   while i < ChildCount do begin
+
+      var c := Child[i];
+      var cat := prevCat;
+      if c is TdwsCodeDOMPropertyDecl then
+         cat := catProperty
+      else if c is TdwsCodeDOMFunctionDecl then
+         cat := catMethod
+      else if c is TdwsCodeDOMField then
+         cat := catOthers;
+      if cat <> prevCat then begin
+         if prevCat <> catNone then
+            output.WritePreLine;
+         prevCat := cat;
+      end;
+
+      output.WriteChild(Self, i);
+   end;
 end;
 
 // ------------------
@@ -754,6 +812,22 @@ procedure TdwsCodeDOMFunctionImpl.WriteToOutput(output : TdwsCodeDOMOutput);
 begin
    inherited;
    output.SkipExtraLineAfterNextNewLine;
+end;
+
+// ------------------
+// ------------------ TdwsCodeDOMFunctionDecl ------------------
+// ------------------
+
+// WriteToOutput
+//
+procedure TdwsCodeDOMFunctionDecl.WriteToOutput(output : TdwsCodeDOMOutput);
+begin
+   var i := 0;
+   while i < ChildCount do begin
+      output.SkipNewLine;
+      output.WriteChild(Self, i);
+   end;
+   output.DiscardSkipNewLine;
 end;
 
 end.

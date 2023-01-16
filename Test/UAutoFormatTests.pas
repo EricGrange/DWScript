@@ -25,6 +25,7 @@ type
          FTokRules : TTokenizerRules;
 
          procedure DoInclude(const scriptName: String; var scriptSource: String);
+         function TrimFormatted(const txt : String) : String;
 
       public
          procedure SetUp; override;
@@ -35,6 +36,7 @@ type
          procedure CodeStillExecutes;
 
          procedure AutoFormat;
+         procedure AutoFormatStability;
 
          procedure SimpleNewLines;
          procedure SimpleBeginEndBlocks;
@@ -124,6 +126,23 @@ end;
 procedure TAutoFormatTests.DoInclude(const scriptName: String; var scriptSource: String);
 begin
    scriptSource := LoadTextFromFile('SimpleScripts\'+scriptName);
+end;
+
+// TrimFormatted
+//
+function TAutoFormatTests.TrimFormatted(const txt : String) : String;
+begin
+   var sl := TStringList.Create;
+   try
+      sl.Text := txt;
+
+      for var i := 0 to sl.Count-1 do
+         sl[i] := TrimRight(sl[i]);
+
+      Result := StringReplace(TrimRight(sl.Text), #13#10, #10, [ rfReplaceAll ]);
+   finally
+      sl.Free;
+   end;
 end;
 
 // CodeStillCompiles
@@ -250,7 +269,22 @@ begin
          LoadTextFromFile(ChangeFileExt(FAutoFormatTests[i], '.fmt.pas')),
          #13#10, #10, [ rfReplaceAll ]
       );
-      CheckEquals(TrimRight(expected), TrimRight(FAutoFormat.Process(code)), FAutoFormatTests[i]);
+      CheckEquals(TrimRight(expected), TrimFormatted(FAutoFormat.Process(code)), FAutoFormatTests[i]);
+   end;
+end;
+
+// AutoFormatStability
+//
+procedure TAutoFormatTests.AutoFormatStability;
+begin
+   for var i := 0 to FAutoFormatTests.Count-1 do begin
+      var code := LoadTextFromFile(FAutoFormatTests[i]);
+      var expected := StringReplace(
+         LoadTextFromFile(ChangeFileExt(FAutoFormatTests[i], '.fmt.pas')),
+         #13#10, #10, [ rfReplaceAll ]
+      );
+      var processed := FAutoFormat.Process(code);
+      CheckEquals(TrimRight(expected), TrimFormatted(FAutoFormat.Process(processed)), FAutoFormatTests[i]);
    end;
 end;
 
@@ -401,16 +435,16 @@ end;
 procedure TAutoFormatTests.SimpleClass;
 begin
    CheckEquals(
-      'type'#10#9'TMy = class'#10#9'end;'#10'type'#10#9'TMyClass = class of TMy;'#10,
+      'type'#10#9'TMy = class'#10#9'end;'#10#10'type'#10#9'TMyClass = class of TMy;'#10,
       FAutoFormat.Process('type TMy=class end;type TMyClass=class of TMy;')
    );
    CheckEquals(
-      'type'#10#9'TMy = class'#10#9#9'FField : Integer'#10#9'end;'#10'/*done'#10,
+      'type'#10#9'TMy = class'#10#9#9'FField : Integer'#10#9'end;'#10#10'/*done'#10,
       FAutoFormat.Process('type TMy=class  FField:Integer end;'#10'/*done')
    );
    CheckEquals(
-      'type'#10#9'TMy = class'#10#9#9'public'#10#9#9#9'FField : Integer;'#10#9'end;'#10'/*done'#10,
-      FAutoFormat.Process('type TMy=class public FField:Integer; end;'#10'/*done')
+      'type'#10#9'TMy = class'#10#9#9'public'#10#9#9#9'FField : Integer;'#10#9'end; /*done'#10#10,
+      FAutoFormat.Process('type TMy=class public FField:Integer; end;/*done')
    );
 end;
 
@@ -468,10 +502,10 @@ procedure TAutoFormatTests.BreakupArrayConst;
 begin
    CheckEquals(
       'const S = ['#10
-       + #9'0x63, 0x7c, 0x77, 0x7b, 0xf2, 0x6b, 0x6f, 0xc5, 0x30, 0x01, 0x67, 0x2b, 0xfe, 0xd7,'#10
-       + #9'0xab, 0x76, 0xca, 0x82, 0xc9, 0x7d, 0xfa, 0x59, 0x47, 0xf0, 0xad, 0xd4, 0xa2, 0xaf,'#10
-       + #9'0x9c, 0xa4, 0x72, 0xc0, 0xb7, 0xfd, 0x93, 0x26, 0x36, 0x3f, 0xf7, 0xcc, 0x34, 0xa5,'#10
-       + #9'0xe5, 0xf1, 0x71, 0xd8, 0x31, 0x15'#10
+       + #9'0x63, 0x7c, 0x77, 0x7b, 0xf2, 0x6b, 0x6f, 0xc5, 0x30, 0x01, 0x67, 0x2b,'#10
+       + #9'0xfe, 0xd7, 0xab, 0x76, 0xca, 0x82, 0xc9, 0x7d, 0xfa, 0x59, 0x47, 0xf0,'#10
+       + #9'0xad, 0xd4, 0xa2, 0xaf, 0x9c, 0xa4, 0x72, 0xc0, 0xb7, 0xfd, 0x93, 0x26,'#10
+       + #9'0x36, 0x3f, 0xf7, 0xcc, 0x34, 0xa5, 0xe5, 0xf1, 0x71, 0xd8, 0x31, 0x15'#10
       + '];'#10,
       FAutoFormat.Process(
           'const S = [0x63, 0x7c, 0x77, 0x7b, 0xf2, 0x6b, 0x6f, 0xc5, 0x30, 0x01, 0x67, 0x2b, 0xfe, 0xd7, 0xab, 0x76,'

@@ -174,7 +174,10 @@ begin
    for var i := 0 to FDOMTests.Count-1 do begin
       var code := LoadTextFromFile(FDOMTests[i]);
       var expected := LoadTextFromFile(ChangeFileExt(FDOMTests[i], '.txt'));
-      CheckEquals(TrimRight(expected), TrimRight(ToOutline(code, omVerbose)), FDOMTests[i]);
+      expected := TrimRight(StringReplace(expected, #13#10, #10, [ rfReplaceAll ]));
+      var actual := ToOutline(code, omVerbose);
+      actual := TrimRight(StringReplace(actual, #13#10, #10, [ rfReplaceAll ]));
+      CheckEquals(expected, actual, FDOMTests[i]);
    end;
 end;
 
@@ -268,7 +271,7 @@ begin
       ToOutline('type TTest = class (TParent, IInterface)')
    );
    CheckEquals(
-      'Main,1TypeInline,2Token type,2TypeDecl,3Reference,4Token name <<TTest>>,3Token =,3ClassDecl,4ClassFwd,5Token class,4ClassBody,5Node,6VarDeclaration,7NameList,8Token name <<Field>>,7Token :,7Reference,8Token name <<Integer>>,5Token end',
+      'Main,1TypeInline,2Token type,2TypeDecl,3Reference,4Token name <<TTest>>,3Token =,3ClassDecl,4ClassFwd,5Token class,4ClassBody,5TypeInnerDecl,6VarDeclaration,7NameList,8Token name <<Field>>,7Token :,7Reference,8Token name <<Integer>>,5Token end',
       ToOutline('type TTest=class Field : Integer end')
    );
 end;
@@ -369,7 +372,7 @@ end;
 procedure TCodeDOMTests.FunctionDecl;
 begin
    CheckEquals(
-      'Main,1StatementList,2FunctionImpl,3FunctionDecl,4Token procedure,4Reference,5Token name <<Test>>,3Token ;,3BeginEnd,4Token begin,4Token end,2Token ;',
+      'Main,1StatementList,2FunctionImpl,3FunctionDecl,4Token procedure,4Reference,5Token name <<Test>>,3Token ;,3FunctionBlock,4Token begin,4Token end,2Token ;',
       ToOutline('procedure Test; begin end;')
    );
    CheckEquals(

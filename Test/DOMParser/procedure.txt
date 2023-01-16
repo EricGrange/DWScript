@@ -15,7 +15,7 @@
                      Token name <<Integer>>
                Token )
          Token ; [LF]
-         BeginEnd
+         FunctionBlock
             Token begin [LF]
             StatementList
                Call
