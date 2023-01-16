@@ -30,5 +30,5 @@
                Token ; [LF]
             Token end
       Token ; [LF]
-      Comment
-         Token comment <<// tail comment>> [PL] [LF]
+   Comment
+      Token comment <<// tail comment>> [PL] [LF]

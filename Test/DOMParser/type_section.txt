@@ -1,0 +1,46 @@
+Main
+   Main
+      Token unit
+      Reference
+         Token name <<Test>>
+      Token ; [LF]
+      MainInterface
+         Token interface [PL] [LF]
+         TypeSection
+            Token type [PL] [LF]
+            TypeDecl
+               Reference
+                  Token name <<T1>>
+               Token =
+               ClassFwd
+                  Token class
+            Token ; [LF]
+            TypeDecl
+               Reference
+                  Token name <<T2>>
+               Token =
+               ClassFwd
+                  Token class
+            Token ; [LF]
+      Comment
+         Token comment <<// foo>> [PL] [LF]
+      MainImplementation
+         Token implementation [LF]
+         Comment
+            Token comment <<//bar>> [LF]
+         TypeSection
+            Token type [PL] [LF]
+            TypeDecl
+               Reference
+                  Token name <<T3>>
+               Token =
+               ClassFwd
+                  Token class
+            Token ; [LF]
+            TypeDecl
+               Reference
+                  Token name <<T4>>
+               Token =
+               ClassFwd
+                  Token class
+            Token ;

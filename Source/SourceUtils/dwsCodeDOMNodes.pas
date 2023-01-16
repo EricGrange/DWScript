@@ -28,7 +28,10 @@ type
 
    TdwsCodeDOMSwitch = class (TdwsCodeDOMNode);
 
-   TdwsCodeDOMComment = class (TdwsCodeDOMNode);
+   TdwsCodeDOMComment = class (TdwsCodeDOMNode)
+      public
+         function PreLine : Boolean;
+   end;
 
    TdwsCodeDOMSection = class (TdwsCodeDOMNode);
 
@@ -50,7 +53,10 @@ type
 
    TdwsCodeDOMResourceStringSection = class (TdwsCodeDOMSection);
 
-   TdwsCodeDOMUses = class (TdwsCodeDOMNode);
+   TdwsCodeDOMUses = class (TdwsCodeDOMNode)
+      public
+         procedure WriteToOutput(output : TdwsCodeDOMOutput); override;
+   end;
 
    TdwsCodeDOMMain = class (TdwsCodeDOMNode)
       private
@@ -321,28 +327,30 @@ implementation
 
 uses dwsCodeDOMPascalParser;
 
-procedure OutputSeperatedChildren(
+procedure OutputSeparatedChildren(
    output : TdwsCodeDOMOutput; node : TdwsCodeDOMNode;
-   beginToken, separatorToken, endToken : TTokenType
+   beginToken, separatorToken, endToken : TTokenType;
+   startIndex : Integer = 0
 );
 begin
    var subOutput := TdwsCodeDOMOutput.Create;
    try
-      var i := 0;
+      var i := startIndex;
       subOutput.WriteChildrenBeforeToken(node, i, endToken);
       if subOutput.Line > 1 then begin
          // preformatted table
-         i := 0;
+         i := startIndex;
          if beginToken <> ttNone then
             output.WriteChildrenUntilToken(node, i, beginToken);
          output
             .IncIndentNewLine
-            .WriteChildrenBeforeToken(node, i, endToken)
-            .DecIndentNewLine
-            .WriteChildren(node, i)
+            .WriteChildrenBeforeToken(node, i, endToken);
+         if endToken <> ttNone then
+            output.DecIndentNewLine
+         else output.DecIndent;
       end else  if subOutput.ColMax + output.Col + Length(cTokenStrings[endToken]) + 1 >= output.MaxToleranceColumn then begin
          // reformat
-         i := 0;
+         i := startIndex;
          if beginToken <> ttNone then
             output.WriteChildrenUntilToken(node, i, beginToken);
          output.IncIndentNewLine;
@@ -359,18 +367,30 @@ begin
                output.WriteNewLine;
             end else wroteAtLeastOne := True;
          end;
-         output
-            .DecIndentNewLine
-            .WriteChildren(node, i);
+         if endToken <> ttNone then
+            output.DecIndentNewLine
+         else output.DecIndent;
       end else begin
          // small enough, output inline
-         i := 0;
-         output.WriteChildren(node, i);
+         i := startIndex;
       end;
+      output.WriteChildren(node, i);
    finally
       subOutput.Free;
    end;
 
+end;
+
+// ------------------
+// ------------------ TdwsCodeDOMComment ------------------
+// ------------------
+
+// PreLine
+//
+function TdwsCodeDOMComment.PreLine : Boolean;
+begin
+   Result :=     (ChildCount > 0) and ChildIsOfClass(0, TdwsCodeDOMSnippet)
+             and TdwsCodeDOMSnippet(Child[0]).PreLine;
 end;
 
 // ------------------
@@ -382,6 +402,17 @@ end;
 function TdwsCodeDOMMain.StatementsSection : Boolean;
 begin
    Result := not (MainType in [ ttINTERFACE, ttIMPLEMENTATION ]);
+end;
+
+// ------------------
+// ------------------ TdwsCodeDOMUses ------------------
+// ------------------
+
+// WriteToOutput
+//
+procedure TdwsCodeDOMUses.WriteToOutput(output : TdwsCodeDOMOutput);
+begin
+   OutputSeparatedChildren(output, Self, ttUSES, ttCOMMA, ttNone);
 end;
 
 // ------------------
@@ -700,7 +731,7 @@ end;
 procedure TdwsCodeDOMParameters.WriteToOutput(output : TdwsCodeDOMOutput);
 begin
    output.SkipSpace;
-   OutputSeperatedChildren(output, Self, ttBLEFT, ttCOMMA, ttBRIGHT);
+   OutputSeparatedChildren(output, Self, ttBLEFT, ttCOMMA, ttBRIGHT);
 end;
 
 // ------------------
@@ -712,7 +743,7 @@ end;
 procedure TdwsCodeDOMIndexes.WriteToOutput(output : TdwsCodeDOMOutput);
 begin
    output.SkipSpace;
-   OutputSeperatedChildren(output, Self, ttALEFT, ttCOMMA, ttARIGHT);
+   OutputSeparatedChildren(output, Self, ttALEFT, ttCOMMA, ttARIGHT);
 end;
 
 // ------------------
@@ -741,7 +772,6 @@ begin
       .WriteChildren(Self, i)
       .SkipExtraLineAfterNextNewLine;
 end;
-
 
 // ------------------
 // ------------------ TdwsCodeDOMTypeInnerDecl ------------------
@@ -799,7 +829,7 @@ end;
 //
 procedure TdwsCodeDOMBrackets.WriteToOutput(output : TdwsCodeDOMOutput);
 begin
-   OutputSeperatedChildren(output, Self, ttALEFT, ttCOMMA, ttARIGHT);
+   OutputSeparatedChildren(output, Self, ttALEFT, ttCOMMA, ttARIGHT);
 end;
 
 // ------------------

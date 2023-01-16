@@ -53,6 +53,7 @@ type
          procedure Booleans;
          procedure TryFinally;
          procedure DotOperator;
+         procedure UsesClause;
    end;
 
 // ------------------------------------------------------------------
@@ -239,7 +240,7 @@ begin
       ToOutline('a(); // here')
    );
    CheckEquals(
-      'Main,1Reference,2Token name <<a>> [LF],2Comment,3Token comment <</* bla,bla */>> [PL] [LF]',
+      'Main,1Reference,2Token name <<a>> [LF],1Comment,2Token comment <</* bla,bla */>> [PL] [LF]',
       ToOutline('a'#10#10'/* bla'#10'bla */')
    );
 end;
@@ -484,6 +485,16 @@ begin
    CheckEquals(
       'Main,1Field,2Index,3Reference,4Token name <<a>>,3Indexes,4Token [,4Tuple,5Token Integer Literal <<1>>,4Token ],2Token .,2Index,3Reference,4Token name <<b>>,3Indexes,4Token [,4Tuple,5Token Integer Literal <<2>>,4Token ]',
       ToOutline('a[1].b[2]')
+   );
+end;
+
+// UsesClause
+//
+procedure TCodeDOMTests.UsesClause;
+begin
+   CheckEquals(
+      'Main,1Comment,2Token comment <<// hello>> [LF],1StatementList,2Uses,3Token uses [PL],3Reference,4Token name <<foo>>,2Token ;',
+      ToOutline('// hello'#10#10'uses foo;')
    );
 end;
 

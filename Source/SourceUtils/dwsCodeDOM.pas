@@ -210,7 +210,8 @@ type
          function SkipNewLine : TdwsCodeDOMOutput;
          function DiscardSkipNewLine : TdwsCodeDOMOutput;
 
-         procedure SkipExtraLineAfterNextNewLine;
+         function SkipExtraLineAfterNextNewLine : TdwsCodeDOMOutput;
+         function DiscardExtraLineAfterNextNewLine : TdwsCodeDOMOutput;
 
          function WriteChild(node : TdwsCodeDOMNode; var i : Integer) : TdwsCodeDOMOutput;
          function WriteChildren(node : TdwsCodeDOMNode; var i : Integer) : TdwsCodeDOMOutput;
@@ -694,8 +695,25 @@ end;
 //
 procedure TdwsCodeDOMNode.Prepare;
 begin
-   for var i := 0 to ChildCount-1 do
+   if ChildCount = 0 then Exit;
+
+   var i := 0;
+   while i < ChildCount do begin
       Child[i].Prepare;
+      Inc(i);
+   end;
+
+   // hoist tail comments with pre one level up
+   if Parent <> nil then begin
+      var indexInParent := Parent.IndexOfChild(Self);
+      for i := ChildCount-1 downto 0 do begin
+         var c := Child[i];
+         if (c is TdwsCodeDOMComment) and TdwsCodeDOMComment(c).PreLine then begin
+            Extract(i);
+            Parent.InsertChild(indexInParent+1, c);
+         end else Break;
+      end;
+   end;
 end;
 
 // ReleaseSelf
@@ -959,9 +977,18 @@ end;
 
 // SkipExtraLineAfterNextNewLine
 //
-procedure TdwsCodeDOMOutput.SkipExtraLineAfterNextNewLine;
+function TdwsCodeDOMOutput.SkipExtraLineAfterNextNewLine : TdwsCodeDOMOutput;
 begin
    Include(FState.Flags, ofSkipExtraLineAfterNextNewLine);
+   Result := Self;
+end;
+
+// DiscardExtraLineAfterNextNewLine
+//
+function TdwsCodeDOMOutput.DiscardExtraLineAfterNextNewLine : TdwsCodeDOMOutput;
+begin
+   Exclude(FState.Flags, ofSkipExtraLineAfterNextNewLine);
+   Result := Self;
 end;
 
 // WriteChild
@@ -1119,8 +1146,13 @@ begin
    Result := context.AllocateSnippet;
    Result.FSnippet := context.Token.RawString;
    var line := context.Token.EndPos.Line;
-   if (context.Token.Prev <> nil) and (context.Token.Prev.EndPos.Line < context.Token.BeginPos.Line-1) then
-      Result.FPreLine := True;
+   if context.Token.Prev <> nil then begin
+      var prevEndLine := context.Token.Prev.EndPos.Line;
+      var beginLine := context.Token.BeginPos.Line;
+      if    (prevEndLine < beginLine-1)
+         or ((prevEndLine = beginLine-1) and (context.Token.Prev.EndPos.Col = 1)) then
+         Result.FPreLine := True;
+   end;
    if StrEndsWith(Result.FSnippet, #$0D) or StrEndsWith(Result.FSnippet, #$0A) then begin
       Result.FSnippet := TrimRight(Result.FSnippet);
       Result.FNewLine := True;

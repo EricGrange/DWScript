@@ -5,7 +5,7 @@ unit UAutoFormatTests;
 interface
 
 uses
-   Classes, SysUtils,
+   Classes, SysUtils, Math,
    dwsXPlatformTests, dwsXPlatform,
    dwsComp, dwsCompiler, dwsExprs, dwsDataContext,
    dwsTokenizer, dwsErrors, dwsUtils, Variants, dwsSymbols, dwsSuggestions,
@@ -25,7 +25,7 @@ type
          FTokRules : TTokenizerRules;
 
          procedure DoInclude(const scriptName: String; var scriptSource: String);
-         function TrimFormatted(const txt : String) : String;
+         procedure CheckAutoFormatted(const expected, actual, testLabel : String);
 
       public
          procedure SetUp; override;
@@ -53,6 +53,7 @@ type
          procedure ForLoop;
          procedure ArrayAccess;
          procedure BreakupArrayConst;
+         procedure UsesClause;
 
    end;
 
@@ -128,20 +129,24 @@ begin
    scriptSource := LoadTextFromFile('SimpleScripts\'+scriptName);
 end;
 
-// TrimFormatted
+// CheckAutoFormatted
 //
-function TAutoFormatTests.TrimFormatted(const txt : String) : String;
+procedure TAutoFormatTests.CheckAutoFormatted(const expected, actual, testLabel : String);
 begin
-   var sl := TStringList.Create;
+   var slExpected := TStringList.Create;
+   var slActual := TStringList.Create;
    try
-      sl.Text := txt;
+      slExpected.Text := TrimRight(expected);
+      slActual.Text := TrimRight(actual);
 
-      for var i := 0 to sl.Count-1 do
-         sl[i] := TrimRight(sl[i]);
-
-      Result := StringReplace(TrimRight(sl.Text), #13#10, #10, [ rfReplaceAll ]);
+      for var i := 0 to Max(slExpected.Count, slActual.Count)-1 do begin
+         CheckFalse(i >= slExpected.Count, 'More lines (' + IntToStr(slActual.Count) + ') than expected (' + IntToStr(slExpected.Count) + ')');
+         CheckFalse(i >= slActual.Count, 'Less lines (' + IntToStr(slActual.Count) + ') than expected (' + IntToStr(slExpected.Count) + ')');
+         CheckEquals(TrimRight(slExpected[i]), slActual[i], 'Mistmatch at line ' + IntToStr(i+1) + ' for ' + testLabel);
+      end;
    finally
-      sl.Free;
+      slExpected.Free;
+      slActual.Free;
    end;
 end;
 
@@ -265,11 +270,8 @@ procedure TAutoFormatTests.AutoFormat;
 begin
    for var i := 0 to FAutoFormatTests.Count-1 do begin
       var code := LoadTextFromFile(FAutoFormatTests[i]);
-      var expected := StringReplace(
-         LoadTextFromFile(ChangeFileExt(FAutoFormatTests[i], '.fmt.pas')),
-         #13#10, #10, [ rfReplaceAll ]
-      );
-      CheckEquals(TrimRight(expected), TrimFormatted(FAutoFormat.Process(code)), FAutoFormatTests[i]);
+      var expected := LoadTextFromFile(ChangeFileExt(FAutoFormatTests[i], '.fmt.pas'));
+      CheckAutoFormatted(expected, FAutoFormat.Process(code), FAutoFormatTests[i]);
    end;
 end;
 
@@ -279,12 +281,9 @@ procedure TAutoFormatTests.AutoFormatStability;
 begin
    for var i := 0 to FAutoFormatTests.Count-1 do begin
       var code := LoadTextFromFile(FAutoFormatTests[i]);
-      var expected := StringReplace(
-         LoadTextFromFile(ChangeFileExt(FAutoFormatTests[i], '.fmt.pas')),
-         #13#10, #10, [ rfReplaceAll ]
-      );
+      var expected := LoadTextFromFile(ChangeFileExt(FAutoFormatTests[i], '.fmt.pas'));
       var processed := FAutoFormat.Process(code);
-      CheckEquals(TrimRight(expected), TrimFormatted(FAutoFormat.Process(processed)), FAutoFormatTests[i]);
+      CheckAutoFormatted(expected, FAutoFormat.Process(processed), FAutoFormatTests[i]);
    end;
 end;
 
@@ -523,6 +522,24 @@ begin
           'const S = [0x63, 0x7c, 0x77, 0x7b, 0xf2, 0x6b, 0x6f, 0xc5, 0x30, 0x01, 0x67, 0x2b, 0xfe, 0xd7, 0xab, 0x76,'#10
         + '0xca, 0x82, 0xc9, 0x7d, 0xfa, 0x59, 0x47, 0xf0, 0xad, 0xd4, 0xa2, 0xaf, 0x9c, 0xa4, 0x72, 0xc0,'#10
         + '0xb7, 0xfd, 0x93, 0x26, 0x36, 0x3f, 0xf7, 0xcc, 0x34, 0xa5, 0xe5, 0xf1, 0x71, 0xd8, 0x31, 0x15];'
+      )
+   );
+end;
+
+// UsesClause
+//
+procedure TAutoFormatTests.UsesClause;
+begin
+   CheckEquals(
+      '// hello'#10'uses FooBar;'#10,
+      FAutoFormat.Process(
+          '// hello'#10'uses FooBar;'
+      )
+   );
+   CheckEquals(
+      '// hello'#10#10'uses'#10#9'FooBar;'#10,
+      FAutoFormat.Process(
+          '// hello'#10#10'uses'#10'FooBar;'
       )
    );
 end;

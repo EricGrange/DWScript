@@ -800,15 +800,10 @@ begin
       .AddSubRule(type_decl)
    ;
 
-   var type_section_line := Result.NewRuleNode('type_section_line', TdwsCodeDOMTypeSection)
-      .AddSubRule(type_decl)
-      .AddMatchTokenType(ttSEMI)
-   ;
-
    var type_section := Result.NewRuleNode('type_section', TdwsCodeDOMTypeSection)
       .AddMatchTokenType(ttTYPE)
-      .AddSubRule(type_section_line)
-      .AddSubRule(type_section_line, [ rifOptional, rifRepeat ])
+      .AddSubRule(type_decl, [ rifOptional ])
+      .AddMatchTokenType(ttSEMI, [ rifOptional, rifGoToStep1 ])
    ;
 
    var instructions := Result.NewRuleAlternative('instructions')
@@ -879,7 +874,6 @@ begin
 
    statement
       .AddSubRule(switch)
-      .AddSubRule(comment)
       .AddSubRule(if_then_else_stmt)
       .AddSubRule(repeat_until)
       .AddSubRule(while_do)

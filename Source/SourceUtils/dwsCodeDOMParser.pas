@@ -854,7 +854,7 @@ begin
    Result := False;
    if not (context.TokenType in FCommentStartTokens) then Exit;
    var prevLine := context.PreviousTokenEndPosLine;
-   while context.Token <> nil do begin
+   while context.Token <> nil  do begin
       var line := context.TokenBeginPosLine;
       var node : TdwsCodeDOMNode := nil;
       for var i := 0 to High(FCommentRules) do begin
