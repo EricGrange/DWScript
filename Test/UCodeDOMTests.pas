@@ -54,6 +54,7 @@ type
          procedure TryFinally;
          procedure DotOperator;
          procedure UsesClause;
+         procedure MultiLineBinaryOp;
    end;
 
 // ------------------------------------------------------------------
@@ -495,6 +496,16 @@ begin
    CheckEquals(
       'Main,1Comment,2Token comment <<// hello>> [LF],1StatementList,2Uses,3Token uses [PL],3Reference,4Token name <<foo>>,2Token ;',
       ToOutline('// hello'#10#10'uses foo;')
+   );
+end;
+
+// MultiLineBinaryOp
+//
+procedure TCodeDOMTests.MultiLineBinaryOp;
+begin
+   CheckEquals(
+      'Main,1Assignment,2Reference,3Token name <<a>>,2Token := [LF],2BinaryOperator,3Reference,4Token name <<hello>> [LF],3Token and,3Reference,4Token name <<world>>',
+      ToOutline('a :='#10'hello'#10'and world')
    );
 end;
 

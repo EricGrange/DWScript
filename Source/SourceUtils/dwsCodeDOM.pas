@@ -172,7 +172,8 @@ type
    TdwsCodeDOMOutputFlag = (
       ofSkipNewLine,
       ofSkipExtraLineAfterNextNewLine,
-      ofLastWasExtraLine
+      ofLastWasExtraLine,
+      ofGhostIndent
    );
    TdwsCodeDOMOutputFlags = set of TdwsCodeDOMOutputFlag;
 
@@ -181,6 +182,8 @@ type
       Line, Col : Integer;
       ColMax : Integer;
       IndentDepth : Integer;
+      GhostIndentedDepth : Integer;
+      MaxColumnToleranceSuspend : Integer;
       TailChar : Char;
       Flags : TdwsCodeDOMOutputFlags;
    end;
@@ -229,6 +232,9 @@ type
          function SaveState : TdwsCodeDOMOutputState;
          procedure RestoreState(const aState : TdwsCodeDOMOutputState);
 
+         function ResetColMax : Integer;
+         function RestoreColMax(prevMax : Integer) : Integer;
+
          property IndentChar : Char read FIndentChar write FIndentChar;
          property IndentSize : Integer read FIndentSize write FIndentSize;
          property TabSize : Integer read FTabSize write FTabSize;
@@ -236,11 +242,18 @@ type
          property MaxDesiredColumn : Integer read FMaxDesiredColumn write FMaxDesiredColumn;
          property MaxToleranceColumn : Integer read FMaxToleranceColumn write FMaxToleranceColumn;
 
+         function  MaxColumn : Integer;
+         procedure SuspendMaxToleranceColumn;
+         procedure RestoreMaxToleranceColumn;
+
          function IncIndent : TdwsCodeDOMOutput;
          function DecIndent : TdwsCodeDOMOutput;
 
          function IncIndentNewLine : TdwsCodeDOMOutput;
          function DecIndentNewLine : TdwsCodeDOMOutput;
+
+         function GhostIndent : TdwsCodeDOMOutput;
+         function GhostUnIndent : TdwsCodeDOMOutput;
 
          function ToString : String; override;
    end;
@@ -941,16 +954,23 @@ function TdwsCodeDOMOutput.WriteNewLine : TdwsCodeDOMOutput;
 begin
    if ofSkipNewLine in FState.Flags then
       Exclude(FState.Flags, ofSkipNewLine)
-   else if FState.TailChar <> #10 then begin
-      if ofSkipExtraLineAfterNextNewLine in FState.Flags then begin
-         Exclude(FState.Flags, ofSkipExtraLineAfterNextNewLine);
-         Write(#10#10);
-         Include(FState.Flags, ofLastWasExtraLine);
-      end else begin
-         Write(#10);
-         Exclude(FState.Flags, ofLastWasExtraLine);
+   else begin
+      if ofGhostIndent in FState.Flags then begin
+         IncIndent;
+         Inc(FState.GhostIndentedDepth);
+         Exclude(FState.Flags, ofGhostIndent);
       end;
-      FState.TailChar := #10;
+      if FState.TailChar <> #10 then begin
+         if ofSkipExtraLineAfterNextNewLine in FState.Flags then begin
+            Exclude(FState.Flags, ofSkipExtraLineAfterNextNewLine);
+            Write(#10#10);
+            Include(FState.Flags, ofLastWasExtraLine);
+         end else begin
+            Write(#10);
+            Exclude(FState.Flags, ofLastWasExtraLine);
+         end;
+         FState.TailChar := #10;
+      end;
    end;
    Result := Self;
 end;
@@ -1088,6 +1108,46 @@ begin
    FIndentBuf := StringOfChar(IndentChar, IndentDepth*IndentSize);
 end;
 
+// ResetColMax
+//
+function TdwsCodeDOMOutput.ResetColMax : Integer;
+begin
+   Result := FState.ColMax;
+   FState.ColMax := FState.Col;
+end;
+
+// RestoreColMax
+//
+function TdwsCodeDOMOutput.RestoreColMax(prevMax : Integer) : Integer;
+begin
+   Result := FState.ColMax;
+   if prevMax > Result then
+      FState.ColMax := prevMax;
+end;
+
+// MaxColumn
+//
+function TdwsCodeDOMOutput.MaxColumn : Integer;
+begin
+   if FState.MaxColumnToleranceSuspend > 0 then
+      Result := MaxDesiredColumn
+   else Result := MaxToleranceColumn;
+end;
+
+// SuspendMaxToleranceColumn
+//
+procedure TdwsCodeDOMOutput.SuspendMaxToleranceColumn;
+begin
+   Inc(FState.MaxColumnToleranceSuspend);
+end;
+
+// RestoreMaxToleranceColumn
+//
+procedure TdwsCodeDOMOutput.RestoreMaxToleranceColumn;
+begin
+   Dec(FState.MaxColumnToleranceSuspend);
+end;
+
 // IncIndent
 //
 function TdwsCodeDOMOutput.IncIndent : TdwsCodeDOMOutput;
@@ -1121,6 +1181,26 @@ function TdwsCodeDOMOutput.DecIndentNewLine : TdwsCodeDOMOutput;
 begin
    DecIndent;
    Result := WriteNewLine;
+end;
+
+// GhostIndent
+//
+function TdwsCodeDOMOutput.GhostIndent : TdwsCodeDOMOutput;
+begin
+   Include(FState.Flags, ofGhostIndent);
+   Result := Self;
+end;
+
+// GhostUnIndent
+//
+function TdwsCodeDOMOutput.GhostUnIndent : TdwsCodeDOMOutput;
+begin
+   Exclude(FState.Flags, ofGhostIndent);
+   if FState.GhostIndentedDepth > 0 then begin
+      Dec(FState.GhostIndentedDepth);
+      DecIndent;
+   end;
+   Result := Self;
 end;
 
 // ToString

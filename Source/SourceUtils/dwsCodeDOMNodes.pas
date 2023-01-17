@@ -81,7 +81,10 @@ type
 
    TdwsCodeDOMInstruction = class (TdwsCodeDOMStatement);
 
-   TdwsCodeDOMAssignment = class (TdwsCodeDOMStatement);
+   TdwsCodeDOMAssignment = class (TdwsCodeDOMStatement)
+      public
+         procedure WriteToOutput(output : TdwsCodeDOMOutput); override;
+   end;
 
    TdwsCodeDOMTry = class (TdwsCodeDOMStatement);
    TdwsCodeDOMTryExcept = class (TdwsCodeDOMStatement);
@@ -145,8 +148,14 @@ type
 
    TdwsCodeDOMNameList = class (TdwsCodeDOMNode);
 
-   TdwsCodeDOMVarDeclaration = class (TdwsCodeDOMStatement);
+   TdwsCodeDOMDeclarationStatement = class (TdwsCodeDOMStatement)
+      public
+         procedure WriteToOutput(output : TdwsCodeDOMOutput); override;
+   end;
+
+   TdwsCodeDOMVarDeclaration = class (TdwsCodeDOMDeclarationStatement);
    TdwsCodeDOMConstDeclaration = class (TdwsCodeDOMStatement);
+
    TdwsCodeDOMConstDeclarationType = class (TdwsCodeDOMStatement);
    TdwsCodeDOMResourceString = class (TdwsCodeDOMStatement);
 
@@ -205,13 +214,8 @@ type
    TdwsCodeDOMTerm = class (TdwsCodeDOMExpression);
 
    TdwsCodeDOMIfThenElseExpr = class (TdwsCodeDOMExpression)
-      private
-         FHasElse : Boolean;
-
       public
          procedure WriteToOutput(output : TdwsCodeDOMOutput); override;
-
-         property HasElse : Boolean read FHasElse write FHasElse;
    end;
 
    TdwsCodeDOMDeprecatedQualifier = class (TdwsCodeDOMNode);
@@ -341,9 +345,11 @@ procedure OutputSeparatedChildren(
 begin
    var initialState := output.SaveState;
    var i := startIndex;
+   var prevMax := output.ResetColMax;
    output.WriteChildrenBeforeToken(node, i, endToken);
+   var childrenColMax := output.RestoreColMax(prevMax);
    if output.Line > initialState.Line then begin
-      // preformatted children
+      // preformatted children, essentially preserve layout
       output.RestoreState(initialState);
       i := startIndex;
       if beginToken <> ttNone then
@@ -359,10 +365,11 @@ begin
             output.DecIndentNewLine
          else output.DecIndent;
       end;
-   end else  if output.ColMax + Length(cTokenStrings[endToken]) + 1 >= output.MaxToleranceColumn then begin
+   end else if childrenColMax + Length(cTokenStrings[endToken]) + 1 >= output.MaxColumn then begin
       // reformat
       output.RestoreState(initialState);
       i := startIndex;
+      output.SuspendMaxToleranceColumn;
       if beginToken <> ttNone then
          output.WriteChildrenUntilToken(node, i, beginToken);
       output.IncIndentNewLine;
@@ -372,7 +379,7 @@ begin
          var beforeI := i;
          output.WriteChildrenBeforeTokens(node, i, [ separatorToken, endToken ]);
          var reachedEnd := node.ChildIsTokenType(i, endToken);
-         if wroteAtLeastOne and (output.Col >= output.MaxDesiredColumn) then begin
+         if wroteAtLeastOne and (output.Col + Length(cTokenStrings[separatorToken]) >= output.MaxColumn) then begin
             output.RestoreState(beforeState);
             i := beforeI;
             output.WriteNewLine;
@@ -391,6 +398,7 @@ begin
             output.DecIndentNewLine
          else output.DecIndent;
       end;
+      output.RestoreMaxToleranceColumn;
    end else begin
       // small enough, output inline
    end;
@@ -509,17 +517,22 @@ end;
 //
 procedure TdwsCodeDOMBinaryOperator.WriteToOutput(output : TdwsCodeDOMOutput);
 begin
-   inherited;
-//   var i := 0;
-//   if HasLeftOperand then begin
-//      Child[0].WriteToOutput(output);
-//      Inc(i);
-//   end;
-//   output.WriteString(cTokenStrings[OperatorType]);
-//   if not HasLeftOperand then
-//      output.SkipSpace;
-//   for i := i to ChildCount-1 do
-//      Child[i].WriteToOutput(output);
+   var initialState := output.SaveState;
+
+   var i := 0;
+   output.WriteChildrenBeforeTokens(Self, i, cMultOperators + cAddOperators + cComparisonOperators);
+
+   if (i > 0) and (initialState.Col = 1) and (output.Col = 1) and ChildIsOfClass(i, TdwsCodeDOMSnippet) then begin
+
+      // there was a new line just before the operator, apply alignment spacing
+      var operatorSpacing := Length(cTokenStrings[TdwsCodeDOMSnippet(Child[i]).TokenType]) + 1;
+
+      output.RestoreState(initialState);
+      i := 0;
+      output.WriteString(StringOfChar(' ', operatorSpacing));
+      output.WriteChildren(Self, i);
+
+   end else output.WriteChildren(Self, i);
 end;
 
 // ------------------
@@ -675,19 +688,49 @@ end;
 //
 procedure TdwsCodeDOMIfThenElseExpr.WriteToOutput(output : TdwsCodeDOMOutput);
 begin
-   inherited;
-//   output.WriteTokenString(ttIF);
-//
-//   var i := 0;
-//   WriteChildrenUntilClass(output, i, TdwsCodeDOMExpression);
-//
-//   output.WriteTokenString(ttTHEN);
-//   WriteChildrenUntilClass(output, i, TdwsCodeDOMStatement);
-//
-//   if HasElse then begin
-//      output.WriteTokenString(ttELSE);
-//      WriteChildrenUntilClass(output, i, TdwsCodeDOMStatement);
-//   end;
+   var i := 0;
+   output.WriteChildrenUntilToken(Self, i, ttTHEN);
+
+   var thenState := output.SaveState;
+   var thenI := i;
+   var prevMax := output.ResetColMax;
+
+   output.WriteChildren(Self, i);
+
+   if output.RestoreColMax(prevMax) > output.MaxColumn then begin
+
+      output.SuspendMaxToleranceColumn;
+      output.RestoreState(thenState);
+      i := thenI;
+
+      output
+         .IncIndentNewLine
+         .WriteChildrenBeforeToken(Self, i, ttELSE)
+         .DecIndentNewLine;
+
+      if i < ChildCount then begin
+
+         var elseState := output.SaveState;
+         var elseI := i;
+
+         output.WriteChildren(Self, i);
+
+         if output.Col > output.MaxColumn then begin
+
+            output.RestoreState(elseState);
+            i := elseI;
+
+            output
+               .IncIndentNewLine
+               .WriteChildren(Self, i)
+               .DecIndentNewLine
+
+         end;
+
+      end;
+      output.RestoreMaxToleranceColumn;
+
+   end;
 end;
 
 // ------------------
@@ -877,6 +920,38 @@ begin
    output.DiscardSkipNewLine;
    while output.IndentDepth > indentLevel do
       output.DecIndent;
+end;
+
+// ------------------
+// ------------------ TdwsCodeDOMDeclarationStatement ------------------
+// ------------------
+
+// WriteToOutput
+//
+procedure TdwsCodeDOMDeclarationStatement.WriteToOutput(output : TdwsCodeDOMOutput);
+begin
+   var i := 0;
+   output
+      .WriteChildrenBeforeTokens(Self, i, [ ttASSIGN, ttEQ ])
+      .GhostIndent
+      .WriteChildren(Self, i)
+      .GhostUnIndent;
+end;
+
+// ------------------
+// ------------------ TdwsCodeDOMAssignment ------------------
+// ------------------
+
+// WriteToOutput
+//
+procedure TdwsCodeDOMAssignment.WriteToOutput(output : TdwsCodeDOMOutput);
+begin
+   var i := 0;
+   output
+      .WriteChildrenBeforeTokens(Self, i, cAssignments)
+      .GhostIndent
+      .WriteChildren(Self, i)
+      .GhostUnIndent;
 end;
 
 end.

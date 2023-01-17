@@ -55,6 +55,10 @@ type
          procedure BreakupArrayConst;
          procedure UsesClause;
          procedure NormalizeBeginEnd;
+         procedure AssignNewLine;
+         procedure SubParametersReflow;
+         procedure MultiLineBinaryOp;
+         procedure IfThenExpr;
 
    end;
 
@@ -74,7 +78,7 @@ implementation
 //
 procedure TAutoFormatTests.SetUp;
 const
-   cFilter = 'function_para*.pas';
+   cFilter = '*.pas';
 begin
    var basePath := ExtractFilePath(ParamStr(0));
 
@@ -565,6 +569,89 @@ begin
       'if 1 then begin'#10#9'foo'#10'end'#10,
       FAutoFormat.Process(
           'if 1 then'#10'begin'#10'foo'#10'end'
+      )
+   );
+end;
+
+// AssignNewLine
+//
+procedure TAutoFormatTests.AssignNewLine;
+begin
+   CheckEquals(
+      'a :='#10#9'b;'#10,
+      FAutoFormat.Process(
+          'a :='#10#9'b;'#10
+      )
+   );
+   CheckEquals(
+      'var a :='#10#9'b;'#10,
+      FAutoFormat.Process(
+          'var a :='#10#9'b;'#10
+      )
+   );
+end;
+
+// SubParametersReflow
+//
+procedure TAutoFormatTests.SubParametersReflow;
+begin
+   CheckEquals(
+        'MyFunc12345678901234567890123('#10
+      +     #9'longFunc12345678901234567890123456789('#10
+      +        #9#9'param12345678901234567890123456789012345678901234567890'#10
+      +     #9')'#10
+      + ')'#10,
+      FAutoFormat.Process(
+          'MyFunc12345678901234567890123(longFunc12345678901234567890123456789(param12345678901234567890123456789012345678901234567890))'
+      )
+   );
+end;
+
+// MultiLineBinaryOp
+//
+procedure TAutoFormatTests.MultiLineBinaryOp;
+begin
+   CheckEquals(
+         'a :='#10
+      +  #9'    hello'#10
+      +  #9'and world'#10,
+      FAutoFormat.Process(
+          'a :='#10'hello'#10'and world'
+      )
+   );
+
+   CheckEquals(
+         'a :='#10
+      +  #9'    hello'#10
+      +  #9'and again'#10
+      +  #9'and world'#10,
+      FAutoFormat.Process(
+          'a :='#10'hello'#10'and again'#10'and world'
+      )
+   );
+end;
+
+// IfThenExpr
+//
+procedure TAutoFormatTests.IfThenExpr;
+begin
+   CheckEquals(
+        'aaaaaaaaaaaaaaaaaaaa := if bbbbbbbbbbbbbbbbbbbbb then'#10
+      +     #9#9'ccccccccccccccccccc'#10
+      + #9'else ddddddddddddddddddddd'#10,
+      FAutoFormat.Process(
+          'aaaaaaaaaaaaaaaaaaaa := if bbbbbbbbbbbbbbbbbbbbb then ccccccccccccccccccc else ddddddddddddddddddddd'
+      )
+   );
+   CheckEquals(
+        'aaaaaaaaaaaaaaaaaaaa := if bbbbbbbbbbbbbbbbbbbbb then'#10
+      +        #9#9'ccccccccccccccccccccccccccccc'#10
+      +     #9'else if eeeeeeeeeeeeeeeeeeeee then'#10
+      +        #9#9'fffffffffffffffffffffffff'#10
+      +     #9'else ggggggggggggggggggggg'#10,
+      FAutoFormat.Process(
+            'aaaaaaaaaaaaaaaaaaaa := if bbbbbbbbbbbbbbbbbbbbb then ccccccccccccccccccccccccccccc else'
+          + ' if eeeeeeeeeeeeeeeeeeeee then fffffffffffffffffffffffff else ggggggggggggggggggggg'
       )
    );
 end;
