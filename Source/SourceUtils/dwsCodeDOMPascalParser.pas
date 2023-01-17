@@ -278,12 +278,12 @@ begin
 
    var parameters := Result.NewRuleNode('parameters', TdwsCodeDOMParameters)
       .AddMatchTokenType(ttBLEFT)
-      .AddSubRule(tuple, [ rifOptional ])
+      .AddSubRule(tuple, [ rifOptional, rifMergeChildren ])
       .AddMatchTokenType(ttBRIGHT)
    ;
    var indexes := Result.NewRuleNode('indexes', TdwsCodeDOMIndexes)
       .AddMatchTokenType(ttALEFT)
-      .AddSubRule(tuple)
+      .AddSubRule(tuple, [ rifMergeChildren ])
       .AddMatchTokenType(ttARIGHT)
    ;
 

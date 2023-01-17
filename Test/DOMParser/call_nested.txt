@@ -5,24 +5,21 @@ Main
             Token name <<PrintLn>>
          Parameters
             Token (
-            Tuple
-               BinaryOperator
-                  Call
-                     Reference
-                        Token name <<Hello>>
-                     Parameters
-                        Token (
-                        Tuple
-                           Token Float Literal <<2.0>>
-                        Token )
-                  Token *
-                  Call
-                     Reference
-                        Token name <<World>>
-                     Parameters
-                        Token (
-                        Tuple
-                           Token Float Literal <<3.0>>
-                        Token )
+            BinaryOperator
+               Call
+                  Reference
+                     Token name <<Hello>>
+                  Parameters
+                     Token (
+                     Token Float Literal <<2.0>>
+                     Token )
+               Token *
+               Call
+                  Reference
+                     Token name <<World>>
+                  Parameters
+                     Token (
+                     Token Float Literal <<3.0>>
+                     Token )
             Token )
       Token ;

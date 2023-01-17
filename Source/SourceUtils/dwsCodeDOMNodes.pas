@@ -327,58 +327,74 @@ implementation
 
 uses dwsCodeDOMPascalParser;
 
+type
+   TSeparatedChildrenOption = (
+      scoStayIndentedAfterEndToken
+   );
+   TSeparatedChildrenOptions = set of TSeparatedChildrenOption;
+
 procedure OutputSeparatedChildren(
    output : TdwsCodeDOMOutput; node : TdwsCodeDOMNode;
    beginToken, separatorToken, endToken : TTokenType;
-   startIndex : Integer = 0
+   startIndex : Integer = 0; options : TSeparatedChildrenOptions = []
 );
 begin
-   var subOutput := TdwsCodeDOMOutput.Create;
-   try
-      var i := startIndex;
-      subOutput.WriteChildrenBeforeToken(node, i, endToken);
-      if subOutput.Line > 1 then begin
-         // preformatted table
-         i := startIndex;
-         if beginToken <> ttNone then
-            output.WriteChildrenUntilToken(node, i, beginToken);
-         output
-            .IncIndentNewLine
-            .WriteChildrenBeforeToken(node, i, endToken);
+   var initialState := output.SaveState;
+   var i := startIndex;
+   output.WriteChildrenBeforeToken(node, i, endToken);
+   if output.Line > initialState.Line then begin
+      // preformatted children
+      output.RestoreState(initialState);
+      i := startIndex;
+      if beginToken <> ttNone then
+         output.WriteChildrenUntilToken(node, i, beginToken);
+      output
+         .IncIndentNewLine
+         .WriteChildrenBeforeToken(node, i, endToken);
+      if scoStayIndentedAfterEndToken in options then begin
          if endToken <> ttNone then
-            output.DecIndentNewLine
-         else output.DecIndent;
-      end else  if subOutput.ColMax + output.Col + Length(cTokenStrings[endToken]) + 1 >= output.MaxToleranceColumn then begin
-         // reformat
-         i := startIndex;
-         if beginToken <> ttNone then
-            output.WriteChildrenUntilToken(node, i, beginToken);
-         output.IncIndentNewLine;
-         var wroteAtLeastOne := False;
-         while (i < node.ChildCount) and not node.ChildIsTokenType(i, endToken)  do begin
-            var beforeState := output.SaveState;
-            var beforeI := i;
-            output.WriteChildrenBeforeTokens(node, i, [ separatorToken, endToken ]);
-            if node.ChildIsTokenType(i, endToken) then break;
-            output.WriteChild(node, i);
-            if wroteAtLeastOne and (output.Col >= output.MaxDesiredColumn) then begin
-               output.RestoreState(beforeState);
-               i := beforeI;
-               output.WriteNewLine;
-            end else wroteAtLeastOne := True;
-         end;
-         if endToken <> ttNone then
-            output.DecIndentNewLine
-         else output.DecIndent;
+            output.WriteNewLine;
       end else begin
-         // small enough, output inline
-         i := startIndex;
+         if endToken <> ttNone then
+            output.DecIndentNewLine
+         else output.DecIndent;
       end;
-      output.WriteChildren(node, i);
-   finally
-      subOutput.Free;
+   end else  if output.ColMax + Length(cTokenStrings[endToken]) + 1 >= output.MaxToleranceColumn then begin
+      // reformat
+      output.RestoreState(initialState);
+      i := startIndex;
+      if beginToken <> ttNone then
+         output.WriteChildrenUntilToken(node, i, beginToken);
+      output.IncIndentNewLine;
+      var wroteAtLeastOne := False;
+      while (i < node.ChildCount) and not node.ChildIsTokenType(i, endToken)  do begin
+         var beforeState := output.SaveState;
+         var beforeI := i;
+         output.WriteChildrenBeforeTokens(node, i, [ separatorToken, endToken ]);
+         var reachedEnd := node.ChildIsTokenType(i, endToken);
+         if wroteAtLeastOne and (output.Col >= output.MaxDesiredColumn) then begin
+            output.RestoreState(beforeState);
+            i := beforeI;
+            output.WriteNewLine;
+            wroteAtLeastOne := False;
+         end else begin
+            wroteAtLeastOne := True;
+            if reachedEnd then Break;
+            output.WriteChild(node, i);  // this is the separator
+         end;
+      end;
+      if scoStayIndentedAfterEndToken in options then begin
+         if endToken <> ttNone then
+            output.WriteNewLine;
+      end else begin
+         if endToken <> ttNone then
+            output.DecIndentNewLine
+         else output.DecIndent;
+      end;
+   end else begin
+      // small enough, output inline
    end;
-
+   output.WriteChildren(node, i);
 end;
 
 // ------------------
@@ -570,10 +586,9 @@ end;
 procedure TdwsCodeDOMWhile.WriteToOutput(output : TdwsCodeDOMOutput);
 begin
    var i := 0;
-   output.WriteChildrenUntilToken(Self, i, ttDO);
-   var indent := not ChildIsOfClass(i, TdwsCodeDOMBeginEnd);
-   if indent then
-      output.IncIndentNewLine;
+   output.WriteChildrenBeforeToken(Self, i, ttDO);
+   var indent : Boolean;
+   output.WriteChildBeforePossibleBeginEnd(Self, i, indent);
    output.WriteChildren(Self, i);
    if indent then
       output.DecIndent;
@@ -599,10 +614,9 @@ end;
 procedure TdwsCodeDOMIfThenElseStmt.WriteToOutput(output : TdwsCodeDOMOutput);
 begin
    var i := 0;
-   output.WriteChildrenUntilToken(Self, i, ttTHEN);
-   var indent := not ChildIsOfClass(i, TdwsCodeDOMBeginEnd);
-   if indent then
-      output.IncIndentNewLine;
+   output.WriteChildrenBeforeToken(Self, i, ttTHEN);
+   var indent : Boolean;
+   output.WriteChildBeforePossibleBeginEnd(Self, i, indent);
    output.WriteChildrenBeforeToken(Self, i, ttELSE);
    if indent then
       if ChildIsTokenType(i, ttELSE) then
@@ -645,10 +659,9 @@ end;
 procedure TdwsCodeDOMFor.WriteToOutput(output : TdwsCodeDOMOutput);
 begin
    var i := 0;
-   output.WriteChildrenUntilToken(Self, i, ttDO);
-   var indent := not ChildIsOfClass(i, TdwsCodeDOMBeginEnd);
-   if indent then
-      output.IncIndentNewLine;
+   output.WriteChildrenBeforeToken(Self, i, ttDO);
+   var indent : Boolean;
+   output.WriteChildBeforePossibleBeginEnd(Self, i, indent);
    output.WriteChildren(Self, i);
    if indent then
       output.DecIndent;
@@ -719,7 +732,10 @@ end;
 procedure TdwsCodeDOMParameterDeclList.WriteToOutput(output : TdwsCodeDOMOutput);
 begin
    output.SkipSpace;
-   inherited;
+   OutputSeparatedChildren(output,
+      Self, ttBLEFT, ttCOMMA, ttBRIGHT,
+      0, [ scoStayIndentedAfterEndToken ]
+   );
 end;
 
 // ------------------
@@ -853,11 +869,14 @@ end;
 procedure TdwsCodeDOMFunctionDecl.WriteToOutput(output : TdwsCodeDOMOutput);
 begin
    var i := 0;
+   var indentLevel := output.IndentDepth;
    while i < ChildCount do begin
       output.SkipNewLine;
       output.WriteChild(Self, i);
    end;
    output.DiscardSkipNewLine;
+   while output.IndentDepth > indentLevel do
+      output.DecIndent;
 end;
 
 end.

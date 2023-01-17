@@ -4,12 +4,11 @@ Main
          Token name <<call>>
       Parameters
          Token (
-         Tuple
+         BinaryOperator
             BinaryOperator
-               BinaryOperator
-                  Token Integer Literal <<1>>
-                  Token *
-                  Token Integer Literal <<2>>
-               Token +
-               Token Integer Literal <<3>>
+               Token Integer Literal <<1>>
+               Token *
+               Token Integer Literal <<2>>
+            Token +
+            Token Integer Literal <<3>>
          Token )

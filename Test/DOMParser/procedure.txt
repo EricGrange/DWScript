@@ -23,9 +23,8 @@
                      Token name <<PrintLn>>
                   Parameters
                      Token (
-                     Tuple
-                        Reference
-                           Token name <<a>>
+                     Reference
+                        Token name <<a>>
                      Token )
                Token ; [LF]
             Token end

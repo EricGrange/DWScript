@@ -222,7 +222,7 @@ end;
 procedure TCodeDOMTests.LiteralFloats;
 begin
    CheckEquals(
-      'Main,1Call,2Reference,3Token name <<a>>,2Parameters,3Token (,3Tuple,4Token Float Literal <<1.0>>,3Token )',
+      'Main,1Call,2Reference,3Token name <<a>>,2Parameters,3Token (,3Token Float Literal <<1.0>>,3Token )',
       ToOutline('a(1.0)')
    );
 end;
@@ -401,7 +401,7 @@ begin
       ToOutline('f()();')
    );
    CheckEquals(
-      'Main,1StatementList,2Index,3Call,4Reference,5Token name <<a>>,4Parameters,5Token (,5Token ),3Indexes,4Token [,4Tuple,5Token Integer Literal <<0>>,4Token ],2Token ;',
+      'Main,1StatementList,2Index,3Call,4Reference,5Token name <<a>>,4Parameters,5Token (,5Token ),3Indexes,4Token [,4Token Integer Literal <<0>>,4Token ],2Token ;',
       ToOutline('a()[0];')
    );
    CheckEquals(
@@ -415,11 +415,11 @@ end;
 procedure TCodeDOMTests.ArrayIndex;
 begin
    CheckEquals(
-      'Main,1Assignment,2Index,3Reference,4Token name <<a>>,3Indexes,4Token [,4Tuple,5Token Integer Literal <<1>>,4Token ],2Token :=,2Token Integer Literal <<0>>',
+      'Main,1Assignment,2Index,3Reference,4Token name <<a>>,3Indexes,4Token [,4Token Integer Literal <<1>>,4Token ],2Token :=,2Token Integer Literal <<0>>',
       ToOutline('a[1] := 0')
    );
    CheckEquals(
-      'Main,1Index,2Index,3Reference,4Token name <<a>>,3Indexes,4Token [,4Tuple,5Token Integer Literal <<1>>,4Token ],2Indexes,3Token [,3Tuple,4Token Integer Literal <<2>>,3Token ]',
+      'Main,1Index,2Index,3Reference,4Token name <<a>>,3Indexes,4Token [,4Token Integer Literal <<1>>,4Token ],2Indexes,3Token [,3Token Integer Literal <<2>>,3Token ]',
       ToOutline('a[1][2]')
    );
 end;
@@ -437,7 +437,7 @@ begin
       ToOutline('a := b + c + d')
    );
    CheckEquals(
-      'Main,1Call,2Reference,3Token name <<a>>,2Parameters,3Token (,3Tuple,4BinaryOperator,5Reference,6Token name <<b>>,5Token +,5BinaryOperator,6Token Integer Literal <<1>>,6Token -,6Reference,7Token name <<c>>,3Token )',
+      'Main,1Call,2Reference,3Token name <<a>>,2Parameters,3Token (,3BinaryOperator,4Reference,5Token name <<b>>,4Token +,4BinaryOperator,5Token Integer Literal <<1>>,5Token -,5Reference,6Token name <<c>>,3Token )',
       ToOutline('a(b + 1 - c)')
    );
    CheckEquals(
@@ -479,11 +479,11 @@ begin
       ToOutline('a.b()')
    );
    CheckEquals(
-      'Main,1Field,2Index,3Reference,4Token name <<a>>,3Indexes,4Token [,4Tuple,5Token Integer Literal <<1>>,4Token ],2Token .,2Reference,3Token name <<b>>',
+      'Main,1Field,2Index,3Reference,4Token name <<a>>,3Indexes,4Token [,4Token Integer Literal <<1>>,4Token ],2Token .,2Reference,3Token name <<b>>',
       ToOutline('a[1].b')
    );
    CheckEquals(
-      'Main,1Field,2Index,3Reference,4Token name <<a>>,3Indexes,4Token [,4Tuple,5Token Integer Literal <<1>>,4Token ],2Token .,2Index,3Reference,4Token name <<b>>,3Indexes,4Token [,4Tuple,5Token Integer Literal <<2>>,4Token ]',
+      'Main,1Field,2Index,3Reference,4Token name <<a>>,3Indexes,4Token [,4Token Integer Literal <<1>>,4Token ],2Token .,2Index,3Reference,4Token name <<b>>,3Indexes,4Token [,4Token Integer Literal <<2>>,4Token ]',
       ToOutline('a[1].b[2]')
    );
 end;

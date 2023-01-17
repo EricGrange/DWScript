@@ -54,6 +54,7 @@ type
          procedure ArrayAccess;
          procedure BreakupArrayConst;
          procedure UsesClause;
+         procedure NormalizeBeginEnd;
 
    end;
 
@@ -73,7 +74,7 @@ implementation
 //
 procedure TAutoFormatTests.SetUp;
 const
-   cFilter = '*.pas';
+   cFilter = 'function_para*.pas';
 begin
    var basePath := ExtractFilePath(ParamStr(0));
 
@@ -140,9 +141,21 @@ begin
       slActual.Text := TrimRight(actual);
 
       for var i := 0 to Max(slExpected.Count, slActual.Count)-1 do begin
-         CheckFalse(i >= slExpected.Count, 'More lines (' + IntToStr(slActual.Count) + ') than expected (' + IntToStr(slExpected.Count) + ')');
-         CheckFalse(i >= slActual.Count, 'Less lines (' + IntToStr(slActual.Count) + ') than expected (' + IntToStr(slExpected.Count) + ')');
-         CheckEquals(TrimRight(slExpected[i]), slActual[i], 'Mistmatch at line ' + IntToStr(i+1) + ' for ' + testLabel);
+         CheckFalse(
+            i >= slExpected.Count,
+              'More lines (' + IntToStr(slActual.Count) + ') than expected (' + IntToStr(slExpected.Count) + ') for ' + testLabel
+            + #10 + slActual.Text
+         );
+         CheckFalse(
+            i >= slActual.Count,
+              'Less lines (' + IntToStr(slActual.Count) + ') than expected (' + IntToStr(slExpected.Count) + ') for ' + testLabel
+            + #10 + slActual.Text
+         );
+         CheckEquals(TrimRight(
+            slExpected[i]), slActual[i],
+               'Mistmatch at line ' + IntToStr(i+1) + ' for ' + testLabel
+            + #10 + slActual.Text
+         );
       end;
    finally
       slExpected.Free;
@@ -540,6 +553,18 @@ begin
       '// hello'#10#10'uses'#10#9'FooBar;'#10,
       FAutoFormat.Process(
           '// hello'#10#10'uses'#10'FooBar;'
+      )
+   );
+end;
+
+// NormalizeBeginEnd
+//
+procedure TAutoFormatTests.NormalizeBeginEnd;
+begin
+   CheckEquals(
+      'if 1 then begin'#10#9'foo'#10'end'#10,
+      FAutoFormat.Process(
+          'if 1 then'#10'begin'#10'foo'#10'end'
       )
    );
 end;

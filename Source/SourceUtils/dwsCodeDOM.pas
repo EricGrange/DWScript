@@ -218,6 +218,7 @@ type
          function WriteChildrenBeforeToken(node : TdwsCodeDOMNode; var i : Integer; token : TTokenType) : TdwsCodeDOMOutput;
          function WriteChildrenBeforeTokens(node : TdwsCodeDOMNode; var i : Integer; const tokens : TTokenTypes) : TdwsCodeDOMOutput;
          function WriteChildrenUntilToken(node : TdwsCodeDOMNode; var i : Integer; token : TTokenType) : TdwsCodeDOMOutput;
+         function WriteChildBeforePossibleBeginEnd(node : TdwsCodeDOMNode; var i : Integer; var indented : Boolean) : TdwsCodeDOMOutput;
 
          property Position : Integer read FState.Position;
          property Line : Integer read FState.Line;
@@ -786,7 +787,10 @@ end;
 //
 function TdwsCodeDOMNode.ChildIsOfClass(index : Integer; nodeClass : TdwsCodeDOMNodeClass) : Boolean;
 begin
-   Result := (index < ChildCount) and Child[index].InheritsFrom(nodeClass);
+   if index < ChildCount then begin
+      var c := Child[index];
+      Result := c.InheritsFrom(nodeClass);
+   end else Result := False;
 end;
 
 // ChildIsTokenType
@@ -1045,6 +1049,26 @@ function TdwsCodeDOMOutput.WriteChildrenUntilToken(node : TdwsCodeDOMNode; var i
 begin
    WriteChildrenBeforeToken(node, i, token);
    Result := WriteChild(node, i);
+end;
+
+// WriteChildBeforePossibleBeginEnd
+//
+function TdwsCodeDOMOutput.WriteChildBeforePossibleBeginEnd(node : TdwsCodeDOMNode; var i : Integer; var indented : Boolean) : TdwsCodeDOMOutput;
+begin
+   if i < node.ChildCount then begin
+      if node.ChildIsOfClass(i + 1, TdwsCodeDOMBeginEnd) then begin
+         SkipNewLine;
+         WriteChild(node, i);
+         DiscardSkipNewLine;
+         WriteChild(node, i);
+         indented := False;
+      end else begin
+         WriteChild(node, i);
+         IncIndentNewLine;
+         indented := True;
+      end;
+   end;
+   Result := Self;
 end;
 
 // SaveState

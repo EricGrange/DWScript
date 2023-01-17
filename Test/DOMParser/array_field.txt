@@ -4,29 +4,26 @@ Main
          Token name <<PrintLn>>
       Parameters
          Token (
-         Tuple
+         Field
+            Index
+               Reference
+                  Token name <<a>>
+               Indexes
+                  Token [
+                  Reference
+                     Token name <<i>>
+                  Token ]
+            Token .
             Field
                Index
                   Reference
                      Token name <<a>>
                   Indexes
                      Token [
-                     Tuple
-                        Reference
-                           Token name <<i>>
+                     Reference
+                        Token name <<j>>
                      Token ]
                Token .
-               Field
-                  Index
-                     Reference
-                        Token name <<a>>
-                     Indexes
-                        Token [
-                        Tuple
-                           Reference
-                              Token name <<j>>
-                        Token ]
-                  Token .
-                  Reference
-                     Token name <<x>>
+               Reference
+                  Token name <<x>>
          Token )
