@@ -613,8 +613,30 @@ end;
 { TDateTimeToISO8601Func }
 
 procedure TDateTimeToISO8601Func.DoEvalAsString(const args : TExprBaseListExec; var Result : String);
+
+   function HandlePrecisionParameter(const args : TExprBaseListExec) : TISO8601Precision;
+   var
+      prec : String;
+   begin
+      Result := iso8601precAuto;
+      prec := args.AsString[1];
+      if prec <> '' then begin
+         if prec = 'sec' then
+            Result := iso8601precSeconds
+         else if prec = 'msec' then
+            Result := iso8601precMilliseconds;
+      end;
+   end;
+
+var
+   dt : Double;
+   isoPrec : TISO8601Precision;
 begin
-   Result:=DateTimeToISO8601(args.AsFloat[0], True);
+   dt := args.AsFloat[0];
+   if args.Count > 1 then
+      isoPrec := HandlePrecisionParameter(args)
+   else isoPrec := iso8601precAuto;
+   Result := DateTimeToISO8601(dt, True, isoPrec);
 end;
 
 { TISO8601ToDateTimeFunc }
@@ -1025,7 +1047,8 @@ initialization
    RegisterInternalFloatFunction(TStrToDateDefFunc, 'StrToDateDef', ['str', SYS_STRING, 'def', cDateTime, 'utc=0', SYS_DATE_TIME_ZONE]);
 
    RegisterInternalStringFunction(TDateToISO8601Func, 'DateToISO8601', ['dt', cDateTime]);
-   RegisterInternalStringFunction(TDateTimeToISO8601Func, 'DateTimeToISO8601', ['dt', cDateTime]);
+   RegisterInternalStringFunction(TDateTimeToISO8601Func, 'DateTimeToISO8601', ['dt', cDateTime], [ iffOverloaded ]);
+   RegisterInternalStringFunction(TDateTimeToISO8601Func, 'DateTimeToISO8601', ['dt', cDateTime, 'fmt', SYS_STRING], [ iffOverloaded ]);
    RegisterInternalFloatFunction(TISO8601ToDateTimeFunc, 'ISO8601ToDateTime', ['s', SYS_STRING]);
 
    RegisterInternalStringFunction(TDateTimeToRFC822Func, 'DateTimeToRFC822', ['dt', cDateTime]);

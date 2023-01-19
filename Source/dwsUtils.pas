@@ -1166,7 +1166,14 @@ function ReadVariant(reader: TReader): Variant;
 
 function TryISO8601ToDateTime(const v : String; var aResult : TDateTime) : Boolean;
 function ISO8601ToDateTime(const v : String) : TDateTime;
-function DateTimeToISO8601(dt : TDateTime; extendedFormat : Boolean) : String;
+
+type
+   TISO8601Precision = (
+      iso8601precAuto,
+      iso8601precSeconds,
+      iso8601precMilliseconds
+   );
+function DateTimeToISO8601(dt : TDateTime; extendedFormat : Boolean; prec : TISO8601Precision = iso8601precAuto) : String;
 
 procedure dwsFreeAndNil(var O); // transitional function, do not use
 
@@ -3061,9 +3068,9 @@ end;
 
 // DateTimeToISO8601
 //
-function DateTimeToISO8601(dt : TDateTime; extendedFormat : Boolean) : String;
+function DateTimeToISO8601(dt : TDateTime; extendedFormat : Boolean; prec : TISO8601Precision = iso8601precAuto) : String;
 var
-   buf : array [0..31] of Char;
+   buf : array [0..35] of Char;
    p : PChar;
 
    procedure WriteChar(c : Char);
@@ -3075,6 +3082,14 @@ var
    procedure Write2Digits(v : Integer);
    begin
       PTwoChars(p)^:=cTwoDigits[v];
+      Inc(p, 2);
+   end;
+
+   procedure Write3Digits(v : Integer);
+   begin
+      PChar(p)^ := Chr(Ord('0') + (v div 100));
+      Inc(p);
+      PTwoChars(p)^ := cTwoDigits[v mod 100];
       Inc(p, 2);
    end;
 
@@ -3098,10 +3113,14 @@ begin
    if extendedFormat then
       WriteChar(':');
    Write2Digits(n);
-   if s<>0 then begin
+   if (s <> 0) or (prec in [ iso8601precSeconds, iso8601precMilliseconds ]) then begin
       if extendedFormat then
          WriteChar(':');
       Write2Digits(s);
+   end;
+   if prec = iso8601precMilliseconds then begin
+      WriteChar('.');
+      Write3Digits(z);
    end;
    WriteChar('Z');
 
