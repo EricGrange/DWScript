@@ -21,7 +21,7 @@ interface
 {$I dws.inc}
 
 uses
-   Windows, Classes, SysUtils, ActiveX, Math,
+   Windows, Classes, SysUtils,
    dwsXPlatform, dwsUtils;
 
 type
@@ -68,6 +68,8 @@ type
       procedure QueueWork(const workUnit : TProcedureWorkUnit); overload;
       procedure QueueWork(const workUnit : TNotifyEvent; sender : TObject); overload;
 
+      procedure ParallelFor(fromIndex, toIndex : Integer; const aProc : TProc<Integer>);
+
       function QueueSize : Integer;
       function QueueSizeInfo : TWorkerThreadQueueSizeInfo;
 
@@ -110,6 +112,8 @@ type
          function QueueSize : Integer; inline;
          function QueueSizeInfo : TWorkerThreadQueueSizeInfo;
 
+         procedure ParallelFor(fromIndex, toIndex : Integer; const aProc : TProc<Integer>);
+
          property WorkerCount : Integer read FWorkerCount write SetWorkerCount;
          function LiveWorkerCount : Integer;
          function ActiveWorkerCount : Integer;
@@ -126,6 +130,10 @@ implementation
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
+
+function CoInitialize(pvReserved: Pointer): HResult; stdcall; external 'ole32.dll';
+procedure CoUninitialize; stdcall; external 'ole32.dll';
+
 
 const
    WORK_UNIT_TERMINATE = 0;
@@ -471,10 +479,50 @@ begin
       FDelayedLock.EndRead;
    end;
    // prettify the info: minor incoherencies are possible since we do not do a full freeze
-   Result.Total := Max(FQueueSize, Result.Delayed);
+   Result.Total := FQueueSize;
+   if Result.Delayed > Result.Total then
+      Result.Total := Result.Delayed;
    if Result.Total > FPeakQueueSize then
       FPeakQueueSize := Result.Total;
    Result.Peak := FPeakQueueSize;
+end;
+
+// ParallelFor
+//
+procedure TIOCPWorkerThreadPool.ParallelFor(fromIndex, toIndex : Integer; const aProc : TProc<Integer>);
+var
+   counter : Integer;
+   event : THandle;
+
+   function CreateWorkUnit(index : Integer) : TAnonymousWorkUnit;
+   begin
+      Result := procedure
+         begin
+            try
+               aProc(index);
+            finally
+               if AtomicDecrement(counter) = 0 then
+                  SetEvent(event);
+            end;
+         end;
+   end;
+
+begin
+   if fromIndex >= toIndex then begin
+      if fromIndex = toIndex then
+         aProc(fromIndex);
+      Exit;
+   end;
+   event := CreateEvent(nil, True, False, nil);
+   try
+      counter := toIndex - fromIndex;
+      for var index := fromIndex to toIndex-1 do
+         QueueWork(CreateWorkUnit(index));
+      aProc(toIndex);
+   finally
+      WaitForSingleObject(event, INFINITE);
+      CloseHandle(event);
+   end;
 end;
 
 // LiveWorkerCount
