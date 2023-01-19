@@ -30,7 +30,8 @@ type
          FArray : IScriptDynArray;
          FIndex : NativeInt;
          FElementSize : Integer;
-         FBase : NativeInt;
+         FBaseElement : NativeInt;
+         FDataOffset : Integer;
 
       protected
          function GetSelf : TObject;
@@ -117,7 +118,8 @@ begin
    FArray := anArray;
    FIndex := anIndex;
    FElementSize := anArray.ElementSize;
-   FBase := FIndex*FElementSize;
+   FBaseElement := FIndex*FElementSize;
+   FDataOffset := 0;
 end;
 
 // CreateEmpty
@@ -164,10 +166,11 @@ end;
 //
 function TArrayElementDataContext.ComputeAddr(addr : NativeInt) : NativeInt;
 begin
+   Inc(addr, FDataOffset);
    Assert(Cardinal(addr) < Cardinal(FElementSize));
    if FIndex >= FArray.ArrayLength then
       raise EScriptError.CreateFmt(RTE_ArrayUpperBoundExceeded, [FIndex]);
-   Result := FBase + addr;
+   Result := FBaseElement + addr;
 end;
 
 // GetAsVariant
@@ -277,8 +280,7 @@ begin
    Assert(offset < FElementSize);
 
    dc := TArrayElementDataContext.Create(FArray, FIndex);
-   Inc(dc.FBase, offset);
-   Dec(dc.FElementSize, offset);
+   Inc(dc.FDataOffset, Self.FDataOffset + offset);
    Result := dc;
 end;
 
