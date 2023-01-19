@@ -86,12 +86,19 @@ type
          procedure WriteToOutput(output : TdwsCodeDOMOutput); override;
    end;
 
-   TdwsCodeDOMTry = class (TdwsCodeDOMStatement);
-   TdwsCodeDOMTryExcept = class (TdwsCodeDOMStatement);
-   TdwsCodeDOMTryExceptElse = class (TdwsCodeDOMNode);
-   TdwsCodeDOMTryFinally = class (TdwsCodeDOMStatement);
+   TdwsCodeDOMTryStatement = class (TdwsCodeDOMStatement)
+      public
+         procedure WriteToOutput(output : TdwsCodeDOMOutput); override;
+   end;
+   TdwsCodeDOMTry = class (TdwsCodeDOMTryStatement);
+   TdwsCodeDOMTryExcept = class (TdwsCodeDOMTryStatement);
+   TdwsCodeDOMTryExceptElse = class (TdwsCodeDOMTryStatement);
+   TdwsCodeDOMTryFinally = class (TdwsCodeDOMTryStatement);
 
-   TdwsCodeDOMExceptOnClause = class (TdwsCodeDOMStatement);
+   TdwsCodeDOMExceptOnClause = class (TdwsCodeDOMStatement)
+      public
+         procedure WriteToOutput(output : TdwsCodeDOMOutput); override;
+   end;
 
    TdwsCodeDOMNop = class (TdwsCodeDOMStatement)
       public
@@ -302,7 +309,10 @@ type
    TdwsCodeDOMInterfaceDeclInh = class (TdwsCodeDOMNode);
    TdwsCodeDOMInterfaceDeclBody = class (TdwsCodeDOMNode);
 
-   TdwsCodeDOMRecordDecl = class (TdwsCodeDOMTypeDecl);
+   TdwsCodeDOMRecordDecl = class (TdwsCodeDOMTypeDecl)
+      public
+         procedure WriteToOutput(output : TdwsCodeDOMOutput); override;
+   end;
 
    TdwsCodeDOMOperatorDecl = class (TdwsCodeDOMNode);
    TdwsCodeDOMOperatorDeclParameters = class (TdwsCodeDOMNode);
@@ -404,6 +414,29 @@ begin
    end;
    output.WriteChildren(node, i);
 end;
+
+// OutputStructuredTypeBody
+//
+procedure OutputStructuredTypeBody(output : TdwsCodeDOMOutput; node : TdwsCodeDOMNode; var i : Integer);
+begin
+   var firstVisibilitySection := True;
+   output.IncIndentNewLine;
+
+   while (i < node.ChildCount) and not node.ChildIsTokenType(i, ttEND) do begin
+      if node.ChildIsOfClass(i, TdwsCodeDOMTypeVisibilitySection) then begin
+         if firstVisibilitySection then
+            firstVisibilitySection := False
+         else output.WritePreLine;
+      end;
+      output.WriteChild(node, i);
+   end;
+
+   output
+      .DecIndentNewLine
+      .WriteChildren(node, i)
+      .SkipExtraLineAfterNextNewLine;
+end;
+
 
 // ------------------
 // ------------------ TdwsCodeDOMComment ------------------
@@ -813,23 +846,8 @@ end;
 //
 procedure TdwsCodeDOMClassBody.WriteToOutput(output : TdwsCodeDOMOutput);
 begin
-   var firstVisibilitySection := True;
    var i := 0;
-   output.IncIndentNewLine;
-
-   while (i < ChildCount) and not ChildIsTokenType(i, ttEND) do begin
-      if ChildIsOfClass(i, TdwsCodeDOMTypeVisibilitySection) then begin
-         if firstVisibilitySection then
-            firstVisibilitySection := False
-         else output.WritePreLine;
-      end;
-      output.WriteChild(Self, i);
-   end;
-
-   output
-      .DecIndentNewLine
-      .WriteChildren(Self, i)
-      .SkipExtraLineAfterNextNewLine;
+   OutputStructuredTypeBody(output, Self, i);
 end;
 
 // ------------------
@@ -952,6 +970,54 @@ begin
       .GhostIndent
       .WriteChildren(Self, i)
       .GhostUnIndent;
+end;
+
+// ------------------
+// ------------------ TdwsCodeDOMRecordDecl ------------------
+// ------------------
+
+// WriteToOutput
+//
+procedure TdwsCodeDOMRecordDecl.WriteToOutput(output : TdwsCodeDOMOutput);
+begin
+   var i : Integer;
+   output.WriteChild(Self, i);
+   OutputStructuredTypeBody(output, Self, i);
+end;
+
+// ------------------
+// ------------------ TdwsCodeDOMTryStatement ------------------
+// ------------------
+
+// WriteToOutput
+//
+procedure TdwsCodeDOMTryStatement.WriteToOutput(output : TdwsCodeDOMOutput);
+begin
+   var i := 0;
+   output
+      .WriteChild(Self, i)
+      .IncIndentNewLine
+      .WriteChild(Self, i)
+      .DecIndentNewLine
+      .WriteChildren(Self, i);
+end;
+
+// ------------------
+// ------------------ TdwsCodeDOMExceptOnClause ------------------
+// ------------------
+
+// WriteToOutput
+//
+procedure TdwsCodeDOMExceptOnClause.WriteToOutput(output : TdwsCodeDOMOutput);
+begin
+   var i := 0;
+   var indent : Boolean;
+   output
+      .WriteChildrenBeforeToken(Self, i, ttDO)
+      .WriteChildBeforePossibleBeginEnd(Self, i, indent)
+      .WriteChildren(Self, i);
+   if indent then
+      output.DecIndent;
 end;
 
 end.
