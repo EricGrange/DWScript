@@ -59,7 +59,6 @@
 /Libraries/SymbolsLib/backup
 /Source/jitter/backup
 __recovery
-/Chromium?*
 
 /Source/SourceUtils/__history
 /Test/__history
