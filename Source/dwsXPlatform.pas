@@ -2761,7 +2761,7 @@ function TdwsCriticalSection.TryEnterOrTimeout(delayMSec : Integer) : Boolean;
       repeat
          Sleep(10);
          Result := TryEnter;
-      until Result or (GetSystemTimeMilliseconds > timeout);
+      until Result or (GetSystemMilliseconds > timeout);
    end;
 
 begin
