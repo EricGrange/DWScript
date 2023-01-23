@@ -1,0 +1,27 @@
+Main
+   StatementList
+      ConstSection
+         Token const
+         ConstDeclaration
+            Token name <<c>>
+            ConstDeclarationType
+               Token :
+               RecordDecl
+                  Token record
+                  TypeInnerDecl
+                     VarDeclaration
+                        NameList
+                           Token name <<x>>
+                        Token :
+                        Reference
+                           Token name <<Integer>>
+                  Token end
+            Token =
+            Parenthesis
+               Token (
+               NamedTuple
+                  Token name <<x>>
+                  Token :
+                  Token Integer Literal <<123>>
+               Token )
+      Token ;

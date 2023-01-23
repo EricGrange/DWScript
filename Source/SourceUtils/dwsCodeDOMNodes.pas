@@ -980,7 +980,7 @@ end;
 //
 procedure TdwsCodeDOMRecordDecl.WriteToOutput(output : TdwsCodeDOMOutput);
 begin
-   var i : Integer;
+   var i := 0;
    output.WriteChild(Self, i);
    OutputStructuredTypeBody(output, Self, i);
 end;
