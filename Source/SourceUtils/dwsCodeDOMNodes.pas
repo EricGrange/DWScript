@@ -129,6 +129,8 @@ type
    end;
 
    TdwsCodeDOMIfThenElseStmt = class (TdwsCodeDOMStatement)
+      protected
+         procedure Prepare; override;
       public
          procedure WriteToOutput(output : TdwsCodeDOMOutput); override;
    end;
@@ -654,6 +656,28 @@ end;
 // ------------------
 // ------------------ TdwsCodeDOMIfThenElseStmt ------------------
 // ------------------
+
+// Prepare
+//
+procedure TdwsCodeDOMIfThenElseStmt.Prepare;
+begin
+   inherited;
+   for var i := 1 to ChildCount-1 do begin
+      if ChildIsTokenType(i, ttELSE) then begin
+         (Child[i] as TdwsCodeDOMSnippet).NewLine := False;
+         if ChildIsOfClass(i-1, TdwsCodeDOMBeginEnd) then begin
+            var be := TdwsCodeDOMBeginEnd(Child[i-1]);
+            for var k := be.ChildCount-1 downto 0 do begin
+               if be.ChildIsTokenType(k, ttEND) then begin
+                  (be.Child[k] as TdwsCodeDOMSnippet).NewLine := False;
+                  Break;
+               end;
+            end;
+         end;
+         Break;
+      end;
+   end;
+end;
 
 // WriteToOutput
 //

@@ -654,6 +654,16 @@ begin
           + ' if eeeeeeeeeeeeeeeeeeeee then fffffffffffffffffffffffff else ggggggggggggggggggggg'
       )
    );
+   CheckEquals(
+         'if True then begin'#10
+      +     #9'PrintLn(1)'#10
+      +  'end else begin'#10
+      +     #9'PrintLn(2)'#10
+      +  'end;'#10,
+      FAutoFormat.Process(
+         'if true then'#10'begin'#10'PrintLn(1)'#10'end'#10'else'#10'begin'#10'PrintLn(2)'#10'end;'
+      )
+   );
 end;
 
 // ------------------------------------------------------------------
