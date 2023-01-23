@@ -1087,7 +1087,7 @@ begin
          IncIndentNewLine;
          indented := True;
       end;
-   end;
+   end else indented := False;
    Result := Self;
 end;
 
