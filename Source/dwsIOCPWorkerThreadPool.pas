@@ -123,6 +123,8 @@ type
          procedure ResetPeakStats;
    end;
 
+procedure ParallelFor(const pool : IWorkerThreadPool; fromIndex, toIndex : Integer; const aProc : TProc<Integer>);
+
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
@@ -134,6 +136,17 @@ implementation
 function CoInitialize(pvReserved: Pointer): HResult; stdcall; external 'ole32.dll';
 procedure CoUninitialize; stdcall; external 'ole32.dll';
 
+// ParallelFor
+//
+procedure ParallelFor(const pool : IWorkerThreadPool; fromIndex, toIndex : Integer; const aProc : TProc<Integer>);
+var
+   i : Integer;
+begin
+   if pool <> nil then
+      pool.ParallelFor(fromIndex, toIndex, aProc)
+   else for i := fromIndex to toIndex do
+      aProc(i);
+end;
 
 const
    WORK_UNIT_TERMINATE = 0;

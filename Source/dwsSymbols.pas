@@ -2294,6 +2294,7 @@ type
       procedure NaturalSort;
 
       procedure AddStrings(sl : TStrings);
+      procedure AppendString(index : NativeInt; const str : String);
 
       function GetAsFloat(index : NativeInt) : Double;
       procedure SetAsFloat(index : NativeInt; const v : Double);

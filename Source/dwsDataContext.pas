@@ -86,6 +86,7 @@ type
       function  SameData(const other : IDataContext) : Boolean; overload;
 
       function  IncInteger(addr : NativeInt; delta : Int64) : Int64;
+      procedure AppendString(addr : NativeInt; const str : String);
 
       function  HashCode(size : NativeInt) : Cardinal;
    end;
@@ -211,6 +212,7 @@ type
          procedure SetDataLength(n : NativeInt);
 
          function  IncInteger(addr : NativeInt; delta : Int64) : Int64;
+         procedure AppendString(addr : NativeInt; const str : String);
 
          function  HashCode(size : NativeInt) : Cardinal;
    end;
@@ -271,6 +273,7 @@ type
          function SameData(const other : IDataContext) : Boolean; overload;
 
          function  IncInteger(addr : NativeInt; delta : Int64) : Int64;
+         procedure AppendString(addr : NativeInt; const str : String);
 
          function  HashCode(size : NativeInt) : Cardinal;
    end;
@@ -1151,6 +1154,17 @@ begin
    p.VInt64 := Result;
 end;
 
+// AppendString
+//
+procedure TDataContext.AppendString(addr : NativeInt; const str : String);
+var
+   p : PVarData;
+begin
+   p := @FData[FAddr+addr];
+   Assert(p.VType = varUString);
+   String(p.VUString) := String(p.VUString) + str;
+end;
+
 // HashCode
 //
 function TDataContext.HashCode(size : NativeInt) : Cardinal;
@@ -1425,6 +1439,17 @@ begin
    Assert(p.VType = varInt64);
    Result := p.VInt64 + delta;
    p.VInt64 := Result;
+end;
+
+// AppendString
+//
+procedure TRelativeDataContext.AppendString(addr : NativeInt; const str : String);
+var
+   p : PVarData;
+begin
+   p := @FGetPData^[FAddr+addr];
+   Assert(p.VType = varUString);
+   String(p.VUString) := String(p.VUString) + str;
 end;
 
 // HashCode

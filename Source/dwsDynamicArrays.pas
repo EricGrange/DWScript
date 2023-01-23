@@ -194,6 +194,7 @@ type
          procedure NaturalSort;
 
          procedure AddStrings(sl : TStrings);
+         procedure AppendString(index : NativeInt; const str : String);
 
          function GetAsFloat(index : NativeInt) : Double;
          procedure SetAsFloat(index : NativeInt; const v : Double);
@@ -266,6 +267,7 @@ type
          procedure NaturalSort;
 
          procedure AddStrings(sl : TStrings);
+         procedure AppendString(index : NativeInt; const str : String);
 
          function AsPDouble(var nbElements, stride : NativeInt) : PDouble;
 
@@ -331,6 +333,7 @@ type
          procedure NaturalSort;
 
          procedure AddStrings(sl : TStrings);
+         procedure AppendString(index : NativeInt; const str : String);
 
          function GetAsFloat(index : NativeInt) : Double;
          procedure SetAsFloat(index : NativeInt; const v : Double);
@@ -397,6 +400,7 @@ type
          procedure NaturalSort;
 
          procedure AddStrings(sl : TStrings);
+         procedure AppendString(index : NativeInt; const str : String);
 
          function GetAsFloat(index : NativeInt) : Double;
          procedure SetAsFloat(index : NativeInt; const v : Double);
@@ -481,6 +485,7 @@ type
          procedure NaturalSort;
 
          procedure AddStrings(sl : TStrings);
+         procedure AppendString(index : NativeInt; const str : String);
 
          function GetAsFloat(index : NativeInt) : Double;
          procedure SetAsFloat(index : NativeInt; const v : Double);
@@ -1374,6 +1379,13 @@ begin
    DynamicArrayAddStrings(Self, sl);
 end;
 
+// AppendString
+//
+procedure TScriptDynamicNativeIntegerArray.AppendString(index : NativeInt; const str : String);
+begin
+   Assert(False);
+end;
+
 // GetAsFloat
 //
 function TScriptDynamicNativeIntegerArray.GetAsFloat(index : NativeInt) : Double;
@@ -1786,6 +1798,13 @@ begin
    DynamicArrayAddStrings(Self, sl);
 end;
 
+// AppendString
+//
+procedure TScriptDynamicNativeFloatArray.AppendString(index : NativeInt; const str : String);
+begin
+   Assert(False);
+end;
+
 // AsPDouble
 //
 function TScriptDynamicNativeFloatArray.AsPDouble(var nbElements, stride : NativeInt) : PDouble;
@@ -2176,6 +2195,13 @@ begin
       FData[i+n] := sl[i];
 end;
 
+// AppendString
+//
+procedure TScriptDynamicNativeStringArray.AppendString(index : NativeInt; const str : String);
+begin
+   FData[index] := FData[index] + str;
+end;
+
 // GetAsFloat
 //
 function TScriptDynamicNativeStringArray.GetAsFloat(index : NativeInt) : Double;
@@ -2557,6 +2583,13 @@ end;
 // AddStrings
 //
 procedure TScriptDynamicNativeBaseInterfaceArray.AddStrings(sl : TStrings);
+begin
+   Assert(False);
+end;
+
+// AppendString
+//
+procedure TScriptDynamicNativeBaseInterfaceArray.AppendString(index : NativeInt; const str : String);
 begin
    Assert(False);
 end;
@@ -3074,6 +3107,13 @@ end;
 procedure TScriptDynamicNativeBooleanArray.AddStrings(sl : TStrings);
 begin
    DynamicArrayAddStrings(Self, sl);
+end;
+
+// AppendString
+//
+procedure TScriptDynamicNativeBooleanArray.AppendString(index : NativeInt; const str : String);
+begin
+   Assert(False);
 end;
 
 // GetAsFloat

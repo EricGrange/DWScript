@@ -419,6 +419,8 @@ type
          procedure EvalAsScriptObj(exec : TdwsExecution; var Result : IScriptObj); override;
          procedure EvalAsScriptDynArray(exec : TdwsExecution; var result : IScriptDynArray); override;
 
+         procedure Append(exec : TdwsExecution; const value : String);
+
          procedure GetDataPtr(exec : TdwsExecution; var result : IDataContext); override;
 
          function SpecializeDataExpr(const context : ISpecializationContext) : TDataExpr; override;
@@ -1083,6 +1085,10 @@ type
    // a += b (String var)
    TAppendStringVarExpr = class(TAssignExpr)
       function Token : TTokenType; override;
+      procedure EvalNoResult(exec : TdwsExecution); override;
+   end;
+   // a += b (String field)
+   TAppendStringFieldExpr = class(TAppendStringVarExpr)
       procedure EvalNoResult(exec : TdwsExecution); override;
    end;
 
@@ -3180,6 +3186,13 @@ end;
 procedure TFieldVarExpr.EvalAsScriptDynArray(exec : TdwsExecution; var result : IScriptDynArray);
 begin
    GetPIScriptObj(exec)^.EvalAsInterface(FieldSym.Offset, PIUnknown(@result)^);
+end;
+
+// Append
+//
+procedure TFieldVarExpr.Append(exec : TdwsExecution; const value : String);
+begin
+   GetPIScriptObj(exec)^.AppendString(FieldSym.Offset, value);
 end;
 
 // GetDataPtr
@@ -5942,6 +5955,11 @@ begin
       FLeft:=nil;
       FRight:=nil;
       Orphan(context);
+   end else if FLeft is TFieldVarExpr then begin
+      Result := TAppendStringFieldExpr.Create(context, FScriptPos, FLeft, FRight);
+      FLeft := nil;
+      FRight := nil;
+      Orphan(context);
    end;
 end;
 
@@ -6130,6 +6148,20 @@ end;
 function TAppendStringVarExpr.Token : TTokenType;
 begin
    Result := ttPLUS_ASSIGN;
+end;
+
+// ------------------
+// ------------------ TAppendStringFieldExpr ------------------
+// ------------------
+
+// EvalNoResult
+//
+procedure TAppendStringFieldExpr.EvalNoResult(exec : TdwsExecution);
+var
+   buf : String;
+begin
+   FRight.EvalAsString(exec, buf);
+   TFieldVarExpr(FLeft).Append(exec, buf);
 end;
 
 // ------------------

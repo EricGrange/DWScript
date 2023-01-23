@@ -82,6 +82,7 @@ type
          function SameData(const other : IDataContext) : Boolean; overload;
 
          function  IncInteger(addr : NativeInt; delta : Int64) : Int64;
+         procedure AppendString(addr : NativeInt; const str : String);
 
          function  HashCode(size : NativeInt) : Cardinal;
 
@@ -431,6 +432,14 @@ begin
    addr := ComputeAddr(addr);
    Result := FArray.AsInteger[addr] + delta;
    FArray.AsInteger[addr] := Result;
+end;
+
+// AppendString
+//
+procedure TArrayElementDataContext.AppendString(addr : NativeInt; const str : String);
+begin
+   addr := ComputeAddr(addr);
+   FArray.AppendString(addr, str);
 end;
 
 // HashCode
