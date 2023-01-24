@@ -27,7 +27,7 @@ interface
 {-$DEFINE UseExplicitContext} // <-- this is yet buggy!
 
 uses
-   Classes, SysUtils, Variants, Math, Contnrs,
+   System.Classes, System.SysUtils, System.Variants, System.Math, System.Contnrs,
    dwsUtils, dwsSymbols, dwsCodeGen, dwsCoreExprs,
    dwsDataContext, dwsExprs, dwsRelExprs, dwsMagicExprs, dwsStrings,
    dwsMethodExprs, dwsConnectorExprs, dwsConvExprs, dwsFunctions,

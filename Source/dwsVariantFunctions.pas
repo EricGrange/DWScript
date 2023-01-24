@@ -24,7 +24,7 @@ unit dwsVariantFunctions;
 interface
 
 uses
-   Classes, Variants, SysUtils,
+   System.Classes, System.Variants, System.SysUtils,
    dwsFunctions, dwsExprs, dwsSymbols, dwsUtils, dwsExprList, dwsCompilerContext,
    dwsMagicExprs, dwsUnitSymbols, dwsXPlatform, dwsStrings;
 

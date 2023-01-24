@@ -18,7 +18,8 @@ unit dwsCPUUsage;
 
 interface
 
-uses Windows, MMSystem, SysUtils, Registry,
+uses
+   Winapi.Windows, Winapi.MMSystem, System.SysUtils, System.Win.Registry,
    dwsUtils, dwsXPlatform;
 
 type

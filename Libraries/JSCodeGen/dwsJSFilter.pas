@@ -21,7 +21,7 @@ unit dwsJSFilter;
 interface
 
 uses
-   Classes, StrUtils, SysUtils,
+   System.Classes, System.StrUtils, System.SysUtils,
    dwsComp, dwsCompiler, dwsErrors, dwsJSCodeGen, dwsCodeGen, dwsUtils, dwsFilter,
    dwsExprs, dwsScriptSource;
 

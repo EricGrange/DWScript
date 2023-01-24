@@ -35,7 +35,7 @@ unit USynopseSimpleWebServer;
 interface
 
 uses
-  Windows, SysUtils, Classes,
+  Winapi.Windows, System.SysUtils, System.Classes,
   SynZip,
   dwsHTTPSysServer, dwsHTTPSysAPI,
   dwsUtils, dwsWebEnvironment, dwsSynopseWebEnv, dwsFileSystem,

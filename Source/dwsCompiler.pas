@@ -24,7 +24,7 @@ unit dwsCompiler;
 interface
 
 uses
-  Classes, SysUtils, TypInfo, Variants, System.Math,
+  System.Classes, System.SysUtils, System.TypInfo, System.Variants, System.Math,
   dwsFileSystem, dwsUtils, dwsXPlatform, dwsUnicode, dwsArrayMethodKinds,
   dwsExprs, dwsSymbols, dwsTokenizer, dwsTokenTypes, dwsErrors, dwsDataContext, dwsExprList,
   dwsStrings, dwsFunctions, dwsStack, dwsConnectorSymbols, dwsFilter,

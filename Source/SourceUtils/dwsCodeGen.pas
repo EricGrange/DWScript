@@ -20,7 +20,8 @@ unit dwsCodeGen;
 interface
 
 uses
-   Classes, SysUtils,     dwsXPlatform,
+   System.Classes, System.SysUtils,
+   dwsXPlatform,
    dwsUtils, dwsSymbols, dwsExprs, dwsCoreExprs, dwsDataContext, dwsConstExprs,
    dwsStrings, dwsUnitSymbols, dwsErrors, dwsRTTIFunctions, dwsSymbolDictionary,
    dwsContextMap, dwsCompilerContext;

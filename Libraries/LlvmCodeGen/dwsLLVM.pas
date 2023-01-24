@@ -30,7 +30,8 @@ unit dwsLLVM;
 interface
 
 uses
-   Windows, SysUtils, dwsXPlatform;
+   System.Windows, System.SysUtils,
+   dwsXPlatform;
 
 const
    CLLVMLibraryMajorVersion = 3;

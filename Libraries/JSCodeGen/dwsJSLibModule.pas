@@ -21,7 +21,7 @@ unit dwsJSLibModule;
 interface
 
 uses
-   Classes, SysUtils, Variants,
+   System.Classes, System.SysUtils, System.Variants,
    dwsLanguageExtension, dwsComp, dwsCompiler, dwsDataContext, dwsConnectorSymbols,
    dwsExprs, dwsTokenTypes, dwsTokenizer, dwsSymbols, dwsErrors, dwsCoreExprs,
    dwsStrings, dwsXPlatform, StrUtils, dwsUtils, dwsOperators, dwsUnitSymbols,

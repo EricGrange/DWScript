@@ -24,7 +24,7 @@ unit dwsInfoClasses;
 interface
 
 uses
-   Classes, SysUtils, Variants,
+   System.Classes, System.SysUtils, System.Variants,
    dwsUtils, dwsXPlatform, dwsDataContext, dwsInfo, dwsScriptSource,
    dwsSymbols, dwsConnectorSymbols, dwsStack, dwsExprs, dwsFunctions, dwsConstExprs,
    dwsConnectorExprs, dwsConvExprs, dwsMethodExprs, dwsResultFunctions,

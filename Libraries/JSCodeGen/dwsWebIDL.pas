@@ -21,8 +21,8 @@ unit dwsWebIDL;
 interface
 
 uses
-  Classes, SysUtils, dwsUtils, dwsErrors, dwsTokenizer,
-  dwsWebIDLTokenizer;
+  System.Classes, System.SysUtils,
+  dwsUtils, dwsErrors, dwsTokenizer, dwsWebIDLTokenizer;
 
 type
    TSpecialQualifier = (sqNone, sqGetter, sqSetter, sqCreator, sqDeleter,

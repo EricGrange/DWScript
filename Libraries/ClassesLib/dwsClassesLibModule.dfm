@@ -1,7 +1,5 @@
 object dwsClassesLib: TdwsClassesLib
   OldCreateOrder = False
-  Left = 464
-  Top = 260
   Height = 135
   Width = 258
   object dwsUnit: TdwsUnit
@@ -17,8 +15,8 @@ object dwsClassesLib: TdwsClassesLib
           item
             Name = 'Destroy'
             Attributes = [maVirtual, maOverride]
-            OnEval = dwsUnitClassesTListMethodsDestroyEval
             Kind = mkDestructor
+            OnEval = dwsUnitClassesTListMethodsDestroyEval
           end
           item
             Name = 'Add'
@@ -29,19 +27,19 @@ object dwsClassesLib: TdwsClassesLib
                 IsWritable = False
               end>
             ResultType = 'Integer'
-            OnEval = dwsUnitClassesTListMethodsAddEval
             Kind = mkFunction
+            OnEval = dwsUnitClassesTListMethodsAddEval
           end
           item
             Name = 'Clear'
-            OnEval = dwsUnitClassesTListMethodsClearEval
             Kind = mkProcedure
+            OnEval = dwsUnitClassesTListMethodsClearEval
           end
           item
             Name = 'Count'
             ResultType = 'Integer'
-            OnEval = dwsUnitClassesTListMethodsCountEval
             Kind = mkFunction
+            OnEval = dwsUnitClassesTListMethodsCountEval
           end
           item
             Name = 'Delete'
@@ -51,8 +49,8 @@ object dwsClassesLib: TdwsClassesLib
                 DataType = 'Integer'
                 IsWritable = False
               end>
-            OnEval = dwsUnitClassesTListMethodsDeleteEval
             Kind = mkProcedure
+            OnEval = dwsUnitClassesTListMethodsDeleteEval
           end
           item
             Name = 'GetItems'
@@ -63,8 +61,8 @@ object dwsClassesLib: TdwsClassesLib
                 IsWritable = False
               end>
             ResultType = 'TObject'
-            OnEval = dwsUnitClassesTListMethodsGetItemsEval
             Kind = mkFunction
+            OnEval = dwsUnitClassesTListMethodsGetItemsEval
           end
           item
             Name = 'IndexOf'
@@ -75,8 +73,8 @@ object dwsClassesLib: TdwsClassesLib
                 IsWritable = False
               end>
             ResultType = 'Integer'
-            OnEval = dwsUnitClassesTListMethodsIndexOfEval
             Kind = mkFunction
+            OnEval = dwsUnitClassesTListMethodsIndexOfEval
           end
           item
             Name = 'Insert'
@@ -91,8 +89,8 @@ object dwsClassesLib: TdwsClassesLib
                 DataType = 'TObject'
                 IsWritable = False
               end>
-            OnEval = dwsUnitClassesTListMethodsInsertEval
             Kind = mkProcedure
+            OnEval = dwsUnitClassesTListMethodsInsertEval
           end
           item
             Name = 'Remove'
@@ -103,8 +101,8 @@ object dwsClassesLib: TdwsClassesLib
                 IsWritable = False
               end>
             ResultType = 'Integer'
-            OnEval = dwsUnitClassesTListMethodsRemoveEval
             Kind = mkFunction
+            OnEval = dwsUnitClassesTListMethodsRemoveEval
           end
           item
             Name = 'SetItems'
@@ -119,8 +117,8 @@ object dwsClassesLib: TdwsClassesLib
                 DataType = 'TObject'
                 IsWritable = False
               end>
-            OnEval = dwsUnitClassesTListMethodsSetItemsEval
             Kind = mkProcedure
+            OnEval = dwsUnitClassesTListMethodsSetItemsEval
           end
           item
             Name = 'Contains'
@@ -130,8 +128,8 @@ object dwsClassesLib: TdwsClassesLib
                 DataType = 'TObject'
               end>
             ResultType = 'Boolean'
-            OnEval = dwsUnitClassesTListMethodsContainsEval
             Kind = mkFunction
+            OnEval = dwsUnitClassesTListMethodsContainsEval
           end>
         Operators = <
           item
@@ -175,8 +173,8 @@ object dwsClassesLib: TdwsClassesLib
           item
             Name = 'Destroy'
             Attributes = [maVirtual, maOverride]
-            OnEval = dwsUnitClassesTStringsMethodsDestroyEval
             Kind = mkDestructor
+            OnEval = dwsUnitClassesTStringsMethodsDestroyEval
           end
           item
             Name = 'Add'
@@ -187,8 +185,8 @@ object dwsClassesLib: TdwsClassesLib
                 IsWritable = False
               end>
             ResultType = 'Integer'
-            OnEval = dwsUnitClassesTStringsMethodsAddEval
             Kind = mkFunction
+            OnEval = dwsUnitClassesTStringsMethodsAddEval
           end
           item
             Name = 'AddObject'
@@ -204,8 +202,8 @@ object dwsClassesLib: TdwsClassesLib
                 IsWritable = False
               end>
             ResultType = 'Integer'
-            OnEval = dwsUnitClassesTStringsMethodsAddObjectEval
             Kind = mkFunction
+            OnEval = dwsUnitClassesTStringsMethodsAddObjectEval
           end
           item
             Name = 'AddStrings'
@@ -215,13 +213,13 @@ object dwsClassesLib: TdwsClassesLib
                 DataType = 'TStringList'
                 IsWritable = False
               end>
-            OnEval = dwsUnitClassesTStringsMethodsAddStringsEval
             Kind = mkProcedure
+            OnEval = dwsUnitClassesTStringsMethodsAddStringsEval
           end
           item
             Name = 'Clear'
-            OnEval = dwsUnitClassesTStringsMethodsClearEval
             Kind = mkProcedure
+            OnEval = dwsUnitClassesTStringsMethodsClearEval
           end
           item
             Name = 'Delete'
@@ -231,8 +229,8 @@ object dwsClassesLib: TdwsClassesLib
                 DataType = 'Integer'
                 IsWritable = False
               end>
-            OnEval = dwsUnitClassesTStringsMethodsDeleteEval
             Kind = mkProcedure
+            OnEval = dwsUnitClassesTStringsMethodsDeleteEval
           end
           item
             Name = 'Exchange'
@@ -247,8 +245,8 @@ object dwsClassesLib: TdwsClassesLib
                 DataType = 'Integer'
                 IsWritable = False
               end>
-            OnEval = dwsUnitClassesTStringsMethodsExchangeEval
             Kind = mkProcedure
+            OnEval = dwsUnitClassesTStringsMethodsExchangeEval
           end
           item
             Name = 'Get'
@@ -259,20 +257,20 @@ object dwsClassesLib: TdwsClassesLib
                 IsWritable = False
               end>
             ResultType = 'String'
-            OnEval = dwsUnitClassesTStringsMethodsGetEval
             Kind = mkFunction
+            OnEval = dwsUnitClassesTStringsMethodsGetEval
           end
           item
             Name = 'GetCommaText'
             ResultType = 'String'
-            OnEval = dwsUnitClassesTStringsMethodsGetCommaTextEval
             Kind = mkFunction
+            OnEval = dwsUnitClassesTStringsMethodsGetCommaTextEval
           end
           item
             Name = 'GetCount'
             ResultType = 'Integer'
-            OnEval = dwsUnitClassesTStringsMethodsGetCountEval
             Kind = mkFunction
+            OnEval = dwsUnitClassesTStringsMethodsGetCountEval
           end
           item
             Name = 'GetNames'
@@ -283,8 +281,8 @@ object dwsClassesLib: TdwsClassesLib
                 IsWritable = False
               end>
             ResultType = 'String'
-            OnEval = dwsUnitClassesTStringsMethodsGetNamesEval
             Kind = mkFunction
+            OnEval = dwsUnitClassesTStringsMethodsGetNamesEval
           end
           item
             Name = 'GetObjects'
@@ -295,8 +293,8 @@ object dwsClassesLib: TdwsClassesLib
                 IsWritable = False
               end>
             ResultType = 'TObject'
-            OnEval = dwsUnitClassesTStringsMethodsGetObjectsEval
             Kind = mkFunction
+            OnEval = dwsUnitClassesTStringsMethodsGetObjectsEval
           end
           item
             Name = 'GetStrings'
@@ -307,14 +305,14 @@ object dwsClassesLib: TdwsClassesLib
                 IsWritable = False
               end>
             ResultType = 'String'
-            OnEval = dwsUnitClassesTStringsMethodsGetStringsEval
             Kind = mkFunction
+            OnEval = dwsUnitClassesTStringsMethodsGetStringsEval
           end
           item
             Name = 'GetText'
             ResultType = 'String'
-            OnEval = dwsUnitClassesTStringsMethodsGetTextEval
             Kind = mkFunction
+            OnEval = dwsUnitClassesTStringsMethodsGetTextEval
           end
           item
             Name = 'GetValues'
@@ -325,8 +323,8 @@ object dwsClassesLib: TdwsClassesLib
                 IsWritable = False
               end>
             ResultType = 'String'
-            OnEval = dwsUnitClassesTStringsMethodsGetValuesEval
             Kind = mkFunction
+            OnEval = dwsUnitClassesTStringsMethodsGetValuesEval
           end
           item
             Name = 'GetValueFromIndex'
@@ -337,8 +335,8 @@ object dwsClassesLib: TdwsClassesLib
                 IsWritable = False
               end>
             ResultType = 'String'
-            OnEval = dwsUnitClassesTStringsMethodsGetValueFromIndexEval
             Kind = mkFunction
+            OnEval = dwsUnitClassesTStringsMethodsGetValueFromIndexEval
           end
           item
             Name = 'InsertObject'
@@ -358,8 +356,8 @@ object dwsClassesLib: TdwsClassesLib
                 DataType = 'TObject'
                 IsWritable = False
               end>
-            OnEval = dwsUnitClassesTStringsMethodsInsertObjectEval
             Kind = mkProcedure
+            OnEval = dwsUnitClassesTStringsMethodsInsertObjectEval
           end
           item
             Name = 'IndexOf'
@@ -370,8 +368,8 @@ object dwsClassesLib: TdwsClassesLib
                 IsWritable = False
               end>
             ResultType = 'Integer'
-            OnEval = dwsUnitClassesTStringsMethodsIndexOfEval
             Kind = mkFunction
+            OnEval = dwsUnitClassesTStringsMethodsIndexOfEval
           end
           item
             Name = 'IndexOfName'
@@ -382,8 +380,8 @@ object dwsClassesLib: TdwsClassesLib
                 IsWritable = False
               end>
             ResultType = 'Integer'
-            OnEval = dwsUnitClassesTStringsMethodsIndexOfNameEval
             Kind = mkFunction
+            OnEval = dwsUnitClassesTStringsMethodsIndexOfNameEval
           end
           item
             Name = 'IndexOfObject'
@@ -394,8 +392,8 @@ object dwsClassesLib: TdwsClassesLib
                 IsWritable = False
               end>
             ResultType = 'Integer'
-            OnEval = dwsUnitClassesTStringsMethodsIndexOfObjectEval
             Kind = mkFunction
+            OnEval = dwsUnitClassesTStringsMethodsIndexOfObjectEval
           end
           item
             Name = 'Insert'
@@ -410,8 +408,8 @@ object dwsClassesLib: TdwsClassesLib
                 DataType = 'String'
                 IsWritable = False
               end>
-            OnEval = dwsUnitClassesTStringsMethodsInsertEval
             Kind = mkProcedure
+            OnEval = dwsUnitClassesTStringsMethodsInsertEval
           end
           item
             Name = 'LoadFromFile'
@@ -421,8 +419,8 @@ object dwsClassesLib: TdwsClassesLib
                 DataType = 'String'
                 IsWritable = False
               end>
-            OnEval = dwsUnitClassesTStringsMethodsLoadFromFileEval
             Kind = mkProcedure
+            OnEval = dwsUnitClassesTStringsMethodsLoadFromFileEval
           end
           item
             Name = 'Move'
@@ -437,8 +435,8 @@ object dwsClassesLib: TdwsClassesLib
                 DataType = 'Integer'
                 IsWritable = False
               end>
-            OnEval = dwsUnitClassesTStringsMethodsMoveEval
             Kind = mkProcedure
+            OnEval = dwsUnitClassesTStringsMethodsMoveEval
           end
           item
             Name = 'SaveToFile'
@@ -448,8 +446,8 @@ object dwsClassesLib: TdwsClassesLib
                 DataType = 'String'
                 IsWritable = False
               end>
-            OnEval = dwsUnitClassesTStringsMethodsSaveToFileEval
             Kind = mkProcedure
+            OnEval = dwsUnitClassesTStringsMethodsSaveToFileEval
           end
           item
             Name = 'SetCommaText'
@@ -459,8 +457,8 @@ object dwsClassesLib: TdwsClassesLib
                 DataType = 'String'
                 IsWritable = False
               end>
-            OnEval = dwsUnitClassesTStringsMethodsSetCommaTextEval
             Kind = mkProcedure
+            OnEval = dwsUnitClassesTStringsMethodsSetCommaTextEval
           end
           item
             Name = 'SetObjects'
@@ -475,8 +473,8 @@ object dwsClassesLib: TdwsClassesLib
                 DataType = 'TObject'
                 IsWritable = False
               end>
-            OnEval = dwsUnitClassesTStringsMethodsSetObjectsEval
             Kind = mkProcedure
+            OnEval = dwsUnitClassesTStringsMethodsSetObjectsEval
           end
           item
             Name = 'SetStrings'
@@ -491,8 +489,8 @@ object dwsClassesLib: TdwsClassesLib
                 DataType = 'String'
                 IsWritable = False
               end>
-            OnEval = dwsUnitClassesTStringsMethodsSetStringsEval
             Kind = mkProcedure
+            OnEval = dwsUnitClassesTStringsMethodsSetStringsEval
           end
           item
             Name = 'SetText'
@@ -502,8 +500,8 @@ object dwsClassesLib: TdwsClassesLib
                 DataType = 'String'
                 IsWritable = False
               end>
-            OnEval = dwsUnitClassesTStringsMethodsSetTextEval
             Kind = mkProcedure
+            OnEval = dwsUnitClassesTStringsMethodsSetTextEval
           end
           item
             Name = 'SetValues'
@@ -518,8 +516,8 @@ object dwsClassesLib: TdwsClassesLib
                 DataType = 'String'
                 IsWritable = False
               end>
-            OnEval = dwsUnitClassesTStringsMethodsSetValuesEval
             Kind = mkProcedure
+            OnEval = dwsUnitClassesTStringsMethodsSetValuesEval
           end
           item
             Name = 'SetValueFromIndex'
@@ -534,8 +532,8 @@ object dwsClassesLib: TdwsClassesLib
                 DataType = 'String'
                 IsWritable = False
               end>
-            OnEval = dwsUnitClassesTStringsMethodsSetValueFromIndexEval
             Kind = mkProcedure
+            OnEval = dwsUnitClassesTStringsMethodsSetValueFromIndexEval
           end
           item
             Name = 'Remove'
@@ -544,8 +542,8 @@ object dwsClassesLib: TdwsClassesLib
                 Name = 'str'
                 DataType = 'String'
               end>
-            OnEval = dwsUnitClassesTStringsMethodsRemoveEval
             Kind = mkProcedure
+            OnEval = dwsUnitClassesTStringsMethodsRemoveEval
           end
           item
             Name = 'Contains'
@@ -555,8 +553,8 @@ object dwsClassesLib: TdwsClassesLib
                 DataType = 'String'
               end>
             ResultType = 'Boolean'
-            OnEval = dwsUnitClassesTStringsMethodsContainsEval
             Kind = mkFunction
+            OnEval = dwsUnitClassesTStringsMethodsContainsEval
           end>
         Operators = <
           item
@@ -659,8 +657,8 @@ object dwsClassesLib: TdwsClassesLib
         Methods = <
           item
             Name = 'Sort'
-            OnEval = dwsUnitClassesTStringListMethodsSortEval
             Kind = mkProcedure
+            OnEval = dwsUnitClassesTStringListMethodsSortEval
           end
           item
             Name = 'Find'
@@ -676,14 +674,14 @@ object dwsClassesLib: TdwsClassesLib
                 IsVarParam = True
               end>
             ResultType = 'Boolean'
-            OnEval = dwsUnitClassesTStringListMethodsFindEval
             Kind = mkFunction
+            OnEval = dwsUnitClassesTStringListMethodsFindEval
           end
           item
             Name = 'GetDuplicates'
             ResultType = 'Integer'
-            OnEval = dwsUnitClassesTStringListMethodsGetDuplicatesEval
             Kind = mkFunction
+            OnEval = dwsUnitClassesTStringListMethodsGetDuplicatesEval
           end
           item
             Name = 'SetDuplicates'
@@ -693,14 +691,14 @@ object dwsClassesLib: TdwsClassesLib
                 DataType = 'Integer'
                 IsWritable = False
               end>
-            OnEval = dwsUnitClassesTStringListMethodsSetDuplicatesEval
             Kind = mkProcedure
+            OnEval = dwsUnitClassesTStringListMethodsSetDuplicatesEval
           end
           item
             Name = 'GetSorted'
             ResultType = 'Boolean'
-            OnEval = dwsUnitClassesTStringListMethodsGetSortedEval
             Kind = mkFunction
+            OnEval = dwsUnitClassesTStringListMethodsGetSortedEval
           end
           item
             Name = 'SetSorted'
@@ -710,14 +708,14 @@ object dwsClassesLib: TdwsClassesLib
                 DataType = 'Boolean'
                 IsWritable = False
               end>
-            OnEval = dwsUnitClassesTStringListMethodsSetSortedEval
             Kind = mkProcedure
+            OnEval = dwsUnitClassesTStringListMethodsSetSortedEval
           end
           item
             Name = 'GetCaseSensitive'
             ResultType = 'Boolean'
-            OnEval = dwsUnitClassesTStringListMethodsGetCaseSensitiveEval
             Kind = mkFunction
+            OnEval = dwsUnitClassesTStringListMethodsGetCaseSensitiveEval
           end
           item
             Name = 'SetCaseSensitive'
@@ -726,8 +724,8 @@ object dwsClassesLib: TdwsClassesLib
                 Name = 'value'
                 DataType = 'Boolean'
               end>
-            OnEval = dwsUnitClassesTStringListMethodsSetCaseSensitiveEval
             Kind = mkProcedure
+            OnEval = dwsUnitClassesTStringListMethodsSetCaseSensitiveEval
           end>
         Properties = <
           item
@@ -755,19 +753,19 @@ object dwsClassesLib: TdwsClassesLib
           item
             Name = 'Size'
             ResultType = 'Integer'
-            OnEval = dwsUnitClassesTHashtableMethodsSizeEval
             Kind = mkFunction
+            OnEval = dwsUnitClassesTHashtableMethodsSizeEval
           end
           item
             Name = 'Capacity'
             ResultType = 'Integer'
-            OnEval = dwsUnitClassesTHashtableMethodsCapacityEval
             Kind = mkFunction
+            OnEval = dwsUnitClassesTHashtableMethodsCapacityEval
           end
           item
             Name = 'Clear'
-            OnEval = dwsUnitClassesTHashtableMethodsClearEval
             Kind = mkProcedure
+            OnEval = dwsUnitClassesTHashtableMethodsClearEval
           end>
       end
       item
@@ -782,8 +780,8 @@ object dwsClassesLib: TdwsClassesLib
           item
             Name = 'Destroy'
             Attributes = [maVirtual, maOverride]
-            OnEval = dwsUnitClassesTIntegerHashtableMethodsDestroyEval
             Kind = mkDestructor
+            OnEval = dwsUnitClassesTIntegerHashtableMethodsDestroyEval
           end
           item
             Name = 'Put'
@@ -798,8 +796,8 @@ object dwsClassesLib: TdwsClassesLib
                 DataType = 'TObject'
                 IsWritable = False
               end>
-            OnEval = dwsUnitClassesTIntegerHashtableMethodsPutEval
             Kind = mkProcedure
+            OnEval = dwsUnitClassesTIntegerHashtableMethodsPutEval
           end
           item
             Name = 'Get'
@@ -810,8 +808,8 @@ object dwsClassesLib: TdwsClassesLib
                 IsWritable = False
               end>
             ResultType = 'TObject'
-            OnEval = dwsUnitClassesTIntegerHashtableMethodsGetEval
             Kind = mkFunction
+            OnEval = dwsUnitClassesTIntegerHashtableMethodsGetEval
           end
           item
             Name = 'HasKey'
@@ -822,8 +820,8 @@ object dwsClassesLib: TdwsClassesLib
                 IsWritable = False
               end>
             ResultType = 'Boolean'
-            OnEval = dwsUnitClassesTIntegerHashtableMethodsHasKeyEval
             Kind = mkFunction
+            OnEval = dwsUnitClassesTIntegerHashtableMethodsHasKeyEval
           end
           item
             Name = 'RemoveKey'
@@ -834,8 +832,8 @@ object dwsClassesLib: TdwsClassesLib
                 IsWritable = False
               end>
             ResultType = 'TObject'
-            OnEval = dwsUnitClassesTIntegerHashtableMethodsRemoveKeyEval
             Kind = mkFunction
+            OnEval = dwsUnitClassesTIntegerHashtableMethodsRemoveKeyEval
           end>
         Operators = <
           item
@@ -856,8 +854,8 @@ object dwsClassesLib: TdwsClassesLib
           item
             Name = 'Destroy'
             Attributes = [maVirtual, maOverride]
-            OnEval = dwsUnitClassesTStringHashtableMethodsDestroyEval
             Kind = mkDestructor
+            OnEval = dwsUnitClassesTStringHashtableMethodsDestroyEval
           end
           item
             Name = 'Put'
@@ -872,8 +870,8 @@ object dwsClassesLib: TdwsClassesLib
                 DataType = 'TObject'
                 IsWritable = False
               end>
-            OnEval = dwsUnitClassesTStringHashtableMethodsPutEval
             Kind = mkProcedure
+            OnEval = dwsUnitClassesTStringHashtableMethodsPutEval
           end
           item
             Name = 'Get'
@@ -884,8 +882,8 @@ object dwsClassesLib: TdwsClassesLib
                 IsWritable = False
               end>
             ResultType = 'TObject'
-            OnEval = dwsUnitClassesTStringHashtableMethodsGetEval
             Kind = mkFunction
+            OnEval = dwsUnitClassesTStringHashtableMethodsGetEval
           end
           item
             Name = 'HasKey'
@@ -896,8 +894,8 @@ object dwsClassesLib: TdwsClassesLib
                 IsWritable = False
               end>
             ResultType = 'Boolean'
-            OnEval = dwsUnitClassesTStringHashtableMethodsHasKeyEval
             Kind = mkFunction
+            OnEval = dwsUnitClassesTStringHashtableMethodsHasKeyEval
           end
           item
             Name = 'RemoveKey'
@@ -908,8 +906,8 @@ object dwsClassesLib: TdwsClassesLib
                 IsWritable = False
               end>
             ResultType = 'TObject'
-            OnEval = dwsUnitClassesTStringHashtableMethodsRemoveKeyEval
             Kind = mkFunction
+            OnEval = dwsUnitClassesTStringHashtableMethodsRemoveKeyEval
           end>
         Operators = <
           item
@@ -929,8 +927,8 @@ object dwsClassesLib: TdwsClassesLib
           item
             Name = 'Destroy'
             Attributes = [maVirtual, maOverride]
-            OnEval = dwsUnitClassesTStackMethodsDestroyEval
             Kind = mkDestructor
+            OnEval = dwsUnitClassesTStackMethodsDestroyEval
           end
           item
             Name = 'Push'
@@ -940,26 +938,26 @@ object dwsClassesLib: TdwsClassesLib
                 DataType = 'TObject'
                 IsWritable = False
               end>
-            OnEval = dwsUnitClassesTStackMethodsPushEval
             Kind = mkProcedure
+            OnEval = dwsUnitClassesTStackMethodsPushEval
           end
           item
             Name = 'Pop'
             ResultType = 'TObject'
-            OnEval = dwsUnitClassesTStackMethodsPopEval
             Kind = mkFunction
+            OnEval = dwsUnitClassesTStackMethodsPopEval
           end
           item
             Name = 'Peek'
             ResultType = 'TObject'
-            OnEval = dwsUnitClassesTStackMethodsPeekEval
             Kind = mkFunction
+            OnEval = dwsUnitClassesTStackMethodsPeekEval
           end
           item
             Name = 'Count'
             ResultType = 'Integer'
-            OnEval = dwsUnitClassesTStackMethodsCountEval
             Kind = mkFunction
+            OnEval = dwsUnitClassesTStackMethodsCountEval
           end>
       end
       item
@@ -973,8 +971,8 @@ object dwsClassesLib: TdwsClassesLib
           item
             Name = 'Destroy'
             Attributes = [maVirtual, maOverride]
-            OnEval = dwsUnitClassesTQueueMethodsDestroyEval
             Kind = mkDestructor
+            OnEval = dwsUnitClassesTQueueMethodsDestroyEval
           end
           item
             Name = 'Push'
@@ -984,26 +982,26 @@ object dwsClassesLib: TdwsClassesLib
                 DataType = 'TObject'
                 IsWritable = False
               end>
-            OnEval = dwsUnitClassesTQueueMethodsPushEval
             Kind = mkProcedure
+            OnEval = dwsUnitClassesTQueueMethodsPushEval
           end
           item
             Name = 'Pop'
             ResultType = 'TObject'
-            OnEval = dwsUnitClassesTQueueMethodsPopEval
             Kind = mkFunction
+            OnEval = dwsUnitClassesTQueueMethodsPopEval
           end
           item
             Name = 'Peek'
             ResultType = 'TObject'
-            OnEval = dwsUnitClassesTQueueMethodsPeekEval
             Kind = mkFunction
+            OnEval = dwsUnitClassesTQueueMethodsPeekEval
           end
           item
             Name = 'Count'
             ResultType = 'Integer'
-            OnEval = dwsUnitClassesTQueueMethodsCountEval
             Kind = mkFunction
+            OnEval = dwsUnitClassesTQueueMethodsCountEval
           end>
       end
       item
@@ -1022,25 +1020,25 @@ object dwsClassesLib: TdwsClassesLib
                 DataType = 'Variant'
               end>
             ResultType = 'TStringBuilder'
-            OnEval = dwsUnitClassesTStringBuilderMethodsAppendEval
             Kind = mkFunction
+            OnEval = dwsUnitClassesTStringBuilderMethodsAppendEval
           end
           item
             Name = 'Length'
             ResultType = 'Integer'
-            OnEval = dwsUnitClassesTStringBuilderMethodsLengthEval
             Kind = mkFunction
+            OnEval = dwsUnitClassesTStringBuilderMethodsLengthEval
           end
           item
             Name = 'Clear'
-            OnEval = dwsUnitClassesTStringBuilderMethodsClearEval
             Kind = mkProcedure
+            OnEval = dwsUnitClassesTStringBuilderMethodsClearEval
           end
           item
             Name = 'ToString'
             ResultType = 'String'
-            OnEval = dwsUnitClassesTStringBuilderMethodsToStringEval
             Kind = mkFunction
+            OnEval = dwsUnitClassesTStringBuilderMethodsToStringEval
           end>
         Operators = <
           item

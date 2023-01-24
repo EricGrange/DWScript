@@ -25,7 +25,7 @@ unit dwsSynSQLiteDatabase;
 interface
 
 uses
-   Classes, SysUtils,
+   System.Classes, System.SysUtils,
    SynSQLite3, SynCommons,
    dwsUtils, dwsExprs, dwsDatabase, dwsXPlatform, dwsXXHash, dwsFileSystem,
    dwsDataContext, dwsStack, dwsSymbols;

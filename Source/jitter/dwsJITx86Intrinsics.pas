@@ -19,7 +19,7 @@ unit dwsJITx86Intrinsics;
 interface
 
 uses
-   Types, SysUtils,
+   System.Types, System.SysUtils,
    dwsUtils;
 
 type

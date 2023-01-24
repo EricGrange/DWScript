@@ -24,7 +24,7 @@ unit dwsComConnector;
 interface
 
 uses
-   Classes, Variants, SysUtils, ComObj, ActiveX,
+   System.Classes, System.Variants, System.SysUtils, System.Win.ComObj, Winapi.ActiveX,
    dwsUtils, dwsDataContext, dwsExprList, dwsConnectorSymbols, dwsXPlatform,
    dwsStrings, dwsFunctions, dwsStack, dwsMagicExprs, dwsErrors,
    dwsExprs, dwsComp, dwsSymbols, dwsOperators, dwsUnitSymbols,

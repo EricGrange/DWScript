@@ -20,7 +20,7 @@ interface
 
 
 uses
-   Classes, SysUtils, StrUtils, DateUtils,
+   System.Classes, System.SysUtils, System.StrUtils, System.DateUtils,
    SynCrtSock, SynCommons,
    dwsExprs, dwsUtils, dwsWebUtils, dwsWebServerUtils, dwsWebServerHelpers,
    dwsSymbols, dwsExprList, dwsXPlatform;
@@ -447,15 +447,15 @@ begin
    cookieField:=Header('Cookie');
    base:=1;
    while True do begin
-      p:=StrUtils.PosEx('=', cookieField, base);
-      next:=StrUtils.PosEx(';', cookieField, p);
+      p := System.StrUtils.PosEx('=', cookieField, base);
+      next := System.StrUtils.PosEx(';', cookieField, p);
       if (p>base) and (next>p) then begin
-         AddCookie(SysUtils.Trim(Copy(cookieField, base, p-base)), Copy(cookieField, p+1, pred(next-p)));
+         AddCookie(System.SysUtils.Trim(Copy(cookieField, base, p-base)), Copy(cookieField, p+1, pred(next-p)));
          base:=next+1;
       end else Break;
    end;
    if (p>base) and (base<Length(cookieField)) then
-      AddCookie(SysUtils.Trim(Copy(cookieField, base, p-base)), Copy(cookieField, p+1));
+      AddCookie(System.SysUtils.Trim(Copy(cookieField, base, p-base)), Copy(cookieField, p+1));
 end;
 
 // PrepareQueryFields

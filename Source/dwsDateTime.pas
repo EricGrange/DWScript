@@ -21,7 +21,7 @@ unit dwsDateTime;
 interface
 
 uses
-   Classes, SysUtils, DateUtils,
+   System.Classes, System.SysUtils, System.DateUtils,
    dwsUtils, dwsXPlatform, dwsXXHash;
 
 type
@@ -816,7 +816,7 @@ function TdwsFormatSettings.TryEncodeDate(y, m, d : Integer; tz : TdwsTimeZone; 
 begin
    // SysUtils.TryEncodeDate is incorrectly protected from year, month & days overflows
    if (y < 1) or (y > 9999) or (m < 1) or (m > 12) or (d < 1) or (d > 31) then Exit(False);
-   Result := SysUtils.TryEncodeDate(y, m, d, TDateTime(dt));
+   Result := System.SysUtils.TryEncodeDate(y, m, d, TDateTime(dt));
    if tz = tzDefault then
       tz := TimeZone;
    if tz = tzUTC then
@@ -831,7 +831,7 @@ var
 begin
    // SysUtils.TryEncodeDate is incorrectly protected from year, month & days overflows
    if (y < 1) or (y > 9999) or (m < 1) or (m > 12) or (d < 1) or (d > 31) then Exit(False);
-   Result := SysUtils.TryEncodeDate(y, m, d, outDT) and SysUtils.TryEncodeTime(h, n, s, ms, outT);
+   Result := System.SysUtils.TryEncodeDate(y, m, d, outDT) and System.SysUtils.TryEncodeTime(h, n, s, ms, outT);
    if Result then begin
       outDT := outDT + outT;
       try

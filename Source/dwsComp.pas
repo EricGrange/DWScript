@@ -24,7 +24,7 @@ unit dwsComp;
 interface
 
 uses
-  Classes, SysUtils, TypInfo, Variants,
+  System.Classes, System.SysUtils, System.TypInfo, System.Variants,
   dwsCompiler, dwsExprs, dwsSymbols, dwsDataContext, dwsExprList, dwsScriptSource,
   dwsStack, dwsFunctions, dwsStrings, dwsLanguageExtension, dwsCompilerContext,
   dwsTokenTypes, dwsTokenizer, dwsUtils, dwsOperators, dwsUnitSymbols,

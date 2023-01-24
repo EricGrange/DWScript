@@ -19,7 +19,9 @@ unit dwsMetrics;
 
 interface
 
-uses Classes, SysUtils, dwsExprs, dwsSymbols, dwsErrors, dwsUtils, dwsCoreExprs,
+uses
+   System.Classes, System.SysUtils,
+   dwsExprs, dwsSymbols, dwsErrors, dwsUtils, dwsCoreExprs,
    dwsTokenTypes, dwsSymbolDictionary, dwsContextMap;
 
 type

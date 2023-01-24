@@ -25,7 +25,9 @@ function PingIPv6(const hostName : String; timeoutMs : Integer) : Integer;
 
 implementation
 
-uses Windows, SysUtils, WinSock, dwsXPlatform, dwsRandom;
+uses
+   Winapi.Windows, System.SysUtils, Winapi.WinSock,
+   dwsXPlatform, dwsRandom;
 
 type
    PIO_APC_ROUTINE = Pointer;

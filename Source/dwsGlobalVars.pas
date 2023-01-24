@@ -22,7 +22,7 @@ unit dwsGlobalVars;
 interface
 
 uses
-   Classes, SysUtils, Variants, Masks,
+   System.Classes, System.SysUtils, System.Variants, System.Masks,
    dwsUtils, dwsXPlatform, dwsXXHash;
 
 const

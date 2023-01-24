@@ -20,7 +20,9 @@ unit dwsUnicode;
 
 interface
 
-uses Classes, SysUtils, dwsUtils, dwsXPlatform;
+uses
+   System.Classes, System.SysUtils,
+   dwsUtils, dwsXPlatform;
 
 type
 

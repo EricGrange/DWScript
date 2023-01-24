@@ -30,7 +30,7 @@ unit dwsGraphicLibrary;
 interface
 
 uses
-   Classes, SysUtils, Vcl.Graphics, System.Types,
+   System.Classes, System.SysUtils, Vcl.Graphics, System.Types,
    {$ifdef USE_LIB_JPEG}
    dwsTurboJPEG,
    {$else}

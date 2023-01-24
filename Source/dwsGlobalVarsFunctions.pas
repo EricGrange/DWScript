@@ -37,7 +37,7 @@ unit dwsGlobalVarsFunctions;
 interface
 
 uses
-   Variants, Windows, Classes, SysUtils, Masks,
+   System.Variants, Winapi.Windows, System.Classes, System.SysUtils, System.Masks,
    dwsXPlatform, dwsUtils, dwsStrings, dwsExprList, dwsConstExprs, dwsErrors,
    dwsFunctions, dwsExprs, dwsSymbols, dwsMagicExprs, dwsDataContext,
    dwsGlobalVars, dwsScriptSource;

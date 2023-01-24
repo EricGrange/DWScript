@@ -5,7 +5,7 @@ unit dwsAutoFormat;
 interface
 
 uses
-   Classes, SysUtils,
+   System.Classes, System.SysUtils,
    dwsUtils, dwsTokenizer, dwsCodeDOM, dwsScriptSource, dwsCodeDOMParser;
 
 type

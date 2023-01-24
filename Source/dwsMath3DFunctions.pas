@@ -21,7 +21,7 @@ unit dwsMath3DFunctions;
 interface
 
 uses
-   Classes, SysUtils,
+   System.Classes, System.SysUtils,
    dwsStrings, dwsUtils, dwsXPlatform,
    dwsFunctions, dwsExprs, dwsSymbols, dwsOperators, dwsDataContext,
    dwsTokenTypes, dwsMagicExprs, dwsUnitSymbols, dwsExprList;

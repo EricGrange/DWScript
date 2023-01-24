@@ -21,7 +21,7 @@ unit dwsRTTIExposer;
 interface
 
 uses
-   Classes, SysUtils, RTTI, TypInfo,
+   System.Classes, System.SysUtils, System.RTTI, System.TypInfo,
    dwsXPlatform, dwsStrings, dwsDataContext, dwsInfoClasses,
    dwsComp, dwsSymbols, dwsExprs, dwsStack, dwsInfo;
 
@@ -280,7 +280,7 @@ begin
    FInstanceType:=anInstanceType;
 
    for meth in anInstanceType.GetMethods do begin
-      if     (meth.MethodKind=TypInfo.mkConstructor)
+      if     (meth.MethodKind = System.TypInfo.mkConstructor)
          and ASCIISameText(meth.Name, 'Create')
          and (Length(meth.GetParameters)=0) then begin
          FInstanceConstructor:=meth;
@@ -453,9 +453,10 @@ begin
       if not meth.HasExtendedInfo then continue;
       if ShouldExpose(meth) then begin
          case meth.MethodKind of
-            TypInfo.mkProcedure, TypInfo.mkFunction, TypInfo.mkClassProcedure, TypInfo.mkClassFunction :
+            System.TypInfo.mkProcedure, System.TypInfo.mkFunction,
+            System.TypInfo.mkClassProcedure, System.TypInfo.mkClassFunction :
                ExposeRTTIMethod(meth, Result, options);
-            TypInfo.mkConstructor :
+            System.TypInfo.mkConstructor :
                ExposeRTTIConstructor(meth, Result, options);
          end;
       end;
@@ -565,9 +566,9 @@ begin
      Result.Overloaded := True;
 
    case meth.MethodKind of
-      TypInfo.mkClassProcedure :
+      System.TypInfo.mkClassProcedure :
          Result.Kind:=TMethodKind.mkClassProcedure;
-      TypInfo.mkClassFunction :
+      System.TypInfo.mkClassFunction :
          Result.Kind:=TMethodKind.mkClassFunction;
    end;
 

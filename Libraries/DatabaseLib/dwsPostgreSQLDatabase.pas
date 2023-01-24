@@ -21,7 +21,7 @@ interface
 {$define POSTGRES_AUTO_PREPARE}
 
 uses
-   Classes, SysUtils,
+   System.Classes, System.SysUtils,
    dwsUtils,  dwsDatabase, dwsXPlatform,
    dwsDataContext, dwsSymbols, dwsExprs,
    dwsLibpq;

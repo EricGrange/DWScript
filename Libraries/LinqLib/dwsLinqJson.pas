@@ -115,8 +115,9 @@ type
    end;
 
 implementation
+
 uses
-   Variants, SysUtils,
+   System.Variants, System.SysUtils,
    dwsJsonConnector;
 
 { TLinqJsonFactory }

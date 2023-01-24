@@ -24,7 +24,7 @@ unit dwsWindowsService;
 interface
 
 uses
-   Windows, Winapi.WinSvc, ShellAPI, SysUtils,
+   Winapi.Windows, Winapi.WinSvc, Winapi.ShellAPI, System.SysUtils,
    dwsJSON;
 
 type

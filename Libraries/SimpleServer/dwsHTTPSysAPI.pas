@@ -36,7 +36,7 @@ unit dwsHTTPSysAPI;
 interface
 
 uses
-   Windows, SysUtils,
+   Winapi.Windows, System.SysUtils,
    SynWinSock;
 
 {$MINENUMSIZE 4}

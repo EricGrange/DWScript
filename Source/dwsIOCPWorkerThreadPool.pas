@@ -21,7 +21,7 @@ interface
 {$I dws.inc}
 
 uses
-   Windows, Classes, SysUtils,
+   Winapi.Windows, System.Classes, System.SysUtils,
    dwsXPlatform, dwsUtils;
 
 type

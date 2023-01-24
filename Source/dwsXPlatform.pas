@@ -46,7 +46,8 @@ unit dwsXPlatform;
 interface
 
 uses
-   Classes, SysUtils, Types, Masks, SyncObjs, Variants, StrUtils,
+   System.Classes, System.SysUtils, System.Types, System.Masks,
+   System.SyncObjs, System.Variants, System.StrUtils,
    {$ifdef DELPHI_XE3_PLUS}
    DateUtils,
    {$endif}
@@ -801,7 +802,7 @@ end;
 //
 function UnicodeStringReplace(const s, oldPattern, newPattern: String; flags: TReplaceFlags) : String;
 begin
-   Result := SysUtils.StringReplace(s, oldPattern, newPattern, flags);
+   Result := System.SysUtils.StringReplace(s, oldPattern, newPattern, flags);
 end;
 
 {$ifdef WINDOWS}
@@ -2270,7 +2271,7 @@ end;
 //
 function FileDelete(const fileName : TFileName) : Boolean;
 begin
-   Result := SysUtils.DeleteFile(fileName);
+   Result := System.SysUtils.DeleteFile(fileName);
 end;
 
 // FileRename
@@ -2560,9 +2561,9 @@ end;
 procedure InitializeWithDefaultFormatSettings(var fmt : TFormatSettings);
 begin
    {$ifdef DELPHI_XE_PLUS}
-   fmt:=SysUtils.FormatSettings;
+   fmt := System.SysUtils.FormatSettings;
    {$else}
-   fmt:=SysUtils.TFormatSettings((@CurrencyString{%H-})^);
+   fmt := System.SysUtils.TFormatSettings((@CurrencyString{%H-})^);
    {$endif}
 end;
 

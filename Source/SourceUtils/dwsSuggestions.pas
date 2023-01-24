@@ -20,7 +20,7 @@ unit dwsSuggestions;
 interface
 
 uses
-   Classes, SysUtils,
+   System.Classes, System.SysUtils,
    dwsExprs, dwsSymbols, dwsErrors, dwsUtils, dwsTokenTypes, dwsTokenizer, dwsScriptSource,
    dwsUnitSymbols, dwsPascalTokenizer, dwsCompiler, dwsContextMap, dwsCompilerContext,
    dwsSymbolDictionary, dwsArrayMethodKinds;

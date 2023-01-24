@@ -24,7 +24,8 @@ unit dwsSynSQLiteVirtualTables;
 
 interface
 
-uses Classes, SysUtils,
+uses
+   System.Classes, System.SysUtils,
    SynSQLite3, SynCommons,
    dwsExprs, dwsUtils, dwsDatabase, dwsSynSQLiteDatabase;
 

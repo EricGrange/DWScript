@@ -21,7 +21,7 @@ unit dwsJSRTL;
 interface
 
 uses
-   Classes, SysUtils,
+   System.Classes, System.SysUtils,
    dwsUtils, dwsUnicode, dwsJSCodeGen, dwsTextCodeGen, dwsCodeGen, dwsExprList,
    dwsExprs, dwsSymbols, dwsMagicExprs, dwsCoreExprs, dwsConstExprs;
 

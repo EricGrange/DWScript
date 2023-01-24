@@ -25,7 +25,8 @@ unit dwsUtils;
 interface
 
 uses
-   Classes, SysUtils, Types, StrUtils, Masks, Variants,
+   System.Classes, System.SysUtils, System.Types, System.StrUtils,
+   System.Masks, System.Variants,
    dwsStrings, dwsXPlatform, Math, dwsXXHash;
 
 type
@@ -1253,7 +1254,7 @@ begin
       n := Length(s1);
       if Length(s2) <> n then
          Result := False
-      else Result := SysUtils.CompareMem(Pointer(s1), Pointer(s2), n*SizeOf(Char));
+      else Result := System.SysUtils.CompareMem(Pointer(s1), Pointer(s2), n*SizeOf(Char));
    end;
 end;
 {$endif}

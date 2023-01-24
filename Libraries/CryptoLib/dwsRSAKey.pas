@@ -21,7 +21,9 @@ unit dwsRSAKey;
 
 interface
 
-uses Classes, SysUtils, dwsBCryptCNG;
+uses
+   System.Classes, System.SysUtils,
+   dwsBCryptCNG;
 
 type
    TdwsRSAKeyType = (

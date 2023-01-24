@@ -24,7 +24,7 @@ unit dwsDynamicArrays;
 interface
 
 uses
-   Classes, SysUtils, System.Variants,
+   System.Classes, System.SysUtils, System.Variants,
    dwsSymbols, dwsUtils, dwsDataContext, dwsJSON;
 
 type
@@ -2089,7 +2089,7 @@ begin
          end;
       end else begin
          for i := fromIndex to FArrayLength-1 do begin
-            if (Length(p^) = n) and SysUtils.CompareMem(Pointer(p^), Pointer(item), n*SizeOf(Char)) then
+            if (Length(p^) = n) and System.SysUtils.CompareMem(Pointer(p^), Pointer(item), n*SizeOf(Char)) then
                Exit(i);
             Inc(p);
          end;

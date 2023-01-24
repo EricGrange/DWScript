@@ -24,7 +24,7 @@ unit dwsFileFunctions;
 interface
 
 uses
-   Classes, SysUtils, Winapi.Windows,
+   System.Classes, System.SysUtils, Winapi.Windows,
    dwsXPlatform, dwsUtils, dwsStrings,
    dwsFunctions, dwsSymbols, dwsExprs, dwsCoreExprs, dwsExprList, dwsUnitSymbols,
    dwsConstExprs, dwsMagicExprs, dwsDataContext;
@@ -370,7 +370,7 @@ end;
 //
 function TdwsFileHandle.Seek(offset : Int64; origin : Integer) : Int64;
 begin
-   Result := SysUtils.FileSeek(FHandle, offset, origin);
+   Result := System.SysUtils.FileSeek(FHandle, offset, origin);
 end;
 
 // Size

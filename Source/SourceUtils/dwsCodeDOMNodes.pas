@@ -21,7 +21,7 @@ unit dwsCodeDOMNodes;
 interface
 
 uses
-   Classes, SysUtils,
+   System.Classes, System.SysUtils,
    dwsUtils, dwsCodeDOM, dwsTokenTypes;
 
 type

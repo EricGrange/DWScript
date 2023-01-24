@@ -24,7 +24,7 @@ unit dwsAssociativeArrays;
 interface
 
 uses
-   Classes, SysUtils, System.Variants,
+   System.Classes, System.SysUtils, System.Variants,
    dwsSymbols, dwsUtils, dwsDataContext, dwsJSON, dwsExprs;
 
 type

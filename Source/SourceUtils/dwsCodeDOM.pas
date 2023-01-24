@@ -21,7 +21,7 @@ unit dwsCodeDOM;
 interface
 
 uses
-   Classes, SysUtils, Windows,
+   System.Classes, System.SysUtils, Winapi.Windows,
    dwsUtils, dwsTokenizer, dwsTokenTypes, dwsScriptSource, dwsErrors;
 
 type

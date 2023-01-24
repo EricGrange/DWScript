@@ -20,7 +20,7 @@ unit dwsCoverage;
 interface
 
 uses
-   Classes, SysUtils,
+   System.Classes, System.SysUtils,
    dwsUtils, dwsSymbols, dwsDebugger, dwsExprs, dwsErrors, dwsXPlatform,
    dwsScriptSource, dwsXXHash;
 

@@ -3,7 +3,7 @@ unit dwsZipLibModule;
 interface
 
 uses
-  Windows, SysUtils, Classes,
+  Winapi.Windows, System.SysUtils, System.Classes,
   dwsExprList, dwsExprs, dwsComp, dwsWebUtils, dwsUtils, dwsXPlatform, dwsSymbols,
   SynZip;
 

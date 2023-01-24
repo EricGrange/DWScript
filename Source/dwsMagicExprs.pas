@@ -24,7 +24,7 @@ unit dwsMagicExprs;
 interface
 
 uses
-   Classes, SysUtils,
+   System.Classes, System.SysUtils,
    dwsUtils, dwsErrors, dwsStrings, dwsScriptSource, dwsCompilerContext,
    dwsSymbols, dwsExprList, dwsStack, dwsDataContext,
    dwsExprs, dwsFunctions, dwsMethodExprs;

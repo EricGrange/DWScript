@@ -23,7 +23,7 @@ unit dwsHTTPSysWebEnv;
 interface
 
 uses
-   Windows, Classes, SysUtils, StrUtils,
+   Winapi.Windows, System.Classes, System.SysUtils, System.StrUtils,
    SynCommons, SynWinSock,
    dwsWebEnvironment, dwsUtils, dwsHTTPSysAPI, dwsWebServerHelpers,
    dwsURLRewriter;

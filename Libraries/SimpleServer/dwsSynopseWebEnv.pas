@@ -26,7 +26,9 @@ unit dwsSynopseWebEnv;
 
 interface
 
-uses Classes, SynCommons, SysUtils, dwsWebEnvironment, dwsUtils, StrUtils;
+uses
+   System.Classes, System.SysUtils, System.StrUtils,
+   SynCommons, dwsWebEnvironment, dwsUtils;
 
 type
 

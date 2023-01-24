@@ -23,7 +23,9 @@ unit dwsFileSystem;
 
 interface
 
-uses Classes, SysUtils, dwsUtils, dwsXPlatform;
+uses
+   System.Classes, System.SysUtils,
+   dwsUtils, dwsXPlatform;
 
 type
 
@@ -330,7 +332,7 @@ var
    validFileName : TFilename;
 begin
    validFileName := ValidateFileName(fileName);
-   Result := SysUtils.FileExists(validFileName);
+   Result := System.SysUtils.FileExists(validFileName);
 end;
 
 // OpenFileStream
@@ -450,7 +452,7 @@ begin
       for i:=0 to FPaths.Count-1 do begin
          path := FPaths[i];
          Result := ExpandFileName(path + fileName);
-         if StrIBeginsWith(Result, path) and SysUtils.FileExists(Result) then Exit;
+         if StrIBeginsWith(Result, path) and System.SysUtils.FileExists(Result) then Exit;
       end;
    end;
    Result:='';

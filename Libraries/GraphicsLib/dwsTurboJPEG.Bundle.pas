@@ -42,7 +42,7 @@ implementation
 // ------------------------------------------------------------------
 
 uses
-   Windows, SysUtils, Classes, System.Zip,
+   Winapi.Windows, System.SysUtils, System.Classes, System.Zip,
    dwsSHA3, dwsXPlatform, LibTurboJPEG;
 
 var

@@ -19,7 +19,8 @@ unit dwsGabelouStdRules;
 
 interface
 
-uses Classes, SysUtils, Character,
+uses
+   System.Classes, System.SysUtils, System.Character,
    dwsExprs, dwsSymbols, dwsErrors, dwsUtils, dwsCoreExprs, dwsTokenizer,
    dwsStrings, dwsUnitSymbols, dwsSymbolDictionary,
    dwsGabelou, dwsGabelouStrings, dwsScriptSource;

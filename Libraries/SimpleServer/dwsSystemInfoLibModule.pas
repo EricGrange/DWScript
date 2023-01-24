@@ -19,9 +19,9 @@ unit dwsSystemInfoLibModule;
 interface
 
 uses
-  Windows, SysUtils, Classes, Registry, PsAPI, ImageHlp,
-  dwsExprList, dwsDataContext, dwsComp, dwsExprs, dwsUtils, dwsCPUUsage,
-  dwsXPlatform, dwsInfo, dwsSymbols;
+   Winapi.Windows, System.SysUtils, System.Classes, System.Win.Registry, Winapi.PsAPI, Winapi.ImageHlp,
+   dwsExprList, dwsDataContext, dwsComp, dwsExprs, dwsUtils, dwsCPUUsage,
+   dwsXPlatform, dwsInfo, dwsSymbols;
 
 type
    TOSNameVersion = record

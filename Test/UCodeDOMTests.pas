@@ -5,7 +5,7 @@ unit UCodeDOMTests;
 interface
 
 uses
-   Classes, SysUtils,
+   System.Classes, System.SysUtils,
    dwsXPlatformTests, dwsXPlatform, dwsJSON, dwsUtils,
    dwsCodeDOM, dwsCodeDOMParser, dwsCodeDOMPascalParser,
    dwsTokenizer, dwsPascalTokenizer, dwsScriptSource, dwsErrors;

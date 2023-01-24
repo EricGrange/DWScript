@@ -21,7 +21,8 @@ unit dwsByteBuffer;
 interface
 
 uses
-   Types, SysUtils, dwsXPlatform, dwsUtils, dwsStrings, dwsJSON;
+   System.Types, System.SysUtils,
+   dwsXPlatform, dwsUtils, dwsStrings, dwsJSON;
 
 type
 

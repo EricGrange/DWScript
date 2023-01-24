@@ -18,7 +18,9 @@ unit dwsDirectoryNotifier;
 
 interface
 
-uses Windows, Classes, SysUtils, dwsXPlatform;
+uses
+   Winapi.Windows, System.Classes, System.SysUtils,
+   dwsXPlatform;
 
 type
 

@@ -19,7 +19,7 @@ unit dwsJIT;
 interface
 
 uses
-   Classes, SysUtils,
+   System.Classes, System.SysUtils,
    dwsExprs, dwsExprList, dwsSymbols, dwsErrors, dwsUtils, dwsCoreExprs, dwsXPlatform,
    dwsRelExprs, dwsMagicExprs, dwsJITFixups, dwsScriptSource, dwsJITx86Intrinsics;
 

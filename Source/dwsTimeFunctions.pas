@@ -24,7 +24,7 @@ unit dwsTimeFunctions;
 interface
 
 uses
-   Classes, SysUtils,
+   System.Classes, System.SysUtils,
    dwsUtils, dwsStrings, dwsXPlatform, dwsDateTime,
    dwsFunctions, dwsExprs, dwsSymbols, dwsUnitSymbols, dwsExprList,
    dwsMagicExprs, dwsExternalSymbols, dwsWebUtils;

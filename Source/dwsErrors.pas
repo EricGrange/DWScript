@@ -24,7 +24,7 @@ unit dwsErrors;
 interface
 
 uses
-   Classes, SysUtils,
+   System.Classes, System.SysUtils,
    dwsStrings, dwsUtils, dwsScriptSource, dwsXPlatform, dwsJSON;
 
 type

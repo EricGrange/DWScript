@@ -19,8 +19,10 @@ unit dwsOverviewDlg;
 interface
 
 uses
-  Windows, Messages, SysUtils, Classes, Graphics, Controls, Forms,
-  Dialogs, ComCtrls, ImgList, ToolWin, StdCtrls, TypInfo,
+  Winapi.Windows, Winapi.Messages,
+  System.SysUtils, System.Classes, System.TypInfo,
+  Vcl.Graphics, Vcl.Controls, Vcl.Forms, Vcl.Dialogs, Vcl.ComCtrls,
+  Vcl.ImgList, Vcl.ToolWin, Vcl.StdCtrls,
   dwsExprs, dwsScriptSource, dwsSymbolDictionary, dwsSymbols, dwsUtils,
   dwsJSON, dwsErrors, System.ImageList, Vcl.VirtualImageList,
   Vcl.BaseImageCollection, Vcl.ImageCollection;

@@ -21,7 +21,7 @@ unit dwsBigIntegerFunctions.GMP;
 interface
 
 uses
-   Classes, SysUtils,
+   System.Classes, System.SysUtils,
    dwsXPlatform, dwsUtils, dwsStrings, dwsCompilerContext,
    dwsFunctions, dwsSymbols, dwsExprs, dwsCoreExprs, dwsExprList, dwsUnitSymbols,
    dwsConstExprs, dwsMagicExprs, dwsDataContext, dwsErrors, dwsRelExprs,

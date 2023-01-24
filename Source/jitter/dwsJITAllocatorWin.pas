@@ -19,7 +19,7 @@ unit dwsJITAllocatorWin;
 interface
 
 uses
-   Windows, Classes, SysUtils,
+   Winapi.Windows, System.Classes, System.SysUtils,
    dwsUtils, dwsXPlatform, dwsJIT;
 
 const

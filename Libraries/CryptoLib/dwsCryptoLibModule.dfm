@@ -52,8 +52,8 @@ object dwsCryptoLib: TdwsCryptoLib
               end>
             ResultType = 'String'
             Attributes = [maVirtual, maOverride]
-            OnEval = dwsCryptoClassesSHA256MethodsHashDataEval
             Kind = mkClassFunction
+            OnEval = dwsCryptoClassesSHA256MethodsHashDataEval
           end
           item
             Name = 'HMAC'
@@ -68,8 +68,8 @@ object dwsCryptoLib: TdwsCryptoLib
               end>
             ResultType = 'String'
             Attributes = [maVirtual, maOverride]
-            OnEval = dwsCryptoClassesHashSHA256MethodsHMACEval
             Kind = mkClassFunction
+            OnEval = dwsCryptoClassesHashSHA256MethodsHMACEval
           end>
       end
       item
@@ -86,8 +86,8 @@ object dwsCryptoLib: TdwsCryptoLib
               end>
             ResultType = 'String'
             Attributes = [maVirtual, maOverride]
-            OnEval = dwsCryptoClassesHashSHA512MethodsHashDataEval
             Kind = mkClassFunction
+            OnEval = dwsCryptoClassesHashSHA512MethodsHashDataEval
           end
           item
             Name = 'HMAC'
@@ -102,8 +102,8 @@ object dwsCryptoLib: TdwsCryptoLib
               end>
             ResultType = 'String'
             Attributes = [maVirtual, maOverride]
-            OnEval = dwsCryptoClassesHashSHA512MethodsHMACEval
             Kind = mkClassFunction
+            OnEval = dwsCryptoClassesHashSHA512MethodsHMACEval
           end>
       end
       item
@@ -120,8 +120,8 @@ object dwsCryptoLib: TdwsCryptoLib
               end>
             ResultType = 'String'
             Attributes = [maVirtual, maOverride]
-            OnEval = dwsCryptoClassesSHA1MethodsHashDataEval
             Kind = mkClassFunction
+            OnEval = dwsCryptoClassesSHA1MethodsHashDataEval
           end
           item
             Name = 'HMAC'
@@ -136,8 +136,8 @@ object dwsCryptoLib: TdwsCryptoLib
               end>
             ResultType = 'String'
             Attributes = [maVirtual, maOverride]
-            OnEval = dwsCryptoClassesHashSHA1MethodsHMACEval
             Kind = mkClassFunction
+            OnEval = dwsCryptoClassesHashSHA1MethodsHMACEval
           end>
       end
       item
@@ -154,8 +154,8 @@ object dwsCryptoLib: TdwsCryptoLib
               end>
             ResultType = 'String'
             Attributes = [maVirtual, maOverride]
-            OnEval = dwsCryptoClassesMD5MethodsHashDataEval
             Kind = mkClassFunction
+            OnEval = dwsCryptoClassesMD5MethodsHashDataEval
           end
           item
             Name = 'HMAC'
@@ -170,8 +170,8 @@ object dwsCryptoLib: TdwsCryptoLib
               end>
             ResultType = 'String'
             Attributes = [maVirtual, maOverride]
-            OnEval = dwsCryptoClassesHashMD5MethodsHMACEval
             Kind = mkClassFunction
+            OnEval = dwsCryptoClassesHashMD5MethodsHMACEval
           end>
       end
       item
@@ -188,8 +188,8 @@ object dwsCryptoLib: TdwsCryptoLib
               end>
             ResultType = 'String'
             Attributes = [maVirtual, maOverride]
-            OnEval = dwsCryptoClassesHashRIPEMD160MethodsHashDataEval
             Kind = mkClassFunction
+            OnEval = dwsCryptoClassesHashRIPEMD160MethodsHashDataEval
           end
           item
             Name = 'HMAC'
@@ -204,8 +204,8 @@ object dwsCryptoLib: TdwsCryptoLib
               end>
             ResultType = 'String'
             Attributes = [maVirtual, maOverride]
-            OnEval = dwsCryptoClassesHashRIPEMD160MethodsHMACEval
             Kind = mkClassFunction
+            OnEval = dwsCryptoClassesHashRIPEMD160MethodsHMACEval
           end>
       end
       item
@@ -222,8 +222,8 @@ object dwsCryptoLib: TdwsCryptoLib
               end>
             ResultType = 'String'
             Attributes = [maVirtual, maOverride]
-            OnEval = dwsCryptoClassesHashCRC32MethodsHashDataEval
             Kind = mkClassFunction
+            OnEval = dwsCryptoClassesHashCRC32MethodsHashDataEval
           end
           item
             Name = 'HMAC'
@@ -238,8 +238,8 @@ object dwsCryptoLib: TdwsCryptoLib
               end>
             ResultType = 'String'
             Attributes = [maVirtual, maOverride]
-            OnEval = dwsCryptoClassesHashCRC32MethodsHMACEval
             Kind = mkClassFunction
+            OnEval = dwsCryptoClassesHashCRC32MethodsHMACEval
           end>
       end
       item
@@ -256,8 +256,8 @@ object dwsCryptoLib: TdwsCryptoLib
               end>
             ResultType = 'String'
             Attributes = [maVirtual, maOverride]
-            OnEval = dwsCryptoClassesHashSHA3_256MethodsHashDataEval
             Kind = mkClassFunction
+            OnEval = dwsCryptoClassesHashSHA3_256MethodsHashDataEval
           end
           item
             Name = 'HMAC'
@@ -272,8 +272,8 @@ object dwsCryptoLib: TdwsCryptoLib
               end>
             ResultType = 'String'
             Attributes = [maVirtual, maOverride]
-            OnEval = dwsCryptoClassesHashSHA3_256MethodsHMACEval
             Kind = mkClassFunction
+            OnEval = dwsCryptoClassesHashSHA3_256MethodsHMACEval
           end>
       end
       item
@@ -330,8 +330,8 @@ object dwsCryptoLib: TdwsCryptoLib
               end>
             ResultType = 'String'
             Attributes = [maVirtual, maOverride]
-            OnEval = dwsCryptoClassesEncryptionAESSHA256FullMethodsEncryptDataEval
             Kind = mkClassFunction
+            OnEval = dwsCryptoClassesEncryptionAESSHA256FullMethodsEncryptDataEval
           end
           item
             Name = 'DecryptData'
@@ -346,8 +346,8 @@ object dwsCryptoLib: TdwsCryptoLib
               end>
             ResultType = 'String'
             Attributes = [maVirtual, maOverride]
-            OnEval = dwsCryptoClassesEncryptionAESSHA256FullMethodsDecryptDataEval
             Kind = mkClassFunction
+            OnEval = dwsCryptoClassesEncryptionAESSHA256FullMethodsDecryptDataEval
           end>
       end
       item
@@ -368,8 +368,8 @@ object dwsCryptoLib: TdwsCryptoLib
               end>
             ResultType = 'String'
             Attributes = [maVirtual, maOverride]
-            OnEval = dwsCryptoClassesEncryptionAESSHA3CTRMethodsEncryptDataEval
             Kind = mkClassFunction
+            OnEval = dwsCryptoClassesEncryptionAESSHA3CTRMethodsEncryptDataEval
           end
           item
             Name = 'DecryptData'
@@ -384,8 +384,8 @@ object dwsCryptoLib: TdwsCryptoLib
               end>
             ResultType = 'String'
             Attributes = [maVirtual, maOverride]
-            OnEval = dwsCryptoClassesEncryptionAESSHA3CTRMethodsDecryptDataEval
             Kind = mkClassFunction
+            OnEval = dwsCryptoClassesEncryptionAESSHA3CTRMethodsDecryptDataEval
           end>
       end
       item
@@ -409,8 +409,8 @@ object dwsCryptoLib: TdwsCryptoLib
               end>
             ResultType = 'String'
             Attributes = [maStatic]
-            OnEval = dwsCryptoClassesEncryptionAESnistCTRMethodsEncryptDataEval
             Kind = mkClassFunction
+            OnEval = dwsCryptoClassesEncryptionAESnistCTRMethodsEncryptDataEval
           end
           item
             Name = 'DecryptData'
@@ -429,8 +429,8 @@ object dwsCryptoLib: TdwsCryptoLib
               end>
             ResultType = 'String'
             Attributes = [maStatic]
-            OnEval = dwsCryptoClassesEncryptionAESnistCTRMethodsDecryptDataEval
             Kind = mkClassFunction
+            OnEval = dwsCryptoClassesEncryptionAESnistCTRMethodsDecryptDataEval
           end>
       end
       item
@@ -451,8 +451,8 @@ object dwsCryptoLib: TdwsCryptoLib
               end>
             ResultType = 'String'
             Attributes = [maVirtual, maOverride]
-            OnEval = dwsCryptoClassesEncryptionCryptProtectMethodsEncryptDataEval
             Kind = mkClassFunction
+            OnEval = dwsCryptoClassesEncryptionCryptProtectMethodsEncryptDataEval
           end
           item
             Name = 'DecryptData'
@@ -467,8 +467,8 @@ object dwsCryptoLib: TdwsCryptoLib
               end>
             ResultType = 'String'
             Attributes = [maVirtual, maOverride]
-            OnEval = dwsCryptoClassesEncryptionCryptProtectMethodsDecryptDataEval
             Kind = mkClassFunction
+            OnEval = dwsCryptoClassesEncryptionCryptProtectMethodsDecryptDataEval
           end>
       end
       item
@@ -493,8 +493,8 @@ object dwsCryptoLib: TdwsCryptoLib
                 DefaultValue = ''
               end>
             Attributes = [maStatic]
-            OnFastEvalNoResult = dwsCryptoClassesNoncesMethodsRegisterFastEvalNoResult
             Kind = mkClassProcedure
+            OnFastEvalNoResult = dwsCryptoClassesNoncesMethodsRegisterFastEvalNoResult
           end
           item
             Name = 'Generate'
@@ -511,8 +511,8 @@ object dwsCryptoLib: TdwsCryptoLib
               end>
             ResultType = 'String'
             Attributes = [maStatic]
-            OnFastEvalString = dwsCryptoClassesNoncesMethodsGenerateFastEvalString
             Kind = mkClassFunction
+            OnFastEvalString = dwsCryptoClassesNoncesMethodsGenerateFastEvalString
           end
           item
             Name = 'CheckAndKeep'
@@ -529,8 +529,8 @@ object dwsCryptoLib: TdwsCryptoLib
               end>
             ResultType = 'Boolean'
             Attributes = [maStatic]
-            OnFastEvalBoolean = dwsCryptoClassesNoncesMethodsCheckAndKeepFastEvalBoolean
             Kind = mkClassFunction
+            OnFastEvalBoolean = dwsCryptoClassesNoncesMethodsCheckAndKeepFastEvalBoolean
           end
           item
             Name = 'CheckAndRemove'
@@ -547,8 +547,8 @@ object dwsCryptoLib: TdwsCryptoLib
               end>
             ResultType = 'Boolean'
             Attributes = [maStatic]
-            OnFastEvalBoolean = dwsCryptoClassesNoncesMethodsCheckAndRemoveFastEvalBoolean
             Kind = mkClassFunction
+            OnFastEvalBoolean = dwsCryptoClassesNoncesMethodsCheckAndRemoveFastEvalBoolean
           end
           item
             Name = 'GetData'
@@ -559,8 +559,8 @@ object dwsCryptoLib: TdwsCryptoLib
               end>
             ResultType = 'String'
             Attributes = [maStatic]
-            OnFastEvalString = dwsCryptoClassesNoncesMethodsGetDataFastEvalString
             Kind = mkClassFunction
+            OnFastEvalString = dwsCryptoClassesNoncesMethodsGetDataFastEvalString
           end
           item
             Name = 'Remove'
@@ -570,8 +570,8 @@ object dwsCryptoLib: TdwsCryptoLib
                 DataType = 'String'
               end>
             Attributes = [maStatic]
-            OnFastEvalNoResult = dwsCryptoClassesNoncesMethodsRemoveFastEvalNoResult
             Kind = mkClassProcedure
+            OnFastEvalNoResult = dwsCryptoClassesNoncesMethodsRemoveFastEvalNoResult
           end
           item
             Name = 'RemoveByData'
@@ -581,20 +581,20 @@ object dwsCryptoLib: TdwsCryptoLib
                 DataType = 'String'
               end>
             Attributes = [maStatic]
-            OnFastEvalNoResult = dwsCryptoClassesNoncesMethodsRemoveByDataFastEvalNoResult
             Kind = mkClassProcedure
+            OnFastEvalNoResult = dwsCryptoClassesNoncesMethodsRemoveByDataFastEvalNoResult
           end
           item
             Name = 'Clear'
             Attributes = [maStatic]
-            OnFastEvalNoResult = dwsCryptoClassesNoncesMethodsClearFastEvalNoResult
             Kind = mkClassProcedure
+            OnFastEvalNoResult = dwsCryptoClassesNoncesMethodsClearFastEvalNoResult
           end
           item
             Name = 'Collect'
             Attributes = [maStatic]
-            OnFastEvalNoResult = dwsCryptoClassesNoncesMethodsCollectFastEvalNoResult
             Kind = mkClassProcedure
+            OnFastEvalNoResult = dwsCryptoClassesNoncesMethodsCollectFastEvalNoResult
           end>
       end
       item
@@ -616,8 +616,8 @@ object dwsCryptoLib: TdwsCryptoLib
               end>
             ResultType = 'Boolean'
             Attributes = [maStatic]
-            OnEval = dwsCryptoClassesECCsecp256r1MethodsMakeKeyEval
             Kind = mkClassMethod
+            OnEval = dwsCryptoClassesECCsecp256r1MethodsMakeKeyEval
           end
           item
             Name = 'ECDHSharedSecret'
@@ -632,8 +632,8 @@ object dwsCryptoLib: TdwsCryptoLib
               end>
             ResultType = 'String'
             Attributes = [maStatic]
-            OnEval = dwsCryptoClassesECCsecp256r1MethodsECDHSharedSecretEval
             Kind = mkClassFunction
+            OnEval = dwsCryptoClassesECCsecp256r1MethodsECDHSharedSecretEval
           end
           item
             Name = 'ECDSASign'
@@ -648,8 +648,8 @@ object dwsCryptoLib: TdwsCryptoLib
               end>
             ResultType = 'String'
             Attributes = [maStatic]
-            OnEval = dwsCryptoClassesECCsecp256r1MethodsECDSASignEval
             Kind = mkClassFunction
+            OnEval = dwsCryptoClassesECCsecp256r1MethodsECDSASignEval
           end
           item
             Name = 'ECDSAVerify'
@@ -668,8 +668,8 @@ object dwsCryptoLib: TdwsCryptoLib
               end>
             ResultType = 'Boolean'
             Attributes = [maStatic]
-            OnEval = dwsCryptoClassesECCsecp256r1MethodsECDSAVerifyEval
             Kind = mkClassFunction
+            OnEval = dwsCryptoClassesECCsecp256r1MethodsECDSAVerifyEval
           end>
       end
       item
@@ -696,8 +696,8 @@ object dwsCryptoLib: TdwsCryptoLib
         Methods = <
           item
             Name = 'DestroyKey'
-            OnEval = dwsCryptoClassesTRSAKeyMethodsDestroyKeyEval
             Kind = mkProcedure
+            OnEval = dwsCryptoClassesTRSAKeyMethodsDestroyKeyEval
           end
           item
             Name = 'SignHash'
@@ -711,8 +711,8 @@ object dwsCryptoLib: TdwsCryptoLib
                 DataType = 'String'
               end>
             ResultType = 'String'
-            OnEval = dwsCryptoClassesTRSAKeyMethodsSignHashEval
             Kind = mkFunction
+            OnEval = dwsCryptoClassesTRSAKeyMethodsSignHashEval
           end
           item
             Name = 'VerifyHash'
@@ -730,14 +730,14 @@ object dwsCryptoLib: TdwsCryptoLib
                 DataType = 'String'
               end>
             ResultType = 'Boolean'
-            OnEval = dwsCryptoClassesTRSAKeyMethodsVerifyHashEval
             Kind = mkFunction
+            OnEval = dwsCryptoClassesTRSAKeyMethodsVerifyHashEval
           end
           item
             Name = 'ExportJSON'
             ResultType = 'String'
-            OnEval = dwsCryptoClassesTRSAKeyMethodsExportJSONEval
             Kind = mkFunction
+            OnEval = dwsCryptoClassesTRSAKeyMethodsExportJSONEval
           end
           item
             Name = 'Encrypt'
@@ -755,8 +755,8 @@ object dwsCryptoLib: TdwsCryptoLib
                 DataType = 'String'
               end>
             ResultType = 'String'
-            OnEval = dwsCryptoClassesTRSAKeyMethodsEncryptEval
             Kind = mkFunction
+            OnEval = dwsCryptoClassesTRSAKeyMethodsEncryptEval
           end
           item
             Name = 'Decrypt'
@@ -774,14 +774,14 @@ object dwsCryptoLib: TdwsCryptoLib
                 DataType = 'String'
               end>
             ResultType = 'String'
-            OnEval = dwsCryptoClassesTRSAKeyMethodsDecryptEval
             Kind = mkFunction
+            OnEval = dwsCryptoClassesTRSAKeyMethodsDecryptEval
           end
           item
             Name = 'BlockLength'
             ResultType = 'Integer'
-            OnEval = dwsCryptoClassesTRSAKeyMethodsBlockLengthEval
             Kind = mkFunction
+            OnEval = dwsCryptoClassesTRSAKeyMethodsBlockLengthEval
           end>
         OnCleanUp = dwsCryptoClassesTRSAKeyCleanUp
       end>

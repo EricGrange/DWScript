@@ -28,8 +28,9 @@ procedure Register;
 
 implementation
 
-uses Classes, Forms, SysUtils, DesignIntf, DesignEditors,
-  dwsStrings, dwsComp, dwsSymbols;
+uses
+   System.Classes, Vcl.Forms, System.SysUtils, DesignIntf, DesignEditors,
+   dwsStrings, dwsComp, dwsSymbols;
 
 type
   TdwsDataTypeProperty = class(TStringProperty)

@@ -3,7 +3,8 @@ unit dwsClassesLibModule;
 interface
 
 uses
-  Classes, SysUtils, dwsComp, dwsExprs, dwsHashtables, dwsSymbols,
+  System.Classes, System.SysUtils,
+  dwsComp, dwsExprs, dwsHashtables, dwsSymbols,
   dwsClasses, dwsFileSystem, dwsUtils;
 
 type

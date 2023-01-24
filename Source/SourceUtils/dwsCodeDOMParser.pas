@@ -21,7 +21,7 @@ unit dwsCodeDOMParser;
 interface
 
 uses
-   Classes, SysUtils,
+   System.Classes, System.SysUtils,
    dwsUtils, dwsTokenTypes, dwsTokenizer, dwsScriptSource,
    dwsCodeDOM, dwsCodeDOMNodes, dwsErrors;
 

@@ -5,7 +5,7 @@ unit UAutoFormatTests;
 interface
 
 uses
-   Classes, SysUtils, Math,
+   System.Classes, System.SysUtils, System.Math,
    dwsXPlatformTests, dwsXPlatform,
    dwsComp, dwsCompiler, dwsExprs, dwsDataContext,
    dwsTokenizer, dwsErrors, dwsUtils, Variants, dwsSymbols, dwsSuggestions,

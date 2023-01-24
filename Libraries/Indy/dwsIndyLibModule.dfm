@@ -1,7 +1,5 @@
 object dwsIndyLib: TdwsIndyLib
   OldCreateOrder = False
-  Left = 769
-  Top = 189
   Height = 129
   Width = 183
   object dwsUnitIndy: TdwsUnit
@@ -13,9 +11,9 @@ object dwsIndyLib: TdwsIndyLib
           item
             Name = 'GetProxyType'
             ResultType = 'TFtpProxyType'
-            OnEval = dwsTIdFtpProxySettingsMethodsGetProxyTypeEval
             Visibility = cvPrivate
             Kind = mkFunction
+            OnEval = dwsTIdFtpProxySettingsMethodsGetProxyTypeEval
           end
           item
             Name = 'SetProxyType'
@@ -24,16 +22,16 @@ object dwsIndyLib: TdwsIndyLib
                 Name = 'Value'
                 DataType = 'TFtpProxyType'
               end>
-            OnEval = dwsTIdFtpProxySettingsMethodsSetProxyTypeEval
             Visibility = cvPrivate
             Kind = mkProcedure
+            OnEval = dwsTIdFtpProxySettingsMethodsSetProxyTypeEval
           end
           item
             Name = 'GetHost'
             ResultType = 'String'
-            OnEval = dwsTIdFtpProxySettingsMethodsGetHostEval
             Visibility = cvPrivate
             Kind = mkFunction
+            OnEval = dwsTIdFtpProxySettingsMethodsGetHostEval
           end
           item
             Name = 'SetHost'
@@ -42,16 +40,16 @@ object dwsIndyLib: TdwsIndyLib
                 Name = 'Value'
                 DataType = 'String'
               end>
-            OnEval = dwsTIdFtpProxySettingsMethodsSetHostEval
             Visibility = cvPrivate
             Kind = mkProcedure
+            OnEval = dwsTIdFtpProxySettingsMethodsSetHostEval
           end
           item
             Name = 'GetUsername'
             ResultType = 'String'
-            OnEval = dwsTIdFtpProxySettingsMethodsGetUsernameEval
             Visibility = cvPrivate
             Kind = mkFunction
+            OnEval = dwsTIdFtpProxySettingsMethodsGetUsernameEval
           end
           item
             Name = 'SetUsername'
@@ -60,16 +58,16 @@ object dwsIndyLib: TdwsIndyLib
                 Name = 'Value'
                 DataType = 'String'
               end>
-            OnEval = dwsTIdFtpProxySettingsMethodsSetUsernameEval
             Visibility = cvPrivate
             Kind = mkProcedure
+            OnEval = dwsTIdFtpProxySettingsMethodsSetUsernameEval
           end
           item
             Name = 'GetPassword'
             ResultType = 'String'
-            OnEval = dwsTIdFtpProxySettingsMethodsGetPasswordEval
             Visibility = cvPrivate
             Kind = mkFunction
+            OnEval = dwsTIdFtpProxySettingsMethodsGetPasswordEval
           end
           item
             Name = 'SetPassword'
@@ -78,16 +76,16 @@ object dwsIndyLib: TdwsIndyLib
                 Name = 'Value'
                 DataType = 'String'
               end>
-            OnEval = dwsTIdFtpProxySettingsMethodsSetPasswordEval
             Visibility = cvPrivate
             Kind = mkProcedure
+            OnEval = dwsTIdFtpProxySettingsMethodsSetPasswordEval
           end
           item
             Name = 'GetPort'
             ResultType = 'Integer'
-            OnEval = dwsTIdFtpProxySettingsMethodsGetPortEval
             Visibility = cvPrivate
             Kind = mkFunction
+            OnEval = dwsTIdFtpProxySettingsMethodsGetPortEval
           end
           item
             Name = 'SetPort'
@@ -96,9 +94,9 @@ object dwsIndyLib: TdwsIndyLib
                 Name = 'Value'
                 DataType = 'Integer'
               end>
-            OnEval = dwsTIdFtpProxySettingsMethodsSetPortEval
             Visibility = cvPrivate
             Kind = mkProcedure
+            OnEval = dwsTIdFtpProxySettingsMethodsSetPortEval
           end>
         Properties = <
           item
@@ -144,9 +142,9 @@ object dwsIndyLib: TdwsIndyLib
           item
             Name = 'GetBoundIP'
             ResultType = 'String'
-            OnEval = dwsTIdFtpMethodsGetBoundIPEval
             Visibility = cvPrivate
             Kind = mkFunction
+            OnEval = dwsTIdFtpMethodsGetBoundIPEval
           end
           item
             Name = 'SetBoundIP'
@@ -157,16 +155,16 @@ object dwsIndyLib: TdwsIndyLib
                 IsVarParam = True
                 IsWritable = False
               end>
-            OnEval = dwsTIdFtpMethodsSetBoundIPEval
             Visibility = cvPrivate
             Kind = mkProcedure
+            OnEval = dwsTIdFtpMethodsSetBoundIPEval
           end
           item
             Name = 'GetBoundPort'
             ResultType = 'Integer'
-            OnEval = dwsTIdFtpMethodsGetBoundPortEval
             Visibility = cvPrivate
             Kind = mkFunction
+            OnEval = dwsTIdFtpMethodsGetBoundPortEval
           end
           item
             Name = 'SetBoundPort'
@@ -177,16 +175,16 @@ object dwsIndyLib: TdwsIndyLib
                 IsVarParam = True
                 IsWritable = False
               end>
-            OnEval = dwsTIdFtpMethodsSetBoundPortEval
             Visibility = cvPrivate
             Kind = mkProcedure
+            OnEval = dwsTIdFtpMethodsSetBoundPortEval
           end
           item
             Name = 'GetBoundPortMax'
             ResultType = 'Integer'
-            OnEval = dwsTIdFtpMethodsGetBoundPortMaxEval
             Visibility = cvPrivate
             Kind = mkFunction
+            OnEval = dwsTIdFtpMethodsGetBoundPortMaxEval
           end
           item
             Name = 'SetBoundPortMax'
@@ -197,23 +195,23 @@ object dwsIndyLib: TdwsIndyLib
                 IsVarParam = True
                 IsWritable = False
               end>
-            OnEval = dwsTIdFtpMethodsSetBoundPortMaxEval
             Visibility = cvPrivate
             Kind = mkProcedure
+            OnEval = dwsTIdFtpMethodsSetBoundPortMaxEval
           end
           item
             Name = 'GetBoundPortMin'
             ResultType = 'Integer'
-            OnEval = dwsTIdFtpMethodsGetBoundPortMinEval
             Visibility = cvPrivate
             Kind = mkFunction
+            OnEval = dwsTIdFtpMethodsGetBoundPortMinEval
           end
           item
             Name = 'GetConnectionTimeOut'
             ResultType = 'Integer'
-            OnEval = dwsTIdFtpMethodsGetConnectionTimeOutEval
             Visibility = cvPrivate
             Kind = mkFunction
+            OnEval = dwsTIdFtpMethodsGetConnectionTimeOutEval
           end
           item
             Name = 'SetConnectionTimeOut'
@@ -224,16 +222,16 @@ object dwsIndyLib: TdwsIndyLib
                 IsVarParam = True
                 IsWritable = False
               end>
-            OnEval = dwsTIdFtpMethodsSetConnectionTimeOutEval
             Visibility = cvPrivate
             Kind = mkProcedure
+            OnEval = dwsTIdFtpMethodsSetConnectionTimeOutEval
           end
           item
             Name = 'GetReuseSocket'
             ResultType = 'TReuseSocket'
-            OnEval = dwsTIdFtpMethodsGetReuseSocketEval
             Visibility = cvPrivate
             Kind = mkFunction
+            OnEval = dwsTIdFtpMethodsGetReuseSocketEval
           end
           item
             Name = 'SetReuseSocket'
@@ -244,16 +242,16 @@ object dwsIndyLib: TdwsIndyLib
                 IsVarParam = True
                 IsWritable = False
               end>
-            OnEval = dwsTIdFtpMethodsSetReuseSocketEval
             Visibility = cvPrivate
             Kind = mkProcedure
+            OnEval = dwsTIdFtpMethodsSetReuseSocketEval
           end
           item
             Name = 'GetUseNagle'
             ResultType = 'Boolean'
-            OnEval = dwsTIdFtpMethodsGetUseNagleEval
             Visibility = cvPrivate
             Kind = mkFunction
+            OnEval = dwsTIdFtpMethodsGetUseNagleEval
           end
           item
             Name = 'SetUseNagle'
@@ -264,30 +262,30 @@ object dwsIndyLib: TdwsIndyLib
                 IsVarParam = True
                 IsWritable = False
               end>
-            OnEval = dwsTIdFtpMethodsSetUseNagleEval
             Visibility = cvPrivate
             Kind = mkProcedure
+            OnEval = dwsTIdFtpMethodsSetUseNagleEval
           end
           item
             Name = 'GetSupportsTLS'
             ResultType = 'Boolean'
-            OnEval = dwsTIdFtpMethodsGetSupportsTLSEval
             Visibility = cvPrivate
             Kind = mkFunction
+            OnEval = dwsTIdFtpMethodsGetSupportsTLSEval
           end
           item
             Name = 'GetCapabilities'
             ResultType = 'String'
-            OnEval = dwsTIdFtpMethodsGetCapabilitiesEval
             Visibility = cvPrivate
             Kind = mkFunction
+            OnEval = dwsTIdFtpMethodsGetCapabilitiesEval
           end
           item
             Name = 'GetIPVersion'
             ResultType = 'TIPVersion'
-            OnEval = dwsTIdFtpMethodsGetIPVersionEval
             Visibility = cvPrivate
             Kind = mkFunction
+            OnEval = dwsTIdFtpMethodsGetIPVersionEval
           end
           item
             Name = 'SetIPVersion'
@@ -298,16 +296,16 @@ object dwsIndyLib: TdwsIndyLib
                 IsVarParam = True
                 IsWritable = False
               end>
-            OnEval = dwsTIdFtpMethodsSetIPVersionEval
             Visibility = cvPrivate
             Kind = mkProcedure
+            OnEval = dwsTIdFtpMethodsSetIPVersionEval
           end
           item
             Name = 'GetAutoIssueFEAT'
             ResultType = 'Boolean'
-            OnEval = dwsTIdFtpMethodsGetAutoIssueFEATEval
             Visibility = cvPrivate
             Kind = mkFunction
+            OnEval = dwsTIdFtpMethodsGetAutoIssueFEATEval
           end
           item
             Name = 'SetAutoIssueFEAT'
@@ -318,16 +316,16 @@ object dwsIndyLib: TdwsIndyLib
                 IsVarParam = True
                 IsWritable = False
               end>
-            OnEval = dwsTIdFtpMethodsSetAutoIssueFEATEval
             Visibility = cvPrivate
             Kind = mkProcedure
+            OnEval = dwsTIdFtpMethodsSetAutoIssueFEATEval
           end
           item
             Name = 'GetHost'
             ResultType = 'String'
-            OnEval = dwsTIdFtpMethodsGetHostEval
             Visibility = cvPrivate
             Kind = mkFunction
+            OnEval = dwsTIdFtpMethodsGetHostEval
           end
           item
             Name = 'SetHost'
@@ -338,16 +336,16 @@ object dwsIndyLib: TdwsIndyLib
                 IsVarParam = True
                 IsWritable = False
               end>
-            OnEval = dwsTIdFtpMethodsSetHostEval
             Visibility = cvPrivate
             Kind = mkProcedure
+            OnEval = dwsTIdFtpMethodsSetHostEval
           end
           item
             Name = 'GetUseCCC'
             ResultType = 'Boolean'
-            OnEval = dwsTIdFtpMethodsGetUseCCCEval
             Visibility = cvPrivate
             Kind = mkFunction
+            OnEval = dwsTIdFtpMethodsGetUseCCCEval
           end
           item
             Name = 'SetUseCCC'
@@ -358,16 +356,16 @@ object dwsIndyLib: TdwsIndyLib
                 IsVarParam = True
                 IsWritable = False
               end>
-            OnEval = dwsTIdFtpMethodsSetUseCCCEval
             Visibility = cvPrivate
             Kind = mkProcedure
+            OnEval = dwsTIdFtpMethodsSetUseCCCEval
           end
           item
             Name = 'GetPassiveUseControlHost'
             ResultType = 'Boolean'
-            OnEval = dwsTIdFtpMethodsGetPassiveUseControlHostEval
             Visibility = cvPrivate
             Kind = mkFunction
+            OnEval = dwsTIdFtpMethodsGetPassiveUseControlHostEval
           end
           item
             Name = 'SetPassiveUseControlHost'
@@ -378,16 +376,16 @@ object dwsIndyLib: TdwsIndyLib
                 IsVarParam = True
                 IsWritable = False
               end>
-            OnEval = dwsTIdFtpMethodsSetPassiveUseControlHostEval
             Visibility = cvPrivate
             Kind = mkProcedure
+            OnEval = dwsTIdFtpMethodsSetPassiveUseControlHostEval
           end
           item
             Name = 'GetDataPortProtection'
             ResultType = 'TFTPDataPortSecurity'
-            OnEval = dwsTIdFtpMethodsGetDataPortProtectionEval
             Visibility = cvPrivate
             Kind = mkFunction
+            OnEval = dwsTIdFtpMethodsGetDataPortProtectionEval
           end
           item
             Name = 'SetDataPortProtection'
@@ -398,16 +396,16 @@ object dwsIndyLib: TdwsIndyLib
                 IsVarParam = True
                 IsWritable = False
               end>
-            OnEval = dwsTIdFtpMethodsSetDataPortProtectionEval
             Visibility = cvPrivate
             Kind = mkProcedure
+            OnEval = dwsTIdFtpMethodsSetDataPortProtectionEval
           end
           item
             Name = 'GetAUTHCmd'
             ResultType = 'TAuthCmd'
-            OnEval = dwsTIdFtpMethodsGetAUTHCmdEval
             Visibility = cvPrivate
             Kind = mkFunction
+            OnEval = dwsTIdFtpMethodsGetAUTHCmdEval
           end
           item
             Name = 'SetAUTHCmd'
@@ -418,16 +416,16 @@ object dwsIndyLib: TdwsIndyLib
                 IsVarParam = True
                 IsWritable = False
               end>
-            OnEval = dwsTIdFtpMethodsSetAUTHCmdEval
             Visibility = cvPrivate
             Kind = mkProcedure
+            OnEval = dwsTIdFtpMethodsSetAUTHCmdEval
           end
           item
             Name = 'GetDataPort'
             ResultType = 'Integer'
-            OnEval = dwsTIdFtpMethodsGetDataPortEval
             Visibility = cvPrivate
             Kind = mkFunction
+            OnEval = dwsTIdFtpMethodsGetDataPortEval
           end
           item
             Name = 'SetDataPort'
@@ -438,16 +436,16 @@ object dwsIndyLib: TdwsIndyLib
                 IsVarParam = True
                 IsWritable = False
               end>
-            OnEval = dwsTIdFtpMethodsSetDataPortEval
             Visibility = cvPrivate
             Kind = mkProcedure
+            OnEval = dwsTIdFtpMethodsSetDataPortEval
           end
           item
             Name = 'GetDataPortMax'
             ResultType = 'Integer'
-            OnEval = dwsTIdFtpMethodsGetDataPortMaxEval
             Visibility = cvPrivate
             Kind = mkFunction
+            OnEval = dwsTIdFtpMethodsGetDataPortMaxEval
           end
           item
             Name = 'SetDataPortMax'
@@ -458,16 +456,16 @@ object dwsIndyLib: TdwsIndyLib
                 IsVarParam = True
                 IsWritable = False
               end>
-            OnEval = dwsTIdFtpMethodsSetDataPortMaxEval
             Visibility = cvPrivate
             Kind = mkProcedure
+            OnEval = dwsTIdFtpMethodsSetDataPortMaxEval
           end
           item
             Name = 'GetDataPortMin'
             ResultType = 'Integer'
-            OnEval = dwsTIdFtpMethodsGetDataPortMinEval
             Visibility = cvPrivate
             Kind = mkFunction
+            OnEval = dwsTIdFtpMethodsGetDataPortMinEval
           end
           item
             Name = 'SetDataPortMin'
@@ -478,16 +476,16 @@ object dwsIndyLib: TdwsIndyLib
                 IsVarParam = True
                 IsWritable = False
               end>
-            OnEval = dwsTIdFtpMethodsSetDataPortMinEval
             Visibility = cvPrivate
             Kind = mkProcedure
+            OnEval = dwsTIdFtpMethodsSetDataPortMinEval
           end
           item
             Name = 'GetExternalIP'
             ResultType = 'String'
-            OnEval = dwsTIdFtpMethodsGetExternalIPEval
             Visibility = cvPrivate
             Kind = mkFunction
+            OnEval = dwsTIdFtpMethodsGetExternalIPEval
           end
           item
             Name = 'SetExternalIP'
@@ -498,16 +496,16 @@ object dwsIndyLib: TdwsIndyLib
                 IsVarParam = True
                 IsWritable = False
               end>
-            OnEval = dwsTIdFtpMethodsSetExternalIPEval
             Visibility = cvPrivate
             Kind = mkProcedure
+            OnEval = dwsTIdFtpMethodsSetExternalIPEval
           end
           item
             Name = 'GetTransferType'
             ResultType = 'TFTPTransferType'
-            OnEval = dwsTIdFtpMethodsGetTransferTypeEval
             Visibility = cvPrivate
             Kind = mkFunction
+            OnEval = dwsTIdFtpMethodsGetTransferTypeEval
           end
           item
             Name = 'SetTransferType'
@@ -518,16 +516,16 @@ object dwsIndyLib: TdwsIndyLib
                 IsVarParam = True
                 IsWritable = False
               end>
-            OnEval = dwsTIdFtpMethodsSetTransferTypeEval
             Visibility = cvPrivate
             Kind = mkProcedure
+            OnEval = dwsTIdFtpMethodsSetTransferTypeEval
           end
           item
             Name = 'GetTransferTimeout'
             ResultType = 'Integer'
-            OnEval = dwsTIdFtpMethodsGetTransferTimeoutEval
             Visibility = cvPrivate
             Kind = mkFunction
+            OnEval = dwsTIdFtpMethodsGetTransferTimeoutEval
           end
           item
             Name = 'SetTransferTimeout'
@@ -538,16 +536,16 @@ object dwsIndyLib: TdwsIndyLib
                 IsVarParam = True
                 IsWritable = False
               end>
-            OnEval = dwsTIdFtpMethodsSetTransferTimeoutEval
             Visibility = cvPrivate
             Kind = mkProcedure
+            OnEval = dwsTIdFtpMethodsSetTransferTimeoutEval
           end
           item
             Name = 'GetListenTimeout'
             ResultType = 'Integer'
-            OnEval = dwsTIdFtpMethodsGetListenTimeoutEval
             Visibility = cvPrivate
             Kind = mkFunction
+            OnEval = dwsTIdFtpMethodsGetListenTimeoutEval
           end
           item
             Name = 'SetListenTimeout'
@@ -558,16 +556,16 @@ object dwsIndyLib: TdwsIndyLib
                 IsVarParam = True
                 IsWritable = False
               end>
-            OnEval = dwsTIdFtpMethodsSetListenTimeoutEval
             Visibility = cvPrivate
             Kind = mkProcedure
+            OnEval = dwsTIdFtpMethodsSetListenTimeoutEval
           end
           item
             Name = 'GetUseExtensionDataPort'
             ResultType = 'Boolean'
-            OnEval = dwsTIdFtpMethodsGetUseExtensionDataPortEval
             Visibility = cvPrivate
             Kind = mkFunction
+            OnEval = dwsTIdFtpMethodsGetUseExtensionDataPortEval
           end
           item
             Name = 'SetUseExtensionDataPort'
@@ -578,16 +576,16 @@ object dwsIndyLib: TdwsIndyLib
                 IsVarParam = True
                 IsWritable = False
               end>
-            OnEval = dwsTIdFtpMethodsSetUseExtensionDataPortEval
             Visibility = cvPrivate
             Kind = mkProcedure
+            OnEval = dwsTIdFtpMethodsSetUseExtensionDataPortEval
           end
           item
             Name = 'GetUseMLIS'
             ResultType = 'Boolean'
-            OnEval = dwsTIdFtpMethodsGetUseMLISEval
             Visibility = cvPrivate
             Kind = mkFunction
+            OnEval = dwsTIdFtpMethodsGetUseMLISEval
           end
           item
             Name = 'SetUseMLIS'
@@ -598,16 +596,16 @@ object dwsIndyLib: TdwsIndyLib
                 IsVarParam = True
                 IsWritable = False
               end>
-            OnEval = dwsTIdFtpMethodsSetUseMLISEval
             Visibility = cvPrivate
             Kind = mkProcedure
+            OnEval = dwsTIdFtpMethodsSetUseMLISEval
           end
           item
             Name = 'GetTryNATFastTrack'
             ResultType = 'Boolean'
-            OnEval = dwsTIdFtpMethodsGetTryNATFastTrackEval
             Visibility = cvPrivate
             Kind = mkFunction
+            OnEval = dwsTIdFtpMethodsGetTryNATFastTrackEval
           end
           item
             Name = 'SetTryNATFastTrack'
@@ -618,16 +616,16 @@ object dwsIndyLib: TdwsIndyLib
                 IsVarParam = True
                 IsWritable = False
               end>
-            OnEval = dwsTIdFtpMethodsSetTryNATFastTrackEval
             Visibility = cvPrivate
             Kind = mkProcedure
+            OnEval = dwsTIdFtpMethodsSetTryNATFastTrackEval
           end
           item
             Name = 'GetProxySettings'
             ResultType = 'TIdFtpProxySettings'
-            OnEval = dwsTIdFtpMethodsGetProxySettingsEval
             Visibility = cvPrivate
             Kind = mkFunction
+            OnEval = dwsTIdFtpMethodsGetProxySettingsEval
           end
           item
             Name = 'SetProxySettings'
@@ -638,16 +636,16 @@ object dwsIndyLib: TdwsIndyLib
                 IsVarParam = True
                 IsWritable = False
               end>
-            OnEval = dwsTIdFtpMethodsSetProxySettingsEval
             Visibility = cvPrivate
             Kind = mkProcedure
+            OnEval = dwsTIdFtpMethodsSetProxySettingsEval
           end
           item
             Name = 'GetAccount'
             ResultType = 'String'
-            OnEval = dwsTIdFtpMethodsGetAccountEval
             Visibility = cvPrivate
             Kind = mkFunction
+            OnEval = dwsTIdFtpMethodsGetAccountEval
           end
           item
             Name = 'SetAccount'
@@ -658,16 +656,16 @@ object dwsIndyLib: TdwsIndyLib
                 IsVarParam = True
                 IsWritable = False
               end>
-            OnEval = dwsTIdFtpMethodsSetAccountEval
             Visibility = cvPrivate
             Kind = mkProcedure
+            OnEval = dwsTIdFtpMethodsSetAccountEval
           end
           item
             Name = 'GetUseHOST'
             ResultType = 'Boolean'
-            OnEval = dwsTIdFtpMethodsGetUseHOSTEval
             Visibility = cvPrivate
             Kind = mkFunction
+            OnEval = dwsTIdFtpMethodsGetUseHOSTEval
           end
           item
             Name = 'SetUseHOST'
@@ -678,16 +676,16 @@ object dwsIndyLib: TdwsIndyLib
                 IsVarParam = True
                 IsWritable = False
               end>
-            OnEval = dwsTIdFtpMethodsSetUseHOSTEval
             Visibility = cvPrivate
             Kind = mkProcedure
+            OnEval = dwsTIdFtpMethodsSetUseHOSTEval
           end
           item
             Name = 'GetUseTLS'
             ResultType = 'TUseTls'
-            OnEval = dwsTIdFtpMethodsGetUseTLSEval
             Visibility = cvPrivate
             Kind = mkFunction
+            OnEval = dwsTIdFtpMethodsGetUseTLSEval
           end
           item
             Name = 'SetUseTLS'
@@ -698,16 +696,16 @@ object dwsIndyLib: TdwsIndyLib
                 IsVarParam = True
                 IsWritable = False
               end>
-            OnEval = dwsTIdFtpMethodsSetUseTLSEval
             Visibility = cvPrivate
             Kind = mkProcedure
+            OnEval = dwsTIdFtpMethodsSetUseTLSEval
           end
           item
             Name = 'GetReadTimeout'
             ResultType = 'Integer'
-            OnEval = dwsTIdFtpMethodsGetReadTimeoutEval
             Visibility = cvPrivate
             Kind = mkFunction
+            OnEval = dwsTIdFtpMethodsGetReadTimeoutEval
           end
           item
             Name = 'SetReadTimeout'
@@ -718,16 +716,16 @@ object dwsIndyLib: TdwsIndyLib
                 IsVarParam = True
                 IsWritable = False
               end>
-            OnEval = dwsTIdFtpMethodsSetReadTimeoutEval
             Visibility = cvPrivate
             Kind = mkProcedure
+            OnEval = dwsTIdFtpMethodsSetReadTimeoutEval
           end
           item
             Name = 'GetUserName'
             ResultType = 'String'
-            OnEval = dwsTIdFtpMethodsGetUserNameEval
             Visibility = cvPrivate
             Kind = mkFunction
+            OnEval = dwsTIdFtpMethodsGetUserNameEval
           end
           item
             Name = 'SetUserName'
@@ -736,16 +734,16 @@ object dwsIndyLib: TdwsIndyLib
                 Name = 'Value'
                 DataType = 'String'
               end>
-            OnEval = dwsTIdFtpMethodsSetUserNameEval
             Visibility = cvPrivate
             Kind = mkProcedure
+            OnEval = dwsTIdFtpMethodsSetUserNameEval
           end
           item
             Name = 'GetPassword'
             ResultType = 'String'
-            OnEval = dwsTIdFtpMethodsGetPasswordEval
             Visibility = cvPrivate
             Kind = mkFunction
+            OnEval = dwsTIdFtpMethodsGetPasswordEval
           end
           item
             Name = 'SetPassword'
@@ -754,16 +752,16 @@ object dwsIndyLib: TdwsIndyLib
                 Name = 'Value'
                 DataType = 'String'
               end>
-            OnEval = dwsTIdFtpMethodsSetPasswordEval
             Visibility = cvPrivate
             Kind = mkProcedure
+            OnEval = dwsTIdFtpMethodsSetPasswordEval
           end
           item
             Name = 'GetPort'
             ResultType = 'Integer'
-            OnEval = dwsTIdFtpMethodsGetPortEval
             Visibility = cvPrivate
             Kind = mkFunction
+            OnEval = dwsTIdFtpMethodsGetPortEval
           end
           item
             Name = 'SetPort'
@@ -772,16 +770,16 @@ object dwsIndyLib: TdwsIndyLib
                 Name = 'Value'
                 DataType = 'Integer'
               end>
-            OnEval = dwsTIdFtpMethodsSetPortEval
             Visibility = cvPrivate
             Kind = mkProcedure
+            OnEval = dwsTIdFtpMethodsSetPortEval
           end
           item
             Name = 'GetPassive'
             ResultType = 'Boolean'
-            OnEval = dwsTIdFtpMethodsGetPassiveEval
             Visibility = cvPrivate
             Kind = mkFunction
+            OnEval = dwsTIdFtpMethodsGetPassiveEval
           end
           item
             Name = 'SetPassive'
@@ -790,21 +788,21 @@ object dwsIndyLib: TdwsIndyLib
                 Name = 'Value'
                 DataType = 'Boolean'
               end>
-            OnEval = dwsTIdFtpMethodsSetPassiveEval
             Visibility = cvPrivate
             Kind = mkProcedure
+            OnEval = dwsTIdFtpMethodsSetPassiveEval
           end
           item
             Name = 'GetResumeSupported'
             ResultType = 'Boolean'
-            OnEval = dwsTIdFtpMethodsGetResumeSupportedEval
             Visibility = cvPrivate
             Kind = mkFunction
+            OnEval = dwsTIdFtpMethodsGetResumeSupportedEval
           end
           item
             Name = 'Abort'
-            OnEval = dwsTIdFtpMethodsAbortEval
             Kind = mkProcedure
+            OnEval = dwsTIdFtpMethodsAbortEval
           end
           item
             Name = 'ChangeDir'
@@ -813,18 +811,18 @@ object dwsIndyLib: TdwsIndyLib
                 Name = 'DirName'
                 DataType = 'String'
               end>
-            OnEval = dwsTIdFtpMethodsChangeDirEval
             Kind = mkProcedure
+            OnEval = dwsTIdFtpMethodsChangeDirEval
           end
           item
             Name = 'ChangeDirUp'
-            OnEval = dwsTIdFtpMethodsChangeDirUpEval
             Kind = mkProcedure
+            OnEval = dwsTIdFtpMethodsChangeDirUpEval
           end
           item
             Name = 'Connect'
-            OnEval = dwsTIdFtpMethodsConnectEval
             Kind = mkProcedure
+            OnEval = dwsTIdFtpMethodsConnectEval
           end
           item
             Name = 'Delete'
@@ -833,13 +831,13 @@ object dwsIndyLib: TdwsIndyLib
                 Name = 'FileName'
                 DataType = 'String'
               end>
-            OnEval = dwsTIdFtpMethodsDeleteEval
             Kind = mkProcedure
+            OnEval = dwsTIdFtpMethodsDeleteEval
           end
           item
             Name = 'Disconnect'
-            OnEval = dwsTIdFtpMethodsDisconnectEval
             Kind = mkProcedure
+            OnEval = dwsTIdFtpMethodsDisconnectEval
           end
           item
             Name = 'Get'
@@ -864,13 +862,13 @@ object dwsIndyLib: TdwsIndyLib
                 HasDefaultValue = True
                 DefaultValue = False
               end>
-            OnEval = dwsTIdFtpMethodsGetEval
             Kind = mkProcedure
+            OnEval = dwsTIdFtpMethodsGetEval
           end
           item
             Name = 'Login'
-            OnEval = dwsTIdFtpMethodsLoginEval
             Kind = mkProcedure
+            OnEval = dwsTIdFtpMethodsLoginEval
           end
           item
             Name = 'MakeDir'
@@ -879,13 +877,13 @@ object dwsIndyLib: TdwsIndyLib
                 Name = 'DirName'
                 DataType = 'String'
               end>
-            OnEval = dwsTIdFtpMethodsMakeDirEval
             Kind = mkProcedure
+            OnEval = dwsTIdFtpMethodsMakeDirEval
           end
           item
             Name = 'Noop'
-            OnEval = dwsTIdFtpMethodsNoopEval
             Kind = mkProcedure
+            OnEval = dwsTIdFtpMethodsNoopEval
           end
           item
             Name = 'Put'
@@ -906,8 +904,8 @@ object dwsIndyLib: TdwsIndyLib
                 HasDefaultValue = True
                 DefaultValue = False
               end>
-            OnEval = dwsTIdFtpMethodsPutEval
             Kind = mkProcedure
+            OnEval = dwsTIdFtpMethodsPutEval
           end
           item
             Name = 'RemoveDir'
@@ -916,8 +914,8 @@ object dwsIndyLib: TdwsIndyLib
                 Name = 'DirName'
                 DataType = 'String'
               end>
-            OnEval = dwsTIdFtpMethodsRemoveDirEval
             Kind = mkProcedure
+            OnEval = dwsTIdFtpMethodsRemoveDirEval
           end
           item
             Name = 'Rename'
@@ -930,14 +928,14 @@ object dwsIndyLib: TdwsIndyLib
                 Name = 'DestFileName'
                 DataType = 'String'
               end>
-            OnEval = dwsTIdFtpMethodsRenameEval
             Kind = mkProcedure
+            OnEval = dwsTIdFtpMethodsRenameEval
           end
           item
             Name = 'RetrieveCurrentDir'
             ResultType = 'String'
-            OnEval = dwsTIdFtpMethodsRetrieveCurrentDirEval
             Kind = mkFunction
+            OnEval = dwsTIdFtpMethodsRetrieveCurrentDirEval
           end
           item
             Name = 'Size'
@@ -947,8 +945,8 @@ object dwsIndyLib: TdwsIndyLib
                 DataType = 'String'
               end>
             ResultType = 'Integer'
-            OnEval = dwsTIdFtpMethodsSizeEval
             Kind = mkFunction
+            OnEval = dwsTIdFtpMethodsSizeEval
           end
           item
             Name = 'CRC'
@@ -970,8 +968,8 @@ object dwsIndyLib: TdwsIndyLib
                 DefaultValue = 0
               end>
             ResultType = 'Integer'
-            OnEval = dwsTIdFtpMethodsCRCEval
             Kind = mkFunction
+            OnEval = dwsTIdFtpMethodsCRCEval
           end>
         Properties = <
           item
@@ -1237,9 +1235,9 @@ object dwsIndyLib: TdwsIndyLib
           item
             Name = 'GetAddress'
             ResultType = 'String'
-            OnEval = dwsTIdEMailAddressItemMethodsGetAddressEval
             Visibility = cvPrivate
             Kind = mkFunction
+            OnEval = dwsTIdEMailAddressItemMethodsGetAddressEval
           end
           item
             Name = 'SetAddress'
@@ -1248,16 +1246,16 @@ object dwsIndyLib: TdwsIndyLib
                 Name = 'Value'
                 DataType = 'String'
               end>
-            OnEval = dwsTIdEMailAddressItemMethodsSetAddressEval
             Visibility = cvPrivate
             Kind = mkProcedure
+            OnEval = dwsTIdEMailAddressItemMethodsSetAddressEval
           end
           item
             Name = 'GetName'
             ResultType = 'String'
-            OnEval = dwsTIdEMailAddressItemMethodsGetNameEval
             Visibility = cvPrivate
             Kind = mkFunction
+            OnEval = dwsTIdEMailAddressItemMethodsGetNameEval
           end
           item
             Name = 'SetName'
@@ -1266,16 +1264,16 @@ object dwsIndyLib: TdwsIndyLib
                 Name = 'Value'
                 DataType = 'String'
               end>
-            OnEval = dwsTIdEMailAddressItemMethodsSetNameEval
             Visibility = cvPrivate
             Kind = mkProcedure
+            OnEval = dwsTIdEMailAddressItemMethodsSetNameEval
           end
           item
             Name = 'GetText'
             ResultType = 'String'
-            OnEval = dwsTIdEMailAddressItemMethodsGetTextEval
             Visibility = cvPrivate
             Kind = mkFunction
+            OnEval = dwsTIdEMailAddressItemMethodsGetTextEval
           end
           item
             Name = 'SetText'
@@ -1284,16 +1282,16 @@ object dwsIndyLib: TdwsIndyLib
                 Name = 'Value'
                 DataType = 'String'
               end>
-            OnEval = dwsTIdEMailAddressItemMethodsSetTextEval
             Visibility = cvPrivate
             Kind = mkProcedure
+            OnEval = dwsTIdEMailAddressItemMethodsSetTextEval
           end
           item
             Name = 'GetDomain'
             ResultType = 'String'
-            OnEval = dwsTIdEMailAddressItemMethodsGetDomainEval
             Visibility = cvPrivate
             Kind = mkFunction
+            OnEval = dwsTIdEMailAddressItemMethodsGetDomainEval
           end
           item
             Name = 'SetDomain'
@@ -1302,16 +1300,16 @@ object dwsIndyLib: TdwsIndyLib
                 Name = 'Value'
                 DataType = 'String'
               end>
-            OnEval = dwsTIdEMailAddressItemMethodsSetDomainEval
             Visibility = cvPrivate
             Kind = mkProcedure
+            OnEval = dwsTIdEMailAddressItemMethodsSetDomainEval
           end
           item
             Name = 'GetUser'
             ResultType = 'String'
-            OnEval = dwsTIdEMailAddressItemMethodsGetUserEval
             Visibility = cvPrivate
             Kind = mkFunction
+            OnEval = dwsTIdEMailAddressItemMethodsGetUserEval
           end
           item
             Name = 'SetUser'
@@ -1320,9 +1318,9 @@ object dwsIndyLib: TdwsIndyLib
                 Name = 'Value'
                 DataType = 'String'
               end>
-            OnEval = dwsTIdEMailAddressItemMethodsSetUserEval
             Visibility = cvPrivate
             Kind = mkProcedure
+            OnEval = dwsTIdEMailAddressItemMethodsSetUserEval
           end>
         Properties = <
           item
@@ -1363,9 +1361,9 @@ object dwsIndyLib: TdwsIndyLib
           item
             Name = 'GetEMailAddresses'
             ResultType = 'string'
-            OnEval = dwsTIdEMailAddressListMethodsGetEMailAddressesEval
             Visibility = cvPrivate
             Kind = mkFunction
+            OnEval = dwsTIdEMailAddressListMethodsGetEMailAddressesEval
           end
           item
             Name = 'SetEMailAddresses'
@@ -1376,9 +1374,9 @@ object dwsIndyLib: TdwsIndyLib
                 IsVarParam = True
                 IsWritable = False
               end>
-            OnEval = dwsTIdEMailAddressListMethodsSetEMailAddressesEval
             Visibility = cvPrivate
             Kind = mkProcedure
+            OnEval = dwsTIdEMailAddressListMethodsSetEMailAddressesEval
           end
           item
             Name = 'GetItem'
@@ -1390,9 +1388,9 @@ object dwsIndyLib: TdwsIndyLib
                 IsWritable = False
               end>
             ResultType = 'TIdEMailAddressItem'
-            OnEval = dwsTIdEMailAddressListMethodsGetItemEval
             Visibility = cvPrivate
             Kind = mkFunction
+            OnEval = dwsTIdEMailAddressListMethodsGetItemEval
           end
           item
             Name = 'SetItem'
@@ -1409,20 +1407,20 @@ object dwsIndyLib: TdwsIndyLib
                 IsVarParam = True
                 IsWritable = False
               end>
-            OnEval = dwsTIdEMailAddressListMethodsSetItemEval
             Visibility = cvPrivate
             Kind = mkProcedure
+            OnEval = dwsTIdEMailAddressListMethodsSetItemEval
           end
           item
             Name = 'SortByDomain'
-            OnEval = dwsTIdEMailAddressListMethodsSortByDomainEval
             Kind = mkProcedure
+            OnEval = dwsTIdEMailAddressListMethodsSortByDomainEval
           end
           item
             Name = 'Add'
             ResultType = 'TIdEMailAddressItem'
-            OnEval = dwsTIdEMailAddressListMethodsAddEval
             Kind = mkFunction
+            OnEval = dwsTIdEMailAddressListMethodsAddEval
           end>
         Properties = <
           item
@@ -1452,8 +1450,8 @@ object dwsIndyLib: TdwsIndyLib
           item
             Name = 'GetEncoding'
             ResultType = 'TMessageEncoding'
-            OnEval = dwsTIdMailMessageMethodsGetEncodingEval
             Kind = mkFunction
+            OnEval = dwsTIdMailMessageMethodsGetEncodingEval
           end
           item
             Name = 'SetEncoding'
@@ -1462,15 +1460,15 @@ object dwsIndyLib: TdwsIndyLib
                 Name = 'Value'
                 DataType = 'TMessageEncoding'
               end>
-            OnEval = dwsTIdMailMessageMethodsSetEncodingEval
             Kind = mkProcedure
+            OnEval = dwsTIdMailMessageMethodsSetEncodingEval
           end
           item
             Name = 'GetFlags'
             ResultType = 'TMessageFlags'
-            OnEval = dwsTIdMailMessageMethodsGetFlagsEval
             Visibility = cvPrivate
             Kind = mkFunction
+            OnEval = dwsTIdMailMessageMethodsGetFlagsEval
           end
           item
             Name = 'SetFlags'
@@ -1479,16 +1477,16 @@ object dwsIndyLib: TdwsIndyLib
                 Name = 'Value'
                 DataType = 'TMessageFlags'
               end>
-            OnEval = dwsTIdMailMessageMethodsSetFlagsEval
             Visibility = cvPrivate
             Kind = mkProcedure
+            OnEval = dwsTIdMailMessageMethodsSetFlagsEval
           end
           item
             Name = 'GetIsEncoded'
             ResultType = 'Boolean'
-            OnEval = dwsTIdMailMessageMethodsGetIsEncodedEval
             Visibility = cvPrivate
             Kind = mkFunction
+            OnEval = dwsTIdMailMessageMethodsGetIsEncodedEval
           end
           item
             Name = 'SetIsEncoded'
@@ -1497,16 +1495,16 @@ object dwsIndyLib: TdwsIndyLib
                 Name = 'Value'
                 DataType = 'Boolean'
               end>
-            OnEval = dwsTIdMailMessageMethodsSetIsEncodedEval
             Visibility = cvPrivate
             Kind = mkProcedure
+            OnEval = dwsTIdMailMessageMethodsSetIsEncodedEval
           end
           item
             Name = 'GetMsgID'
             ResultType = 'String'
-            OnEval = dwsTIdMailMessageMethodsGetMsgIDEval
             Visibility = cvPrivate
             Kind = mkFunction
+            OnEval = dwsTIdMailMessageMethodsGetMsgIDEval
           end
           item
             Name = 'SetMsgID'
@@ -1515,16 +1513,16 @@ object dwsIndyLib: TdwsIndyLib
                 Name = 'Value'
                 DataType = 'String'
               end>
-            OnEval = dwsTIdMailMessageMethodsSetMsgIDEval
             Visibility = cvPrivate
             Kind = mkProcedure
+            OnEval = dwsTIdMailMessageMethodsSetMsgIDEval
           end
           item
             Name = 'GetIsMsgSinglePartMime'
             ResultType = 'Boolean'
-            OnEval = dwsTIdMailMessageMethodsGetIsMsgSinglePartMimeEval
             Visibility = cvPrivate
             Kind = mkFunction
+            OnEval = dwsTIdMailMessageMethodsGetIsMsgSinglePartMimeEval
           end
           item
             Name = 'SetIsMsgSinglePartMime'
@@ -1533,16 +1531,16 @@ object dwsIndyLib: TdwsIndyLib
                 Name = 'Value'
                 DataType = 'Boolean'
               end>
-            OnEval = dwsTIdMailMessageMethodsSetIsMsgSinglePartMimeEval
             Visibility = cvPrivate
             Kind = mkProcedure
+            OnEval = dwsTIdMailMessageMethodsSetIsMsgSinglePartMimeEval
           end
           item
             Name = 'GetAttachmentEncoding'
             ResultType = 'String'
-            OnEval = dwsTIdMailMessageMethodsGetAttachmentEncodingEval
             Visibility = cvPrivate
             Kind = mkFunction
+            OnEval = dwsTIdMailMessageMethodsGetAttachmentEncodingEval
           end
           item
             Name = 'SetAttachmentEncoding'
@@ -1551,16 +1549,16 @@ object dwsIndyLib: TdwsIndyLib
                 Name = 'Value'
                 DataType = 'String'
               end>
-            OnEval = dwsTIdMailMessageMethodsSetAttachmentEncodingEval
             Visibility = cvPrivate
             Kind = mkProcedure
+            OnEval = dwsTIdMailMessageMethodsSetAttachmentEncodingEval
           end
           item
             Name = 'GetBody'
             ResultType = 'String'
-            OnEval = dwsTIdMailMessageMethodsGetBodyEval
             Visibility = cvPrivate
             Kind = mkFunction
+            OnEval = dwsTIdMailMessageMethodsGetBodyEval
           end
           item
             Name = 'SetBody'
@@ -1569,16 +1567,16 @@ object dwsIndyLib: TdwsIndyLib
                 Name = 'Value'
                 DataType = 'String'
               end>
-            OnEval = dwsTIdMailMessageMethodsSetBodyEval
             Visibility = cvPrivate
             Kind = mkProcedure
+            OnEval = dwsTIdMailMessageMethodsSetBodyEval
           end
           item
             Name = 'GetCharset'
             ResultType = 'String'
-            OnEval = dwsTIdMailMessageMethodsGetCharsetEval
             Visibility = cvPrivate
             Kind = mkFunction
+            OnEval = dwsTIdMailMessageMethodsGetCharsetEval
           end
           item
             Name = 'SetCharset'
@@ -1587,16 +1585,16 @@ object dwsIndyLib: TdwsIndyLib
                 Name = 'Value'
                 DataType = 'String'
               end>
-            OnEval = dwsTIdMailMessageMethodsSetCharsetEval
             Visibility = cvPrivate
             Kind = mkProcedure
+            OnEval = dwsTIdMailMessageMethodsSetCharsetEval
           end
           item
             Name = 'GetContentType'
             ResultType = 'String'
-            OnEval = dwsTIdMailMessageMethodsGetContentTypeEval
             Visibility = cvPrivate
             Kind = mkFunction
+            OnEval = dwsTIdMailMessageMethodsGetContentTypeEval
           end
           item
             Name = 'SetContentType'
@@ -1605,16 +1603,16 @@ object dwsIndyLib: TdwsIndyLib
                 Name = 'Value'
                 DataType = 'String'
               end>
-            OnEval = dwsTIdMailMessageMethodsSetContentTypeEval
             Visibility = cvPrivate
             Kind = mkProcedure
+            OnEval = dwsTIdMailMessageMethodsSetContentTypeEval
           end
           item
             Name = 'GetContentTransferEncoding'
             ResultType = 'String'
-            OnEval = dwsTIdMailMessageMethodsGetContentTransferEncodingEval
             Visibility = cvPrivate
             Kind = mkFunction
+            OnEval = dwsTIdMailMessageMethodsGetContentTransferEncodingEval
           end
           item
             Name = 'SetContentTransferEncoding'
@@ -1623,15 +1621,15 @@ object dwsIndyLib: TdwsIndyLib
                 Name = 'Value'
                 DataType = 'String'
               end>
-            OnEval = dwsTIdMailMessageMethodsetContentTransferEncodingEval
             Visibility = cvPrivate
             Kind = mkProcedure
+            OnEval = dwsTIdMailMessageMethodsetContentTransferEncodingEval
           end
           item
             Name = 'GetContentDisposition'
             ResultType = 'String'
-            OnEval = dwsTIdMailMessageMethodsGetContentDispositionEval
             Kind = mkFunction
+            OnEval = dwsTIdMailMessageMethodsGetContentDispositionEval
           end
           item
             Name = 'SetContentDisposition'
@@ -1640,15 +1638,15 @@ object dwsIndyLib: TdwsIndyLib
                 Name = 'Value'
                 DataType = 'String'
               end>
-            OnEval = dwsTIdMailMessageMethodsSetContentDispositionEval
             Kind = mkProcedure
+            OnEval = dwsTIdMailMessageMethodsSetContentDispositionEval
           end
           item
             Name = 'GetNoEncode'
             ResultType = 'Boolean'
-            OnEval = dwsTIdMailMessageMethodsGetNoEncodeEval
             Visibility = cvPrivate
             Kind = mkFunction
+            OnEval = dwsTIdMailMessageMethodsGetNoEncodeEval
           end
           item
             Name = 'SetNoEncode'
@@ -1657,16 +1655,16 @@ object dwsIndyLib: TdwsIndyLib
                 Name = 'Value'
                 DataType = 'Boolean'
               end>
-            OnEval = dwsTIdMailMessageMethodsSetNoEncodeEval
             Visibility = cvPrivate
             Kind = mkProcedure
+            OnEval = dwsTIdMailMessageMethodsSetNoEncodeEval
           end
           item
             Name = 'GetNoDecode'
             ResultType = 'Boolean'
-            OnEval = dwsTIdMailMessageMethodsGetNoDecodeEval
             Visibility = cvPrivate
             Kind = mkFunction
+            OnEval = dwsTIdMailMessageMethodsGetNoDecodeEval
           end
           item
             Name = 'SetNoDecode'
@@ -1675,16 +1673,16 @@ object dwsIndyLib: TdwsIndyLib
                 Name = 'Value'
                 DataType = 'Boolean'
               end>
-            OnEval = dwsTIdMailMessageMethodsSetNoDecodeEval
             Visibility = cvPrivate
             Kind = mkProcedure
+            OnEval = dwsTIdMailMessageMethodsSetNoDecodeEval
           end
           item
             Name = 'GetOrganization'
             ResultType = 'String'
-            OnEval = dwsTIdMailMessageMethodsGetOrganizationEval
             Visibility = cvPrivate
             Kind = mkFunction
+            OnEval = dwsTIdMailMessageMethodsGetOrganizationEval
           end
           item
             Name = 'SetOrganization'
@@ -1693,16 +1691,16 @@ object dwsIndyLib: TdwsIndyLib
                 Name = 'Value'
                 DataType = 'String'
               end>
-            OnEval = dwsTIdMailMessageMethodsSetOrganizationEval
             Visibility = cvPrivate
             Kind = mkProcedure
+            OnEval = dwsTIdMailMessageMethodsSetOrganizationEval
           end
           item
             Name = 'GetReferences'
             ResultType = 'String'
-            OnEval = dwsTIdMailMessageMethodsGetReferencesEval
             Visibility = cvPrivate
             Kind = mkFunction
+            OnEval = dwsTIdMailMessageMethodsGetReferencesEval
           end
           item
             Name = 'SetReferences'
@@ -1711,16 +1709,16 @@ object dwsIndyLib: TdwsIndyLib
                 Name = 'Value'
                 DataType = 'String'
               end>
-            OnEval = dwsTIdMailMessageMethodsSetReferencesEval
             Visibility = cvPrivate
             Kind = mkProcedure
+            OnEval = dwsTIdMailMessageMethodsSetReferencesEval
           end
           item
             Name = 'GetInReplyTo'
             ResultType = 'String'
-            OnEval = dwsTIdMailMessageMethodsGetInReplyToEval
             Visibility = cvPrivate
             Kind = mkFunction
+            OnEval = dwsTIdMailMessageMethodsGetInReplyToEval
           end
           item
             Name = 'SetInReplyTo'
@@ -1729,16 +1727,16 @@ object dwsIndyLib: TdwsIndyLib
                 Name = 'Value'
                 DataType = 'String'
               end>
-            OnEval = dwsTIdMailMessageMethodsSetInReplyToEval
             Visibility = cvPrivate
             Kind = mkProcedure
+            OnEval = dwsTIdMailMessageMethodsSetInReplyToEval
           end
           item
             Name = 'GetSubject'
             ResultType = 'String'
-            OnEval = dwsTIdMailMessageMethodsGetSubjectEval
             Visibility = cvPrivate
             Kind = mkFunction
+            OnEval = dwsTIdMailMessageMethodsGetSubjectEval
           end
           item
             Name = 'SetSubject'
@@ -1747,16 +1745,16 @@ object dwsIndyLib: TdwsIndyLib
                 Name = 'Value'
                 DataType = 'String'
               end>
-            OnEval = dwsTIdMailMessageMethodsSetSubjectEval
             Visibility = cvPrivate
             Kind = mkProcedure
+            OnEval = dwsTIdMailMessageMethodsSetSubjectEval
           end
           item
             Name = 'GetUseNowForDate'
             ResultType = 'Boolean'
-            OnEval = dwsTIdMailMessageMethodsGetUseNowForDateEval
             Visibility = cvPrivate
             Kind = mkFunction
+            OnEval = dwsTIdMailMessageMethodsGetUseNowForDateEval
           end
           item
             Name = 'SetUseNowForDate'
@@ -1765,16 +1763,16 @@ object dwsIndyLib: TdwsIndyLib
                 Name = 'Value'
                 DataType = 'Boolean'
               end>
-            OnEval = dwsTIdMailMessageMethodsSetUseNowForDateEval
             Visibility = cvPrivate
             Kind = mkProcedure
+            OnEval = dwsTIdMailMessageMethodsSetUseNowForDateEval
           end
           item
             Name = 'GetConvertPreamble'
             ResultType = 'Boolean'
-            OnEval = dwsTIdMailMessageMethodsGetConvertPreambleEval
             Visibility = cvPrivate
             Kind = mkFunction
+            OnEval = dwsTIdMailMessageMethodsGetConvertPreambleEval
           end
           item
             Name = 'SetConvertPreamble'
@@ -1783,16 +1781,16 @@ object dwsIndyLib: TdwsIndyLib
                 Name = 'Value'
                 DataType = 'Boolean'
               end>
-            OnEval = dwsTIdMailMessageMethodsSetConvertPreambleEval
             Visibility = cvPrivate
             Kind = mkProcedure
+            OnEval = dwsTIdMailMessageMethodsSetConvertPreambleEval
           end
           item
             Name = 'GetAttachmentTempDir'
             ResultType = 'String'
-            OnEval = dwsTIdMailMessageMethodsGetAttachmentTempDirEval
             Visibility = cvPrivate
             Kind = mkFunction
+            OnEval = dwsTIdMailMessageMethodsGetAttachmentTempDirEval
           end
           item
             Name = 'SetAttachmentTempDir'
@@ -1801,16 +1799,16 @@ object dwsIndyLib: TdwsIndyLib
                 Name = 'Value'
                 DataType = 'String'
               end>
-            OnEval = dwsTIdMailMessageMethodsSetAttachmentTempDirEval
             Visibility = cvPrivate
             Kind = mkProcedure
+            OnEval = dwsTIdMailMessageMethodsSetAttachmentTempDirEval
           end
           item
             Name = 'GetUID'
             ResultType = 'String'
-            OnEval = dwsTIdMailMessageMethodsGetUIDEval
             Visibility = cvPrivate
             Kind = mkFunction
+            OnEval = dwsTIdMailMessageMethodsGetUIDEval
           end
           item
             Name = 'SetUID'
@@ -1819,9 +1817,9 @@ object dwsIndyLib: TdwsIndyLib
                 Name = 'Value'
                 DataType = 'String'
               end>
-            OnEval = dwsTIdMailMessageMethodsSetUIDEval
             Visibility = cvPrivate
             Kind = mkProcedure
+            OnEval = dwsTIdMailMessageMethodsSetUIDEval
           end
           item
             Name = 'AddHeader'
@@ -1830,28 +1828,28 @@ object dwsIndyLib: TdwsIndyLib
                 Name = 'Value'
                 DataType = 'String'
               end>
-            OnEval = dwsTIdMailMessageMethodsAddHeaderEval
             Kind = mkProcedure
+            OnEval = dwsTIdMailMessageMethodsAddHeaderEval
           end
           item
             Name = 'Clear'
-            OnEval = dwsTIdMailMessageMethodsClearEval
             Kind = mkProcedure
+            OnEval = dwsTIdMailMessageMethodsClearEval
           end
           item
             Name = 'ClearBody'
-            OnEval = dwsTIdMailMessageMethodsClearBodyEval
             Kind = mkProcedure
+            OnEval = dwsTIdMailMessageMethodsClearBodyEval
           end
           item
             Name = 'ClearHeader'
-            OnEval = dwsTIdMailMessageMethodsClearHeaderEval
             Kind = mkProcedure
+            OnEval = dwsTIdMailMessageMethodsClearHeaderEval
           end
           item
             Name = 'GenerateHeader'
-            OnEval = dwsTIdMailMessageMethodsGenerateHeaderEval
             Kind = mkProcedure
+            OnEval = dwsTIdMailMessageMethodsGenerateHeaderEval
           end
           item
             Name = 'LoadFromFile'
@@ -1864,13 +1862,13 @@ object dwsIndyLib: TdwsIndyLib
                 Name = 'HeadersOnly'
                 DataType = 'Boolean'
               end>
-            OnEval = dwsTIdMailMessageMethodsLoadFromFileEval
             Kind = mkProcedure
+            OnEval = dwsTIdMailMessageMethodsLoadFromFileEval
           end
           item
             Name = 'ProcessHeaders'
-            OnEval = dwsTIdMailMessageMethodsProcessHeadersEval
             Kind = mkProcedure
+            OnEval = dwsTIdMailMessageMethodsProcessHeadersEval
           end
           item
             Name = 'SaveToFile'
@@ -1883,8 +1881,8 @@ object dwsIndyLib: TdwsIndyLib
                 Name = 'HeadersOnly'
                 DataType = 'String'
               end>
-            OnEval = dwsTIdMailMessageMethodsSaveToFileEval
             Kind = mkProcedure
+            OnEval = dwsTIdMailMessageMethodsSaveToFileEval
           end>
         Properties = <
           item
@@ -2042,9 +2040,9 @@ object dwsIndyLib: TdwsIndyLib
           item
             Name = 'GetMailAgent'
             ResultType = 'String'
-            OnEval = dwsTIdSMTPMethodsGetMailAgentEval
             Visibility = cvPrivate
             Kind = mkFunction
+            OnEval = dwsTIdSMTPMethodsGetMailAgentEval
           end
           item
             Name = 'SetMailAgent'
@@ -2053,16 +2051,16 @@ object dwsIndyLib: TdwsIndyLib
                 Name = 'Value'
                 DataType = 'String'
               end>
-            OnEval = dwsTIdSMTPMethodsSetMailAgentEval
             Visibility = cvPrivate
             Kind = mkProcedure
+            OnEval = dwsTIdSMTPMethodsSetMailAgentEval
           end
           item
             Name = 'GetHeloName'
             ResultType = 'String'
-            OnEval = dwsTIdSMTPMethodsGetHeloNameEval
             Visibility = cvPrivate
             Kind = mkFunction
+            OnEval = dwsTIdSMTPMethodsGetHeloNameEval
           end
           item
             Name = 'SetHeloName'
@@ -2071,16 +2069,16 @@ object dwsIndyLib: TdwsIndyLib
                 Name = 'Value'
                 DataType = 'String'
               end>
-            OnEval = dwsTIdSMTPMethodsSetHeloNameEval
             Visibility = cvPrivate
             Kind = mkProcedure
+            OnEval = dwsTIdSMTPMethodsSetHeloNameEval
           end
           item
             Name = 'GetUseEhlo'
             ResultType = 'Boolean'
-            OnEval = dwsTIdSMTPMethodsGetUseEhloEval
             Visibility = cvPrivate
             Kind = mkFunction
+            OnEval = dwsTIdSMTPMethodsGetUseEhloEval
           end
           item
             Name = 'SetUseEhlo'
@@ -2089,16 +2087,16 @@ object dwsIndyLib: TdwsIndyLib
                 Name = 'Value'
                 DataType = 'Boolean'
               end>
-            OnEval = dwsTIdSMTPMethodsSetUseEhloEval
             Visibility = cvPrivate
             Kind = mkProcedure
+            OnEval = dwsTIdSMTPMethodsSetUseEhloEval
           end
           item
             Name = 'GetPipeLine'
             ResultType = 'Boolean'
-            OnEval = dwsTIdSMTPMethodsGetPipeLineEval
             Visibility = cvPrivate
             Kind = mkFunction
+            OnEval = dwsTIdSMTPMethodsGetPipeLineEval
           end
           item
             Name = 'SetPipeLine'
@@ -2107,16 +2105,16 @@ object dwsIndyLib: TdwsIndyLib
                 Name = 'Value'
                 DataType = 'Boolean'
               end>
-            OnEval = dwsTIdSMTPMethodsSetPipeLineEval
             Visibility = cvPrivate
             Kind = mkProcedure
+            OnEval = dwsTIdSMTPMethodsSetPipeLineEval
           end
           item
             Name = 'GetUseVerp'
             ResultType = 'Boolean'
-            OnEval = dwsTIdSMTPMethodsGetUseVerpEval
             Visibility = cvPrivate
             Kind = mkFunction
+            OnEval = dwsTIdSMTPMethodsGetUseVerpEval
           end
           item
             Name = 'SetUseVerp'
@@ -2125,16 +2123,16 @@ object dwsIndyLib: TdwsIndyLib
                 Name = 'Value'
                 DataType = 'Boolean'
               end>
-            OnEval = dwsTIdSMTPMethodsSetUseVerpEval
             Visibility = cvPrivate
             Kind = mkProcedure
+            OnEval = dwsTIdSMTPMethodsSetUseVerpEval
           end
           item
             Name = 'GetVerpDelims'
             ResultType = 'String'
-            OnEval = dwsTIdSMTPMethodsGetVerpDelimsEval
             Visibility = cvPrivate
             Kind = mkFunction
+            OnEval = dwsTIdSMTPMethodsGetVerpDelimsEval
           end
           item
             Name = 'SetVerpDelims'
@@ -2143,16 +2141,16 @@ object dwsIndyLib: TdwsIndyLib
                 Name = 'Value'
                 DataType = 'String'
               end>
-            OnEval = dwsTIdSMTPMethodsSetVerpDelimsEval
             Visibility = cvPrivate
             Kind = mkProcedure
+            OnEval = dwsTIdSMTPMethodsSetVerpDelimsEval
           end
           item
             Name = 'GetDidAuthenticate'
             ResultType = 'Boolean'
-            OnEval = dwsTIdSMTPMethodsGetDidAuthenticateEval
             Visibility = cvPrivate
             Kind = mkFunction
+            OnEval = dwsTIdSMTPMethodsGetDidAuthenticateEval
           end
           item
             Name = 'SetUsername'
@@ -2161,16 +2159,16 @@ object dwsIndyLib: TdwsIndyLib
                 Name = 'Value'
                 DataType = 'String'
               end>
-            OnEval = dwsTIdSMTPMethodsSetUsernameEval
             Visibility = cvPrivate
             Kind = mkProcedure
+            OnEval = dwsTIdSMTPMethodsSetUsernameEval
           end
           item
             Name = 'GetUsername'
             ResultType = 'String'
-            OnEval = dwsTIdSMTPMethodsGetUsernameEval
             Visibility = cvPrivate
             Kind = mkFunction
+            OnEval = dwsTIdSMTPMethodsGetUsernameEval
           end
           item
             Name = 'SetPassword'
@@ -2179,16 +2177,16 @@ object dwsIndyLib: TdwsIndyLib
                 Name = 'Value'
                 DataType = 'String'
               end>
-            OnEval = dwsTIdSMTPMethodsSetPasswordEval
             Visibility = cvPrivate
             Kind = mkProcedure
+            OnEval = dwsTIdSMTPMethodsSetPasswordEval
           end
           item
             Name = 'GetPassword'
             ResultType = 'String'
-            OnEval = dwsTIdSMTPMethodsGetPasswordEval
             Visibility = cvPrivate
             Kind = mkFunction
+            OnEval = dwsTIdSMTPMethodsGetPasswordEval
           end
           item
             Name = 'SetPort'
@@ -2197,16 +2195,16 @@ object dwsIndyLib: TdwsIndyLib
                 Name = 'Value'
                 DataType = 'Integer'
               end>
-            OnEval = dwsTIdSMTPMethodsSetPortEval
             Visibility = cvPrivate
             Kind = mkProcedure
+            OnEval = dwsTIdSMTPMethodsSetPortEval
           end
           item
             Name = 'GetPort'
             ResultType = 'Integer'
-            OnEval = dwsTIdSMTPMethodsGetPortEval
             Visibility = cvPrivate
             Kind = mkFunction
+            OnEval = dwsTIdSMTPMethodsGetPortEval
           end
           item
             Name = 'SetUseTLS'
@@ -2215,16 +2213,16 @@ object dwsIndyLib: TdwsIndyLib
                 Name = 'Value'
                 DataType = 'TUseTls'
               end>
-            OnEval = dwsTIdSMTPMethodsSetUseTLSEval
             Visibility = cvPrivate
             Kind = mkProcedure
+            OnEval = dwsTIdSMTPMethodsSetUseTLSEval
           end
           item
             Name = 'GetUseTLS'
             ResultType = 'TUseTls'
-            OnEval = dwsTIdSMTPMethodsGetUseTLSEval
             Visibility = cvPrivate
             Kind = mkFunction
+            OnEval = dwsTIdSMTPMethodsGetUseTLSEval
           end
           item
             Name = 'SetValidateAuthLoginCapability'
@@ -2233,16 +2231,16 @@ object dwsIndyLib: TdwsIndyLib
                 Name = 'Value'
                 DataType = 'Boolean'
               end>
-            OnEval = dwsTIdSMTPMethodsSetValidateAuthLoginCapabilityEval
             Visibility = cvPrivate
             Kind = mkProcedure
+            OnEval = dwsTIdSMTPMethodsSetValidateAuthLoginCapabilityEval
           end
           item
             Name = 'GetValidateAuthLoginCapability'
             ResultType = 'Boolean'
-            OnEval = dwsTIdSMTPMethodsGetValidateAuthLoginCapabilityEval
             Visibility = cvPrivate
             Kind = mkFunction
+            OnEval = dwsTIdSMTPMethodsGetValidateAuthLoginCapabilityEval
           end
           item
             Name = 'SetAuthType'
@@ -2251,16 +2249,16 @@ object dwsIndyLib: TdwsIndyLib
                 Name = 'Value'
                 DataType = 'TSMTPAuthenticationType'
               end>
-            OnEval = dwsTIdSMTPMethodsSetAuthTypeEval
             Visibility = cvPrivate
             Kind = mkProcedure
+            OnEval = dwsTIdSMTPMethodsSetAuthTypeEval
           end
           item
             Name = 'GetAuthType'
             ResultType = 'TSMTPAuthenticationType'
-            OnEval = dwsTIdSMTPMethodsGetAuthTypeEval
             Visibility = cvPrivate
             Kind = mkFunction
+            OnEval = dwsTIdSMTPMethodsGetAuthTypeEval
           end
           item
             Name = 'SetHost'
@@ -2269,26 +2267,26 @@ object dwsIndyLib: TdwsIndyLib
                 Name = 'Value'
                 DataType = 'String'
               end>
-            OnEval = dwsTIdSMTPMethodsSetHostEval
             Visibility = cvPrivate
             Kind = mkProcedure
+            OnEval = dwsTIdSMTPMethodsSetHostEval
           end
           item
             Name = 'GetHost'
             ResultType = 'String'
-            OnEval = dwsTIdSMTPMethodsGetHostEval
             Visibility = cvPrivate
             Kind = mkFunction
+            OnEval = dwsTIdSMTPMethodsGetHostEval
           end
           item
             Name = 'Connect'
-            OnEval = dwsTIdSMTPMethodsConnectEval
             Kind = mkProcedure
+            OnEval = dwsTIdSMTPMethodsConnectEval
           end
           item
             Name = 'Disconnect'
-            OnEval = dwsTIdSMTPMethodsDisconnectEval
             Kind = mkProcedure
+            OnEval = dwsTIdSMTPMethodsDisconnectEval
           end
           item
             Name = 'Verify'
@@ -2298,14 +2296,14 @@ object dwsIndyLib: TdwsIndyLib
                 DataType = 'String'
               end>
             ResultType = 'String'
-            OnEval = dwsTIdSMTPMethodsVerifyEval
             Kind = mkFunction
+            OnEval = dwsTIdSMTPMethodsVerifyEval
           end
           item
             Name = 'Authenticate'
             ResultType = 'Boolean'
-            OnEval = dwsTIdSMTPMethodsAuthenticateEval
             Kind = mkFunction
+            OnEval = dwsTIdSMTPMethodsAuthenticateEval
           end
           item
             Name = 'Send'
@@ -2314,8 +2312,8 @@ object dwsIndyLib: TdwsIndyLib
                 Name = 'MailMessage'
                 DataType = 'TIdMailMessage'
               end>
-            OnEval = dwsTIdSMTPMethodsSendEval
             Kind = mkProcedure
+            OnEval = dwsTIdSMTPMethodsSendEval
           end>
         Properties = <
           item

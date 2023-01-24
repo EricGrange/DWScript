@@ -21,7 +21,7 @@ unit dwsBigInteger;
 interface
 
 uses
-   Classes, SysUtils, dwsUtils, gmp_lib;  // gmp_obj
+   System.Classes, System.SysUtils, dwsUtils, gmp_lib;  // gmp_obj
 
 type
 

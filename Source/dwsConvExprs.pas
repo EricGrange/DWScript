@@ -24,7 +24,7 @@ unit dwsConvExprs;
 interface
 
 uses
-   Variants, SysUtils,
+   System.Variants, System.SysUtils,
    dwsUtils, dwsDataContext, dwsStack, dwsXPlatform, dwsErrors, dwsStrings,
    dwsExprs, dwsExprList, dwsConstExprs, dwsSymbols, dwsUnitSymbols,
    dwsScriptSource, dwsCompilerContext;

@@ -23,7 +23,7 @@ unit dwsWMIDatabase;
 interface
 
 uses
-   Classes, SysUtils, ActiveX, ComObj, Variants,
+   System.Classes, System.SysUtils, Winapi.ActiveX, System.Win.ComObj, System.Variants,
    dwsUtils, dwsDatabase, dwsXPlatform, dwsDataContext, dwsSymbols, dwsJSON;
 
 type

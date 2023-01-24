@@ -17,8 +17,9 @@ unit dwsSmartLink;
 
 interface
 
-uses Classes, SysUtils, dwsUtils, dwsSymbols, dwsExprs, dwsCoreExprs,
-   dwsStrings, dwsUnitSymbols;
+uses
+   System.Classes, System.SysUtils,
+   dwsUtils, dwsSymbols, dwsExprs, dwsCoreExprs, dwsStrings, dwsUnitSymbols;
 
    // smart-linking support classes and utilities
 

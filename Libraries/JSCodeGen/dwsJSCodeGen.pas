@@ -23,7 +23,7 @@ unit dwsJSCodeGen;
 interface
 
 uses
-   Classes, SysUtils, Math, Variants,
+   System.Classes, System.SysUtils, System.Math, System.Variants,
    dwsUtils, dwsSymbols, dwsCodeGen, dwsTextCodeGen, dwsCoreExprs, dwsDataContext,
    dwsExprs, dwsRelExprs, dwsJSON, dwsMagicExprs, dwsStrings, dwsMethodExprs,
    dwsConnectorExprs, dwsConvExprs, dwsSetOfExprs, dwsCompilerUtils,

@@ -21,7 +21,7 @@ unit dwsCaseNormalizer;
 interface
 
 uses
-   Classes, SysUtils,
+   System.Classes, System.SysUtils,
    dwsUtils, dwsScriptSource,
    dwsErrors, dwsExprs, dwsSymbols, dwsSymbolDictionary;
 

@@ -21,7 +21,7 @@ unit dwsArrayElementContext;
 interface
 
 uses
-   Classes, SysUtils,
+   System.Classes, System.SysUtils,
    dwsSymbols, dwsDataContext, dwsErrors, dwsStrings, dwsUtils;
 
 type

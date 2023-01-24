@@ -27,7 +27,7 @@ unit dwsMPIR;
 
 interface
 
-uses Windows, SysUtils, dwsXPlatform;
+uses Winapi.Windows, System.SysUtils, dwsXPlatform;
 
 const
    MaxVarSize = MaxInt div 4;

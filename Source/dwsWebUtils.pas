@@ -21,7 +21,7 @@ unit dwsWebUtils;
 interface
 
 uses
-   Classes, SysUtils, StrUtils,
+   System.Classes, System.SysUtils, System.StrUtils,
    dwsUtils, dwsXPlatform, dwsXXHash;
 
 type

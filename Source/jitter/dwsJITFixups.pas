@@ -17,7 +17,7 @@ unit dwsJITFixups;
 interface
 
 uses
-   Classes, SysUtils,
+   System.Classes, System.SysUtils,
    dwsUtils, dwsJITx86Intrinsics;
 
 type

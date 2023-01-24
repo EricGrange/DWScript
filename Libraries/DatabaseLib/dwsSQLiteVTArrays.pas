@@ -24,7 +24,8 @@ unit dwsSQLiteVTArrays;
 
 interface
 
-uses Classes, SysUtils,
+uses
+   System.Classes, System.SysUtils,
    SynSQLite3, SynCommons,
    dwsUtils, dwsExprs, dwsDatabase, dwsStack, dwsXPlatform, dwsDataContext, dwsSymbols,
    dwsSynSQLiteDatabase, dwsSynSQLiteVirtualTables;

@@ -24,7 +24,7 @@ unit dwsStack;
 interface
 
 uses
-   Variants, Classes, SysUtils,
+   System.Variants, System.Classes, System.SysUtils,
    dwsStrings, dwsUtils, dwsXPlatform, dwsDataContext;
 
 type

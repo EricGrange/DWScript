@@ -26,7 +26,7 @@ interface
 
 
 uses
-   Classes, SysUtils, Math, Windows,
+   System.Classes, System.SysUtils, System.Math, Winapi.Windows,
    dwsExprs, dwsSymbols, dwsErrors, dwsUtils, dwsExprList, dwsXPlatform,
    dwsCoreExprs, dwsRelExprs, dwsMagicExprs, dwsConstExprs, dwsArrayExprs,
    dwsMathFunctions, dwsDataContext, dwsConvExprs, dwsSetOfExprs, dwsMethodExprs,
@@ -657,7 +657,7 @@ end;
 
 function double_power(const base, exponent: Double) : Double;
 begin
-   Result := Math.Power(base, exponent);
+   Result := System.Math.Power(base, exponent);
 end;
 
 function double_cos(const v : Double) : Double;
@@ -704,8 +704,8 @@ var
    vAddr_Frac : function (const v : Double) : Double = double_frac;
    vAddr_div : function (a, b : Int64) : Int64 = int64_div;
    vAddr_mod : function (a, b : Int64) : Int64 = int64_mod;
-   vAddr_IsNaN : function (const v : Double) : Boolean = Math.IsNan;
-   vAddr_IsInfinite : function (const v : Double) : Boolean = Math.IsInfinite;
+   vAddr_IsNaN : function (const v : Double) : Boolean = System.Math.IsNan;
+   vAddr_IsInfinite : function (const v : Double) : Boolean = System.Math.IsInfinite;
    vAddr_IsFinite : function (const v : Double) : Boolean = dwsMathFunctions.IsFinite;
    vAddr_IsPrime : function (const n : Int64) : Boolean = dwsMathFunctions.IsPrime;
    vAddr_Cos : function (const v : Double) : Double = double_cos;

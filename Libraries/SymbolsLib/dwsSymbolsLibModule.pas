@@ -24,8 +24,8 @@ unit dwsSymbolsLibModule;
 interface
 
 uses
-  Windows, Messages, SysUtils, Classes, dwsComp, dwsExprs, dwsUtils,
-  dwsUnitSymbols;
+   Winapi.Windows, Winapi.Messages, System.SysUtils, System.Classes,
+   dwsComp, dwsExprs, dwsUtils, dwsUnitSymbols;
 
 type
   TdwsSymbolsLib = class(TDataModule)

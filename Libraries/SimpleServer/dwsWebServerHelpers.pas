@@ -21,7 +21,7 @@ unit dwsWebServerHelpers;
 interface
 
 uses
-   Windows, Classes, SysUtils, Registry,
+   Winapi.Windows, System.Classes, System.SysUtils, System.Win.Registry,
    dwsUtils, dwsXPlatform, dwsXXHash;
 
 type

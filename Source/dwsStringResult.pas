@@ -30,8 +30,8 @@ unit dwsStringResult;
 interface
 
 uses
-  Classes, SysUtils, dwsExprs, dwsSymbols, dwsComp, dwsUtils,
-  dwsLegacy;
+  System.Classes, System.SysUtils,
+  dwsExprs, dwsSymbols, dwsComp, dwsUtils, dwsLegacy;
 
 type
    TdwsStringResult = class(TdwsResult)

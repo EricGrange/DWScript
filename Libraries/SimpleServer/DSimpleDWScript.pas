@@ -26,7 +26,7 @@ interface
 {$ifend}
 
 uses
-   Windows, SysUtils, Classes, StrUtils, Masks,
+   Winapi.Windows, System.SysUtils, System.Classes, System.StrUtils, System.Masks,
    dwsFileSystem, dwsGlobalVarsFunctions, dwsExprList,
    dwsCompiler, dwsHtmlFilter, dwsComp, dwsExprs, dwsUtils, dwsXPlatform,
    dwsJSONConnector, dwsJSON, dwsErrors, dwsUnitSymbols, dwsSymbols,

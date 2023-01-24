@@ -20,7 +20,9 @@ unit dwsTimeSeries;
 
 interface
 
-uses Classes, SysUtils, dwsUtils, dwsDynamicArrays, dwsXPlatform, dwsSymbols;
+uses
+   System.Classes, System.SysUtils,
+   dwsUtils, dwsDynamicArrays, dwsXPlatform, dwsSymbols;
 
 type
    TdwsTimeSeries = class;

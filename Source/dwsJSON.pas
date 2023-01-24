@@ -20,7 +20,7 @@ unit dwsJSON;
 interface
 
 uses
-   Classes, SysUtils, Math, Variants,
+   System.Classes, System.SysUtils, System.Math, System.Variants,
    dwsUtils, dwsXPlatform, dwsXXHash, dwsUnicode;
 
 type
@@ -1468,7 +1468,7 @@ function TdwsJSONValue.GetIsNaN : Boolean;
 begin
    Result:=not (    Assigned(Self)
                 and (ValueType=jvtNumber)
-                and Math.IsNan(Value.AsNumber));
+                and System.Math.IsNan(Value.AsNumber));
 end;
 
 // GetAsInteger

@@ -24,7 +24,8 @@ unit dwsIndyLibModule;
 interface
 
 uses
-  Windows, Messages, SysUtils, Classes, dwsComp, dwsExprs, dwsUtils,
+   Winapi.Windows, Winapi.Messages, System.SysUtils, System.Classes,
+   dwsComp, dwsExprs, dwsUtils,
 
   IdBaseComponent, IdComponent, IdGlobal, IdContext, IdTCPConnection,
   IdTCPClient, IdFTPCommon, IdFTP, IdExplicitTLSClientServerBase, IdSMTPBase,

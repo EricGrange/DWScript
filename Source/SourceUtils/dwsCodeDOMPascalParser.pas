@@ -19,7 +19,7 @@ unit dwsCodeDOMPascalParser;
 interface
 
 uses
-   Classes, SysUtils,
+   System.Classes, System.SysUtils,
    dwsUtils, dwsTokenTypes,
    dwsCodeDOM, dwsCodeDOMNodes, dwsCodeDOMParser,
    dwsPascalTokenizer;

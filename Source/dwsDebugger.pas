@@ -24,7 +24,7 @@ unit dwsDebugger;
 interface
 
 uses
-   Classes, SysUtils,
+   System.Classes, System.SysUtils,
    dwsSymbols, dwsXPlatform, dwsCompiler, dwsDataContext, dwsExprs,
    dwsInfo, dwsEvaluate, dwsScriptSource, dwsUtils, dwsUnitSymbols;
 

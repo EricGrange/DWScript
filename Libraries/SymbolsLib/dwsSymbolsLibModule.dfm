@@ -33,82 +33,82 @@ object dwsSymbolsLib: TdwsSymbolsLib
           item
             Name = 'Destroy'
             Attributes = [maVirtual, maOverride]
-            OnEval = dwsUnitClassesTSymbolsMethodsDestroyEval
             Kind = mkDestructor
+            OnEval = dwsUnitClassesTSymbolsMethodsDestroyEval
           end
           item
             Name = 'First'
-            OnEval = dwsUnitClassesTSymbolsMethodsFirstEval
             Kind = mkProcedure
+            OnEval = dwsUnitClassesTSymbolsMethodsFirstEval
           end
           item
             Name = 'Last'
-            OnEval = dwsUnitClassesTSymbolsMethodsLastEval
             Kind = mkProcedure
+            OnEval = dwsUnitClassesTSymbolsMethodsLastEval
           end
           item
             Name = 'Next'
-            OnEval = dwsUnitClassesTSymbolsMethodsNextEval
             Kind = mkProcedure
+            OnEval = dwsUnitClassesTSymbolsMethodsNextEval
           end
           item
             Name = 'Previous'
-            OnEval = dwsUnitClassesTSymbolsMethodsPreviousEval
             Kind = mkProcedure
+            OnEval = dwsUnitClassesTSymbolsMethodsPreviousEval
           end
           item
             Name = 'Eof'
             ResultType = 'Boolean'
-            OnEval = dwsUnitClassesTSymbolsMethodsEofEval
             Kind = mkFunction
+            OnEval = dwsUnitClassesTSymbolsMethodsEofEval
           end
           item
             Name = 'Name'
             ResultType = 'String'
-            OnEval = dwsUnitClassesTSymbolsMethodsNameEval
             Kind = mkFunction
+            OnEval = dwsUnitClassesTSymbolsMethodsNameEval
           end
           item
             Name = 'Caption'
             ResultType = 'String'
-            OnEval = dwsUnitClassesTSymbolsMethodsCaptionEval
             Kind = mkFunction
+            OnEval = dwsUnitClassesTSymbolsMethodsCaptionEval
           end
           item
             Name = 'Description'
             ResultType = 'String'
-            OnEval = dwsUnitClassesTSymbolsMethodsDescriptionEval
             Kind = mkFunction
+            OnEval = dwsUnitClassesTSymbolsMethodsDescriptionEval
           end
           item
             Name = 'SymbolType'
             ResultType = 'TSymbolType'
-            OnEval = dwsUnitClassesTSymbolsMethodsSymbolTypeEval
             Kind = mkFunction
+            OnEval = dwsUnitClassesTSymbolsMethodsSymbolTypeEval
           end
           item
             Name = 'Visibility'
             ResultType = 'TSymbolVisibility'
-            OnEval = dwsUnitClassesTSymbolsMethodsVisibilityEval
             Kind = mkFunction
+            OnEval = dwsUnitClassesTSymbolsMethodsVisibilityEval
           end
           item
             Name = 'GetMembers'
             ResultType = 'TSymbols'
-            OnEval = dwsUnitClassesTSymbolsMethodsGetMembersEval
             Kind = mkFunction
+            OnEval = dwsUnitClassesTSymbolsMethodsGetMembersEval
           end
           item
             Name = 'GetParameters'
             ResultType = 'TSymbols'
-            OnEval = dwsUnitClassesTSymbolsMethodsGetParametersEval
             Kind = mkFunction
+            OnEval = dwsUnitClassesTSymbolsMethodsGetParametersEval
           end
           item
             Name = 'GetSuperSymbol'
             ResultType = 'TSymbols'
-            OnEval = dwsUnitClassesTSymbolsMethodsGetSuperClassEval
             Kind = mkFunction
+            OnEval = dwsUnitClassesTSymbolsMethodsGetSuperClassEval
           end
           item
             Name = 'Locate'
@@ -118,44 +118,44 @@ object dwsSymbolsLib: TdwsSymbolsLib
                 DataType = 'String'
               end>
             ResultType = 'Boolean'
-            OnEval = dwsUnitClassesTSymbolsMethodsLocateEval
             Kind = mkFunction
+            OnEval = dwsUnitClassesTSymbolsMethodsLocateEval
           end
           item
             Name = 'QualifiedName'
             ResultType = 'String'
-            OnEval = dwsUnitClassesTSymbolsMethodsQualifiedNameEval
             Kind = mkFunction
+            OnEval = dwsUnitClassesTSymbolsMethodsQualifiedNameEval
           end
           item
             Name = 'IsType'
             ResultType = 'Boolean'
-            OnEval = dwsUnitClassesTSymbolsMethodsIsTypeEval
             Kind = mkFunction
+            OnEval = dwsUnitClassesTSymbolsMethodsIsTypeEval
           end
           item
             Name = 'GetMetaSymbol'
             ResultType = 'TSymbols'
-            OnEval = dwsUnitClassesTSymbolsMethodsMetaSymbolEval
             Kind = mkFunction
+            OnEval = dwsUnitClassesTSymbolsMethodsMetaSymbolEval
           end
           item
             Name = 'InternalClassName'
             ResultType = 'String'
-            OnEval = dwsUnitClassesTSymbolsMethodsInternalClassNameEval
             Kind = mkFunction
+            OnEval = dwsUnitClassesTSymbolsMethodsInternalClassNameEval
           end
           item
             Name = 'TypeName'
             ResultType = 'String'
-            OnEval = dwsUnitClassesTSymbolsMethodsTypeNameEval
             Kind = mkFunction
+            OnEval = dwsUnitClassesTSymbolsMethodsTypeNameEval
           end
           item
             Name = 'GetType'
             ResultType = 'TSymbols'
-            OnEval = dwsUnitClassesTSymbolsMethodsGetTypeEval
             Kind = mkFunction
+            OnEval = dwsUnitClassesTSymbolsMethodsGetTypeEval
           end>
       end>
     Enumerations = <

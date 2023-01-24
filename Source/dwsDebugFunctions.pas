@@ -21,7 +21,7 @@ unit dwsDebugFunctions;
 interface
 
 uses
-   Classes, SysUtils,
+   System.Classes, System.SysUtils,
    dwsFunctions, dwsExprs, dwsSymbols, dwsUtils, dwsExprList, dwsStrings, dwsScriptSource,
    dwsMagicExprs, dwsUnitSymbols, dwsXPlatform, dwsErrors, dwsDataContext, dwsInfo;
 
