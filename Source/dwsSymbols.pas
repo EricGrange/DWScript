@@ -2331,7 +2331,7 @@ type
    PIScriptDynArray = ^IScriptDynArray;
 
    // IScriptAssociativeArray
-   IScriptAssociativeArray = interface (IDataContext)
+   IScriptAssociativeArray = interface (IGetSelf)
       ['{1162D4BD-6033-4505-8D8C-0715588C768C}']
       procedure Clear;
       function Count : NativeInt;

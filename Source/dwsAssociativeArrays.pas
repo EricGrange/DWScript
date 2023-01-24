@@ -87,6 +87,8 @@ type
          property ElementType : TTypeSymbol read FElementTyp;
    end;
 
+procedure CreateNewAssociativeArray(keyTyp, elemTyp : TTypeSymbol; var result : IScriptAssociativeArray);
+
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
@@ -97,8 +99,15 @@ implementation
 
 uses dwsStack;
 
+// CreateNewAssociativeArray
+//
+procedure CreateNewAssociativeArray(keyTyp, elemTyp : TTypeSymbol; var result : IScriptAssociativeArray);
+begin
+   result := TScriptAssociativeArray.CreateNew(keyTyp, elemTyp) as IScriptAssociativeArray;
+end;
+
 // ------------------
-// ------------------ TScriptAssociativeIntegerArray ------------------
+// ------------------ TScriptAssociativeArray ------------------
 // ------------------
 
 // TScriptAssociativeInteger_InitData

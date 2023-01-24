@@ -235,9 +235,9 @@ function TdwsCompilerContext.CreateConstExpr(typ : TTypeSymbol; const value : Va
       val : IScriptAssociativeArray;
    begin
       val := IUnknown(value) as IScriptAssociativeArray;
-      if val<>nil then
-         Result:=TConstExpr.CreateValue(cNullPos, typ, val)
-      else Result:=TConstExpr.CreateValue(cNullPos, typ, TScriptAssociativeArray.CreateNew(typ.KeyType, typ.Typ) as IScriptAssociativeArray);
+      if val = nil then
+         CreateNewAssociativeArray(typ.KeyType, typ.Typ, val);
+      Result:=TConstExpr.CreateValue(cNullPos, typ, val);
    end;
 
 begin

@@ -3847,7 +3847,6 @@ end;
 procedure TProgramExpr.EvalAsScriptAssociativeArray(exec : TdwsExecution; var result : IScriptAssociativeArray);
 begin
    EvalAsInterface(exec, IUnknown(result));
-   Assert(result.GetSelf.ClassType = TScriptAssociativeArray);
 end;
 
 // AssignValue

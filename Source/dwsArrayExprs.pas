@@ -1736,7 +1736,6 @@ var
    base : IScriptAssociativeArray;
 begin
    FBaseExpr.EvalAsScriptAssociativeArray(exec, base);
-
    TScriptAssociativeArray(base.GetSelf).GetDataPtr(exec, KeyExpr, result);
 end;
 
