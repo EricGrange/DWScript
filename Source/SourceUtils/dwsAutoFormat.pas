@@ -84,34 +84,24 @@ begin
    try
       if Parser.Messages.Count > 0 then
          Exit(sourceFile.Code);
-      var output := TdwsCodeDOMOutput.Create;
       try
-         output.IndentChar := IndentChar;
-         output.IndentSize := IndentSize;
-         if dom.Root <> nil then
-            dom.Root.WriteToOutput(output);
-         Result := output.ToString;
-      finally
-         output.Free;
+         var output := TdwsCodeDOMOutput.Create;
+         try
+            output.IndentChar := IndentChar;
+            output.IndentSize := IndentSize;
+            if dom.Root <> nil then
+               dom.Root.WriteToOutput(output);
+            Result := output.ToString;
+         finally
+            output.Free;
+         end;
+      except
+         on E: Exception do
+            Parser.Messages.AddInfo(E.ClassName + ': ' + E.Message);
       end;
    finally
       dom.Free;
    end;
-
-//   var dom := TdwsCodeDOM.Create(Rules.CreateTokenizer(nil, nil));
-//   try
-//      dom.Parse(sourceFile);
-//      var output := TdwsCodeDOMOutput.Create;
-//      try
-//         output.Indent := Indent;
-//         dom.Root.WriteToOutput(output);
-//         Result := output.ToString;
-//      finally
-//         output.Free;
-//      end;
-//   finally
-//      dom.Free;
-//   end;
 end;
 
 end.

@@ -128,7 +128,7 @@ implementation
 
 uses Variants,
    dwsExprs, dwsUnifiedConstants, dwsConstExprs, dwsOperators, dwsCompilerUtils,
-   dwsConvExprs, dwsDynamicArrays;
+   dwsConvExprs, dwsDynamicArrays, dwsAssociativeArrays;
 
 type
    TdwsCompilerContextHelper = class helper for TdwsCompilerContext

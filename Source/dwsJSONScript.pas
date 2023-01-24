@@ -22,7 +22,7 @@ interface
 
 uses
    dwsJSON, dwsExprList, dwsDataContext, dwsSymbols, dwsExprs, dwsScriptSource,
-   dwsDynamicArrays;
+   dwsDynamicArrays, dwsAssociativeArrays;
 
 type
 

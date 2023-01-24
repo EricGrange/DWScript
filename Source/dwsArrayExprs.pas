@@ -751,7 +751,8 @@ implementation
 // ------------------------------------------------------------------
 
 uses dwsStrings, dwsConstExprs, dwsArrayElementContext,
-   dwsCompilerUtils, dwsSpecializationContext, dwsStack, dwsExprList;
+   dwsCompilerUtils, dwsSpecializationContext, dwsStack, dwsExprList,
+   dwsAssociativeArrays;
 
 type
    // this needs to be in a helper (or more precisely implemented at the top of this unit)
