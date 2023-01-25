@@ -123,6 +123,90 @@ type
          procedure ResetPeakStats;
    end;
 
+   TIOCPTaskStatus = (
+      tsUnscheduled,
+      tsScheduled,
+      tsRunning,
+      tsCompleted,
+      tsAborted
+   );
+
+   TIOCPTask = class;
+
+   IWorkerTask = interface
+      ['{1002DCCE-2C06-4885-9F1F-3F81A3807A16}']
+      function Name : String;
+      function Status : TIOCPTaskStatus;
+      function GetSelf : TIOCPTask;
+
+      procedure DependsFrom(const aTask : IWorkerTask);
+
+      procedure Abort;
+      procedure Schedule(const aPool : IWorkerThreadPool);
+      procedure WaitFor(timeOutMSec : Cardinal = INFINITE);
+   end;
+
+   TIOCPTask = class abstract (TInterfacedObject, IWorkerTask)
+      private
+         FName : String;
+         FDependsFrom : TArray<IWorkerTask>;
+         FDependsTo : TArray<IWorkerTask>;
+         FStatus : TIOCPTaskStatus;
+         FLock : TMultiReadSingleWrite;
+         FPool : IWorkerThreadPool;
+         FWaitEvent : THandle;
+
+      protected
+         procedure Run;
+
+         function GetSelf : TIOCPTask;
+         procedure ClearDependsFrom;
+         procedure ClearDependsTo;
+
+         procedure ThreadSafeRemove(var aArray : TArray<IWorkerTask>; const aTask : TIOCPTask);
+         procedure ThreadSafeClear(var aArray : TArray<IWorkerTask>);
+
+      public
+         constructor Create(const aName : String = '');
+         destructor Destroy; override;
+
+         procedure DependsFrom(const aTask : IWorkerTask);
+
+         procedure Schedule(const aPool : IWorkerThreadPool);
+         procedure Abort;
+         procedure WaitFor(timeOutMSec : Cardinal = INFINITE);
+
+         procedure Execute; virtual;
+
+         function Name : String; inline;
+         function Status : TIOCPTaskStatus; inline;
+   end;
+
+   TWorkerTaskProc<TParam> = reference to procedure (const aTask : IWorkerTask; const aParam : TParam);
+
+   TWorkerTask<TParam> = class abstract (TIOCPTask)
+      private
+         FProc : TWorkerTaskProc<TParam>;
+         FParam : TParam;
+
+      public
+         constructor Create(const aParam : TParam; const aProc : TWorkerTaskProc<TParam>;
+                            const aName : String = ''); overload;
+
+         procedure Execute; override;
+   end;
+
+   WorkerTask = class sealed
+      public
+         class function New(const aProc : TProc; const aName : String = '') : IWorkerTask; overload; static;
+         class function New(idx : Integer; const aProc : TProc<Integer>; const aName : String = '') : IWorkerTask; overload; static;
+         class function New<TParam>(const aParam : TParam; const aProc : TProc<TParam>;
+                                    const aName : String = '') : IWorkerTask; overload; static;
+         class function New<TParam>(const aParam : TParam; const aProc : TWorkerTaskProc<TParam>;
+                                    const aName : String = '') : IWorkerTask; overload; static;
+   end;
+
+
 procedure ParallelFor(const pool : IWorkerThreadPool; fromIndex, toIndex : Integer; const aProc : TProc<Integer>);
 
 // ------------------------------------------------------------------
@@ -599,6 +683,357 @@ end;
 function TIOCPWorkerThreadPool.GetWorkerCount : Integer;
 begin
    Result:=FWorkerCount;
+end;
+
+// ------------------
+// ------------------ TIOCPTask ------------------
+// ------------------
+
+// Create
+//
+constructor TIOCPTask.Create(const aName : String = '');
+begin
+   inherited Create;
+   FName := aName;
+   FLock := TMultiReadSingleWrite.Create;
+end;
+
+// Destroy
+//
+destructor TIOCPTask.Destroy;
+begin
+   inherited;
+   ClearDependsFrom;
+   ClearDependsTo;
+   FLock.Free;
+   if FWaitEvent <> 0 then
+      CloseHandle(FWaitEvent);
+end;
+
+// GetSelf
+//
+function TIOCPTask.GetSelf : TIOCPTask;
+begin
+   Result := Self;
+end;
+
+// Name
+//
+function TIOCPTask.Name : String;
+begin
+   Result := FName;
+end;
+
+// Status
+//
+function TIOCPTask.Status : TIOCPTaskStatus;
+begin
+   Result := FStatus;
+end;
+
+// ClearDependsFrom
+//
+procedure TIOCPTask.ClearDependsFrom;
+var
+   tmp : TArray<IWorkerTask>;
+begin
+   FLock.BeginWrite;
+   try
+      tmp := Copy(FDependsFrom, 0);
+      SetLength(FDependsFrom, 0);
+   finally
+      FLock.EndWrite;
+   end;
+   for var i := 0 to High(tmp) do begin
+      var fromTask := tmp[i].GetSelf;
+      fromTask.ThreadSafeRemove(fromTask.FDependsTo, Self);
+      tmp[i] := nil;
+   end;
+end;
+
+// ClearDependsTo
+//
+procedure TIOCPTask.ClearDependsTo;
+var
+   tmp : TArray<IWorkerTask>;
+begin
+   FLock.BeginWrite;
+   try
+      tmp := Copy(FDependsTo);
+      SetLength(FDependsTo, 0);
+   finally
+      FLock.EndWrite;
+   end;
+   for var i := 0 to High(tmp) do begin
+      var toTask := tmp[i].GetSelf;
+      toTask.ThreadSafeRemove(toTask.FDependsFrom, Self);
+      tmp[i] := nil;
+   end;
+end;
+
+// ThreadSafeRemove
+//
+procedure TIOCPTask.ThreadSafeRemove(var aArray : TArray<IWorkerTask>; const aTask : TIOCPTask);
+begin
+   FLock.BeginWrite;
+   try
+      for var i := High(aArray) downto 0 do begin
+         if aArray[i].GetSelf = aTask then
+            Delete(aArray, i, 1);
+      end;
+   finally
+      FLock.EndWrite;
+   end;
+end;
+
+// ThreadSafeClear
+//
+procedure TIOCPTask.ThreadSafeClear(var aArray : TArray<IWorkerTask>);
+var
+   temp : TArray<IWorkerTask>;
+begin
+   FLock.BeginWrite;
+   try
+      temp := Copy(aArray, 0);
+   finally
+      FLock.EndWrite;
+   end;
+end;
+
+// DependsFrom
+//
+procedure TIOCPTask.DependsFrom(const aTask : IWorkerTask);
+begin
+   FLock.BeginWrite;
+   try
+      var n := Length(FDependsFrom);
+      SetLength(FDependsFrom, n+1);
+      FDependsFrom[n] := aTask;
+   finally
+      FLock.EndWrite;
+   end;
+   var task := aTask.GetSelf;
+   task.FLock.BeginWrite;
+   try
+      var n := Length(task.FDependsTo);
+      SetLength(task.FDependsTo, n+1);
+      task.FDependsTo[n] := Self;
+   finally
+      task.FLock.EndWrite;
+   end;
+end;
+
+// Schedule
+//
+procedure TIOCPTask.Schedule(const aPool : IWorkerThreadPool);
+var
+   dep : IWorkerTask;
+begin
+   if not (Status in [ tsScheduled, tsUnscheduled]) then Exit;
+
+   FStatus := tsScheduled;
+   FPool := aPool;
+
+   repeat
+      dep := nil;
+      FLock.BeginRead;
+      try
+         for var i := 0 to High(FDependsFrom) do begin
+            if FDependsFrom[i].Status in [ tsUnscheduled, tsAborted ] then begin
+               dep := FDependsFrom[i];
+               Break;
+            end;
+         end;
+      finally
+         FLock.EndRead;
+      end;
+      if dep <> nil then case dep.Status of
+         tsUnscheduled :
+            dep.Schedule(aPool);
+         tsAborted : begin
+            Abort;
+            Exit;
+         end;
+      end;
+   until dep = nil;
+
+   var unmetDependsFrom := 0;
+   FLock.BeginRead;
+   try
+      for var i := 0 to High(FDependsFrom) do begin
+         dep := FDependsFrom[i];
+         case dep.Status of
+            tsUnscheduled : Assert(False);
+            tsScheduled, tsRunning :
+               Inc(unmetDependsFrom);
+            tsCompleted : ;
+            tsAborted : begin
+               unmetDependsFrom := -1;
+               Break;
+            end;
+         else
+            Assert(False);
+         end;
+      end;
+   finally
+      FLock.EndRead;
+   end;
+
+   if unmetDependsFrom = 0 then begin
+      FLock.BeginWrite;
+      try
+         if Status = tsScheduled then
+            FStatus := tsRunning;
+      finally
+         FLock.EndWrite;
+      end;
+      if FStatus = tsRunning then begin
+         if aPool = nil then
+            Run
+         else aPool.QueueWork(procedure begin Run end)
+      end;
+   end else if unmetDependsFrom = -1 then
+      Abort;
+end;
+
+// Abort
+//
+procedure TIOCPTask.Abort;
+var
+   tmp : TArray<IWorkerTask>;
+begin
+   if Status = tsAborted then Exit;
+   FLock.BeginRead;
+   try
+      tmp := Copy(FDependsTo, 0);
+      if FWaitEvent <> 0 then
+         SetEvent(FWaitEvent);
+   finally
+      FLock.BeginRead;
+   end;
+   for var i := 0 to High(tmp) do
+      tmp[i].Abort;
+end;
+
+// WaitFor
+//
+procedure TIOCPTask.WaitFor(timeOutMSec : Cardinal = INFINITE);
+begin
+   if Status in [ tsCompleted, tsAborted ] then Exit;
+   if FWaitEvent = 0 then begin
+      FLock.BeginWrite;
+      try
+         if FWaitEvent = 0 then
+            FWaitEvent := CreateEvent(nil, True, False, nil);
+      finally
+         FLock.EndWrite;
+      end;
+   end;
+   WaitForSingleObject(FWaitEvent, timeOutMSec);
+end;
+
+// Execute
+//
+procedure TIOCPTask.Execute;
+begin
+   // nothing
+end;
+
+// Run
+//
+procedure TIOCPTask.Run;
+var
+   tmp : TArray<IWorkerTask>;
+begin
+   try
+      if Status = tsRunning then
+         Execute;
+      FLock.BeginWrite;
+      try
+         if Status = tsRunning then
+            FStatus := tsCompleted;
+         tmp := Copy(FDependsTo, 0);
+         if FWaitEvent <> 0 then
+            SetEvent(FWaitEvent);
+      finally
+         FLock.EndWrite;
+      end;
+      for var i := 0 to High(tmp) do
+         tmp[i].Schedule(FPool);
+   except
+      Abort;
+   end;
+end;
+
+// ------------------
+// ------------------ TWorkerTask<TParam> ------------------
+// ------------------
+
+// Create
+//
+constructor TWorkerTask<TParam>.Create(const aParam : TParam; const aProc : TWorkerTaskProc<TParam>;
+                                       const aName : String = '');
+begin
+   inherited Create(aName);
+   FProc := aProc;
+   FParam := aParam;
+end;
+
+// Execute
+//
+procedure TWorkerTask<TParam>.Execute;
+begin
+   FProc(Self, FParam);
+end;
+
+// ------------------
+// ------------------ WorkerTask ------------------
+// ------------------
+
+// New
+//
+class function WorkerTask.New(const aProc : TProc; const aName : String = '') : IWorkerTask;
+begin
+   Result := TWorkerTask<Integer>.Create(
+      0, procedure (const task : IWorkerTask; const param : Integer)
+         begin
+            aProc();
+         end,
+      aName);
+end;
+
+// New
+//
+class function WorkerTask.New(idx : Integer; const aProc : TProc<Integer>; const aName : String = '') : IWorkerTask;
+begin
+   Result := TWorkerTask<Integer>.Create(
+      0, procedure (const task : IWorkerTask; const param : Integer)
+         begin
+            aProc(idx);
+         end,
+      aName);
+end;
+
+// New<TParam>
+//
+class function WorkerTask.New<TParam>(const aParam : TParam; const aProc : TProc<TParam>;
+                                      const aName : String = '') : IWorkerTask;
+var
+   adapter : TWorkerTaskProc<TParam>;
+begin
+   adapter := procedure (const task : IWorkerTask; const param : TParam)
+              begin
+                 aProc(aParam);
+              end;
+   Result := TWorkerTask<TParam>.Create(aParam, adapter, aName);
+end;
+
+// New<TParam>
+//
+class function WorkerTask.New<TParam>(const aParam : TParam; const aProc : TWorkerTaskProc<TParam>;
+                                    const aName : String = '') : IWorkerTask;
+begin
+   Result := TWorkerTask<TParam>.Create(aParam, aProc, aName);
 end;
 
 end.
