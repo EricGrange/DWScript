@@ -59,7 +59,7 @@ uses
       {$ENDIF}
    {$ELSE}
       {$IFDEF WINDOWS}
-      Windows, Registry
+      Winapi.Windows, System.Win.Registry
       {$ENDIF}
       {$IFNDEF VER200}, IOUtils{$ENDIF}
       {$IFDEF UNIX}
@@ -879,7 +879,7 @@ begin
    if n > 0 then begin
       {$ifdef WINDOWS}
       SetLength(result, n);
-      Windows.LCMapStringEx(nil, LCMAP_LOWERCASE or LCMAP_LINGUISTIC_CASING,
+      Winapi.Windows.LCMapStringEx(nil, LCMAP_LOWERCASE or LCMAP_LINGUISTIC_CASING,
                             PWideChar(Pointer(s)), n, PWideChar(Pointer(result)), n,
                             nil, nil, 0);
       {$else}
@@ -905,7 +905,7 @@ begin
    if n > 0 then begin
       {$ifdef WINDOWS}
       SetLength(result, n);
-      Windows.LCMapStringEx(nil, LCMAP_UPPERCASE or LCMAP_LINGUISTIC_CASING,
+      Winapi.Windows.LCMapStringEx(nil, LCMAP_UPPERCASE or LCMAP_LINGUISTIC_CASING,
                             PWideChar(Pointer(s)), n, PWideChar(Pointer(result)), n,
                             nil, nil, 0);
       {$else}
@@ -1038,7 +1038,7 @@ function InterlockedIncrement(var val : Integer) : Integer;
 {$ifndef WIN32_ASM}
 begin
    {$ifdef WINDOWS}
-   Result := Windows.InterlockedIncrement(val);
+   Result := Winapi.Windows.InterlockedIncrement(val);
    {$else}
    Result := TInterlocked.Increment(val);
    {$endif}
@@ -1057,7 +1057,7 @@ function InterlockedDecrement(var val : Integer) : Integer;
 {$ifndef WIN32_ASM}
 begin
    {$ifdef WINDOWS}
-   Result := Windows.InterlockedDecrement(val);
+   Result := Winapi.Windows.InterlockedDecrement(val);
    {$else}
    Result := TInterlocked.Decrement(val);
    {$endif}
@@ -1103,7 +1103,7 @@ begin
    Result := System.InterLockedExchange(target, val);
    {$else}
       {$ifdef WINDOWS}
-      Result := Windows.InterlockedExchangePointer(target, val);
+      Result := Winapi.Windows.InterlockedExchangePointer(target, val);
       {$else}
       Result := TInterlocked.Exchange(target, val);
       {$endif}
@@ -1127,7 +1127,7 @@ begin
       {$endif}
    {$else}
       {$ifdef WINDOWS}
-      Result := Windows.InterlockedCompareExchangePointer(destination, exchange, comparand);
+      Result := Winapi.Windows.InterlockedCompareExchangePointer(destination, exchange, comparand);
       {$else}
       Result := TInterlocked.CompareExchange(destination, exchange, comparand);
       {$endif}
@@ -1176,7 +1176,7 @@ end;
 procedure OutputDebugString(const msg : String);
 begin
    {$ifdef WINDOWS}
-   Windows.OutputDebugStringW(PWideChar(msg));
+   Winapi.Windows.OutputDebugStringW(PWideChar(msg));
    {$else}
    { TODO : Check for Linux debugger functionalities }
    {$endif}
@@ -1315,7 +1315,7 @@ begin
             CollectFilesMasked(fileName, masks, list, True, onProgress);
          end;
       until not FindNextFileW(searchRec.Handle, searchRec.Data);
-      Windows.FindClose(searchRec.Handle);
+      Winapi.Windows.FindClose(searchRec.Handle);
    end;
 end;
 {$else}
@@ -1433,7 +1433,7 @@ begin
             list.Add(fileName);
          end;
       until not FindNextFileW(searchRec.Handle, searchRec.Data);
-      Windows.FindClose(searchRec.Handle);
+      Winapi.Windows.FindClose(searchRec.Handle);
    end;
 end;
 {$else}
@@ -2232,7 +2232,7 @@ end;
 //
 function SetEndOfFile(hFile : THandle) : Boolean;
 begin
-   Result := Windows.SetEndOfFile(hFile);
+   Result := Winapi.Windows.SetEndOfFile(hFile);
 end;
 
 // FileCopy
@@ -2240,7 +2240,7 @@ end;
 function FileCopy(const existing, new : TFileName; failIfExists : Boolean) : Boolean;
 begin
    {$ifdef WINDOWS}
-   Result := Windows.CopyFileW(PWideChar(existing), PWideChar(new), failIfExists);
+   Result := Winapi.Windows.CopyFileW(PWideChar(existing), PWideChar(new), failIfExists);
    {$else}
    try
       IOUtils.TFile.Copy(existing, new, not failIfExists);
@@ -2256,7 +2256,7 @@ end;
 function FileMove(const existing, new : TFileName) : Boolean;
 begin
    {$ifdef WINDOWS}
-   Result := Windows.MoveFileW(PWideChar(existing), PWideChar(new));
+   Result := Winapi.Windows.MoveFileW(PWideChar(existing), PWideChar(new));
    {$else}
    try
       IOUtils.TFile.Move(existing, new);
@@ -2519,7 +2519,7 @@ var
 begin
    len:=255;
    SetLength(Result, len);
-   Windows.GetUserNameW(PWideChar(Result), len);
+   Winapi.Windows.GetUserNameW(PWideChar(Result), len);
    SetLength(Result, len-1);
 end;
 {$else}
@@ -2782,7 +2782,7 @@ class function TPath.GetTempPath : String;
 var
    tempPath : array [0..MAX_PATH] of WideChar; // Buf sizes are MAX_PATH+1
 begin
-   if Windows.GetTempPath(MAX_PATH, @tempPath[0])=0 then begin
+   if Winapi.Windows.GetTempPath(MAX_PATH, @tempPath[0])=0 then begin
       tempPath[1]:='.'; // Current directory
       tempPath[2]:=#0;
    end;
@@ -2800,11 +2800,11 @@ class function TPath.GetTempFileName : String;
 var
    tempPath, tempFileName : array [0..MAX_PATH] of WideChar; // Buf sizes are MAX_PATH+1
 begin
-   if Windows.GetTempPath(MAX_PATH, @tempPath[0])=0 then begin
+   if Winapi.Windows.GetTempPath(MAX_PATH, @tempPath[0])=0 then begin
       tempPath[1]:='.'; // Current directory
       tempPath[2]:=#0;
    end;
-   if Windows.GetTempFileNameW(@tempPath[0], 'DWS', 0, tempFileName)=0 then
+   if Winapi.Windows.GetTempFileNameW(@tempPath[0], 'DWS', 0, tempFileName)=0 then
       RaiseLastOSError; // should never happen
    Result:=tempFileName;
 {$ELSE}
