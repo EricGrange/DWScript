@@ -447,9 +447,14 @@ type
       function AsString : String;
    end;
 
+   TApplicationVersionOption = (
+      avoBitness     // if set, mention 32bit or 64bit after version number
+   );
+   TApplicationVersionOptions = set of TApplicationVersionOption;
+
 function GetModuleVersion(instance : THandle; var version : TModuleVersion) : Boolean;
 function GetApplicationVersion(var version : TModuleVersion) : Boolean;
-function ApplicationVersion : String;
+function ApplicationVersion(const options : TApplicationVersionOptions = [ avoBitness ]) : String;
 
 function Win64AVX2Supported : Boolean;
 
@@ -2642,27 +2647,31 @@ end;
 
 // ApplicationVersion
 //
-function ApplicationVersion : String;
+function ApplicationVersion(const options : TApplicationVersionOptions = [ avoBitness ]) : String;
 var
    version : TModuleVersion;
 begin
    {$ifdef WINDOWS}
       {$ifdef WIN64}
       if GetApplicationVersion(version) then
-         Result := version.AsString + ' 64bit'
-      else Result := '?.?.?.? 64bit';
+         Result := version.AsString
+      else Result := '?.?.?.?';
       {$else}
       if GetApplicationVersion(version) then
-         Result := version.AsString + ' 32bit'
-      else Result := '?.?.?.? 32bit';
+         Result := version.AsString
+      else Result := '?.?.?.?';
       {$endif}
    {$else}
       // No version information available under Linux
-      {$ifdef LINUX64}
-      Result := 'linux build 64bit';
-      {$else}
-      Result := 'linux build 32bit';
-      {$endif}
+      Result := 'linux build';
+   {$endif}
+   {$ifdef CPUX64}
+   if avoBitness in options then
+      Result := Result + ' 64bit';
+   {$endif}
+   {$ifdef CPUX86}
+   if avoBitness in options then
+      Result := Result + ' 32bit';
    {$endif}
 end;
 

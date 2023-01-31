@@ -834,6 +834,8 @@ type
          function SpecializeProgramExpr(const context : ISpecializationContext) : TProgramExpr; override;
          procedure EnumerateSteppableExprs(const callback : TExprBaseProc); override;
 
+         function Taxonomy : TExprBaseTaxonomy; override;
+
          property StatementCount : Integer read FCount;
    end;
 
@@ -1977,7 +1979,7 @@ begin
       Status:=esrNone;
       RunProgramExpr(FProg.FInitExpr);
 
-      if not (FProg.Expr is TBlockExprBase) then
+      if not (FProg.Expr.Taxonomy = ebtBlockExprBase) then
          DoStep(FProg.FExpr);
 
       Result:=True;
@@ -4351,6 +4353,13 @@ var
 begin
    for i := 0 to FCount-1 do
       callback(FStatements[i]);
+end;
+
+// Taxonomy
+//
+function TBlockExprBase.Taxonomy : TExprBaseTaxonomy;
+begin
+   Result := ebtBlockExprBase;
 end;
 
 // SpecializeTable

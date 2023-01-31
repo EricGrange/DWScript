@@ -213,6 +213,11 @@ type
 
    TExprBaseClass = class of TExprBase;
 
+   TExprBaseTaxonomy = (
+      ebtExprBase,
+      ebtBlockExprBase
+   );
+
    TExprBase = class (TRefCountedObject)
       protected
          function GetSubExpr(i : Integer) : TExprBase; virtual;
@@ -252,6 +257,8 @@ type
 
          function ScriptPos : TScriptPos; virtual; abstract;
          function ScriptLocation(prog : TObject) : String; virtual; abstract;
+
+         function Taxonomy : TExprBaseTaxonomy; virtual;
 
          function FuncSymQualifiedName :String; virtual;
          class function CallStackToString(const callStack : TdwsExprLocationArray) : String; static;
@@ -2630,6 +2637,13 @@ var
 begin
    EvalAsVariant(exec, buf);
    dc.AsVariant[offset] := buf;
+end;
+
+// Taxonomy
+//
+function TExprBase.Taxonomy : TExprBaseTaxonomy;
+begin
+   Result := ebtExprBase;
 end;
 
 // ------------------

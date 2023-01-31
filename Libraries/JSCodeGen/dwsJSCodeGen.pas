@@ -3128,7 +3128,7 @@ var
 begin
    for i:=0 to initExpr.SubExprCount-1 do begin
       curExpr:=initExpr.SubExpr[i];
-      if curExpr is TBlockExprBase then begin
+      if curExpr.Taxonomy = ebtBlockExpr then begin
          CollectInitExprLocalVars(TBlockExprBase(curExpr));
       end else if (curExpr is TAssignExpr) or (curExpr is TInitDataExpr) then begin
          subExpr:=curExpr.SubExpr[0];
@@ -3937,7 +3937,7 @@ begin
    blockInit := TBlockExprBase(expr);
    for i := 0 to blockInit.SubExprCount-1 do begin
       initExpr := blockInit.SubExpr[i];
-      if initExpr is TBlockExprBase then begin
+      if initExpr.Taxonomy = ebtBlockExpr then begin
 
          EndVar;
          oldTable := codeGen.LocalTable;
