@@ -7497,7 +7497,9 @@ end;
 
 procedure TWhileExpr.EvalNoResult(exec : TdwsExecution);
 begin
-   while FCondExpr.EvalAsBoolean(exec) do begin
+   repeat
+      exec.DoStep(FCondExpr);
+      if not FCondExpr.EvalAsBoolean(exec) then Break;
       exec.DoStep(FLoopExpr);
       FLoopExpr.EvalNoResult(exec);
       if exec.Status<>esrNone then begin
@@ -7511,7 +7513,7 @@ begin
             esrExit : Exit;
          end;
       end;
-   end;
+   until False;
 end;
 
 // Optimize
