@@ -41,6 +41,7 @@ type
       function GetPixelFormat : TGUID;
       procedure SetPixelFormat(const newFormat : TGUID);
       property PixelFormat : TGUID read GetPixelFormat write SetPixelFormat;
+      function PixelFormatInfo : IWICPixelFormatInfo;
 
       function GetFileName : TFileName;
       procedure SetFileName(const aName : TFileName);
@@ -55,7 +56,7 @@ type
       procedure LoadFromFile(const aFileName : TFileName);
       procedure SaveToFile(const aFileName : TFileName; const aContainerFormat, aPixelFormat : TGUID);
 
-      function CreateBitmap32 : TBitmap;
+      function CreateBitmap32(scale : Single = 1) : TBitmap;
       function CreateConverter(const dstFormat: WICPixelFormatGUID) : IWICFormatConverter;
 
    end;
@@ -82,6 +83,7 @@ type
          function GetSize : TSize;
          function GetPixelFormat : TGUID;
          procedure SetPixelFormat(const newFormat : TGUID);
+         function PixelFormatInfo : IWICPixelFormatInfo;
 
          property FileName : String read FFileName write FFileName;
 
@@ -93,7 +95,8 @@ type
          procedure LoadFromFile(const aFileName : TFileName);
          procedure SaveToFile(const aFileName : TFileName; const aContainerFormat, aPixelFormat : TGUID);
 
-         function CreateBitmap32 : TBitmap;
+         function CreateBitmap32(scale : Single = 1)  : TBitmap;
+
          function CreateConverter(const dstFormat: WICPixelFormatGUID) : IWICFormatConverter;
 
    end;
@@ -209,6 +212,16 @@ begin
    FPixelFormat := newFormat;
 end;
 
+// PixelFormatInfo
+//
+function TdwsWICImage.PixelFormatInfo : IWICPixelFormatInfo;
+var
+   info : IWICComponentInfo;
+begin
+   WicCheck(WICImagingFactory.CreateComponentInfo(FPixelFormat, info), 'CreateComponentInfo');
+   Result := info as IWICPixelFormatInfo;
+end;
+
 // SetFromMemory
 //
 procedure TdwsWICImage.SetFromMemory(
@@ -269,8 +282,6 @@ begin
       WICDecodeMetadataCacheOnDemand, decoder
    ), 'CreateDecoderFromFilename');
 
-   WicCheck(decoder.GetContainerFormat(FPixelFormat), 'GetContainerFormat');
-
    WicCheck(decoder.GetFrame(0, frame), 'GetFrame');
    WicCheck(
       WICImagingFactory.CreateBitmapFromSource(frame, WICBitmapCacheOnDemand, FWICBitmap),
@@ -278,6 +289,7 @@ begin
    );
 
    WicCheck(FWICBitmap.GetSize(Cardinal(FSize.cx), Cardinal(FSize.cy)), 'GetSize');
+   WicCheck(FWICBitmap.GetPixelFormat(FPixelFormat), 'GetPixelFormat');
 end;
 
 // SaveToFile
@@ -316,37 +328,53 @@ end;
 
 // CreateBitmap32
 //
-function TdwsWICImage.CreateBitmap32 : TBitmap;
+function TdwsWICImage.CreateBitmap32(scale : Single = 1) : TBitmap;
 var
    converter : IWICFormatConverter;
    source : IWICBitmapSource;
+   scaler : IWICBitmapScaler;
+   interpolationMode : Integer;
 begin
    Result := TBitmap.Create;
-   Result.PixelFormat := pf32bit;
-   Result.SetSize(FSize.Width, FSize.Height);
+   try
+      Result.PixelFormat := pf32bit;
+      Result.SetSize(Round(FSize.Width * scale), Round(FSize.Height * scale));
 
-   if Empty then Exit;
+      if Empty then Exit;
 
-   if FPixelFormat = GUID_WICPixelFormat32bppBGRA then begin
-      source := FWICBitmap;
-   end else begin
-      WicCheck(WICImagingFactory.CreateFormatConverter(converter), 'CreateFormatConverter');
-      WicCheck(converter.Initialize(FWICBitmap, GUID_WICPixelFormat32bppBGRA, WICBitmapDitherTypeNone, nil, 0, WICBitmapPaletteTypeMedianCut), 'Initialize');
-      source := converter;
-   end;
-
-   if FSize.Height = 1 then
-      WicCheck(source.CopyPixels(nil, FSize.Width*4, FSize.Width*4, Result.ScanLine[0]), 'CopyPixels single line')
-   else begin
-      var stride := IntPtr(Result.ScanLine[1]) - IntPtr(Result.ScanLine[0]);
-      var p : Pointer;
-      if stride < 0 then begin
-         stride := -stride;
-         p := Result.ScanLine[Result.Height-1];
+      if FPixelFormat = GUID_WICPixelFormat32bppBGRA then begin
+         source := FWICBitmap;
       end else begin
-         p := Result.ScanLine[0];
+         WicCheck(WICImagingFactory.CreateFormatConverter(converter), 'CreateFormatConverter');
+         WicCheck(converter.Initialize(FWICBitmap, GUID_WICPixelFormat32bppBGRA, WICBitmapDitherTypeNone, nil, 0, WICBitmapPaletteTypeMedianCut), 'Initialize Converter');
+         source := converter;
       end;
-      WicCheck(source.CopyPixels(nil, stride, stride*FSize.Height, p), 'CopyPixels');
+
+      if scale <> 1 then begin
+         if scale < 0.8 then
+            interpolationMode := WICBitmapInterpolationModeFant
+         else interpolationMode := WICBitmapInterpolationModeCubic;
+         WicCheck(WICImagingFactory.CreateBitmapScaler(scaler), 'CreateBitmapScaler');
+         WicCheck(scaler.Initialize(source, Result.Width, Result.Height, interpolationMode), 'Initialize Scaler');
+         source := scaler as IWICBitmapSource;
+      end;
+
+      if FSize.Height = 1 then
+         WicCheck(source.CopyPixels(nil, FSize.Width*4, FSize.Width*4, Result.ScanLine[0]), 'CopyPixels single line')
+      else begin
+         var stride := IntPtr(Result.ScanLine[1]) - IntPtr(Result.ScanLine[0]);
+         var p : Pointer;
+         if stride < 0 then begin
+            stride := -stride;
+            p := Result.ScanLine[Result.Height-1];
+         end else begin
+            p := Result.ScanLine[0];
+         end;
+         WicCheck(source.CopyPixels(nil, stride, stride*FSize.Height, p), 'CopyPixels');
+      end;
+   except
+      Result.Free;
+      raise;
    end;
 end;
 
