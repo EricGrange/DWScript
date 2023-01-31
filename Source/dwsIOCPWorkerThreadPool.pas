@@ -128,7 +128,7 @@ type
       tsScheduled,
       tsRunning,
       tsCompleted,
-      tsAborted
+      tsCanceled
    );
 
    TIOCPTask = class;
@@ -141,7 +141,7 @@ type
 
       procedure DependsFrom(const aTask : IWorkerTask);
 
-      procedure Abort;
+      procedure Cancel;
       procedure Schedule(const aPool : IWorkerThreadPool);
       procedure WaitFor(timeOutMSec : Cardinal = INFINITE);
    end;
@@ -155,6 +155,7 @@ type
          FLock : TMultiReadSingleWrite;
          FPool : IWorkerThreadPool;
          FWaitEvent : THandle;
+         FExceptionMessage : String;
 
       protected
          procedure Run;
@@ -173,13 +174,14 @@ type
          procedure DependsFrom(const aTask : IWorkerTask);
 
          procedure Schedule(const aPool : IWorkerThreadPool);
-         procedure Abort;
+         procedure Cancel;
          procedure WaitFor(timeOutMSec : Cardinal = INFINITE);
 
          procedure Execute; virtual;
 
          function Name : String; inline;
          function Status : TIOCPTaskStatus; inline;
+         function ExceptionMessage : String;
    end;
 
    TWorkerTaskProc<TParam> = reference to procedure (const aTask : IWorkerTask; const aParam : TParam);
@@ -731,6 +733,13 @@ begin
    Result := FStatus;
 end;
 
+// ExceptionMessage
+//
+function TIOCPTask.ExceptionMessage : String;
+begin
+   Result := FExceptionMessage;
+end;
+
 // ClearDependsFrom
 //
 procedure TIOCPTask.ClearDependsFrom;
@@ -839,7 +848,7 @@ begin
       FLock.BeginRead;
       try
          for var i := 0 to High(FDependsFrom) do begin
-            if FDependsFrom[i].Status in [ tsUnscheduled, tsAborted ] then begin
+            if FDependsFrom[i].Status in [ tsUnscheduled, tsCanceled ] then begin
                dep := FDependsFrom[i];
                Break;
             end;
@@ -850,8 +859,8 @@ begin
       if dep <> nil then case dep.Status of
          tsUnscheduled :
             dep.Schedule(aPool);
-         tsAborted : begin
-            Abort;
+         tsCanceled : begin
+            Cancel;
             Exit;
          end;
       end;
@@ -867,7 +876,7 @@ begin
             tsScheduled, tsRunning :
                Inc(unmetDependsFrom);
             tsCompleted : ;
-            tsAborted : begin
+            tsCanceled : begin
                unmetDependsFrom := -1;
                Break;
             end;
@@ -893,16 +902,16 @@ begin
          else aPool.QueueWork(procedure begin Run end)
       end;
    end else if unmetDependsFrom = -1 then
-      Abort;
+      Cancel;
 end;
 
-// Abort
+// Cancel
 //
-procedure TIOCPTask.Abort;
+procedure TIOCPTask.Cancel;
 var
    tmp : TArray<IWorkerTask>;
 begin
-   if Status = tsAborted then Exit;
+   if Status = tsCanceled then Exit;
    FLock.BeginRead;
    try
       tmp := Copy(FDependsTo, 0);
@@ -912,14 +921,14 @@ begin
       FLock.BeginRead;
    end;
    for var i := 0 to High(tmp) do
-      tmp[i].Abort;
+      tmp[i].Cancel;
 end;
 
 // WaitFor
 //
 procedure TIOCPTask.WaitFor(timeOutMSec : Cardinal = INFINITE);
 begin
-   if Status in [ tsCompleted, tsAborted ] then Exit;
+   if Status in [ tsCompleted, tsCanceled ] then Exit;
    if FWaitEvent = 0 then begin
       FLock.BeginWrite;
       try
@@ -942,6 +951,12 @@ end;
 // Run
 //
 procedure TIOCPTask.Run;
+
+   procedure RecordException(E: Exception);
+   begin
+      FExceptionMessage := E.ClassName + ': ' + E.Message;
+   end;
+
 var
    tmp : TArray<IWorkerTask>;
 begin
@@ -961,7 +976,10 @@ begin
       for var i := 0 to High(tmp) do
          tmp[i].Schedule(FPool);
    except
-      Abort;
+      on E: Exception do begin
+         RecordException(E);
+         Cancel;
+      end;
    end;
 end;
 
