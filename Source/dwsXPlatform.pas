@@ -456,6 +456,7 @@ function GetModuleVersion(instance : THandle; var version : TModuleVersion) : Bo
 function GetApplicationVersion(var version : TModuleVersion) : Boolean;
 function ApplicationVersion(const options : TApplicationVersionOptions = [ avoBitness ]) : String;
 
+function Win64SSE41Supported : Boolean;
 function Win64AVX2Supported : Boolean;
 
 // ------------------------------------------------------------------
@@ -2674,6 +2675,37 @@ begin
       Result := Result + ' 32bit';
    {$endif}
 end;
+
+// Win64SSE41Supported
+//
+{$if Defined(WIN64_ASM)}
+function TestSSE41Supported : Boolean;
+asm
+   mov r10, rbx
+   mov eax, 1
+   cpuid
+   shr ecx, 19
+   and ecx, 1
+   mov eax, ecx
+   mov rbx, r10
+end;
+var
+   vWinSSE41Supported : ShortInt = 0;
+function Win64SSE41Supported : Boolean;
+begin
+   if vWinSSE41Supported = 0 then begin
+      if TestSSE41Supported then
+         vWinSSE41Supported := 1
+      else vWinSSE41Supported := -1;
+   end;
+   Result := (vWinSSE41Supported = 1);
+end;
+{$else}
+function Win64SSE41Supported : Boolean;
+begin
+   Result := False;
+end;
+{$endif}
 
 // Win64AVX2Supported
 //
