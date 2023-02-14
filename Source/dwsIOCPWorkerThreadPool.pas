@@ -840,8 +840,17 @@ var
 begin
    if not (Status in [ tsScheduled, tsUnscheduled]) then Exit;
 
-   FStatus := tsScheduled;
-   FPool := aPool;
+   FLock.BeginWrite;
+   try
+      if not (Status in [ tsScheduled, tsUnscheduled]) then Exit;
+
+      if FStatus = tsUnscheduled then begin
+         FStatus := tsScheduled;
+         FPool := aPool;
+      end;
+   finally
+      FLock.EndWrite;
+   end;
 
    repeat
       dep := nil;
@@ -872,7 +881,7 @@ begin
       for var i := 0 to High(FDependsFrom) do begin
          dep := FDependsFrom[i];
          case dep.Status of
-            tsUnscheduled : Assert(False);
+            tsUnscheduled : Assert(False, dep.Name);
             tsScheduled, tsRunning :
                Inc(unmetDependsFrom);
             tsCompleted : ;
@@ -889,17 +898,21 @@ begin
    end;
 
    if unmetDependsFrom = 0 then begin
+      var shouldRun := False;
       FLock.BeginWrite;
       try
-         if Status = tsScheduled then
+         if Status = tsScheduled then begin
             FStatus := tsRunning;
+            shouldRun := True;
+         end;
       finally
          FLock.EndWrite;
       end;
-      if FStatus = tsRunning then begin
-         if aPool = nil then
+      if shouldRun then begin
+         OutputDebugString(Name);
+         if FPool = nil then
             Run
-         else aPool.QueueWork(procedure begin Run end)
+         else FPool.QueueWork(procedure begin Run end)
       end;
    end else if unmetDependsFrom = -1 then
       Cancel;
@@ -918,7 +931,7 @@ begin
       if FWaitEvent <> 0 then
          SetEvent(FWaitEvent);
    finally
-      FLock.BeginRead;
+      FLock.EndRead;
    end;
    for var i := 0 to High(tmp) do
       tmp[i].Cancel;
