@@ -914,6 +914,7 @@ type
       function FindName(const name : String; var index : Integer) : Boolean;
       function IndexOfName(const name : String): Integer; override;
       {$endif}
+      procedure Reverse;
    end;
 
    TClassCloneConstructor<T: class, constructor> = record
@@ -4247,6 +4248,21 @@ begin
    end;
 end;
 {$endif}
+
+// Reverse
+//
+procedure TFastCompareTextList.Reverse;
+var
+   i, j : Integer;
+begin
+   i := 0;
+   j := Count-1;
+   while i < j do begin
+      Exchange(i, j);
+      Inc(i);
+      Dec(j);
+   end;
+end;
 
 // ------------------
 // ------------------ TVarRecArrayContainer ------------------
