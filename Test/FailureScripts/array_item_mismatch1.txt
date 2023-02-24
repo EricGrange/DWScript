@@ -1,0 +1,1 @@
+Syntax Error: Incompatible types: Cannot assign "array [0..6] of Integer" to "array [0..19] of Integer" [line: 3, column: 12]

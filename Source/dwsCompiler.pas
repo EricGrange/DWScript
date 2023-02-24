@@ -5770,8 +5770,13 @@ begin
                   if not baseType.Typ.IsCompatible(valueExpr.Typ) then begin
                      IncompatibleTypes(hotPos, CPE_AssignIncompatibleTypes,
                                        valueExpr.Typ, baseType.Typ);
+                     OrphanAndNil(valueExpr);
+                     OrphanAndNil(indexExpr);
+                     OrphanAndNil(baseExpr);
+                     Result := TNullExpr.Create(FTok.HotPos);
+                  end else begin
+                     Result := CreateDynamicArraySetExpr(FCompilerContext, FTok.HotPos, baseExpr, indexExpr, valueExpr);
                   end;
-                  Result := CreateDynamicArraySetExpr(FCompilerContext, FTok.HotPos, baseExpr, indexExpr, valueExpr);
                   indexExpr := nil;
                end else begin
                   Result := CreateDynamicArrayExpr(FTok.HotPos, baseExpr, indexExpr);
