@@ -226,7 +226,7 @@ begin
    for reg := gprRAX to gprR15 do begin
       for xmm := xmm0 to xmm15 do begin
          FStream._cvtsi2sd(xmm, reg);
-         FStream._xmm_reg_dword_ptr_reg(xmm_cvtsi2sd, xmm, reg, $12);
+         FStream._xmm_reg_qword_ptr_reg(xmm_cvtsi2sd, xmm, reg, $12);
          FStream._cvtsd2si(reg, xmm);
          FStream._cvttsd2si(reg, xmm);
          CheckEquals( 'cvtsi2sd xmm' + IntToStr(Ord(xmm)) + ', ' + cgpRegister64Name[reg] + #13#10

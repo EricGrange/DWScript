@@ -70,6 +70,36 @@ type
       xmm_movpd      = $10
    );
 
+   TxmmOp_ss = (
+      xmm_cvtsi2ss   = $2A,
+      xmm_cvttsi2ss  = $2B,
+      xmm_sqrtss     = $51,
+      xmm_addss      = $58,
+      xmm_multss     = $59,
+      xmm_subss      = $5C,
+      xmm_minss      = $5D,
+      xmm_divss      = $5E,
+      xmm_maxss      = $5F,
+
+      xmm_movss      = $10
+   );
+
+   TxmmOp_ps = (
+      xmm_sqrtps     = $51,
+      xmm_andps      = $54,
+      xmm_andnps     = $55,
+      xmm_orps       = $56,
+      xmm_xorps      = $57,
+      xmm_addps      = $58,
+      xmm_mulps      = $59,
+      xmm_subps      = $5C,
+      xmm_minps      = $5D,
+      xmm_divps      = $5E,
+      xmm_maxps      = $5F,
+
+      xmm_movps      = $10
+   );
+
    TgpRegister = (
       gprEAX = 0, gprECX = 1, gprEDX = 2, gprEBX = 3,
       gprESP = 4, gprEBP = 5, gprESI = 6, gprEDI = 7
@@ -180,7 +210,8 @@ type
          procedure _movshdup(dest, src : TxmmRegister);
          procedure _movhlps(dest, src : TxmmRegister);
 
-         procedure _xmm_reg_reg(op : TxmmOp; dest, src : TxmmRegister);
+         procedure _xmm_reg_reg(op : TxmmOp; dest, src : TxmmRegister); overload;
+         procedure _xmm_reg_reg(op : TxmmOp_ss; dest, src : TxmmRegister); overload;
    end;
 
    {$ifdef WIN32}
@@ -494,12 +525,13 @@ type
          procedure _movaps_reg_ptr_reg(dest : TxmmRegister; src : TgpRegister64; offset : Integer);
          procedure _movups_reg_ptr_reg(dest : TxmmRegister; src : TgpRegister64; offset : Integer);
 
-         procedure _xmm_reg_dword_ptr_reg(op : TxmmOp; reg : TxmmRegister; src : TgpRegister64; offset : Integer);
          procedure _xmm_reg_qword_ptr_reg(op : TxmmOp; reg : TxmmRegister; src : TgpRegister64; offset : Integer);
+         procedure _xmm_reg_dword_ptr_reg(op : TxmmOp_ss; reg : TxmmRegister; src : TgpRegister64; offset : Integer);
          procedure _xmm_reg_execmem(op : TxmmOp; reg : TxmmRegister; stackAddr : Integer);
          procedure _xmm_reg_absmem(op : TxmmOp; reg : TxmmRegister; ptr : Pointer);
 
          procedure _xmm_pd_reg_reg(op : TxmmOp_pd; dest, src : TxmmRegister);
+         procedure _xmm_ps_reg_reg(op : TxmmOp_ps; dest, src : TxmmRegister);
 
          procedure _comisd_reg_reg(dest, src : TxmmRegister);
          procedure _comisd_reg_execmem(reg : TxmmRegister; stackAddr : Integer);
@@ -959,6 +991,14 @@ end;
 procedure Tx86BaseWriteOnlyStream._xmm_reg_reg(op : TxmmOp; dest, src : TxmmRegister);
 begin
    WriteByte($F2);
+   _modRMSIB_reg_reg([$0F, Ord(op)], dest, src);
+end;
+
+// _xmm_reg_reg
+//
+procedure Tx86BaseWriteOnlyStream._xmm_reg_reg(op : TxmmOp_ss; dest, src : TxmmRegister);
+begin
+   WriteByte($F3);
    _modRMSIB_reg_reg([$0F, Ord(op)], dest, src);
 end;
 
@@ -3224,9 +3264,9 @@ begin
    _modRMSIB_regnum_ptr_reg([], [$0F, $10], Ord(dest) and 7, src, offset);
 end;
 
-// _xmm_reg_dword_ptr_reg
+// _xmm_reg_qword_ptr_reg
 //
-procedure Tx86_64_WriteOnlyStream._xmm_reg_dword_ptr_reg(op : TxmmOp; reg : TxmmRegister; src : TgpRegister64; offset : Integer);
+procedure Tx86_64_WriteOnlyStream._xmm_reg_qword_ptr_reg(op : TxmmOp; reg : TxmmRegister; src : TgpRegister64; offset : Integer);
 begin
    Assert(reg in [xmm0..High(TxmmRegister)]);
 
@@ -3236,25 +3276,23 @@ begin
                                  Ord(reg), src, offset);
 end;
 
-// _xmm_reg_qword_ptr_reg
+// _xmm_reg_dword_ptr_reg
 //
-procedure Tx86_64_WriteOnlyStream._xmm_reg_qword_ptr_reg(op : TxmmOp; reg : TxmmRegister; src : TgpRegister64; offset : Integer);
+procedure Tx86_64_WriteOnlyStream._xmm_reg_dword_ptr_reg(op : TxmmOp_ss; reg : TxmmRegister; src : TgpRegister64; offset : Integer);
 begin
    Assert(reg in [xmm0..High(TxmmRegister)]);
 
-   WriteBytes([
-      $F2,
-      $48 + Ord(src >= gprR8) + 4 * Ord(reg >= xmm8),
-      $0F, Ord(op)
-   ]);
-   _modRMSIB_ptr_reg8(8*(Ord(reg) and 7), Ord(src) and 7, offset);
+   if (reg < xmm8) and (src < gprR8) then
+      _modRMSIB_regnum_ptr_reg([$F3], [$0F, Ord(op)], Ord(reg), src, offset)
+   else _modRMSIB_regnum_ptr_reg([$F3], [$0F, Ord(op)],
+                                 Ord(reg), src, offset);
 end;
 
 // _xmm_reg_execmem
 //
 procedure Tx86_64_WriteOnlyStream._xmm_reg_execmem(op : TxmmOp; reg : TxmmRegister; stackAddr : Integer);
 begin
-   _xmm_reg_dword_ptr_reg(op, reg, cExecMemGPR, StackAddrToOffset(stackAddr));
+   _xmm_reg_qword_ptr_reg(op, reg, cExecMemGPR, StackAddrToOffset(stackAddr));
 end;
 
 // _xmm_reg_absmem
@@ -3262,7 +3300,7 @@ end;
 procedure Tx86_64_WriteOnlyStream._xmm_reg_absmem(op : TxmmOp; reg : TxmmRegister; ptr : Pointer);
 begin
    _mov_reg_qword(gprRAX, QWORD(ptr));
-   _xmm_reg_dword_ptr_reg(op, reg, gprRAX, 0);
+   _xmm_reg_qword_ptr_reg(op, reg, gprRAX, 0);
 end;
 
 // _xmm_pd_reg_reg
@@ -3270,6 +3308,13 @@ end;
 procedure Tx86_64_WriteOnlyStream._xmm_pd_reg_reg(op : TxmmOp_pd; dest, src : TxmmRegister);
 begin
    WriteByte($66);
+   _modRMSIB_reg_reg([$0F, Ord(op)], dest, src);
+end;
+
+// _xmm_ps_reg_reg
+//
+procedure Tx86_64_WriteOnlyStream._xmm_ps_reg_reg(op : TxmmOp_ps; dest, src : TxmmRegister);
+begin
    _modRMSIB_reg_reg([$0F, Ord(op)], dest, src);
 end;
 
