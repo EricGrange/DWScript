@@ -373,6 +373,7 @@ function FileMove(const existing, new : TFileName) : Boolean;
 function FileDelete(const fileName : TFileName) : Boolean;
 function FileRename(const oldName, newName : TFileName) : Boolean;
 function FileSize(const name : TFileName) : Int64;
+function FileCreationTime(const name : TFileName) : TdwsDateTime; overload;
 function FileDateTime(const name : TFileName; lastAccess : Boolean = False) : TdwsDateTime; overload;
 function FileDateTime(hFile : THandle; lastAccess : Boolean = False) : TdwsDateTime; overload;
 procedure FileSetDateTime(hFile : THandle; const aDateTime : TdwsDateTime);
@@ -2309,6 +2310,25 @@ begin
    finally
       SysUtils.FindClose(searchRec);
    end;
+end;
+{$endif}
+
+// FileCreationTime
+//
+function FileCreationTime(const name : TFileName) : TdwsDateTime; overload;
+{$ifdef WINDOWS}
+var
+   info : TWin32FileAttributeData;
+   buf : TdwsDateTime;
+begin
+   if GetFileAttributesExW(PWideChar(Pointer(name)), GetFileExInfoStandard, @info) then begin
+      buf.AsFileTime := info.ftCreationTime;
+   end else buf.Clear;
+   Result := buf;
+end;
+{$else}
+begin
+   Result.AsLocalDateTime := FileDateTime(name);
 end;
 {$endif}
 
