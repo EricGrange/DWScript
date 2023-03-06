@@ -909,7 +909,6 @@ begin
          FLock.EndWrite;
       end;
       if shouldRun then begin
-         OutputDebugString(Name);
          if FPool = nil then
             Run
          else FPool.QueueWork(procedure begin Run end)
@@ -988,6 +987,8 @@ begin
       end;
       for var i := 0 to High(tmp) do
          tmp[i].Schedule(FPool);
+      ClearDependsFrom;
+      ClearDependsTo;
    except
       on E: Exception do begin
          RecordException(E);
