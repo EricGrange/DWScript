@@ -176,6 +176,10 @@ type
       procedure DoEvalAsFloat(const args : TExprBaseListExec; var Result : Double); override;
    end;
 
+   TFileCreationDateTimeFunc = class(TInternalMagicFloatFunction)
+      procedure DoEvalAsFloat(const args : TExprBaseListExec; var Result : Double); override;
+   end;
+
    TFileSetDateTimeFileProc = class(TInternalMagicProcedure)
       procedure DoEvalProc(const args : TExprBaseListExec); override;
    end;
@@ -814,6 +818,17 @@ begin
 end;
 
 // ------------------
+// ------------------ TFileCreationDateTimeFunc ------------------
+// ------------------
+
+// DoEvalAsFloat
+//
+procedure TFileCreationDateTimeFunc.DoEvalAsFloat(const args : TExprBaseListExec; var Result : Double);
+begin
+   Result := FileCreationTime(args.AsFileName[0]).AsLocalDateTime;
+end;
+
+// ------------------
 // ------------------ TFileSetDateTimeFileProc ------------------
 // ------------------
 
@@ -1086,6 +1101,7 @@ initialization
    RegisterInternalFloatFunction(TFileDateTimeFileFunc, 'FileDateTime', ['f', SYS_FILE], [iffOverloaded], 'DateTime');
    RegisterInternalFloatFunction(TFileDateTimeNameFunc, 'FileDateTime', ['name', SYS_STRING], [iffOverloaded]);
    RegisterInternalFloatFunction(TFileAccessDateTimeFunc, 'FileAccessDateTime', ['name', SYS_STRING], []);
+   RegisterInternalFloatFunction(TFileCreationDateTimeFunc, 'FileCreationDateTime', ['name', SYS_STRING], []);
    RegisterInternalProcedure(TFileSetDateTimeFileProc, 'FileSetDateTime', ['f', SYS_FILE, 'dt', SYS_FLOAT], 'SetDateTime', [iffOverloaded]);
    RegisterInternalProcedure(TFileSetDateTimeNameProc, 'FileSetDateTime', ['name', SYS_STRING, 'dt', SYS_FLOAT], '', [iffOverloaded]);
 
