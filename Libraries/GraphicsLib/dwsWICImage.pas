@@ -596,8 +596,8 @@ begin
    Result := TBitmap.Create;
    try
       Result.PixelFormat := pf32bit;
-      Result.SetSize(Round(FSize.Width * scale), Round(FSize.Height * scale));
       Result.AlphaFormat := afDefined;
+      Result.SetSize(Round(FSize.Width * scale), Round(FSize.Height * scale));
 
       if Empty then Exit;
 
@@ -612,7 +612,7 @@ begin
       if scale <> 1 then begin
          if scale < 0.8 then
             interpolationMode := WICBitmapInterpolationModeFant
-         else interpolationMode := WICBitmapInterpolationModeCubic;
+         else interpolationMode := WICBitmapInterpolationModeHighQualityCubic;
          WicCheck(WICImagingFactory.CreateBitmapScaler(scaler), 'CreateBitmapScaler');
          WicCheck(scaler.Initialize(source, Result.Width, Result.Height, interpolationMode), 'Initialize Scaler');
          source := scaler as IWICBitmapSource;
