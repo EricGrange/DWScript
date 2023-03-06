@@ -89,6 +89,9 @@ type
          function ContentData : RawByteString; override;
          function ContentType : RawByteString; override;
 
+         function URLBeginsWith(const aBegin : String) : Boolean; override;
+         function URLEquals(const anURL : String) : Boolean; override;
+
          property InContent : RawByteString read FInContent write FInContent;
          property InContentType : RawByteString read FInContentType write FInContentType;
          property Authentication : TWebRequestAuthentication read GetAuthentication;
@@ -482,6 +485,20 @@ end;
 function THttpSysWebRequest.ContentType : RawByteString;
 begin
    Result:=InContentType;
+end;
+
+// URLBeginsWith
+//
+function THttpSysWebRequest.URLBeginsWith(const aBegin : String) : Boolean;
+begin
+   Result := StrBeginsWith(FURL, aBegin);
+end;
+
+// URLEquals
+//
+function THttpSysWebRequest.URLEquals(const anURL : String) : Boolean;
+begin
+   Result := (FURL = anURL);
 end;
 
 end.

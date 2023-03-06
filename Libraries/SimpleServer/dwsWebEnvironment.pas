@@ -126,6 +126,9 @@ type
          function HasQueryField(const name : String) : Boolean;
          function HasContentField(const name : String) : Boolean;
 
+         function URLBeginsWith(const aBegin : String) : Boolean; virtual;
+         function URLEquals(const anURL : String) : Boolean; virtual;
+
          function IfModifiedSince : TdwsDateTime;
          function IfNoneMatch : String;
 
@@ -567,6 +570,20 @@ end;
 function TWebRequest.HasContentField(const name : String) : Boolean;
 begin
    Result:=WebUtils.HasFieldName(ContentFields, name);
+end;
+
+// URLBeginsWith
+//
+function TWebRequest.URLBeginsWith(const aBegin : String) : Boolean;
+begin
+   Result := StrBeginsWith(URL, aBegin);
+end;
+
+// URLEquals
+//
+function TWebRequest.URLEquals(const anURL : String) : Boolean;
+begin
+   Result := (URL = anURL);
 end;
 
 // IfModifiedSince
