@@ -315,6 +315,11 @@ begin
             TArrayConstantExpr(typedExpr), TDynamicArraySymbol(toTyp.UnAliasedType)
          );
          TObject(expr) := typedExpr;
+      end else if (toTyp.UnAliasedType = TypFloat) and (typedExpr.Typ.UnAliasedType = TypInteger) then begin
+         Result := True;
+         typedExpr := TConvIntToFloatExpr.Create(Self, scriptPos, typedExpr);
+         typedExpr.Typ := toTyp;
+         TObject(expr) := typedExpr;
       end;
    end;
 end;

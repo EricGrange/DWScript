@@ -1161,6 +1161,9 @@ type
       private
          FBaseExpr : TTypedExpr;
 
+      protected
+         procedure TransferArguments(context : TdwsCompilerContext; dest : TFuncExprBase);
+
       public
          constructor Create(context : TdwsCompilerContext; const aScriptPos : TScriptPos; aFunc: TFuncSymbol;
                             aBaseExpr: TTypedExpr);
@@ -7592,20 +7595,43 @@ begin
       Self.FBaseExpr := nil;
       if Args.Count > 0 then begin
          Result.Args.Clean;
-         Result.Args.Assign(Args);
-         Self.FArgs.Clear;
+         TransferArguments(context, Result);
       end;
       Self.Free;
 
    end else begin
 
       Result := CreateSimpleFuncExpr(context, ScriptPos, newFuncSym);
-      Result.Args.Assign(Args);
-      Args.Clear;
+      TransferArguments(context, Result);
       TFuncExprBase(Result).ResultAddr := FResultAddr;
       Self.Free;
 
    end;
+
+   if (newFuncSym.Typ<>nil) and (newFuncSym.Typ.Size>1) and Result.InheritsFrom(TFuncExpr) then
+      TFuncExpr(Result).InitializeResultAddr(context.Prog as TdwsProgram);
+end;
+
+// TransferArguments
+//
+procedure TOverloadedExpr.TransferArguments(context : TdwsCompilerContext; dest : TFuncExprBase);
+begin
+   var destParams := dest.FuncSym.Params;
+   Assert(destParams.Count >= Args.Count);
+   var i := 0;
+   while i < Args.Count do begin
+      var arg := TTypedExpr(Args.ExprBase[i]);
+      var destType := destParams[i].Typ;
+      if not destType.IsCompatible(arg.Typ) then begin
+         arg := CompilerUtils.WrapWithImplicitConversion(
+            context, arg, destType, arg.ScriptPos,
+            CPE_IncompatibleParameterTypes
+         );
+      end;
+      dest.AddArg(arg);
+      Inc(i);
+   end;
+   Args.Clear;
 end;
 
 // ------------------
