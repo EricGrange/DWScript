@@ -83,6 +83,7 @@ type
       );
 
       function CreateBitmap32(scale : Single = 1) : TBitmap;
+      function CreateGray16(w, h : Integer) : TArray<Word>;
       function CreateConverter(const dstFormat: WICPixelFormatGUID) : IWICFormatConverter;
 
    end;
@@ -139,6 +140,7 @@ type
          );
 
          function CreateBitmap32(scale : Single = 1)  : TBitmap;
+         function CreateGray16(w, h : Integer) : TArray<Word>;
 
          function CreateConverter(const dstFormat: WICPixelFormatGUID) : IWICFormatConverter;
 
@@ -635,6 +637,37 @@ begin
       Result.Free;
       raise;
    end;
+end;
+
+// CreateGray16
+//
+function TdwsWICImage.CreateGray16(w, h : Integer) : TArray<Word>;
+var
+   converter : IWICFormatConverter;
+   source : IWICBitmapSource;
+   scaler : IWICBitmapScaler;
+   interpolationMode : Integer;
+begin
+   if w * h <= 0 then Exit;
+
+   SetLength(Result, w * h);
+
+   WicCheck(WICImagingFactory.CreateFormatConverter(converter), 'CreateFormatConverter');
+   WicCheck(converter.Initialize(FWICBitmap, GUID_WICPixelFormat16bppGray, WICBitmapDitherTypeNone, nil, 0, WICBitmapPaletteTypeMedianCut), 'Initialize Converter');
+   source := converter;
+
+   if (w <> FSize.cx) or (h <> FSize.cy) then begin
+      interpolationMode := WICBitmapInterpolationModeHighQualityCubic;
+      WicCheck(WICImagingFactory.CreateBitmapScaler(scaler), 'CreateBitmapScaler');
+      WicCheck(scaler.Initialize(source, w, h, interpolationMode), 'Initialize Scaler');
+      source := scaler as IWICBitmapSource;
+   end;
+
+   var rect := Default(WICRect);
+   rect.Width := w;
+   rect.Height := h;
+   var stride := w*2;
+   WicCheck(source.CopyPixels(@rect, stride, stride*h, Pointer(Result)), 'CopyPixels');
 end;
 
 // CreateConverter
