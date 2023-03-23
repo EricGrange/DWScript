@@ -76,6 +76,7 @@ type
       xmm_sqrtss     = $51,
       xmm_addss      = $58,
       xmm_multss     = $59,
+      xmm_mulss      = $59,
       xmm_subss      = $5C,
       xmm_minss      = $5D,
       xmm_divss      = $5E,
@@ -513,6 +514,7 @@ type
 
          procedure _movsx_reg_al(dest : TgpRegister64);
 
+         procedure _cvtsi2ss(dest : TxmmRegister; src : TgpRegister64);
          procedure _cvtsi2sd(dest : TxmmRegister; src : TgpRegister64);
          procedure _cvtsd2si(dest : TgpRegister64; src : TxmmRegister);
          procedure _cvttsd2si(dest : TgpRegister64; src : TxmmRegister);
@@ -542,6 +544,8 @@ type
 
          procedure _mulps_reg_ptr_reg(dest : TxmmRegister; src : TgpRegister64; offset : Integer);
          procedure _mulss_reg_ptr_reg(dest : TxmmRegister; src : TgpRegister64; offset : Integer);
+
+         procedure _shufps(dest, src : TxmmRegister; imm8 : Byte);
 
          procedure _v_op_ps(op : TxmmOp_ps; dest, src1, src2 : TymmRegister); overload;
          procedure _v_op_pd(op : TxmmOp_pd; dest, src1, src2 : TymmRegister); overload;
@@ -3186,6 +3190,16 @@ begin
    ]);
 end;
 
+// _cvtsi2ss
+//
+procedure Tx86_64_WriteOnlyStream._cvtsi2ss(dest : TxmmRegister; src : TgpRegister64);
+begin
+   WriteBytes([
+      $F3, $48 + Ord(src >= gprR8) + 4*Ord(dest >= xmm8),
+      $0F, $2A, $c0 + (Ord(src) and 7) + 8*(Ord(dest) and 7)
+   ]);
+end;
+
 // _cvtsi2sd
 //
 procedure Tx86_64_WriteOnlyStream._cvtsi2sd(dest : TxmmRegister; src : TgpRegister64);
@@ -3382,6 +3396,14 @@ end;
 procedure Tx86_64_WriteOnlyStream._mulss_reg_ptr_reg(dest : TxmmRegister; src : TgpRegister64; offset : Integer);
 begin
    _modRMSIB_regnum_ptr_reg([], [$F3, $0F, $59], Ord(dest), src, offset);
+end;
+
+// _shufps
+//
+procedure Tx86_64_WriteOnlyStream._shufps(dest, src : TxmmRegister; imm8 : Byte);
+begin
+   _modRMSIB_reg_reg([$0F, $C6], dest, src);
+   WriteByte(imm8);
 end;
 
 // _vmovaps_ptr_reg
