@@ -164,8 +164,10 @@ type
          procedure ClearDependsFrom;
          procedure ClearDependsTo;
 
-         procedure ThreadSafeRemove(var aArray : TArray<IWorkerTask>; const aTask : TIOCPTask);
-         procedure ThreadSafeClear(var aArray : TArray<IWorkerTask>);
+         procedure ThreadSafeRemoveDependsFrom(const aTask : IWorkerTask);
+         procedure ThreadSafeRemoveDependsTo(const aTask : IWorkerTask);
+
+         class function GetRunWorkUnit(task : IWorkerTask) : TAnonymousWorkUnit; static;
 
       public
          constructor Create(const aName : String = '');
@@ -707,7 +709,7 @@ begin
    inherited;
    ClearDependsFrom;
    ClearDependsTo;
-   FLock.Free;
+   FreeAndNil(FLock);
    if FWaitEvent <> 0 then
       CloseHandle(FWaitEvent);
 end;
@@ -746,16 +748,16 @@ procedure TIOCPTask.ClearDependsFrom;
 var
    tmp : TArray<IWorkerTask>;
 begin
+   tmp := nil;
    FLock.BeginWrite;
    try
-      tmp := Copy(FDependsFrom, 0);
-      SetLength(FDependsFrom, 0);
+      Pointer(tmp) := InterlockedExchangePointer(Pointer(FDependsFrom), Pointer(tmp));
    finally
       FLock.EndWrite;
    end;
    for var i := 0 to High(tmp) do begin
       var fromTask := tmp[i].GetSelf;
-      fromTask.ThreadSafeRemove(fromTask.FDependsTo, Self);
+      fromTask.ThreadSafeRemoveDependsTo(Self);
       tmp[i] := nil;
    end;
 end;
@@ -766,46 +768,55 @@ procedure TIOCPTask.ClearDependsTo;
 var
    tmp : TArray<IWorkerTask>;
 begin
+   tmp := nil;
    FLock.BeginWrite;
    try
-      tmp := Copy(FDependsTo);
-      SetLength(FDependsTo, 0);
+      Pointer(tmp) := InterlockedExchangePointer(Pointer(FDependsTo), Pointer(tmp));
    finally
       FLock.EndWrite;
    end;
    for var i := 0 to High(tmp) do begin
-      var toTask := tmp[i].GetSelf;
-      toTask.ThreadSafeRemove(toTask.FDependsFrom, Self);
+      tmp[i].GetSelf.ThreadSafeRemoveDependsFrom(Self);
       tmp[i] := nil;
    end;
 end;
 
-// ThreadSafeRemove
+// ThreadSafeRemoveDependsFrom
 //
-procedure TIOCPTask.ThreadSafeRemove(var aArray : TArray<IWorkerTask>; const aTask : TIOCPTask);
+procedure TIOCPTask.ThreadSafeRemoveDependsFrom(const aTask : IWorkerTask);
 begin
    FLock.BeginWrite;
    try
-      for var i := High(aArray) downto 0 do begin
-         if aArray[i].GetSelf = aTask then
-            Delete(aArray, i, 1);
+      for var i := High(FDependsFrom) downto 0 do begin
+         if FDependsFrom[i] = aTask then
+            Delete(FDependsFrom, i, 1);
       end;
    finally
       FLock.EndWrite;
    end;
 end;
 
-// ThreadSafeClear
+// ThreadSafeRemoveDependsTo
 //
-procedure TIOCPTask.ThreadSafeClear(var aArray : TArray<IWorkerTask>);
-var
-   temp : TArray<IWorkerTask>;
+procedure TIOCPTask.ThreadSafeRemoveDependsTo(const aTask : IWorkerTask);
 begin
    FLock.BeginWrite;
    try
-      temp := Copy(aArray, 0);
+      for var i := High(FDependsTo) downto 0 do begin
+         if FDependsTo[i] = aTask then
+            Delete(FDependsTo, i, 1);
+      end;
    finally
       FLock.EndWrite;
+   end;
+end;
+
+// GetRunWorkUnit
+//
+class function TIOCPTask.GetRunWorkUnit(task : IWorkerTask) : TAnonymousWorkUnit;
+begin
+   Result := procedure begin
+      task.GetSelf.Run;
    end;
 end;
 
@@ -816,6 +827,9 @@ begin
    FLock.BeginWrite;
    try
       var n := Length(FDependsFrom);
+      for var i := 0 to n-1 do
+         if FDependsFrom[i] = aTask then
+            raise Exception.Create('Attempting to add dependency duplicate');
       SetLength(FDependsFrom, n+1);
       FDependsFrom[n] := aTask;
    finally
@@ -911,7 +925,9 @@ begin
       if shouldRun then begin
          if FPool = nil then
             Run
-         else FPool.QueueWork(procedure begin Run end)
+         else begin
+            FPool.QueueWork(GetRunWorkUnit(Self));
+         end;
       end;
    end else if unmetDependsFrom = -1 then
       Cancel;
@@ -973,6 +989,7 @@ var
    tmp : TArray<IWorkerTask>;
 begin
    try
+      ClearDependsFrom;
       if Status = tsRunning then
          Execute;
       FLock.BeginWrite;
@@ -987,7 +1004,6 @@ begin
       end;
       for var i := 0 to High(tmp) do
          tmp[i].Schedule(FPool);
-      ClearDependsFrom;
       ClearDependsTo;
    except
       on E: Exception do begin
