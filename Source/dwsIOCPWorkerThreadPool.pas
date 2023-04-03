@@ -76,6 +76,10 @@ type
       function IsIdle : Boolean;
 
       procedure ResetPeakStats;
+
+      function GetLastException : String;
+      procedure SetLastException(const msg : String);
+      property LastException : String read GetLastException write SetLastException;
    end;
 
    TIOCPWorkerThreadPool = class (TInterfacedSelfObject, IWorkerThreadPool)
@@ -90,6 +94,7 @@ type
          FTimerQueue : THandle;
          FDelayed : TIOCPDelayedWork;
          FDelayedLock : TMultiReadSingleWrite;
+         FLastException : String;
 
       protected
          function GetWorkerCount : Integer;
@@ -121,6 +126,9 @@ type
          function IsIdle : Boolean;
 
          procedure ResetPeakStats;
+
+         function GetLastException : String;
+         procedure SetLastException(const msg : String);
    end;
 
    TIOCPTaskStatus = (
@@ -662,6 +670,20 @@ begin
    FPeakActiveWorkerCount := FActiveWorkerCount;
 end;
 
+// GetLastException
+//
+function TIOCPWorkerThreadPool.GetLastException : String;
+begin
+   Result := FLastException;
+end;
+
+// SetLastException
+//
+procedure TIOCPWorkerThreadPool.SetLastException(const msg : String);
+begin
+   FLastException := msg;
+end;
+
 // SetWorkerCount
 //
 procedure TIOCPWorkerThreadPool.SetWorkerCount(val : Integer);
@@ -824,6 +846,8 @@ end;
 //
 procedure TIOCPTask.DependsFrom(const aTask : IWorkerTask);
 begin
+   if aTask.GetSelf = Self then
+      raise Exception.Create('Attempting to add self reference as dependency');
    FLock.BeginWrite;
    try
       var n := Length(FDependsFrom);
@@ -983,6 +1007,8 @@ procedure TIOCPTask.Run;
    procedure RecordException(E: Exception);
    begin
       FExceptionMessage := E.ClassName + ': ' + E.Message;
+      if FPool <> nil then
+         FPool.LastException := ExceptionMessage;
    end;
 
 var
