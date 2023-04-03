@@ -22,7 +22,7 @@ uses
    Windows, Winapi.WinInet, Winapi.WinHTTP, Variants,
    SysUtils, Classes, StrUtils,
    SynZip, SynCrtSock, SynCommons, SynWinSock,
-   dwsUtils, dwsComp, dwsExprs, dwsWebEnvironment, dwsExprList, dwsSymbols,
+   dwsUtils, dwsComp, dwsExprs, dwsWebEnvironmentTypes, dwsWebEnvironment, dwsExprList, dwsSymbols,
    dwsJSONConnector, dwsCryptoXPlatform, dwsHTTPSysServerEvents, dwsWebServerInfo,
    dwsXPlatform, dwsCustomData, dwsDataContext;
 

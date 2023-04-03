@@ -21,7 +21,8 @@ interface
 uses
   SysUtils, Classes,
   dwsExprs, dwsComp, dwsUtils, dwsXPlatform,
-  dwsIOCPWorkerThreadPool, dwsWebEnvironment, dwsJSON;
+  dwsIOCPWorkerThreadPool, dwsWebEnvironment, dwsWebEnvironmentTypes,
+  dwsJSON;
 
 const
    cDefaultMaxWorkersPerQueue = 32;

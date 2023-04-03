@@ -25,7 +25,7 @@ interface
 uses
    Winapi.Windows, System.Classes, System.SysUtils, System.StrUtils,
    SynCommons, SynWinSock,
-   dwsWebEnvironment, dwsUtils, dwsHTTPSysAPI, dwsWebServerHelpers,
+   dwsWebEnvironment, dwsWebEnvironmentTypes, dwsUtils, dwsHTTPSysAPI, dwsWebServerHelpers,
    dwsURLRewriter;
 
 type

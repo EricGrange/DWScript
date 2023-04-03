@@ -22,7 +22,7 @@ interface
 
 uses
    dwsUtils,
-   dwsWebEnvironment, dwsHTTPSysServerEvents;
+   dwsWebEnvironmentTypes, dwsHTTPSysServerEvents;
 
 type
 

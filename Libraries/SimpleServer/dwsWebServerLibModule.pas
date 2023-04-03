@@ -5,7 +5,7 @@ interface
 uses
    SysUtils, Classes, SynCommons,
    dwsComp, dwsExprs, dwsSymbols, dwsUtils,
-   dwsWebServerInfo, dwsWebEnvironment;
+   dwsWebServerInfo, dwsWebEnvironment, dwsWebEnvironmentTypes;
 
 type
   TdwsWebServerLib = class(TDataModule)

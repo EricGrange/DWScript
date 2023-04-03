@@ -20,8 +20,8 @@ interface
 
 uses
    Winapi.Windows, System.SysUtils, Winapi.WinInet, Winapi.WinHTTP, System.Variants,
-   SynCrtSock, SynCommons,
-   dwsUtils, dwsWebEnvironment, dwsXPlatform;
+   SynCrtSock,
+   dwsUtils, dwsWebEnvironmentTypes, dwsXPlatform;
 
 type
    TdwsCustomHeaders = class (TInterfacedSelfObject)
@@ -198,7 +198,7 @@ begin
    end;
    if FWinHttp = nil then begin
       FWinHttp := TdwsWinHTTP.Create(uri.Server, uri.Port, uri.Https,
-                                     SynUnicodeToUtf8(proxyName), '',
+                                     UTF8Encode(proxyName), '',
                                      connectTimeout, sendTimeout, receiveTimeout);
       FProxyName := proxyName;
       FPort := uri.Port;
@@ -272,17 +272,17 @@ class procedure TdwsWinHttpConnection.ReplyToText(const replyHeaders, replyData 
 
    procedure ReplyToText(const buf : SockString; var replyData : String);
    const
-      cContentType : RawUTF8 = 'Content-Type:';
+      cContentType : RawByteString = 'Content-Type:';
    var
       mimeType : SockString;
       p1, p2, n : Integer;
    begin
-      p1:=Pos(cContentType, RawUTF8(replyHeaders));
+      p1:=Pos(cContentType, RawByteString(replyHeaders));
       if p1>0 then begin
          Inc(p1, Length(cContentType));
-         p2:=PosEx(#13, replyHeaders, p1);
-         if p2>p1 then
-            mimeType:=Copy(replyHeaders, p1, p2-p1);
+         p2 := PosExA(#13, replyHeaders, p1);
+         if p2 > p1 then
+            mimeType := Copy(replyHeaders, p1, p2-p1);
       end;
       if StrEndsWithA(mimeType, '/xml') or StrEndsWithA(mimeType, '+xml') then begin
          // unqualified xml content, may still be utf-8, check data header
@@ -301,8 +301,8 @@ class procedure TdwsWinHttpConnection.ReplyToText(const replyHeaders, replyData 
          // strip BOM if present
          n := Length(buf);
          if (n >= 3) and (PByte(buf)[0] = $EF) and (PByte(buf)[0] = $BB) and (PByte(buf)[0] = $BF) then
-            UTF8DecodeToUnicodeString(@PUTF8Char(buf)[3], n, replyData)
-         else UTF8DecodeToUnicodeString(PUTF8Char(buf), n, replyData);
+            replyData := UTF8ToString(Copy(buf, 3))
+         else replyData := UTF8ToString(buf);
       end else RawByteStringToScriptString(buf, replyData);
    end;
 
@@ -331,6 +331,18 @@ end;
 // Read
 //
 procedure TdwsHttpCertificateInfo.Read(conn : TdwsWinHTTP);
+
+   function FileTimeToUnixTime(const fileTime : TFileTime) : Int64;
+   const
+      cUnixFileTimeDelta = 116444736000000000; // from year 1601 to 1970
+   var
+      nanoSeconds : Int64;
+   begin
+      Int64Rec(nanoSeconds).Lo := fileTime.dwLowDateTime;
+      Int64Rec(nanoSeconds).Hi := fileTime.dwHighDateTime;
+      Result := (nanoSeconds - cUnixFileTimeDelta) div 10000000;
+   end;
+
 var
    buf : WINHTTP_CERTIFICATE_INFO;
    bufLen : Cardinal;

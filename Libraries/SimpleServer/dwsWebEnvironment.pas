@@ -23,43 +23,9 @@ uses
    System.Classes, System.SysUtils, System.StrUtils, System.DateUtils,
    SynCrtSock, SynCommons,
    dwsExprs, dwsUtils, dwsWebUtils, dwsWebServerUtils, dwsWebServerHelpers,
-   dwsSymbols, dwsExprList, dwsXPlatform;
+   dwsSymbols, dwsExprList, dwsXPlatform, dwsWebEnvironmentTypes;
 
 type
-   TWebRequestAuthentication = (
-      wraNone,
-      wraFailed,
-      wraBasic,
-      wraDigest,
-      wraNTLM,
-      wraNegotiate,
-      wraKerberos,
-      wraAuthorization
-   );
-   TWebRequestAuthentications = set of TWebRequestAuthentication;
-
-   TWebRequestMethodVerb = (
-      wrmvUnknown,
-      wrmvOPTIONS,
-      wrmvGET,
-      wrmvHEAD,
-      wrmvPOST,
-      wrmvPUT,
-      wrmvDELETE,
-      wrmvTRACE,
-      wrmvCONNECT,
-      wrmvTRACK,
-      wrmvMOVE,
-      wrmvCOPY,
-      wrmvPROPFIND,
-      wrmvPROPPATCH,
-      wrmvMKCOL,
-      wrmvLOCK,
-      wrmvUNLOCK,
-      wrmvSEARCH
-   );
-   TWebRequestMethodVerbs = set of TWebRequestMethodVerb;
-
    TWebServerEventData = array of RawByteString;
 
    TWebRequest = class
