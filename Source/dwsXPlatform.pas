@@ -459,9 +459,20 @@ function GetModuleVersion(instance : THandle; var version : TModuleVersion) : Bo
 function GetApplicationVersion(var version : TModuleVersion) : Boolean;
 function ApplicationVersion(const options : TApplicationVersionOptions = [ avoBitness ]) : String;
 
-function Win64SSE41Supported : Boolean;
-function Win64FMASupported : Boolean;
-function Win64AVX2Supported : Boolean;
+type
+   TCPUFeature = (
+      cpuFeaturesRead,  // internal flag to indicate features were read
+      cpuSSE41,         // SSE4.1
+      cpuFMA,           // FMA3
+      cpuAVX,           // AVX
+      cpuAVX2           // AVX2
+   );
+   TCPUFeatures = set of TCPUFeature;
+
+function WIN64CPUFeatures : TCPUFeatures;
+function Win64SSE41Supported : Boolean; inline;
+function Win64FMASupported : Boolean; inline;
+function Win64AVX2Supported : Boolean; inline;
 
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
@@ -2714,110 +2725,72 @@ begin
    {$endif}
 end;
 
-// Win64SSE41Supported
+// Win64CPUFeatures
 //
 {$if Defined(WIN64_ASM)}
-function TestSSE41Supported : Boolean;
+function GetCPUID_ECX : Cardinal;
 asm
-   mov r10, rbx
-   mov eax, 1
+   mov   r10, rbx
+   mov   eax, 1
    cpuid
-   shr ecx, 19
-   and ecx, 1
-   mov eax, ecx
-   mov rbx, r10
+   mov   eax, ecx
+   mov   rbx, r10
 end;
+
+function GetCPUID7_EBX : Cardinal;
+asm
+   mov   r10, rbx
+   mov   eax, 7
+   xor   ecx, ecx
+   cpuid
+   mov   eax, ebx
+   mov   rbx, r10
+end;
+
 var
-   vWinSSE41Supported : ShortInt = 0;
-function Win64SSE41Supported : Boolean;
+   vCPUFeatures : TCPUFeatures;
+function Win64CPUFeatures : TCPUFeatures;
 begin
-   if vWinSSE41Supported = 0 then begin
-      if TestSSE41Supported then
-         vWinSSE41Supported := 1
-      else vWinSSE41Supported := -1;
+   if not (cpuFeaturesRead in vCPUFeatures) then begin
+      var ecx := GetCPUID_ECX;
+      if ((ecx shr 19) and 1) <> 0 then Include(vCPUFeatures, cpuSSE41);
+      if ((ecx shr 12) and 1) <> 0 then Include(vCPUFeatures, cpuFMA);
+      if ((ecx shr 28) and 1) <> 0 then begin
+         Include(vCPUFeatures, cpuAVX);
+         if (GetCPUID7_EBX shr 5) <> 0 then
+            Include(vCPUFeatures, cpuAVX2);
+      end;
+      Include(vCPUFeatures, cpuFeaturesRead);
    end;
-   Result := (vWinSSE41Supported = 1);
+   Result := vCPUFeatures;
 end;
 {$else}
-function Win64SSE41Supported : Boolean;
+function Win64CPUFeatures : TCPUFeatures;
 begin
-   Result := False;
+   Result := [];
 end;
 {$endif}
+
+// Win64SSE41Supported
+//
+function Win64SSE41Supported : Boolean;
+begin
+   Result := cpuSSE41 in WIN64CPUFeatures;
+end;
 
 // Win64FMASupported
 //
-{$if Defined(WIN64_ASM)}
-function TestFMASupported : Boolean;
-asm
-   mov r10, rbx
-   mov eax, 1
-   cpuid
-   shr ecx, 12
-   and ecx, 1
-   mov eax, ecx
-   mov rbx, r10
-end;
-var
-   vWin64FMASupported : ShortInt = 0;
 function Win64FMASupported : Boolean;
 begin
-   if vWin64FMASupported = 0 then begin
-      if TestFMASupported then
-         vWin64FMASupported := 1
-      else vWin64FMASupported := -1;
-   end;
-   Result := (vWin64FMASupported = 1);
+   Result := cpuFMA in WIN64CPUFeatures;
 end;
-{$else}
-function Win64FMASupported : Boolean;
-begin
-   Result := False;
-end;
-{$endif}
 
 // Win64AVX2Supported
 //
-{$if Defined(WIN64_ASM)}
-function TestAVX2supported: boolean;
-asm
-   mov   r10, rbx
-   //Check CPUID.0
-   xor   eax, eax
-   cpuid //modifies EAX,EBX,ECX,EDX
-   cmp   al, 7 // do we have a CPUID leaf 7 ?
-   jge   @@leaf7
-
-   xor   eax, eax
-   jmp   @@exit
-
-@@leaf7:
-   mov   eax, 7h
-   xor   ecx, ecx
-   cpuid
-   bt    ebx, 5 //AVX2: CPUID.(EAX=07H, ECX=0H):EBX.AVX2[bit 5]=1
-   setc  al
-
-@@exit:
-   mov   rbx, r10
-end;
-var
-   vWin64AVX2Supported : ShortInt = 0;
 function Win64AVX2Supported : Boolean;
 begin
-   if vWin64AVX2Supported = 0 then begin
-      if TestAVX2supported then
-         vWin64AVX2Supported := 1
-      else vWin64AVX2Supported := -1;
-   end;
-   Result := (vWin64AVX2Supported = 1);
+   Result := cpuAVX2 in WIN64CPUFeatures;
 end;
-{$else}
-function Win64AVX2Supported : Boolean;
-begin
-   Result := False;
-end;
-{$endif}
 
 // ------------------
 // ------------------ TdwsCriticalSection ------------------
