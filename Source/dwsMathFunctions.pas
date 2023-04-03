@@ -335,7 +335,7 @@ function IsFinite(const v : Double) : Boolean;
 function SignFloat(const v : Double) : Int64;
 function SignInt64(const n : Int64) : Int64;
 
-function Haversine(lat1, lon1, lat2, lon2, r : Double) : Double;
+function Haversine(const lat1, lon1, lat2, lon2, r : Double) : Double;
 
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
@@ -443,7 +443,7 @@ end;
 
 // Haversine
 //
-function Haversine(lat1, lon1, lat2, lon2, r : Double) : Double;
+function Haversine(const lat1, lon1, lat2, lon2, r : Double) : Double;
 const
    p : Double = PI / 180;
 var
