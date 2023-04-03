@@ -445,7 +445,9 @@ type
    TModuleVersion = record
       Major, Minor : Word;
       Release, Build : Word;
-      function AsString : String;
+      function GetAsString : String;
+      procedure SetAsString(const s : String);
+      property AsString : String read GetAsString write SetAsString;
    end;
 
    TApplicationVersionOption = (
@@ -458,6 +460,7 @@ function GetApplicationVersion(var version : TModuleVersion) : Boolean;
 function ApplicationVersion(const options : TApplicationVersionOptions = [ avoBitness ]) : String;
 
 function Win64SSE41Supported : Boolean;
+function Win64FMASupported : Boolean;
 function Win64AVX2Supported : Boolean;
 
 // ------------------------------------------------------------------
@@ -2593,11 +2596,26 @@ begin
    {$endif}
 end;
 
-// AsString
+// GetAsString
 //
-function TModuleVersion.AsString : String;
+function TModuleVersion.GetAsString : String;
 begin
    Result := Format('%d.%d.%d.%d', [Major, Minor, Release, Build]);
+end;
+
+// SetAsString
+//
+procedure TModuleVersion.SetAsString(const s : String);
+var
+   parts : TStringDynArray;
+begin
+   Self := Default(TModuleVersion);
+   parts := SplitString(s, '.');
+   var len := Length(parts);
+   if len > 0 then major := StrToIntDef(parts[0], 0);
+   if len > 1 then minor := StrToIntDef(parts[1], 0);
+   if len > 2 then release := StrToIntDef(parts[2], 0);
+   if len > 3 then build := StrToIntDef(parts[3], 0);
 end;
 
 {$ifdef WINDOWS}
@@ -2722,6 +2740,37 @@ begin
 end;
 {$else}
 function Win64SSE41Supported : Boolean;
+begin
+   Result := False;
+end;
+{$endif}
+
+// Win64FMASupported
+//
+{$if Defined(WIN64_ASM)}
+function TestFMASupported : Boolean;
+asm
+   mov r10, rbx
+   mov eax, 1
+   cpuid
+   shr ecx, 12
+   and ecx, 1
+   mov eax, ecx
+   mov rbx, r10
+end;
+var
+   vWin64FMASupported : ShortInt = 0;
+function Win64FMASupported : Boolean;
+begin
+   if vWin64FMASupported = 0 then begin
+      if TestFMASupported then
+         vWin64FMASupported := 1
+      else vWin64FMASupported := -1;
+   end;
+   Result := (vWin64FMASupported = 1);
+end;
+{$else}
+function Win64FMASupported : Boolean;
 begin
    Result := False;
 end;
