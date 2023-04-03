@@ -121,7 +121,7 @@ begin
                stackPop._vmovups_ptr_reg(i, gprRSP, offset);
                Inc(offset, 16);
             end;
-            stackPop._add_reg_int32(gprESP, nbAlteredXmm*128);
+            stackPop._add_reg_imm(gprRSP, nbAlteredXmm*128);
             opcodes := stackPush.ToRawBytes + opcodes + stackPop.ToRawBytes;
          finally
             stackPush.Free;

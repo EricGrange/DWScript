@@ -77,6 +77,7 @@ type
          procedure v_op_pd;
          procedure v_op_ps;
          procedure _movups_ptr_reg;
+         procedure _movups_ptr_reg_reg;
          procedure _vmovdqu;
          procedure _vmovapd;
          procedure _vmovupd_ptr_indexed;
@@ -1766,6 +1767,24 @@ begin
                + 'movups xmmword ptr [rbp-000000D0h], xmm9'#13#10
                , DisasmStream);
 
+end;
+
+// _movups_ptr_reg_reg
+//
+procedure TJITx86_64Tests._movups_ptr_reg_reg;
+begin
+   // xmm8+ actually works, but Bea does not disassemble them correctly
+
+   FStream._movups_reg_ptr_reg_reg(xmm0, gprRAX, gprRAX);
+//   FStream._movups_reg_ptr_reg_reg(xmm8, gprR9, gprRCX);
+   FStream._movups_reg_ptr_reg_reg(xmm1, gprRDX, gprR8);
+//   FStream._movups_reg_ptr_reg_reg(xmm9, gprR10, gprR11);
+   CheckEquals(  ''
+               + 'movups xmm0, xmmword ptr [rax+rax]'#13#10
+//               + 'movups xmm8, xmmword ptr [r9+rcx]'#13#10
+               + 'movups xmm1, xmmword ptr [rdx+r8]'#13#10
+//               + 'movups xmm9, xmmword ptr [r10+r11]'#13#10
+               , DisasmStream);
 end;
 
 // _vmovdqu
