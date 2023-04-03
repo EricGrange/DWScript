@@ -518,6 +518,7 @@ type
          procedure _cvtsi2sd(dest : TxmmRegister; src : TgpRegister64);
          procedure _cvtsd2si(dest : TgpRegister64; src : TxmmRegister);
          procedure _cvttsd2si(dest : TgpRegister64; src : TxmmRegister);
+         procedure _cvtss2sd(dest, src : TxmmRegister);
 
          procedure _prefetch_ptr_reg(src : TgpRegister64; offset : Integer);
          procedure _prefetcht0_ptr_reg(src : TgpRegister64; offset : Integer);
@@ -3239,6 +3240,16 @@ begin
       $F2, $48 + Ord(src >= xmm8) + 4*Ord(dest >= gprR8),
       $0F, $2C, $c0 + (Ord(src) and 7) + 8*(Ord(dest) and 7)
    ]);
+end;
+
+// _cvtss2sd
+//
+procedure Tx86_64_WriteOnlyStream._cvtss2sd(dest, src : TxmmRegister);
+begin
+   WriteByte($F3);
+   if (dest >= xmm8) or (src >= xmm8) then
+      WriteByte($40 + Ord(src >= xmm8)  + 4*Ord(dest >= xmm8));
+   WriteBytes([$0F, $5A, $c0 + (Ord(src) and 7) + 8*(Ord(dest) and 7)]);
 end;
 
 // _prefetch_ptr_reg
