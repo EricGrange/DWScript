@@ -7047,7 +7047,7 @@ function TProgramInfo.GetParamAsDataContext(index : Integer) : IDataContext;
 var
    intf : IUnknown;
 begin
-   GetParamDataContext(index).EvalAsInterface(index, intf);
+   GetParamDataContext(index).EvalAsInterface(0, intf);
    if intf <> nil then
       Result := intf as IDataContext
    else Result := nil;
