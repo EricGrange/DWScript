@@ -723,6 +723,7 @@ begin
                               +'End;'#13#10
                               +'TObj.Create.Proc;'#13#10);
       CheckEquals('', prog.Msgs.AsInfo, 'compile');
+      prog.ProgramObject.MaxRecursionDepth := 128;
       exec:=prog.Execute;
       buf:='TObj.Proc [line: 5, column: 4]'#13#10' [line: 8, column: 13]'#13#10;
       buf2:=exec.Msgs.AsInfo;
