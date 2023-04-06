@@ -980,11 +980,15 @@ begin
       .AddMatchTokenTypes([ ttDOT, ttSEMI ], [ rifOptional ])
    ;
 
+   var script_main := Result.NewRuleNode('script', TdwsCodeDOMMain, [ prfReplaceBySingleChild ])
+      .AddSubRule(statement_list)
+      .AddMatchTokenTypes([ ttDOT, ttSEMI ], [ rifOptional ]);
+
    var root := Result.NewRuleAlternative('root', [ prfRoot ])
       .AddSubRule(unit_namespace)
       .AddSubRule(unit_or_library)
       .AddSubRule(program_main)
-      .AddSubRule(statement_list)
+      .AddSubRule(script_main)
    ;
 
 end;
