@@ -637,11 +637,11 @@ type
   end;
 
 type
-  HCRYPTPROV  = ULONG;
+  HCRYPTPROV  = THandle;
   PHCRYPTPROV = ^HCRYPTPROV;
-  HCRYPTKEY   = ULONG;
+  HCRYPTKEY   = THandle;
   PHCRYPTKEY  = ^HCRYPTKEY;
-  HCRYPTHASH  = ULONG;
+  HCRYPTHASH  = THandle;
   PHCRYPTHASH = ^HCRYPTHASH;
 
 function CryptAcquireContextA(phProv       :PHCRYPTPROV;
