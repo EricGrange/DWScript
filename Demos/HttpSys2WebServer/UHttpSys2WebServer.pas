@@ -40,7 +40,7 @@ uses
   Windows, SysUtils, Classes,
   SynZip, SynCommons,
   dwsHTTPSysServer, dwsHTTPSysAPI, dwsHTTPSysServerEvents, dwsXXHash,
-  dwsUtils, dwsWebEnvironment, dwsFileSystem,
+  dwsUtils, dwsWebEnvironment, dwsWebEnvironmentTypes, dwsFileSystem,
   dwsJSON, dwsXPlatform, dwsURLRewriter,
   dwsWebServerHelpers, dwsWebServerInfo, dwsWebUtils,
   DSimpleDWScript;
