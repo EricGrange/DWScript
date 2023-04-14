@@ -53,6 +53,12 @@ type
    );
    TWebRequestMethodVerbs = set of TWebRequestMethodVerb;
 
+const
+   cWebRequestMethodVerbs : array [TWebRequestMethodVerb] of String = (
+      '?', 'OPTIONS', 'GET', 'HEAD', 'POST', 'PUT', 'DELETE', 'TRACE',
+      'CONNECT', 'TRACK', 'MOVE', 'COPY', 'PROPFIND', 'PROPPATCH',
+      'MKCOL', 'LOCK', 'UNLOCK', 'SEARCH' );
+
 implementation
 
 end.

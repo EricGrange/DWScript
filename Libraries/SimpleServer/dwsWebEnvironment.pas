@@ -271,12 +271,6 @@ const
       'None', 'Failed', 'Basic', 'Digest', 'NTLM', 'Negotiate', 'Kerberos', 'Header'
    );
 
-   cWebRequestMethodVerbs : array [TWebRequestMethodVerb] of String = (
-      '?', 'OPTIONS', 'GET', 'HEAD', 'POST', 'PUT', 'DELETE', 'TRACE',
-      'CONNECT', 'TRACK', 'MOVE', 'COPY', 'PROPFIND', 'PROPPATCH',
-      'MKCOL', 'LOCK', 'UNLOCK', 'SEARCH' );
-
-
    cHTMTL_UTF8_CONTENT_TYPE = 'text/html; charset=utf-8';
 
 // ------------------------------------------------------------------
