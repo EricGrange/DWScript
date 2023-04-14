@@ -20,6 +20,8 @@ interface
 
 {.$define LogCompiles}
 {$define ALLOW_JIT}
+{$define ALLOW_TCP_SERVER}
+
 
 {$if not Defined(WIN32)}
    {$undef ALLOW_JIT}
@@ -33,6 +35,9 @@ uses
    {$ifdef ALLOW_JIT}
    dwsJIT, dwsJITx86,
    {$endif}
+   {$ifdef ALLOW_TCP_SERVER}
+   dwsTCPServerLibModule,
+   {$endif}
    dwsJSFilter, dwsJSLibModule, dwsCodeGen,
    dwsWebEnvironment, dwsSystemInfoLibModule, dwsCPUUsage, dwsWebLibModule,
    dwsWebServerHelpers, dwsZipLibModule, dwsIniFileModule,
@@ -41,7 +46,8 @@ uses
    dwsBackgroundWorkersLibModule, dwsSynapseLibModule, dwsCryptoLibModule,
    dwsEncodingLibModule, dwsComConnector, dwsXXHash, dwsHTTPSysServer,
    dwsBigIntegerFunctions.GMP, dwsMPIR.Bundle, dwsTurboJPEG.Bundle,
-   dwsCompilerContext, dwsFilter, dwsByteBufferFunctions;
+   dwsCompilerContext, dwsFilter, dwsByteBufferFunctions
+   ;
 
 type
 
@@ -372,6 +378,12 @@ begin
       // cgoObfuscate, cgoOptimizeForSize,
       cgoSmartLink, cgoDeVirtualize, cgoNoRTTI
    ];
+
+   {$ifdef ALLOW_TCP_SERVER}
+   var tcpLib := TdwsSystemTCPServerLib.Create(nil);
+   tcpLib.dwsTCPServerModule.Script := DelphiWebScript;
+   tcpLib.OnTCPServerWork := DoBackgroundWork;
+   {$endif}
 
    dwsCompileSystem.OnFileStreamOpened := DoSourceFileStreamOpened;
    FActiveCompileSystem := dwsCompileSystem;
