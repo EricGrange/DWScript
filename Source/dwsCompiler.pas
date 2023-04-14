@@ -5581,11 +5581,6 @@ function TdwsCompiler.ReadSymbol(expr : TProgramExpr; isWrite : Boolean = False;
       else Result:=nil;
    end;
 
-var
-   defaultProperty : TPropertySymbol;
-   baseType : TTypeSymbol;
-   codeExpr : TTypedExpr;
-   funcSym : TFuncSymbol;
 begin
    Result := Expr;
    try
@@ -5607,10 +5602,11 @@ begin
 
                if Assigned(Result) then begin
 
-                  baseType := Result.BaseType;
+                  var baseType := Result.BaseType;
                   if (baseType is TStructuredTypeSymbol) or (baseType is TStructuredTypeMetaSymbol) then begin
 
                      // class array property
+                     var defaultProperty : TPropertySymbol;
                      if baseType is TStructuredTypeSymbol then
                         defaultProperty:=GetDefaultProperty(TStructuredTypeSymbol(baseType))
                      else defaultProperty:=GetDefaultProperty(TStructuredTypeMetaSymbol(baseType).StructSymbol);
@@ -5654,15 +5650,17 @@ begin
 
             ttBLEFT : begin
 
-               baseType:=Result.BaseType;
-               funcSym := baseType.AsFuncSymbol;
-               if (funcSym = nil) and baseType.CanExpectAnyFuncSymbol then begin
-                  funcSym := FCompilerContext.TypAnyFunc;
+               var funcSym : TFuncSymbol := nil;
+               var baseType := Result.BaseType;
+               if baseType <> nil then begin
+                  funcSym := baseType.AsFuncSymbol;
+                  if (funcSym = nil) and baseType.CanExpectAnyFuncSymbol then
+                     funcSym := FCompilerContext.TypAnyFunc;
                end;
                if funcSym <> nil then begin
-                  codeExpr:=Result as TTypedExpr;
-                  Result:=nil;
-                  Result:=ReadFunc(funcSym, codeExpr);
+                  var codeExpr := Result as TTypedExpr;
+                  Result := nil;
+                  Result := ReadFunc(funcSym, codeExpr);
                end else FMsgs.AddCompilerStop(FTok.HotPos, CPE_NoMethodExpected);
 
             end;
