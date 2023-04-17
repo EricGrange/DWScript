@@ -161,6 +161,11 @@ procedure CopyWICImageMetadata(
    const report : TStrings = nil
 );
 
+function WICComponentInfo(const componentGUID : TGUID) : IWICComponentInfo;
+
+const
+   GUID_WICMicrosoftRawImageDecoder : TGUID = '{FE99CE60-F19C-433C-A3AE-00ACEFA9CA21}';
+
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
@@ -210,6 +215,14 @@ procedure WicCheck(Result: HRESULT; const context : String); inline;
 begin
    if Failed(Result) then
       WicCheckFailed(Result, context);
+end;
+
+// WICComponentInfo
+//
+function WICComponentInfo(const componentGUID : TGUID) : IWICComponentInfo;
+begin
+   if not Succeeded(WICImagingFactory.CreateComponentInfo(componentGUID, Result)) then
+      Result := nil;
 end;
 
 // EXIFOrientationToWICTransform
@@ -490,6 +503,8 @@ begin
    ), 'CreateDecoderFromFilename');
 
    WicCheck(decoder.GetContainerFormat(FContainerFormat), 'GetContainerFormat');
+
+   OutputDebugString(GUIDToString(FContainerFormat));
 
    bestFrame := 0;
    WicCheck(decoder.GetFrameCount(frameCount), 'GetFrameCount');
