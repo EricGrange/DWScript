@@ -19,9 +19,9 @@ unit dwsWebLibModule;
 interface
 
 uses
-   Windows, Winapi.WinInet, Winapi.WinHTTP, Variants,
-   SysUtils, Classes, StrUtils,
-   SynZip, SynCrtSock, SynCommons, SynWinSock,
+   Winapi.Windows, Winapi.WinInet, Winapi.WinHTTP, System.Variants,
+   System.SysUtils, System.Classes, System.StrUtils, System.Types,
+   SynZip, SynCrtSock, SynWinSock,
    dwsUtils, dwsComp, dwsExprs, dwsWebEnvironmentTypes, dwsWebEnvironment, dwsExprList, dwsSymbols,
    dwsJSONConnector, dwsCryptoXPlatform, dwsHTTPSysServerEvents, dwsWebServerInfo,
    dwsXPlatform, dwsCustomData, dwsDataContext;
@@ -247,17 +247,17 @@ var
 begin
    obj.EvalAsString(obj.FieldAddress('ID'), buf);
    if buf <> '' then
-      Result := 'id: ' + StringToUTF8(buf) + #10;
+      Result := 'id: ' + UTF8Encode(buf) + #10;
    obj.EvalAsString(obj.FieldAddress('Name'), buf);
    if buf <> '' then
-      Result := Result + 'event: ' + StringToUTF8(buf) + #10;
+      Result := Result + 'event: ' + UTF8Encode(buf) + #10;
    i := obj.AsInteger[obj.FieldAddress('Retry')];
    if i > 0 then
       Result := Result + 'retry: ' + ScriptStringToRawByteString(IntToStr(i)) + #10;
    dyn := (obj.AsInterface[obj.FieldAddress('Data')] as IScriptDynArray);
    for i := 0 to dyn.ArrayLength-1 do begin
       dyn.EvalAsString(i, buf);
-      Result := Result + 'data: ' + StringToUTF8(buf) + #10;
+      Result := Result + 'data: ' + UTF8Encode(buf) + #10;
    end;
    Result := Result + #10;
 end;
@@ -360,7 +360,7 @@ end;
 procedure TdwsWebLib.dwsWebClassesHttpQueryMethodsGetTextEval(
   Info: TProgramInfo; ExtObject: TObject);
 const
-   cContentType : RawUTF8 = 'Content-Type:';
+   cContentType : RawByteString = 'Content-Type:';
 var
    replyHeaders, buf : SockString;
    mimeType : SockString;
@@ -371,10 +371,10 @@ begin
    Info.ResultAsInteger := HttpQuery(Info.Execution, 'GET', Info.ParamAsDataString[0],
                                      '', '', replyHeaders, buf);
 
-   p1 := Pos(cContentType, RawUTF8(replyHeaders));
+   p1 := Pos(cContentType, RawByteString(replyHeaders));
    if p1 > 0 then begin
       Inc(p1, Length(cContentType));
-      p2 := PosEx(#13, replyHeaders, p1);
+      p2 := PosExA(#13, replyHeaders, p1);
       if p2 > p1 then
          mimeType := Copy(replyHeaders, p1, p2-p1);
    end;
@@ -832,7 +832,7 @@ begin
       args.EvalAsString(1, contentType);
       if contentType <> '' then
          fileName := fileName + #0 + contentType;
-      wr.ContentData := StringToUTF8(fileName);
+      wr.ContentData := UTF8Encode(fileName);
       wr.ContentType := HTTP_RESP_STATICFILE;
    end;
 end;

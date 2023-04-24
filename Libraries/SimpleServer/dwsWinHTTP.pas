@@ -20,6 +20,7 @@ interface
 
 uses
    Winapi.Windows, System.SysUtils, Winapi.WinInet, Winapi.WinHTTP, System.Variants,
+   System.Types,
    SynCrtSock,
    dwsUtils, dwsWebEnvironmentTypes, dwsXPlatform;
 

@@ -31,7 +31,6 @@ uses
 
 type
 
-   TStringDynArray = array of String;
    TInt64DynArray = array of Int64;
    TUInt64DynArray = array of UInt64;
    TSingleDynArray = array of Single;
@@ -1078,6 +1077,8 @@ procedure ScriptStringToRawByteString(const s : UnicodeString; var result : RawB
 procedure StringBytesToWords(var buf : UnicodeString; swap : Boolean);
 procedure StringWordsToBytes(var buf : UnicodeString; swap : Boolean);
 
+procedure UTF8DecodeToUnicodeString(pUTF8 : PAnsiChar; utf8Length : Integer; var decoded : String);
+
 type
    EHexEncodingException = class (Exception)
    end;
@@ -1433,6 +1434,20 @@ begin
       end;
       SetLength(buf, n);
    end else buf := '';
+end;
+
+// UTF8DecodeToUnicodeString
+//
+procedure UTF8DecodeToUnicodeString(pUTF8 : PAnsiChar; utf8Length : Integer; var decoded : String);
+begin
+   if utf8Length = 0 then begin
+      decoded := '';
+   end else begin
+      SetLength(decoded, utf8Length);
+      var nb : Integer := Utf8ToUnicode(PChar(decoded), utf8Length, pUTF8, utf8Length);
+      if nb <> utf8Length then
+         SetLength(decoded, nb);
+   end;
 end;
 
 // BinToHex

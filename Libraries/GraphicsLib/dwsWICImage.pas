@@ -504,8 +504,6 @@ begin
 
    WicCheck(decoder.GetContainerFormat(FContainerFormat), 'GetContainerFormat');
 
-   OutputDebugString(GUIDToString(FContainerFormat));
-
    bestFrame := 0;
    WicCheck(decoder.GetFrameCount(frameCount), 'GetFrameCount');
    WicCheck(decoder.GetFrame(0, FWICFrame), 'GetFrame 0');

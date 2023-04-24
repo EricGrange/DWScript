@@ -19,7 +19,8 @@ unit dwsSystemInfoLibModule;
 interface
 
 uses
-   Winapi.Windows, System.SysUtils, System.Classes, System.Win.Registry, Winapi.PsAPI, Winapi.ImageHlp,
+   Winapi.Windows, System.SysUtils, System.Classes, System.Types,
+   System.Win.Registry, Winapi.PsAPI, Winapi.ImageHlp,
    dwsExprList, dwsDataContext, dwsComp, dwsExprs, dwsUtils, dwsCPUUsage,
    dwsXPlatform, dwsInfo, dwsSymbols;
 

@@ -21,7 +21,7 @@ unit dwsWebServerInfo;
 interface
 
 uses
-   dwsUtils,
+   System.Types,
    dwsWebEnvironmentTypes, dwsHTTPSysServerEvents;
 
 type

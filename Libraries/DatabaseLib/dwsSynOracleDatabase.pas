@@ -25,6 +25,7 @@ unit dwsSynOracleDatabase;
 interface
 
 uses
+   System.Types,
    SynDB, SynDBOracle,
    dwsUtils, dwsDatabase, dwsExprs,
    dwsSynDBDatabase;

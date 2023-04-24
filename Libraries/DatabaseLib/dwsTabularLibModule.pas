@@ -19,7 +19,8 @@ unit dwsTabularLibModule;
 interface
 
 uses
-  System.SysUtils, System.Classes, dwsComp, dwsExprs, dwsSymbols;
+  System.SysUtils, System.Classes, System.Types,
+  dwsComp, dwsExprs, dwsSymbols;
 
 type
   TdwsTabularLib = class(TDataModule)

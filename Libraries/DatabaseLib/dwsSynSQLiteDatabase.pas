@@ -25,8 +25,8 @@ unit dwsSynSQLiteDatabase;
 interface
 
 uses
-   System.Classes, System.SysUtils,
-   SynSQLite3, SynCommons,
+   System.Classes, System.SysUtils, System.Types,
+   SynSQLite3,
    dwsUtils, dwsExprs, dwsDatabase, dwsXPlatform, dwsXXHash, dwsFileSystem,
    dwsDataContext, dwsStack, dwsSymbols;
 
@@ -435,7 +435,7 @@ begin
          FExecRequest.Close;
    end;
    if FExecRequest.Request=0 then begin
-      FExecRequest.Prepare(FDB.DB, StringToUTF8(sql));
+      FExecRequest.Prepare(FDB.DB, UTF8Encode(sql));
       FExecSQL:=sql;
    end;
    try
@@ -542,7 +542,7 @@ begin
    inherited Create(db);
 
    try
-      FRequest.Prepare(db.FDB.DB, StringToUTF8(sql));
+      FRequest.Prepare(db.FDB.DB, UTF8Encode(sql));
       try
          Assert(FRequest.Request<>0);
          SQLAssignParameters(FRequest, parameters);
@@ -736,7 +736,7 @@ end;
 function TdwsSynSQLiteDataField.GetDataType : TdwsDataFieldType;
 var
    sqlt : Integer;
-   r : RawUTF8;
+   r : RawByteString;
 begin
    sqlt := FDataSet.FRequest.FieldType(Index);
    case sqlt of

@@ -19,7 +19,7 @@ unit dwsDatabase;
 interface
 
 uses
-   SysUtils,
+   System.SysUtils, System.Types,
    dwsSymbols, dwsUtils, dwsExprs, dwsStack, dwsXPlatform, dwsDataContext,
    dwsFileSystem, dwsScriptSource;
 

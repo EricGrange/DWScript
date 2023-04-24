@@ -27,7 +27,9 @@ unit dwsTabular;
 
 interface
 
-uses SysUtils, dwsUtils
+uses
+   System.SysUtils, System.Types,
+   dwsUtils
    {$ifdef ENABLE_JIT64}
    , dwsJIT, dwsJITFixups, dwsJITx86_64, dwsJITx86Intrinsics
    {$endif};

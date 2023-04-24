@@ -23,7 +23,8 @@ unit dwsSymbols;
 
 interface
 
-uses SysUtils, Classes, System.Math, TypInfo,
+uses
+   System.SysUtils, System.Classes, System.Math, System.Types, System.TypInfo,
    dwsErrors, dwsUtils, dwsDateTime, dwsScriptSource, dwsSpecialKeywords,
    dwsTokenTypes, dwsStack, dwsDataContext, dwsArrayMethodKinds
    {$ifdef FPC},LazUTF8{$endif};

@@ -19,7 +19,7 @@ unit dwsTCPServer;
 interface
 
 uses
-   System.Classes, System.SysUtils, System.Masks,
+   System.Classes, System.SysUtils, System.Masks, System.Types,
    dwsUtils, dwsXPlatform,
    IdTCPServer, IdContext, IdCustomTCPServer;
 

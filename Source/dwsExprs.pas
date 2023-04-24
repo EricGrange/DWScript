@@ -24,7 +24,7 @@ unit dwsExprs;
 interface
 
 uses
-   System.Classes, System.SysUtils, System.TypInfo, System.Variants,
+   System.Classes, System.SysUtils, System.TypInfo, System.Types, System.Variants,
    dwsSymbols, dwsErrors, dwsUtils, dwsDataContext, dwsExprList,
    dwsStrings, dwsStack, SyncObjs, dwsFileSystem, dwsTokenTypes, dwsUnitSymbols,
    dwsJSON, dwsXPlatform, dwsInfo, dwsScriptSource, dwsCustomData, dwsSymbolDictionary,

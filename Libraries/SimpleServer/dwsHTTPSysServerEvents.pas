@@ -21,7 +21,7 @@ unit dwsHTTPSysServerEvents;
 interface
 
 uses
-   Windows, Classes,
+   Winapi.Windows, System.Classes, System.Types,
    dwsUtils, dwsHTTPSysAPI, dwsXPlatform, dwsWebEnvironment, dwsXXHash;
 
 type
