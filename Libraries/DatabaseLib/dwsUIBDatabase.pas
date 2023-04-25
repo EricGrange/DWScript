@@ -32,7 +32,7 @@ unit dwsUIBDatabase;
 interface
 
 uses
-   System.Classes, System.SysUtils,
+   System.Classes, System.SysUtils, System.Types,
    uib, uiblib, uibmetadata,
    dwsUtils, dwsExprs, dwsDatabase, dwsStack, dwsXPlatform, dwsDataContext, dwsSymbols;
 

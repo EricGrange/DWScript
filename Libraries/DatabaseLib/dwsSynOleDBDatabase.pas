@@ -25,6 +25,7 @@ unit dwsSynOleDBDatabase;
 interface
 
 uses
+   System.Types,
    SynDB, SynOleDB,
    dwsUtils, dwsDatabase, dwsExprs,
    dwsSynDBDatabase;
