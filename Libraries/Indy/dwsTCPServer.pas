@@ -252,7 +252,9 @@ begin
    finally
       vServersLock.EndWrite;
    end;
-   server.Shutdown;
+   if server <> nil then
+      server.Shutdown
+   else raise Exception.CreateFmt('No TCP server of name "%s"', [ serverName ]);
 end;
 
 // DestroyAllServers
