@@ -244,22 +244,41 @@ end;
 // Process_ReRunIfNotElevated
 //
 function Process_ReRunIfNotElevated : Boolean;
+
+   procedure ResolveSubstPath(var exeName : String);
+   var
+      drive : String;
+      targetPath : String;
+   begin
+      var p := Pos(':', exeName);
+      if p <= 0 then Exit;
+      drive := Copy(exeName, 1, p);
+      SetLength(targetPath, MAX_PATH);
+      var nb := QueryDosDevice(PChar(drive), PChar(targetPath), Length(targetPath));
+      if nb > 2 then begin
+         SetLength(targetPath, nb-2);
+         if Copy(targetPath, 1, 4) = '\??\' then
+            targetPath := Copy(targetPath, 5);
+         exeName := targetPath + Copy(exeName, p+1);
+      end;
+   end;
+
 var
-   executeInfo : TShellExecuteInfo;
    exeName : String;
    parameters : String;
-   i : Integer;
 begin
    // loop protection
    if ParamStr(ParamCount) = '/is-rerun' then
       Exit(False);
 
    exeName := ParamStr(0);
-   for i := 1 to ParamCount do
+   ResolveSubstPath(exeName);
+
+   for var i := 1 to ParamCount do
       parameters := parameters + '"' + StringReplace(ParamStr(i), '"', '""', [ rfReplaceAll ]) + '" ';
    parameters := parameters + ' /is-rerun';
 
-   FillChar(executeInfo, SizeOf(executeInfo), 0);
+   var executeInfo := Default(TShellExecuteInfo);
    executeInfo.cbSize := SizeOf(executeInfo);
    executeInfo.lpVerb := 'runas';
    executeInfo.lpFile := PChar(exeName);
