@@ -495,8 +495,8 @@ type
       constructor Create(idx, count : Integer);
    end;
 
-procedure WriteJavaScriptString(destStream : TWriteOnlyBlockStream; const str : UnicodeString); overload; inline;
-procedure WriteJavaScriptString(destStream : TWriteOnlyBlockStream; p : PWideChar; size : Integer); overload;
+procedure WriteJavaScriptString(destStream : TStream; const str : UnicodeString); overload; inline;
+procedure WriteJavaScriptString(destStream : TStream; p : PWideChar; size : Integer); overload;
 
 function JSONStringify(const f : Double) : String;
 
@@ -974,7 +974,7 @@ end;
 
 // WriteJavaScriptString
 //
-procedure WriteJavaScriptString(destStream : TWriteOnlyBlockStream; const str : UnicodeString);
+procedure WriteJavaScriptString(destStream : TStream; const str : UnicodeString);
 begin
    WriteJavaScriptString(destStream, PWideChar(Pointer(str)), Length(str));
 end;
@@ -990,7 +990,7 @@ end;
 
 // WriteJavaScriptString
 //
-procedure WriteJavaScriptString(destStream : TWriteOnlyBlockStream; p : PWideChar; size : Integer); overload;
+procedure WriteJavaScriptString(destStream : TStream; p : PWideChar; size : Integer); overload;
 
    function WriteUTF16(p : PWideChar; c : Integer) : PWideChar;
    const
