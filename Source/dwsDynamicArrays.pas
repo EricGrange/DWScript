@@ -1364,12 +1364,10 @@ end;
 // NaturalSort
 //
 procedure TScriptDynamicNativeIntegerArray.NaturalSort;
-var
-   qs : TQuickSort;
 begin
-   qs.CompareMethod := Self.Compare;
-   qs.SwapMethod := Self.Swap;
-   qs.Sort(0, FArrayLength-1);
+   if FArrayLength > 1 then
+      QuickSortInt64(PInt64Array(FData), 0, FArrayLength-1)
+
 end;
 
 // AddStrings
@@ -1783,12 +1781,9 @@ end;
 // NaturalSort
 //
 procedure TScriptDynamicNativeFloatArray.NaturalSort;
-var
-   qs : TQuickSort;
 begin
-   qs.CompareMethod := Self.Compare;
-   qs.SwapMethod := Self.Swap;
-   qs.Sort(0, FArrayLength-1);
+   if FArrayLength > 1 then
+      QuickSortDoublePrecision(FData, 0, FArrayLength-1);
 end;
 
 // AddStrings
@@ -2175,12 +2170,9 @@ end;
 // NaturalSort
 //
 procedure TScriptDynamicNativeStringArray.NaturalSort;
-var
-   qs : TQuickSort;
 begin
-   qs.CompareMethod := Self.Compare;
-   qs.SwapMethod := Self.Swap;
-   qs.Sort(0, FArrayLength-1);
+   if FArrayLength > 1 then
+      QuickSortString(PStringArray(FData), 0, FArrayLength-1);
 end;
 
 // AddStrings
