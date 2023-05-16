@@ -223,7 +223,7 @@ type
                           tcParameter, tcResult, tcOperand, tcExceptionClass,
                           tcProperty, tcHelper, tcGeneric);
 
-   TdwsReadProcDeclOption = (pdoClassMethod, pdoType, pdoAnonymous, pdoReferenceTo);
+   TdwsReadProcDeclOption = (pdoClassMethod, pdoType, pdoAnonymous, pdoReferenceTo, pdoHelperMethod);
    TdwsReadProcDeclOptions = set of TdwsReadProcDeclOption;
 
    TdwsUnitSection = (secMixed, secHeader, secProgram, secInterface, secImplementation,
@@ -564,9 +564,11 @@ type
          function ReadIntfMethodDecl(intfSym : TInterfaceSymbol; funcKind : TFuncKind) : TSourceMethodSymbol;
          function ReadMethodDecl(const hotPos : TScriptPos;
                                  ownerSym : TCompositeTypeSymbol; funcKind : TFuncKind;
-                                 aVisibility : TdwsVisibility; isClassMethod : Boolean) : TMethodSymbol;
+                                 aVisibility : TdwsVisibility;
+                                 aCreateOptions : TMethodCreateOptions
+                                 ) : TMethodSymbol;
          function ReadMethodImpl(ownerSym : TCompositeTypeSymbol; funcKind : TFuncKind;
-                                 isClassMethod : Boolean) : TMethodSymbol;
+                                 aCreateOptions : TMethodCreateOptions) : TMethodSymbol;
 
          function  ReadDeprecatedMessage(withSemiColon : Boolean = True) : String;
          procedure WarnDeprecatedFunc(funcExpr : TFuncExprBase);
@@ -3242,7 +3244,12 @@ begin
          if genericSymbol <> nil then
             EnterGeneric(genericSymbol);
          try
-            Result:=ReadMethodImpl(compositeSym, funcKind, pdoClassMethod in declOptions);
+            var createOptions : TMethodCreateOptions := [];
+            if pdoClassMethod in declOptions then
+               Include(createOptions, mcoClassMethod);
+            if pdoHelperMethod in declOptions then
+               Include(createOptions, mcoHelperMethod);
+            Result:=ReadMethodImpl(compositeSym, funcKind, createOptions);
          finally
             if genericSymbol <> nil then
                LeaveGeneric;
@@ -3555,7 +3562,7 @@ begin
       MemberSymbolWithNameAlreadyExists(sym, methPos);
 
    // Read declaration of method
-   Result := TSourceMethodSymbol.Create(name, funcKind, intfSym, cvPublished, False);
+   Result := TSourceMethodSymbol.Create(name, funcKind, intfSym, cvPublished, []);
    Result.DeclarationPosition := methPos;
 
    try
@@ -3574,8 +3581,11 @@ end;
 
 // ReadMethodDecl
 //
-function TdwsCompiler.ReadMethodDecl(const hotPos : TScriptPos; ownerSym : TCompositeTypeSymbol; funcKind: TFuncKind;
-                                     aVisibility : TdwsVisibility; isClassMethod: Boolean) : TMethodSymbol;
+function TdwsCompiler.ReadMethodDecl(
+   const hotPos : TScriptPos; ownerSym : TCompositeTypeSymbol;
+   funcKind: TFuncKind; aVisibility : TdwsVisibility;
+   aCreateOptions : TMethodCreateOptions
+   ) : TMethodSymbol;
 
    function OverrideParamsCheck(newMeth, oldMeth : TMethodSymbol) : Boolean;
    var
@@ -3624,11 +3634,11 @@ begin
       end;
    end else meth:=nil;
 
-   if ownerSym.IsStatic and (not IsClassMethod) then
+   if ownerSym.IsStatic and not (mcoClassMethod in aCreateOptions) then
       FMsgs.AddCompilerErrorFmt(methPos, CPE_ClassIsStaticNoInstances, [ownerSym.Name]);
 
    // Read declaration of method implementation
-   funcResult := TSourceMethodSymbol.Create(name, funcKind, ownerSym, aVisibility, isClassMethod);
+   funcResult := TSourceMethodSymbol.Create(name, funcKind, ownerSym, aVisibility, aCreateOptions);
    funcResult.DeclarationPosition := methPos;
    try
       if FGenericSymbol.Count > 0 then
@@ -3821,7 +3831,7 @@ end;
 // ReadMethodImpl
 //
 function TdwsCompiler.ReadMethodImpl(ownerSym : TCompositeTypeSymbol;
-               funcKind : TFuncKind; isClassMethod : Boolean) : TMethodSymbol;
+               funcKind : TFuncKind; aCreateOptions : TMethodCreateOptions) : TMethodSymbol;
 var
    methName : String;
    sym : TSymbol;
@@ -3845,14 +3855,14 @@ begin
    else begin
       // keep compiling
       FMsgs.AddCompilerErrorFmt(methPos, CPE_ImplInvalidClass, [methName, ownerSym.Name]);
-      Result:=TSourceMethodSymbol.Create(methName, funcKind, ownerSym, cvPublic, isClassMethod);
+      Result := TSourceMethodSymbol.Create(methName, funcKind, ownerSym, cvPublic, aCreateOptions);
       ownerSym.AddMethod(Result);
    end;
 
    explicitParams:=not FTok.Test(ttSEMI);
    if declaredMethod then begin
       tmpMeth:=TSourceMethodSymbol.Create(methName, funcKind, ownerSym,
-                                          TMethodSymbol(Result).Visibility, isClassMethod);
+                                          TMethodSymbol(Result).Visibility, aCreateOptions);
       try
          // Don't store these params to Dictionary. They will become invalid when the method is freed.
          if not FTok.TestDelete(ttSEMI) then begin
@@ -3886,7 +3896,7 @@ begin
       end;
    end;
 
-   if Result.IsClassMethod<>isClassMethod then begin
+   if Result.IsClassMethod <> (mcoClassMethod in aCreateOptions) then begin
       if Result.IsClassMethod then
          FMsgs.AddCompilerError(methPos, CPE_ImplClassExpected)
       else FMsgs.AddCompilerError(methPos, CPE_ImplNotClassExpected);
@@ -9186,7 +9196,7 @@ begin
                case tt of
 
                   ttFUNCTION, ttPROCEDURE, ttMETHOD, ttCONSTRUCTOR, ttDESTRUCTOR :
-                     ReadMethodDecl(hotPos, Result, cTokenToFuncKind[tt], visibility, False);
+                     ReadMethodDecl(hotPos, Result, cTokenToFuncKind[tt], visibility, []);
 
                   ttCLASS : begin
 
@@ -9194,7 +9204,7 @@ begin
                                              ttOPERATOR, ttVAR, ttCONST, ttPROPERTY]);
                      case tt of
                         ttPROCEDURE, ttFUNCTION, ttMETHOD :
-                           ReadMethodDecl(hotPos, Result, cTokenToFuncKind[tt], visibility, True);
+                           ReadMethodDecl(hotPos, Result, cTokenToFuncKind[tt], visibility, [ mcoClassMethod ]);
                         ttOPERATOR :
                            Result.AddOperator(ReadClassOperatorDecl(Result));
                         ttVAR :
@@ -9851,7 +9861,13 @@ begin
 
       if not propSym.OwnerSymbol.AllowAnonymousMethods then
          FMsgs.AddCompilerError(scriptPos, CPE_AnonymousMethodsNotAllowedHere);
-      meth:=propSym.OwnerSymbol.CreateAnonymousMethod(fkFunction, cvPrivate, classProperty);
+
+      var createOptions : TMethodCreateOptions;
+      if classProperty then
+         createOptions := [ mcoClassMethod ]
+      else createOptions := [];
+
+      meth := propSym.OwnerSymbol.CreateAnonymousMethod(fkFunction, cvPrivate, createOptions);
       meth.Typ:=propSym.Typ;
       propSym.OwnerSymbol.AddMethod(meth);
       meth.AddParams(propSym.ArrayIndices);
@@ -9923,7 +9939,13 @@ begin
 
       if not propSym.OwnerSymbol.AllowAnonymousMethods then
          FMsgs.AddCompilerError(scriptPos, CPE_AnonymousMethodsNotAllowedHere);
-      meth:=propSym.OwnerSymbol.CreateAnonymousMethod(fkProcedure, cvPrivate, classProperty);
+
+      var createOptions : TMethodCreateOptions;
+      if classProperty then
+         createOptions := [ mcoClassMethod ]
+      else createOptions := [];
+
+      meth:=propSym.OwnerSymbol.CreateAnonymousMethod(fkProcedure, cvPrivate, createOptions);
 
       meth.AddParams(propSym.ArrayIndices);
       paramSymbol := CreateConstParamSymbol('Value', propSym.Typ, [ psoInternal ]);
@@ -10017,7 +10039,7 @@ begin
                ttPROPERTY :
                   ReadPropertyDecl(Result, visibility, False);
                ttFUNCTION, ttPROCEDURE, ttMETHOD : begin
-                  meth:=ReadMethodDecl(hotPos, Result, cTokenToFuncKind[tt], visibility, False);
+                  meth:=ReadMethodDecl(hotPos, Result, cTokenToFuncKind[tt], visibility, []);
                   if meth.IsForwarded then
                      FMsgs.AddCompilerError(hotPos, CPE_AnonymousRecordMethodsMustBeInline);
                end;
@@ -10025,7 +10047,7 @@ begin
                   tt:=FTok.TestDeleteAny([ttFUNCTION, ttPROCEDURE, ttMETHOD, ttVAR, ttCONST, ttPROPERTY]);
                   case tt of
                      ttPROCEDURE, ttFUNCTION, ttMETHOD : begin
-                        meth:=ReadMethodDecl(hotPos, Result, cTokenToFuncKind[tt], visibility, True);
+                        meth:=ReadMethodDecl(hotPos, Result, cTokenToFuncKind[tt], visibility, [ mcoClassMethod ]);
                         if meth.IsForwarded then
                            FMsgs.AddCompilerError(hotPos, CPE_AnonymousRecordMethodsMustBeInline);
                      end;
@@ -10277,12 +10299,12 @@ begin
             ttPROPERTY :
                ReadPropertyDecl(Result, visibility, False);
             ttFUNCTION, ttPROCEDURE, ttMETHOD :
-               ReadMethodDecl(hotPos, Result, cTokenToFuncKind[tt], visibility, False);
+               ReadMethodDecl(hotPos, Result, cTokenToFuncKind[tt], visibility, []);
             ttCLASS : begin
                tt:=FTok.TestDeleteAny([ttFUNCTION, ttPROCEDURE, ttMETHOD, ttVAR, ttCONST, ttPROPERTY]);
                case tt of
                   ttPROCEDURE, ttFUNCTION, ttMETHOD :
-                     ReadMethodDecl(hotPos, Result, cTokenToFuncKind[tt], visibility, True);
+                     ReadMethodDecl(hotPos, Result, cTokenToFuncKind[tt], visibility, [ mcoClassMethod ]);
                   ttVAR :
                      ReadClassVars(Result, visibility);
                   ttCONST :
@@ -14832,7 +14854,7 @@ begin
    sysTable.TypTObject.InheritFrom(sysTable.TypObject);
    sysTable.AddSymbol(sysTable.TypTObject);
    // Add constructor Create
-   meth:=TMethodSymbol.Create(SYS_TOBJECT_CREATE, fkConstructor, sysTable.TypTObject, cvPublic, False);
+   meth:=TMethodSymbol.Create(SYS_TOBJECT_CREATE, fkConstructor, sysTable.TypTObject, cvPublic, []);
    meth.Executable:=ICallable(TEmptyFunc.Create);
    meth.IsDefault:=True;
    sysTable.TypTObject.AddMethod(meth);

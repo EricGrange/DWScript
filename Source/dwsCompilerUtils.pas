@@ -871,7 +871,7 @@ begin
    end;
 
    // create helper method symbol
-   meth:=TAliasMethodSymbol.Create(name, func.Kind, helper, cvPublic, False);
+   meth:=TAliasMethodSymbol.Create(name, func.Kind, helper, cvPublic, [ mcoHelperMethod ]);
    meth.SetIsStatic;
    if func.IsOverloaded then
       meth.IsOverloaded:=True;

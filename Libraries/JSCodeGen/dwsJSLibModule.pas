@@ -384,7 +384,7 @@ begin
    jObject.IsExternal:=True;
    jObject.SetNoVirtualMembers;
 
-   meth:=TMethodSymbol.Create('', fkConstructor, jObject, cvPublic, False);
+   meth:=TMethodSymbol.Create('', fkConstructor, jObject, cvPublic, []);
    meth.Executable:=ICallable(TEmptyFunc.Create);
    meth.IsDefault:=True;
    jObject.AddMethod(meth);
