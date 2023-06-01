@@ -405,6 +405,16 @@ type
          procedure InsertItem(index : Integer; const anItem : T);
 
       public
+         type TSortedListEnumerator = record
+            private
+               FList : TSortedList<T>;
+               FIndex, FCountMinus1 : Integer;
+            public
+               function MoveNext: Boolean; inline;
+               function GetCurrent : T; inline;
+               property Current : T read GetCurrent;
+         end;
+
          function Add(const anItem : T) : Integer;
          function AddOrFind(const anItem : T; var added : Boolean) : Integer;
          function Extract(const anItem : T) : Integer;
@@ -413,6 +423,7 @@ type
          procedure Clear;
          procedure Clean;
          procedure Enumerate(const callback : TSimpleCallback<T>);
+         function GetEnumerator : TSortedListEnumerator;
          property Items[index : Integer] : T read GetItem; default;
          property Count : Integer read FCount;
    end;
@@ -4953,6 +4964,30 @@ begin
    for i:=0 to Count-1 do
       if callback(FItems[i])=csAbort then
          Break;
+end;
+
+// GetEnumerator
+//
+function TSortedList<T>.GetEnumerator : TSortedListEnumerator;
+begin
+   Result.FIndex := 0;
+   Result.FList := Self;
+   Result.FCountMinus1 := Count-1;
+end;
+
+// TSortedListEnumerator.MoveNext
+//
+function TSortedList<T>.TSortedListEnumerator.MoveNext: Boolean;
+begin
+   Result := FIndex < FCountMinus1;
+   Inc(FIndex, Integer(Result));
+end;
+
+// TSortedListEnumerator.GetCurrent
+//
+function TSortedList<T>.TSortedListEnumerator.GetCurrent : T;
+begin
+   Result := FList.FItems[FIndex];
 end;
 
 // ------------------
