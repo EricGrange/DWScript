@@ -85,6 +85,7 @@ type
          procedure TestDWSHashCodeBuckets;
 
          procedure LoadTextFromBufferTest;
+         procedure UTF8DecodeToUnicodeStringTest;
 
          procedure VariantClearAssignString;
          procedure VarCompareSafeEqualityTests;
@@ -1130,6 +1131,22 @@ begin
    CheckEquals('utf8'#$00E9, LoadTextFromBuffer(Buffer([$EF, $BB, $BF, 'u', 't', 'f', '8', $C3, $A9])), 'utf8é');
    CheckEquals('B'#$00E9, LoadTextFromBuffer(Buffer([$FE, $FF, 0, 'B', 0, $E9])), 'Bé');
    CheckEquals('L'#$00E9, LoadTextFromBuffer(Buffer([$FF, $FE, 'L', 0, $E9, 0])), 'Lé');
+end;
+
+// UTF8DecodeToUnicodeStringTest
+//
+procedure TdwsUtilsTests.UTF8DecodeToUnicodeStringTest;
+var
+   buf16 : String;
+   buf8 : RawByteString;
+begin
+   buf16 := 'foo';
+   buf8 := '';
+   UTF8DecodeToUnicodeString(PAnsiChar(buf8), Length(buf8), buf16);
+   CheckEquals('', buf16, 'empty');
+   buf8 := 'a';
+   UTF8DecodeToUnicodeString(PAnsiChar(buf8), Length(buf8), buf16);
+   CheckEquals('a', buf16, 'a');
 end;
 
 // VariantClearAssignString

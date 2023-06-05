@@ -1454,7 +1454,7 @@ begin
       decoded := '';
    end else begin
       SetLength(decoded, utf8Length);
-      var nb : Integer := Utf8ToUnicode(PChar(decoded), utf8Length, pUTF8, utf8Length);
+      var nb : Integer := Utf8ToUnicode(PChar(decoded), utf8Length+1, pUTF8, utf8Length) - 1;
       if nb <> utf8Length then
          SetLength(decoded, nb);
    end;
