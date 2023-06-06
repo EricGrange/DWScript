@@ -175,8 +175,9 @@ type
 
       protected
          function GetOwner : TdwsJSONValue; inline;
-         procedure SetOwner(aOwner : TdwsJSONValue); inline;
+         procedure SetOwner(aOwner : TdwsJSONValue); virtual;
          procedure ClearOwner; inline;
+         function HasInOwners(obj : TdwsJSONValue) : Boolean;
 
          property FOwner : TdwsJSONValue read GetOwner write SetOwner;
 
@@ -319,6 +320,8 @@ type
          FCount : Integer;
 
       protected
+         procedure SetOwner(aOwner : TdwsJSONValue); override;
+
          procedure Grow;
          procedure SetCapacity(newCapacity : Integer);
          function IndexOfHashedName(hash : Cardinal; const name : UnicodeString) : Integer; inline;
@@ -382,6 +385,8 @@ type
          FCount : Integer;
 
       protected
+         procedure SetOwner(aOwner : TdwsJSONValue); override;
+
          procedure Grow;
          procedure SetCapacity(newCapacity : Integer);
          procedure DetachChild(child : TdwsJSONValue); override;
@@ -1079,6 +1084,18 @@ end;
 procedure TdwsJSONValue.ClearOwner;
 begin
    FRawOwner:=(FRawOwner and $7);
+end;
+
+// HasInOwners
+//
+function TdwsJSONValue.HasInOwners(obj : TdwsJSONValue) : Boolean;
+begin
+   var o := Self;
+   repeat
+      if o = obj then Exit(True);
+      o := o.GetOwner;
+   until o = nil;
+   Result := False;
 end;
 
 // Destroy
@@ -2050,13 +2067,20 @@ end;
 // IndexOfValue
 //
 function TdwsJSONObject.IndexOfValue(const aValue : TdwsJSONValue) : Integer;
-var
-   i : Integer;
 begin
-   for i:=0 to FCount-1 do
-      if FItems^[i].Value=aValue then
+   for var i := 0 to FCount-1 do
+      if FItems^[i].Value = aValue then
          Exit(i);
-   Result:=-1;
+   Result := -1;
+end;
+
+// SetOwner
+//
+procedure TdwsJSONObject.SetOwner(aOwner : TdwsJSONValue);
+begin
+   if aOwner.HasInOwners(Self) then
+      RaiseJSONException('JSON circular reference');
+   inherited SetOwner(aOwner);
 end;
 
 // ------------------
@@ -2468,6 +2492,15 @@ begin
    for var i := 0 to otherArr.FCount-1 do
       Add(otherArr.FElements^[i].Clone);
 
+end;
+
+// SetOwner
+//
+procedure TdwsJSONArray.SetOwner(aOwner : TdwsJSONValue);
+begin
+   if aOwner.HasInOwners(Self) then
+      RaiseJSONException('JSON circular reference');
+   inherited SetOwner(aOwner);
 end;
 
 // ------------------

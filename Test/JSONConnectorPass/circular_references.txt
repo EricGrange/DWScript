@@ -1,0 +1,4 @@
+1: JSON circular reference
+2: JSON circular reference
+3: JSON circular reference
+4: JSON circular reference
