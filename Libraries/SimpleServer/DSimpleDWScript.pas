@@ -28,7 +28,8 @@ interface
 {$ifend}
 
 uses
-   Winapi.Windows, System.SysUtils, System.Classes, System.StrUtils, System.Masks,
+   Winapi.Windows,
+   System.SysUtils, System.Classes, System.StrUtils, System.Masks, System.Types,
    dwsFileSystem, dwsGlobalVarsFunctions, dwsExprList,
    dwsCompiler, dwsHtmlFilter, dwsComp, dwsExprs, dwsUtils, dwsXPlatform,
    dwsJSONConnector, dwsJSON, dwsErrors, dwsUnitSymbols, dwsSymbols,
@@ -132,6 +133,7 @@ type
       FBackgroundFileSystem : IdwsFileSystem;
 
       FErrorLogDirectory : String;
+      FExceptionLogDirectory : String;
 
       FFlushMask : TMask;
       FCheckDirectoryChanges : ITimer;
@@ -196,6 +198,7 @@ type
       function LiveQueries : String;
 
       procedure LogError(const msg : String);
+      procedure LogException(msgs : TdwsMessageList);
 
       procedure SetCompileFileSystem(const sys : TdwsCustomFileSystem);
       property CodeGenOptions : TdwsCodeGenOptions read GetCodeGenOptions write SetCodeGenOptions;
@@ -211,6 +214,7 @@ type
       property ShutdownScriptName : String read FShutdownScriptName write FShutdownScriptName;
 
       property ErrorLogDirectory : String read FErrorLogDirectory write FErrorLogDirectory;
+      property ExceptionLogDirectory : String read FExceptionLogDirectory write FExceptionLogDirectory;
 
       class procedure RegisterLibraryBinder(const binder : TSimpleDWScriptLibraryBinder);
   end;
@@ -511,7 +515,9 @@ begin
 
    if exec.Msgs.Count>0 then begin
       if exec.ExecutionTimedOut then
-         LogExecutionTimeOut(fileName);
+         LogExecutionTimeOut(fileName)
+      else if ExceptionLogDirectory <> '' then
+         LogException(exec.Msgs);
       Handle500(response, exec.Msgs);
    end else if response <> nil then begin
       if response.ContentData = '' then
@@ -598,9 +604,10 @@ begin
       FCompilerFiles := nil;
       FCompilerLock.Leave;
    end;
-   if (prog<>nil) and prog.Msgs.HasErrors then
-      Handle500(response, prog.Msgs)
-   else begin
+   if (prog<>nil) and prog.Msgs.HasErrors then begin
+      LogError(prog.Msgs);
+      Handle500(response, prog.Msgs);
+   end else begin
       if js <> '' then begin
          response.ContentData := '(function(){'#10 + UTF8Encode(js) + '})();'#10;
          response.ContentType := 'text/javascript; charset=UTF-8';
@@ -941,6 +948,18 @@ begin
    AppendTextToUTF8File(ErrorLogDirectory+'error.log', UTF8Encode(buf));
 end;
 
+// LogException
+//
+procedure TSimpleDWScript.LogException(msgs : TdwsMessageList);
+var
+   bufDate, buf : String;
+begin
+   bufDate := FormatDateTime('yyyy-mm-dd', Now);
+   buf := bufDate + FormatDateTime(' hh:nn:ss.zzz', Now)
+        + ' ' + msgs.AsInfo + #10;
+   AppendTextToUTF8File(ExceptionLogDirectory + 'exception.' + bufDate + '.log', UTF8Encode(buf));
+end;
+
 // SetCompileFileSystem
 //
 procedure TSimpleDWScript.SetCompileFileSystem(const sys : TdwsCustomFileSystem);
@@ -1096,9 +1115,9 @@ end;
 //
 class procedure TSimpleDWScript.Handle500(response : TWebResponse; msgs : TdwsMessageList);
 begin
-   if response<>nil then begin
-      response.StatusCode:=500;
-      response.ContentText['plain']:=msgs.AsInfo;
+   if response <> nil then begin
+      response.StatusCode := 500;
+      response.ContentText['plain'] := msgs.AsInfo;
    end else OutputDebugString(msgs.AsInfo);
 end;
 

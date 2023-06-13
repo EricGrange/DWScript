@@ -37,8 +37,8 @@ unit UHttpSys2WebServer;
 interface
 
 uses
-  Windows, SysUtils, Classes,
-  SynZip, SynCommons,
+  Winapi.Windows, System.SysUtils, System.Classes, System.Types,
+  SynZip,
   dwsHTTPSysServer, dwsHTTPSysAPI, dwsHTTPSysServerEvents, dwsXXHash,
   dwsUtils, dwsWebEnvironment, dwsWebEnvironmentTypes, dwsFileSystem,
   dwsJSON, dwsXPlatform, dwsURLRewriter,
@@ -166,6 +166,9 @@ const
          // Directory for DWScript error log files
          // If empty, DWS error logs are not active
          +'"DWSErrorLogDirectory": "",'
+         // Directory for unhandled DWScript exception log files
+         // If empty, DWS exceptions logs are not active
+         +'"DWSExceptionLogDirectory": "",'
          // Directory for log files (NCSA)
          // If empty, logs are not active
          +'"LogDirectory": "",'
@@ -309,7 +312,7 @@ end;
 procedure THttpSys2WebServer.Initialize(const basePath : TFileName; options : TdwsJSONValue;
                                         const aServiceName : String);
 var
-   logPath, errorLogPath : TdwsJSONValue;
+   logPath, errorLogPath, exceptionLogPath : TdwsJSONValue;
    serverOptions : TdwsJSONValue;
    env: TdwsJSONObject;
    i, nbThreads : Integer;
@@ -335,6 +338,11 @@ begin
       end;
 
       FErrorPagesPath:=IncludeTrailingPathDelimiter(FPath+'.errors');
+
+      exceptionLogPath:=serverOptions['DWSExceptionLogDirectory'];
+      if (exceptionLogPath.ValueType=jvtString) and (exceptionLogPath.AsString<>'') then begin
+         FDWS.ExceptionLogDirectory:=IncludeTrailingPathDelimiter(FDWS.ApplyPathVariables(exceptionLogPath.AsString));
+      end;
 
       FDirectoryIndex:=TDirectoryIndexCache.Create;
       FDirectoryIndex.IndexFileNames.CommaText:='"index.dws","index.htm","index.html"';
@@ -565,7 +573,7 @@ begin
 
       // http.sys will send the specified file from kernel mode
 
-      response.ContentData := UnicodeStringToUtf8(pathName);
+      response.ContentData := UTF8Encode(pathName);
       response.ContentType := HTTP_RESP_STATICFILE;
       response.LastModified := lastModified;
 
@@ -590,7 +598,7 @@ begin
 
    if FileExists(errorFile) then begin
 
-      response.ContentData := UnicodeStringToUtf8(errorFile);
+      response.ContentData := UTF8Encode(errorFile);
       response.ContentType := HTTP_RESP_STATICFILE;
 
    end else begin
