@@ -257,9 +257,10 @@ function Process_ReRunIfNotElevated : Boolean;
       var nb := QueryDosDevice(PChar(drive), PChar(targetPath), Length(targetPath));
       if nb > 2 then begin
          SetLength(targetPath, nb-2);
-         if Copy(targetPath, 1, 4) = '\??\' then
+         if Copy(targetPath, 1, 4) = '\??\' then begin
             targetPath := Copy(targetPath, 5);
-         exeName := targetPath + Copy(exeName, p+1);
+            exeName := targetPath + Copy(exeName, p+1);
+         end;
       end;
    end;
 
@@ -626,7 +627,7 @@ end;
 //
 function TdwsWindowsService.ServiceStatus(var status : TServiceStatus) : Boolean;
 var
-   scHandle, svInfo : Integer;
+   scHandle, svInfo : THandle;
 begin
    Result := False;
 
