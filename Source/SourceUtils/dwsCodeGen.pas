@@ -1678,7 +1678,9 @@ begin
 
       if isUsed then Exit(True);
    end;
-   WriteStringLn('// IGNORED: '+meth.StructSymbol.Name+'.'+meth.Name);
+   if meth.StructSymbol <> nil then
+      WriteStringLn('// IGNORED: '+meth.StructSymbol.Name+'.'+meth.Name+' (' + meth.ClassName+ ')')
+   else WriteStringLn('// IGNORED: '+meth.Name+' (' + meth.ClassName+ ')');
    Result:=False;
 end;
 
@@ -1904,7 +1906,9 @@ begin
    // remove members cross-references
    repeat
       localChanged:=False;
-      for member in helperSymbol.Members do begin
+      for var i := helperSymbol.Members.Count-1 downto 0 do begin
+         if i >= helperSymbol.Members.Count then continue;
+         member := helperSymbol.Members[i];
 
          if member is TPropertySymbol then begin
 
