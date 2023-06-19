@@ -605,7 +605,7 @@ begin
       FCompilerLock.Leave;
    end;
    if (prog<>nil) and prog.Msgs.HasErrors then begin
-      LogError(prog.Msgs);
+      LogCompileErrors(fileName, prog.Msgs);
       Handle500(response, prog.Msgs);
    end else begin
       if js <> '' then begin

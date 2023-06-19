@@ -1,5 +1,4 @@
 object SimpleDWScript: TSimpleDWScript
-  OldCreateOrder = False
   OnCreate = DataModuleCreate
   OnDestroy = DataModuleDestroy
   Height = 282
