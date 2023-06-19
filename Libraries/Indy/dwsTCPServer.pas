@@ -35,7 +35,7 @@ type
    end;
 
    TdwsTCPConnectionStatus = record
-      Active, Connected : Boolean;
+      Active, Connected, ClosedGracefully : Boolean;
       InputBuffer : Integer;
    end;
 
@@ -489,6 +489,7 @@ begin
             if Result.Connected then begin
                var socket := context.Connection.Socket;
                Result.InputBuffer := socket.InputBuffer.Size;
+               Result.ClosedGracefully := socket.ClosedGracefully;
             end;
             Break;
          end;

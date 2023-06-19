@@ -1,5 +1,4 @@
 object dwsSystemTCPServerLib: TdwsSystemTCPServerLib
-  OldCreateOrder = False
   Height = 150
   Width = 215
   object dwsTCPServerModule: TdwsUnit
@@ -185,6 +184,10 @@ object dwsSystemTCPServerLib: TdwsSystemTCPServerLib
           item
             Name = 'InputSize'
             DataType = 'Integer'
+          end
+          item
+            Name = 'ClosedGracefully'
+            DataType = 'Boolean'
           end>
         Properties = <>
       end>

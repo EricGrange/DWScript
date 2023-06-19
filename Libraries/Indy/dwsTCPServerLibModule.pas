@@ -270,10 +270,12 @@ begin
    if status.Active then begin
       result.Member['ID'].ValueAsString := connID;
       result.Member['Connected'].Value := status.Connected;
+      result.Member['ClosedGracefully'].Value := status.ClosedGracefully;
       result.Member['InputSize'].ValueAsInteger := status.InputBuffer;
    end else begin
       result.Member['ID'].ValueAsString := '';
       result.Member['Connected'].Value := False;
+      result.Member['ClosedGracefully'].Value := False;
       result.Member['InputSize'].ValueAsInteger := 0;
    end;
 end;
