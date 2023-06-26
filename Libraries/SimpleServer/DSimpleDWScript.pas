@@ -235,7 +235,7 @@ const
    cDefaultDWScriptOptions =
       '{'
          // Script timeout in milliseconds
-         // zero = no limit (not recommended)
+         // zero = no limit (NOT recommended)
          +'"TimeoutMSec": 3000,'
          +'"WorkerTimeoutMSec": 30000,'
          // Size of stack growth chunks
@@ -924,6 +924,7 @@ begin
       FCompiledProgramsLock.BeginWrite;
       try
          if not FCompiledPrograms.Match(cp) then begin
+            prog.TimeoutMilliseconds := ScriptTimeoutMilliseconds;
             cp.Prog  := prog;
             cp.Files := FCompilerFiles;
             FCompiledPrograms.Add(cp);
