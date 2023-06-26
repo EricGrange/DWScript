@@ -357,7 +357,7 @@ implementation
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
 
-uses dwsDynamicArrays, dwsArrayExprs;
+uses dwsDynamicArrays, dwsArrayExprs, dwsStack;
 
 // StrRevFind
 //
@@ -1013,20 +1013,26 @@ end;
 //
 procedure TSetLengthFunc.DoEvalProc(const args : TExprBaseListExec);
 var
-   i, n : Integer;
    s : String;
-   p : PWideChar;
+   ps : PString;
 begin
-   args.EvalAsString(0, s);
+   var arg0 := args[0];
+   if arg0.ClassType = TStrVarExpr then begin
+      ps := TStrVarExpr(args[0]).EvalAsPString(args.Exec);
+   end else begin
+      arg0.EvalAsString(args.Exec, s);
+      ps := @s;
+   end;
 
-   i:=Length(s);
-   n:=args.AsInteger[1];
-   SetLength(s, n);
-   p:=Pointer(s);
-   for i:=i to n-1 do
-      p[i]:=' ';
+   var i := Length(ps^);
+   var n := args.AsInteger[1];
+   SetLength(ps^, n);
+   var p : PWideChar := Pointer(ps^);
+   for i := i to n-1 do
+      p[i] := ' ';
 
-   args.AsString[0]:=s;
+   if ps = @s then
+      args.AsString[0] := s;
 end;
 
 { TStringOfCharFunc }
