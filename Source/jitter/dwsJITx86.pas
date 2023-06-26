@@ -829,6 +829,7 @@ begin
 
    RegisterJITter(TStringLengthExpr,            FInterpretedJITter.IncRefCount);
    RegisterJITter(TAppendStringVarExpr,         FInterpretedJITter.IncRefCount);
+   RegisterJITter(TAppendStringVarParamExpr,    FInterpretedJITter.IncRefCount);
    RegisterJITter(TAppendConstStringVarExpr,    FInterpretedJITter.IncRefCount);
    RegisterJITter(TVarStringArraySetExpr,       FInterpretedJITter.IncRefCount);
    RegisterJITter(TStringArrayOpExpr,           FInterpretedJITter.IncRefCount);

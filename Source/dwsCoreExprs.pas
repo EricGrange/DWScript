@@ -208,6 +208,7 @@ type
    TVarParamExpr = class sealed (TByRefParamExpr)
       public
          function SpecializeDataExpr(const context : ISpecializationContext) : TDataExpr; override;
+         procedure Append(exec : TdwsExecution; const value : String);
    end;
 
    TConstParamExpr = class sealed (TByRefParamExpr)
@@ -1085,6 +1086,10 @@ type
    // a += b (String var)
    TAppendStringVarExpr = class(TAssignExpr)
       function Token : TTokenType; override;
+      procedure EvalNoResult(exec : TdwsExecution); override;
+   end;
+   // a += b (String var param)
+   TAppendStringVarParamExpr = class(TAppendStringVarExpr)
       procedure EvalNoResult(exec : TdwsExecution); override;
    end;
    // a += b (String field)
@@ -2487,6 +2492,13 @@ end;
 function TVarParamExpr.SpecializeDataExpr(const context : ISpecializationContext) : TDataExpr;
 begin
    Result := TVarParamExpr.Create(ScriptPos, context.SpecializeDataSymbol(DataSymbol));
+end;
+
+// Append
+//
+procedure TVarParamExpr.Append(exec : TdwsExecution; const value : String);
+begin
+   IDataContext(GetVarParamDataAsPointer(exec)).AppendString(0, value);
 end;
 
 // ------------------
@@ -5960,6 +5972,11 @@ begin
       FLeft := nil;
       FRight := nil;
       Orphan(context);
+   end else if FLeft is TVarParamExpr then begin
+      Result := TAppendStringVarParamExpr.Create(context, FScriptPos, FLeft, FRight);
+      FLeft := nil;
+      FRight := nil;
+      Orphan(context);
    end;
 end;
 
@@ -6148,6 +6165,20 @@ end;
 function TAppendStringVarExpr.Token : TTokenType;
 begin
    Result := ttPLUS_ASSIGN;
+end;
+
+// ------------------
+// ------------------ TAppendStringVarParamExpr ------------------
+// ------------------
+
+// EvalNoResult
+//
+procedure TAppendStringVarParamExpr.EvalNoResult(exec : TdwsExecution);
+var
+   buf : String;
+begin
+   FRight.EvalAsString(exec, buf);
+   TVarParamExpr(FLeft).Append(exec, buf);
 end;
 
 // ------------------

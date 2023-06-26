@@ -1186,9 +1186,10 @@ begin
    RegisterCodeGen(TCoalesceClassExpr,    TJSCoalesceExpr.Create);
    RegisterCodeGen(TCoalesceDynArrayExpr, TJSCoalesceExpr.Create);
 
-   RegisterCodeGen(TAppendStringVarExpr,  TJSAppendStringVarExpr.Create);
-   RegisterCodeGen(TAppendConstStringVarExpr,      TJSAppendConstStringVarExpr.Create);
-   RegisterCodeGen(TAppendStringFieldExpr,  TJSAppendStringVarExpr.Create);
+   RegisterCodeGen(TAppendStringVarExpr,       TJSAppendStringVarExpr.Create);
+   RegisterCodeGen(TAppendStringVarParamExpr,  TJSCompoundExpr.Create('+=', '$DIdxAdd', '$AKeyAdd'));
+   RegisterCodeGen(TAppendConstStringVarExpr,  TJSAppendConstStringVarExpr.Create);
+   RegisterCodeGen(TAppendStringFieldExpr,     TJSAppendStringVarExpr.Create);
 
    RegisterCodeGen(TPlusAssignIntExpr,    TJSCompoundExpr.Create('+=', '$DIdxAdd', '$AKeyAdd'));
    RegisterCodeGen(TPlusAssignFloatExpr,  TJSCompoundExpr.Create('+=', '$DIdxAdd', '$AKeyAdd'));
