@@ -154,7 +154,7 @@ type
          procedure AddDynamicArrayHelpers(dyn : TDynamicArraySymbol; list : TSimpleSymbolList);
          procedure AddAssociativeArrayHelpers(assoc : TAssociativeArraySymbol; list : TSimpleSymbolList);
          procedure AddEnumerationHelpers(enum : TEnumerationSymbol; list : TSimpleSymbolList);
-         procedure AddJSONVariantHelpers(list : TSimpleSymbolList);
+         procedure AddJSONVariantHelpers(jsonVariantType : TTypeSymbol; list : TSimpleSymbolList);
          procedure AddTypeHelpers(typ : TTypeSymbol; meta : Boolean; list : TSimpleSymbolList);
          procedure AddUnitSymbol(unitSym : TUnitSymbol; list : TSimpleSymbolList);
 
@@ -620,7 +620,7 @@ end;
 
 // AddJSONVariantHelpers
 //
-procedure TdwsSuggestions.AddJSONVariantHelpers(list : TSimpleSymbolList);
+procedure TdwsSuggestions.AddJSONVariantHelpers(jsonVariantType : TTypeSymbol; list : TSimpleSymbolList);
 var
    p : TdwsCompilerContext;
 begin
@@ -632,9 +632,9 @@ begin
       FJSONVariantHelpers.AddSymbol(CreateHelper('Length', p.TypInteger, [], True));
       FJSONVariantHelpers.AddSymbol(CreateHelper('Low', p.TypInteger, [], True));
       FJSONVariantHelpers.AddSymbol(CreateHelper('High', p.TypInteger, [], True));
-      FJSONVariantHelpers.AddSymbol(CreateHelper('Clone', p.TypVariant, [], True));
+      FJSONVariantHelpers.AddSymbol(CreateHelper('Clone', jsonVariantType, [], True));
       FJSONVariantHelpers.AddSymbol(CreateHelper('ToString', p.TypString, [], True));
-      FJSONVariantHelpers.AddSymbol(CreateHelper('Extend', p.TypVariant, ['obj', p.TypVariant]));
+      FJSONVariantHelpers.AddSymbol(CreateHelper('Extend', jsonVariantType, ['obj', jsonVariantType]));
       FJSONVariantHelpers.AddSymbol(CreateHelper('Delete', nil, ['item', p.TypAnyType]));
       FJSONVariantHelpers.AddSymbol(CreateHelper('Swap', nil, ['index1', p.TypInteger, 'index2', p.TypInteger]));
       FJSONVariantHelpers.AddSymbol(CreateHelper('TypeName', p.TypString, [], True));
@@ -820,7 +820,7 @@ begin
 
          end else if (FPreviousSymbol.Typ is TBaseVariantSymbol) and (FPreviousSymbol.Typ.Name='JSONVariant') then begin
 
-            AddJSONVariantHelpers(list);
+            AddJSONVariantHelpers(FPreviousSymbol.Typ, list);
 
          end else if list.Count=0 then
 
