@@ -1,0 +1,6 @@
+Errors >>>>
+Hint: Prefer .ToString or IntToStr() [line: 5, column: 9]
+Hint: Prefer .ToString or FloatToStr() [line: 6, column: 9]
+Result >>>>
+123
+1.5

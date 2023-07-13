@@ -388,6 +388,9 @@ const
   CPH_UnitAlreadyReferredInInterface = 'Unit "%s" already declared in interface section';
   CPH_AssigningToItself = 'Assigning %s to itself';
 
+  CPH_PreferIntToStr = 'Prefer .ToString or IntToStr()';
+  CPH_PreferFloatToStr = 'Prefer .ToString or FloatToStr()';
+
   CPH_OfObjectIsLegacy = 'OF OBJECT modifier is legacy and ignored';
   CPE_OfObjectExpected = 'OF OBJECT expected';
   CPH_ReferenceToIsLegacy = 'REFERENCE TO modifier is legacy and ignored';

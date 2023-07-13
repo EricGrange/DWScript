@@ -403,8 +403,6 @@ end;
 
 { TChrFunc }
 
-// DoEvalAsString
-//
 procedure TChrFunc.DoEvalAsString(const args : TExprBaseListExec; var Result : String);
 begin
    CodePointToString(args.AsInteger[0], result);
@@ -505,8 +503,6 @@ end;
 
 { TIntToBinFunc }
 
-// DoEvalAsString
-//
 procedure TIntToBinFunc.DoEvalAsString(const args : TExprBaseListExec; var Result : String);
 var
    v : Int64;
@@ -855,8 +851,6 @@ end;
 
 { TTrimLeftFunc }
 
-// DoEvalAsString
-//
 procedure TTrimLeftFunc.DoEvalAsString(const args : TExprBaseListExec; var Result : String);
 begin
    Result:=TrimLeft(args.AsString[0]);
@@ -864,8 +858,6 @@ end;
 
 { TTrimRightFunc }
 
-// DoEvalAsString
-//
 procedure TTrimRightFunc.DoEvalAsString(const args : TExprBaseListExec; var Result : String);
 begin
    Result:=TrimRight(args.AsString[0]);
@@ -979,8 +971,6 @@ end;
 
 { TQuotedStrFunc }
 
-// DoEvalAsString
-//
 procedure TQuotedStrFunc.DoEvalAsString(const args : TExprBaseListExec; var Result : String);
 var
    quoteChar : String;
@@ -993,8 +983,6 @@ end;
 
 { TCharAtFunc }
 
-// DoEvalAsString
-//
 procedure TCharAtFunc.DoEvalAsString(const args : TExprBaseListExec; var Result : String);
 var
    buf : String;
@@ -1009,8 +997,6 @@ end;
 
 { TSetLengthFunc }
 
-// DoEvalProc
-//
 procedure TSetLengthFunc.DoEvalProc(const args : TExprBaseListExec);
 var
    s : String;
@@ -1037,8 +1023,6 @@ end;
 
 { TStringOfCharFunc }
 
-// DoEvalAsString
-//
 procedure TStringOfCharFunc.DoEvalAsString(const args : TExprBaseListExec; var Result : String);
 var
    charCode : WideChar;
@@ -1053,8 +1037,6 @@ end;
 
 { TStringOfStringFunc }
 
-// DoEvalAsString
-//
 procedure TStringOfStringFunc.DoEvalAsString(const args : TExprBaseListExec; var Result : String);
 
    function StringOfString(const str : String; count : Integer) : String;

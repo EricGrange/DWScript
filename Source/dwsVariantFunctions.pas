@@ -261,8 +261,13 @@ end;
 //
 procedure TVarToStrFunc.CompileTimeCheck(context : TdwsCompilerContext; expr : TFuncExprBase);
 begin
-   if expr.GetArgType(0).IsOfType(context.TypString) then
-      context.Msgs.AddCompilerHint(expr.ScriptPos, CPH_RedundantFunctionCall);
+   var arg0  := expr.GetArgType(0);
+   if arg0.IsOfType(context.TypString) then
+      context.Msgs.AddCompilerHint(expr.ScriptPos, CPH_RedundantFunctionCall)
+   else if arg0.IsOfType(context.TypInteger) then
+      context.Msgs.AddCompilerHint(expr.ScriptPos, CPH_PreferIntToStr)
+   else if arg0.IsOfType(context.TypFloat) then
+      context.Msgs.AddCompilerHint(expr.ScriptPos, CPH_PreferFloatToStr);
 end;
 
 { InitVariants }
