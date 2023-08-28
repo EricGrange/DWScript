@@ -70,14 +70,10 @@ begin
       MEResult.Lines.Text:=prog.Msgs.AsInfo
    else begin
       MEResult.Clear;
-      try
-         exec:=prog.Execute;
-         MEResult.Lines.Text:=exec.Result.ToString;
-      except
-         on E: Exception do begin
-            MEResult.Lines.Text:=E.ClassName+': '+E.Message;
-         end;
-      end;
+      exec:=prog.Execute;
+      MEResult.Lines.Text:=exec.Result.ToString;
+      if exec.Msgs.HasErrors then
+         MEResult.Lines.Add(exec.Msgs.AsInfo);
    end;
 end;
 
