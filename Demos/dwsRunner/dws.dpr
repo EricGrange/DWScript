@@ -1,25 +1,22 @@
 program dws;
-
 {$SetPEFlags $0001}
-
 {$IFNDEF VER200} // delphi 2009
 {$WEAKLINKRTTI ON}
 {$RTTI EXPLICIT METHODS([]) PROPERTIES([]) FIELDS([])}
 {$ENDIF}
 {$APPTYPE CONSOLE}
-
 {$r *.dres}
-
 uses
-  Windows, ActiveX,
-  Classes,
-  SysUtils,
+  Winapi.Windows, Winapi.ActiveX,
+  System.Classes,
+  System.SysUtils,
   dwsXPlatform,
   dwsComp,
   dwsCompiler,
   dwsExprs,
   dwsUtils,
   dwsFunctions,
+  dwsUnitSymbols,
   SynZip,
   dwsMathFunctions,
   dwsStringFunctions,
@@ -50,10 +47,23 @@ uses
 
 {$SetPEFlags IMAGE_FILE_LARGE_ADDRESS_AWARE or IMAGE_FILE_RELOCS_STRIPPED}
 
+type
+   TUnitProvider = class
+      function DoNeedUnitEx(const unitName : String; var unitSource, unitLocation : String) : IdwsUnit;
+   end;
+
+function TUnitProvider.DoNeedUnitEx(const unitName : String; var unitSource, unitLocation : String) : IdwsUnit;
+begin
+   unitLocation := unitName + '.pas';
+   unitSource := LoadTextFromFile(unitLocation);
+   if unitSource = '' then
+      unitLocation := '';
+end;
+
 function CreateScript : TDelphiWebScript;
 begin
    Result:=TDelphiWebScript.Create(nil);
-
+   Result.OnNeedUnitEx := TUnitProvider(nil).DoNeedUnitEx;
    TdwsComConnector.Create(Result).Script:=Result;
    TdwsJSONLibModule.Create(Result).Script:=Result;
    TdwsClassesLib.Create(Result).dwsUnit.Script:=Result;
@@ -64,40 +74,31 @@ begin
    TdwsDatabaseLib.Create(Result).dwsDatabase.Script:=Result;
    TdwsSystemInfoLibModule.Create(Result).Script:=Result;
 end;
-
 procedure WriteHeader;
 begin
    Writeln('dws Runner - sample code runner for DWScript');
    Writeln('');
 end;
-
 {$WARN SYMBOL_PLATFORM OFF}
-
 // MakeExecutable
 //
 procedure MakeExecutable;
 var
    zw : TZipWrite;
    sourceName, zipFileName, exeName : TFileName;
-   hUpdate : THandle;
    buf : RawByteString;
-   fs : TFileStream;
-   zip : TZipProject;
    prog : IdwsProgram;
    script : TDelphiWebScript;
    searchRec : TSearchRec;
    found : Integer;
 begin
    WriteHeader;
-
    if ParamCount<2 then begin
       Writeln('Missing zipfile name');
       Exit;
    end;
-
    sourceName:=ParamStr(2);
    WriteLn('...Starting make for "', sourceName, '"');
-
    if not StrEndsWith(sourceName, '.zip') then begin
       zipFileName:=ChangeFileExt(sourceName, '.zip');
       WriteLn('...Zipping to "', zipFileName, '"');
@@ -121,9 +122,8 @@ begin
    if ParamCount>2 then
       exeName:=ParamStr(3)
    else exeName:=ChangeFileExt(zipFileName, '.exe');
-
-   zip:=TZipProject.Create(zipFileName);
-   script:=CreateScript;
+   var zip := TZipProject.Create(zipFileName);
+   script := CreateScript;
    try
       prog:=script.Compile(zip.Attach(script));
       try
@@ -142,32 +142,27 @@ begin
       end;
    finally
       script.Free;
-      zip.Free;
+      FreeAndNil(zip);
    end;
-
    if not FileCopy(ParamStr(0), exeName, False) then begin
       Writeln('...Failed to create "', exeName, '"');
    end;
-
-   fs:=TFileStream.Create(zipFileName, fmOpenRead or fmShareDenyNone);
+   var fs := TFileStream.Create(zipFileName, fmOpenRead or fmShareDenyNone);
    try
       SetLength(buf, fs.Size);
-      if Length(buf)<>0 then
+      if buf <> '' then
          fs.Read(buf[1], Length(buf));
    finally
       fs.Free;
    end;
-
-   hUpdate:=BeginUpdateResource(Pointer(exeName), False);
+   var hUpdate := BeginUpdateResource(Pointer(exeName), False);
    try
       UpdateResource(hUpdate, RT_RCDATA, 'SCRIPT', 0, Pointer(buf), Length(buf));
    finally
       EndUpdateResource(hUpdate, False);
    end;
-
    WriteLn('..."', exeName, '" generated successfully!');
 end;
-
 // Execute
 //
 procedure Execute(project : TRunnerProject; paramOffset : Integer; embedded, compileOnly : Boolean);
@@ -176,14 +171,12 @@ var
    source : String;
    prog : IdwsProgram;
    exec : IdwsProgramExecution;
-   i : Integer;
    params : array of Variant;
 begin
    try
       script:=CreateScript;
       try
          source:=project.Attach(script);
-
          prog:=script.Compile(source);
          try
             if compileOnly then begin
@@ -191,20 +184,19 @@ begin
                Writeln('Compiled with ', prog.Msgs.Count, ' message(s)');
                Exit;
             end;
-
             if prog.Msgs.Count>0 then begin
                if prog.Msgs.HasErrors or not embedded then
                   Writeln(prog.Msgs.AsInfo);
                if prog.Msgs.HasErrors then Exit;
             end;
 
-            var jit := TdwsJITx86.Create;
+            var jit := {$ifdef WIN64}TdwsJITx86_64.Create{$else}TdwsJITx86.Create{$endif};
             jit.GreedyJIT(prog.ProgramObject);
             jit.Free;
 
             SetLength(params, ParamCount-paramOffset+2);
             params[0]:=ParamStr(0);
-            for i:=paramOffset to ParamCount do
+            for var i := paramOffset to ParamCount do
                params[i-paramOffset+1]:=ParamStr(i);
             exec:=prog.ExecuteParam(params);
             try
@@ -227,7 +219,6 @@ begin
    end;
 end;
 
-
 var
    fileName : String;
    paramOffset : Integer;
@@ -246,7 +237,6 @@ begin
       paramOffset:=1;
       embedded:=True;
    end;
-
    compileOnly := False;
    if project=nil then begin
       if ParamCount<1 then begin
