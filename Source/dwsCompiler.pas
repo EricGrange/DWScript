@@ -6578,47 +6578,51 @@ var
    blockExpr : TBlockExpr;
    doBlock : TProgramExpr;
    loopVarInSetExpr : TSetOfInExpr;
-   ifThenExpr : TIfThenExpr;
    forExpr : TForUpwardExpr;
 begin
    setOfSymbol:=(inExpr.Typ as TSetOfSymbol);
    elementTyp:=setOfSymbol.Typ;
 
-   blockExpr:=EnsureLoopVarExpr(forPos, loopVarName, loopVarNamePos, loopVarExpr, elementTyp);
+   blockExpr := EnsureLoopVarExpr(forPos, loopVarName, loopVarNamePos, loopVarExpr, elementTyp);
 
    if not FTok.TestDelete(ttDO) then
       FMsgs.AddCompilerError(FTok.HotPos, CPE_DoExpected);
 
-   if blockExpr<>nil then
+   if blockExpr <> nil then
       CurrentProg.EnterSubTable(blockExpr.Table);
 
-   try
-      doBlock:=ReadBlock;
-   except
-      OrphanAndNil(blockExpr);
-      OrphanAndNil(loopVarExpr);
-      OrphanAndNil(inExpr);
-      raise;
-   end;
-
-   loopVarInSetExpr:=TSetOfInExpr.CreateOptimal(FCompilerContext, forPos, loopVarExpr, inExpr);
+   loopVarInSetExpr := TSetOfInExpr.CreateOptimal(FCompilerContext, forPos, loopVarExpr, inExpr);
    loopVarExpr.IncRefCount;
 
-   ifThenExpr:=TIfThenExpr.Create(FCompilerContext, forPos, loopVarInSetExpr, doBlock);
+   forExpr := TForUpwardExpr.Create(forPos);
+   forExpr.FromExpr := TConstIntExpr.Create(inExpr.ScriptPos, elementTyp, setOfSymbol.MinValue);
+   forExpr.ToExpr := TConstIntExpr.Create(inExpr.ScriptPos, elementTyp, setOfSymbol.MaxValue);
+   forExpr.VarExpr := (loopVarExpr as TIntVarExpr);
 
-   forExpr:=TForUpwardExpr.Create(forPos);
-   forExpr.DoExpr:=ifThenExpr;
-   forExpr.FromExpr:=TConstIntExpr.Create(inExpr.ScriptPos, elementTyp, setOfSymbol.MinValue);
-   forExpr.ToExpr:=TConstIntExpr.Create(inExpr.ScriptPos, elementTyp, setOfSymbol.MaxValue);
-   forExpr.VarExpr:=(loopVarExpr as TIntVarExpr);
+   EnterLoop(forExpr);
+   try
+      MarkLoopExitable(leBreak);
+      try
+         doBlock := ReadBlock;
+         var ifThenExpr := TIfThenExpr.Create(FCompilerContext, forPos, loopVarInSetExpr, doBlock);
+         forExpr.DoExpr := ifThenExpr;
+      except
+         OrphanAndNil(blockExpr);
+         OrphanAndNil(loopVarExpr);
+         OrphanAndNil(inExpr);
+         raise;
+      end;
+   finally
+      LeaveLoop;
+   end;
 
-   if blockExpr<>nil then begin
+   if blockExpr <> nil then begin
       CurrentProg.LeaveSubTable;
       blockExpr.AddStatement(forExpr);
       if Optimize then
-         Result:=blockExpr.Optimize(FCompilerContext)
-      else Result:=blockExpr;
-   end else Result:=forExpr;
+         Result := blockExpr.Optimize(FCompilerContext)
+      else Result := blockExpr;
+   end else Result := forExpr;
 end;
 
 // ReadForInConnector
