@@ -688,6 +688,7 @@ const
   UNT_ClassAlreadyDefined = 'Class already defined';
   UNT_ClassNameAlreadyDefined = 'The class "%s" is already used for another symbol %s';
   UNT_SuperClassUnknwon = 'Superclass "%s" not found';
+  UNT_PropertyNotFoundForPromotion = 'Property "%s" not found in parent class for visibility promotion';
   UNT_ReadAccessNotFound = 'ReadAccess "%s" not found';
   UNT_WriteAccessNotFound = 'WriteAccess "%s" not found';
   UNT_UsesAccessNotFound = 'UsesAccess "%s" not found';

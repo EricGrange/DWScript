@@ -4671,37 +4671,63 @@ end;
 //
 function TdwsProperty.DoGenerate(systemTable : TSystemSymbolTable; Table: TSymbolTable; ParentSym: TSymbol = nil) : TSymbol;
 var
-   sym : TSymbol;
-   propSym : TPropertySymbol;
    indexData : IDataContext;
-   parent : TCompositeTypeSymbol;
 begin
    FIsGenerating := True;
 
-   if DataType='' then
-      raise Exception.CreateFmt(UNT_DatatypeNotSpecified, [Name, ParentSym.Name]);
+   var parent := (ParentSym as TCompositeTypeSymbol);
+   var propertyTypSym : TTypeSymbol;
+   var promotionFrom : TPropertySymbol := nil;
 
-   propSym:=TPropertySymbol.Create(Name, GetDataType(systemTable, Table, DataType), Visibility, nil);
-   Result:=propSym;
+   // Visibility promotion ?
+   if (FName <> '') and (FReadAccess = '') and (FWriteAccess = '')
+                    and (DataType = '') and (IndexType = '') then begin
+
+      var sym := Parent.Members.FindSymbolFromScope(FName, Parent);
+      if (sym = nil) or not (sym is TPropertySymbol) then
+         raise Exception.CreateFmt(UNT_PropertyNotFoundForPromotion, [ Name ]);
+      promotionFrom := TPropertySymbol(sym);
+      if promotionFrom.Visibility > promotionFrom.Visibility then
+         raise Exception.Create(CPE_CannotDemotePropertyVisibility);
+
+      propertyTypSym := promotionFrom.Typ;
+
+   end else begin
+
+      if DataType = '' then
+         raise Exception.CreateFmt(UNT_DatatypeNotSpecified, [Name, ParentSym.Name]);
+      propertyTypSym := GetDataType(systemTable, Table, DataType);
+
+   end;
+
+   var propSym := TPropertySymbol.Create(Name, propertyTypSym, Visibility, nil);
+   Result := propSym;
 
    propSym.GenerateParams(Table, GetParameters(Self, Parameters, systemTable, Table));
 
-   parent:=(ParentSym as TCompositeTypeSymbol);
+   if promotionFrom <> nil then begin
 
-   if FReadAccess <> '' then begin
-      sym := parent.Members.FindLocal(FReadAccess);
-      if not Assigned(sym) then
-         raise Exception.CreateFmt(UNT_ReadAccessNotFound, [ReadAccess]);
+     propSym.ReadSym := promotionFrom.ReadSym;
+     propSym.WriteSym := promotionFrom.WriteSym;
 
-      propSym.ReadSym := sym;
-   end;
+   end else begin
 
-   if FWriteAccess <> '' then begin
-      sym := parent.Members.FindLocal(FWriteAccess);
-      if not Assigned(sym) then
-         raise Exception.CreateFmt(UNT_WriteAccessNotFound, [WriteAccess]);
+      if FReadAccess <> '' then begin
+         var sym := parent.Members.FindLocal(FReadAccess);
+         if not Assigned(sym) then
+            raise Exception.CreateFmt(UNT_ReadAccessNotFound, [ReadAccess]);
 
-      propSym.WriteSym := sym;
+         propSym.ReadSym := sym;
+      end;
+
+      if FWriteAccess <> '' then begin
+         var sym := parent.Members.FindLocal(FWriteAccess);
+         if not Assigned(sym) then
+            raise Exception.CreateFmt(UNT_WriteAccessNotFound, [WriteAccess]);
+
+         propSym.WriteSym := sym;
+      end;
+
    end;
 
    if FIndexType <> '' then begin
@@ -4713,7 +4739,7 @@ begin
    if IsDefault then
       parent.DefaultProperty := propSym;
 
-   propSym.DeprecatedMessage:=Deprecated;
+   propSym.DeprecatedMessage := Deprecated;
 end;
 
 // GetDisplayName
