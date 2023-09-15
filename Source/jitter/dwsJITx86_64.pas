@@ -467,6 +467,10 @@ type
          procedure CompileStatement(expr : TExprBase); override;
    end;
 
+   Tx86OpMultAssignInt = class (TdwsJITter_x86)
+      procedure CompileStatement(expr : TExprBase); override;
+   end;
+
    Tx86Null = class (TdwsJITter_x86)
       procedure CompileStatement(expr : TExprBase); override;
    end;
@@ -969,7 +973,7 @@ begin
 
    RegisterJITter(TPlusAssignIntExpr,           FInterpretedJITter.IncRefCount);
    RegisterJITter(TMinusAssignIntExpr,          FInterpretedJITter.IncRefCount);
-   RegisterJITter(TMultAssignIntExpr,           FInterpretedJITter.IncRefCount);
+   RegisterJITter(TMultAssignIntExpr,           Tx86OpMultAssignInt.Create(Self));
 
    RegisterJITter(TPlusAssignExpr,              FInterpretedJITter.IncRefCount);
    RegisterJITter(TMinusAssignExpr,             FInterpretedJITter.IncRefCount);
@@ -3098,6 +3102,35 @@ begin
    jit.CompileAssignFloat(e.Left, regLeft);
 
    jit.ReleaseXMMReg(regLeft);
+end;
+
+// ------------------
+// ------------------ Tx86OpMultAssignInt ------------------
+// ------------------
+
+// CompileStatement
+//
+procedure Tx86OpMultAssignInt.CompileStatement(expr : TExprBase);
+begin
+   var e := TOpAssignExpr(expr);
+   var regLeft : TgpRegister64;
+
+   if e.Right.ClassType = TConstIntExpr then begin
+
+      regLeft := jit.CompileIntegerToRegister(e.Left);
+      jit.x86._imul_reg_reg_imm(regLeft, regLeft, TConstIntExpr(e.Right).Value);
+
+   end else begin
+
+      var regRight := jit.CompileIntegerToRegister(e.Right);
+      regLeft := jit.CompileIntegerToRegister(e.Left);
+      jit.x86._imul_reg_reg(regLeft, regRight);
+      jit.ReleaseGPReg(regRight)
+
+   end;
+
+   jit.CompileAssignInteger(e.Left, regLeft);
+   jit.ReleaseGPReg(regLeft);
 end;
 
 // ------------------
