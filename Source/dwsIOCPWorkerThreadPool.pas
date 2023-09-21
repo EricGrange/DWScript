@@ -33,12 +33,14 @@ type
 
    TIOCPWorkerThreadPool = class;
 
+   TIOCPWorkerEvent = procedure (data : UInt32) of object;
+
    TIOCPDelayedWork = class
       private
          FPool : TIOCPWorkerThreadPool;
          FTimer : THandle;
-         FEvent : TNotifyEvent;
-         FSender : TObject;
+         FEvent : TIOCPWorkerEvent;
+         FData : UInt32;
          FNext, FPrev : TIOCPDelayedWork;
          procedure Detach;
          procedure Cancel;
@@ -66,7 +68,7 @@ type
 
       procedure QueueWork(const workUnit : TAnonymousWorkUnit); overload;
       procedure QueueWork(const workUnit : TProcedureWorkUnit); overload;
-      procedure QueueWork(const workUnit : TNotifyEvent; sender : TObject); overload;
+      procedure QueueWork(const workUnit : TIOCPWorkerEvent; workData : UInt32); overload;
 
       procedure ParallelFor(fromIndex, toIndex : Integer; const aProc : TProc<Integer>);
 
@@ -110,9 +112,12 @@ type
 
          procedure QueueWork(const workUnit : TAnonymousWorkUnit); overload;
          procedure QueueWork(const workUnit : TProcedureWorkUnit); overload;
-         procedure QueueWork(const workUnit : TNotifyEvent; sender : TObject); overload;
+         procedure QueueWork(const workUnit : TIOCPWorkerEvent; workData : UInt32); overload;
 
-         procedure QueueDelayedWork(delayMillisecSeconds : Cardinal; const workUnit : TNotifyEvent; sender : TObject);
+         procedure QueueDelayedWork(
+            delayMillisecSeconds : Cardinal;
+            const workUnit : TIOCPWorkerEvent; workData : UInt32
+         );
 
          function QueueSize : Integer; inline;
          function QueueSizeInfo : TWorkerThreadQueueSizeInfo;
@@ -257,14 +262,14 @@ type
 
    TIOCPData = packed record
       case Integer of
-         0 : (
-            lpNumberOfBytesTransferred : DWORD;
-            lpCompletionKey : ULONG_PTR;
-            lpOverlapped : POverlapped;
+         0 : (                                     // 32bits    64bits
+            lpNumberOfBytesTransferred : DWORD;    //   4         4
+            lpCompletionKey : ULONG_PTR;           //   4         8
+            lpOverlapped : POverlapped;            //   4         8
          );
          1 : (
-            notifyEvent : TNotifyEvent;
-            sender : TObject;
+            notifyEvent : TIOCPWorkerEvent;            //   8        16
+            data : UInt32;                         //   4         4
          );
    end;
 
@@ -283,7 +288,7 @@ begin
    dw := TIOCPDelayedWork(Context);
    try
       if dw.FPool <> nil then begin
-         dw.FPool.QueueWork(dw.FEvent, dw.FSender);
+         dw.FPool.QueueWork(dw.FEvent, dw.FData);
          AtomicDecrement(dw.FPool.FQueueSize);
       end;
    finally
@@ -406,7 +411,7 @@ begin
                WORK_UNIT_PROCEDURE :
                   TProcedureWorkUnit(data.lpOverlapped)();
             else
-               data.notifyEvent(data.sender);
+               data.notifyEvent(data.data);
             end;
          finally
             FastInterlockedDecrement(FPool.FActiveWorkerCount);
@@ -519,13 +524,13 @@ end;
 
 // QueueWork
 //
-procedure TIOCPWorkerThreadPool.QueueWork(const workUnit : TNotifyEvent; sender : TObject);
+procedure TIOCPWorkerThreadPool.QueueWork(const workUnit : TIOCPWorkerEvent; workData : UInt32);
 var
    data : TIOCPData;
 begin
    IncrementQueueSize;
-   data.notifyEvent:=workUnit;
-   data.sender:=sender;
+   data.notifyEvent := workUnit;
+   data.data := workData;
    if not PostQueuedCompletionStatus(FIOCP, data.lpNumberOfBytesTransferred, data.lpCompletionKey, data.lpOverlapped) then begin
       FastInterlockedDecrement(FQueueSize);
       RaiseLastOSError;
@@ -534,7 +539,7 @@ end;
 
 // QueueDelayedWork
 //
-procedure TIOCPWorkerThreadPool.QueueDelayedWork(delayMillisecSeconds : Cardinal; const workUnit : TNotifyEvent; sender : TObject);
+procedure TIOCPWorkerThreadPool.QueueDelayedWork(delayMillisecSeconds : Cardinal; const workUnit : TIOCPWorkerEvent; workData : UInt32);
 var
    dw : TIOCPDelayedWork;
 begin
@@ -542,7 +547,7 @@ begin
    try
       dw.FPool := Self;
       dw.FEvent := workUnit;
-      dw.FSender := sender;
+      dw.FData := workData;
       FDelayedLock.BeginWrite;
       try
          if FDelayed <> nil then begin

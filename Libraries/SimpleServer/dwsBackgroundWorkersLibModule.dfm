@@ -1,5 +1,4 @@
 object dwsBackgroundWorkersLib: TdwsBackgroundWorkersLib
-  OldCreateOrder = False
   OnCreate = DataModuleCreate
   OnDestroy = DataModuleDestroy
   Height = 129

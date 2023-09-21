@@ -19,7 +19,7 @@ unit dwsBackgroundWorkersLibModule;
 interface
 
 uses
-  SysUtils, Classes,
+  System.SysUtils, System.Classes,
   dwsExprs, dwsComp, dwsUtils, dwsXPlatform,
   dwsIOCPWorkerThreadPool, dwsWebEnvironment, dwsWebEnvironmentTypes,
   dwsJSON;
@@ -67,7 +67,7 @@ type
          function ContentData : RawByteString; override;
          function ContentType : RawByteString; override;
 
-         procedure Execute(Sender : TObject);
+         procedure Execute(workData : UInt32);
    end;
 
   TdwsBackgroundWorkersLib = class(TDataModule)
@@ -92,6 +92,7 @@ type
       Info: TProgramInfo; ExtObject: TObject);
   private
     { Private declarations }
+    FLibID : UInt32;
     FOnBackgroundWork : TBackgroundWorkEvent;
     FOnBackgroundLogEvent : TBackgroundWorkLogEvent;
     FPools : TWorkQueues;
@@ -111,6 +112,11 @@ type
 implementation
 
 {$R *.dfm}
+
+var
+   vLibsMRSW : TMultiReadSingleWrite;
+   vLibIDCounter : Integer;
+   vBackgroundWorkerLibs : array of TdwsBackgroundWorkersLib;
 
 // Create
 //
@@ -244,7 +250,7 @@ end;
 
 // Execute
 //
-procedure TWorkWebRequest.Execute(Sender : TObject);
+procedure TWorkWebRequest.Execute(workData : Uint32);
 
    procedure DoLog(lib : TdwsBackgroundWorkersLib; E : Exception);
    begin
@@ -255,7 +261,8 @@ procedure TWorkWebRequest.Execute(Sender : TObject);
 var
    lib : TdwsBackgroundWorkersLib;
 begin
-   lib := (Sender as TdwsBackgroundWorkersLib);
+   lib := FOwner;
+   Assert(lib.FLibID = workData);
    try
       try
          if Assigned(lib.FOnBackgroundWork) then
@@ -270,6 +277,16 @@ end;
 
 procedure TdwsBackgroundWorkersLib.DataModuleCreate(Sender: TObject);
 begin
+   FLibID := AtomicIncrement(vLibIDCounter);
+
+   vLibsMRSW.BeginWrite;
+   try
+      var n := Length(vBackgroundWorkerLibs);
+      Insert(Self, vBackgroundWorkerLibs, n);
+   finally
+      vLibsMRSW.EndWrite;
+   end;
+
    FPoolsCS := TMultiReadSingleWrite.Create;
    FPools := TWorkQueues.Create;
    FMaxWorkersPerQueue := cDefaultMaxWorkersPerQueue;
@@ -298,6 +315,18 @@ begin
    while FWorkUnitHead <> nil do
       FWorkUnitHead.Destroy;
    FreeAndNil(FWorkUnitLock);
+
+   vLibsMRSW.BeginWrite;
+   try
+      for i := 0 to High(vBackgroundWorkerLibs) do begin
+         if vBackgroundWorkerLibs[i] = Self then begin
+            Delete(vBackgroundWorkerLibs, i, 1);
+            Break;
+         end;
+      end;
+   finally
+      vLibsMRSW.EndWrite;
+   end;
 end;
 
 procedure TdwsBackgroundWorkersLib.dwsBackgroundWorkersClassesBackgroundWorkersMethodsCreateWorkQueueEval(
@@ -386,7 +415,7 @@ begin
    try
       pool:=FPools[name];
       if pool<>nil then
-         pool.QueueWork(workUnit.Execute, Self);
+         pool.QueueWork(workUnit.Execute, FLibID);
    finally
       FPoolsCS.EndRead;
    end;
@@ -419,7 +448,7 @@ begin
    try
       pool := FPools[name];
       if pool <> nil then
-         pool.QueueDelayedWork(delayMilliseconds, workUnit.Execute, Self);
+         pool.QueueDelayedWork(delayMilliseconds, workUnit.Execute, FLibID);
    finally
       FPoolsCS.EndRead;
    end;
@@ -518,5 +547,19 @@ begin
    if (pool <> nil) and Info.ParamAsBoolean[1] then
       pool.ResetPeakStats;
 end;
+
+// ------------------------------------------------------------------
+// ------------------------------------------------------------------
+// ------------------------------------------------------------------
+initialization
+// ------------------------------------------------------------------
+// ------------------------------------------------------------------
+// ------------------------------------------------------------------
+
+   vLibsMRSW := TMultiReadSingleWrite.Create;
+
+finalization
+
+   FreeAndNil(vLibsMRSW);
 
 end.
