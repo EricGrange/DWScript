@@ -3012,6 +3012,8 @@ end;
 // PropertyVisibilityPromotion
 //
 procedure TdwsUnitTests.PropertyVisibilityPromotion;
+var
+   prog : IdwsProgram;
 begin
    var propUnit := TdwsUnit.Create(nil);
    try
@@ -3035,17 +3037,23 @@ begin
 
       propUnit.Script := FCompiler;
 
-      CheckEquals(
-         'Syntax Error: Member symbol "MyProp" is not visible from this scope [line: 1, column: 25]'#13#10,
-         FCompiler.Compile('var c := new TParent; c.MyProp := 123;').Msgs.AsInfo,
-         'TParent.MyProp write access'
-      );
+      try
+         prog := FCompiler.Compile('var c := new TParent; c.MyProp := 123;');
+         CheckEquals(
+            'Syntax Error: Member symbol "MyProp" is not visible from this scope [line: 1, column: 25]'#13#10,
+            prog.Msgs.AsInfo,
+            'TParent.MyProp write access'
+         );
 
-      CheckEquals(
-         '',
-         FCompiler.Compile('var c := new TSub; c.MyProp := 123;').Msgs.AsInfo,
-         'TSub.MyProp write access'
-      );
+         prog := FCompiler.Compile('var c := new TSub; c.MyProp := 123;');
+         CheckEquals(
+            '',
+            prog.Msgs.AsInfo,
+            'TSub.MyProp write access'
+         );
+      finally
+         prog := nil;
+      end;
    finally
       propUnit.Free;
    end;
