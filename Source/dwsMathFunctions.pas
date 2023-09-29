@@ -327,6 +327,8 @@ type
       procedure DoProcess(p : PDouble; n : NativeInt; stride : Integer; const args : TExprBaseListExec); override;
    end;
 
+   TLinearRandomMethod = function : Double of object;
+
 function Gcd(a, b : Int64) : Int64;
 function Lcm(const a, b : Int64) : Int64;
 function LeastFactor(const n : Int64) : Int64;
@@ -336,6 +338,8 @@ function SignFloat(const v : Double) : Int64;
 function SignInt64(const n : Int64) : Int64;
 
 function Haversine(const lat1, lon1, lat2, lon2, r : Double) : Double;
+
+function RandomGauss(const linearRandom : TLinearRandomMethod) : Double;
 
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
@@ -451,6 +455,26 @@ var
 begin
    a := 1 - Cos((lat2 - lat1)*p) + Cos(lat1*p) * Cos(lat2*p) * (1 - Cos((lon2 - lon1)*p));
    Result := (2 * r) * ArcSin(Sqrt(0.5 * a));
+end;
+
+// RandomGauss
+//
+function RandomGauss(const linearRandom : TLinearRandomMethod) : Double;
+var
+   x, y, n : Double;
+begin
+   // Marsaglia-Bray
+   repeat
+      if Assigned(linearRandom) then begin
+         x := 2 * linearRandom() - 1;
+         y := 2 * linearRandom() - 1;
+      end else begin
+         x := 2 * Random - 1;
+         y := 2 * Random - 1;
+      end;
+      n := Sqr(x) + Sqr(y);
+   until n < 1;
+   Result := Sqrt(-2*Ln(n)/n) * x;
 end;
 
 { TOddFunc }
@@ -1009,16 +1033,8 @@ end;
 { TRandGFunc }
 
 procedure TRandGFunc.DoEvalAsFloat(const args : TExprBaseListExec; var Result : Double);
-var
-   x, y, n : Double;
 begin
-   // Marsaglia-Bray
-   repeat
-      x:=2*args.Exec.Random-1;
-      y:=2*args.Exec.Random-1;
-      n:=sqr(x)+sqr(y);
-   until n<1;
-   Result:=Sqrt(-2*Ln(n)/n)*x*args.AsFloat[1]+args.AsFloat[0];
+   Result := RandomGauss(args.Exec.Random) * args.AsFloat[1] + args.AsFloat[0];
 end;
 
 { TRandSeedFunc }
