@@ -474,6 +474,7 @@ begin
       jvtNull : VarSetNull(result);
       jvtString : VarCopySafe(result, FValue.AsString);
       jvtNumber : VarCopySafe(result, FValue.AsNumber);
+      jvtInt64 : VarCopySafe(result, FValue.AsInteger);
       jvtBoolean : VarCopySafe(result, FValue.AsBoolean);
    else
       VarCopySafe(result, FValue.ToString);

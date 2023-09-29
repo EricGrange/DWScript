@@ -132,6 +132,15 @@ type
 
    TdwsJSONDuplicatesOptions = (jdoAccept, jdoOverwrite);
 
+   TdwsJSONValueType = (
+      jvtUndefined, jvtNull,
+      jvtObject, jvtArray,
+      jvtString,
+      jvtNumber,
+      jvtInt64,      // internal, reported as Number, used to preserve integers larger than 53 bits
+      jvtBoolean
+   );
+
    // TdwsJSONParserState
    //
    // Internal utility parser for TdwsJSON, a "light" tokenizer
@@ -156,16 +165,17 @@ type
          function SkipBlanks(currentChar : WideChar) : WideChar; inline;
 
          procedure ParseJSONUnicodeString(initialChar : WideChar; var result : UnicodeString);
-         procedure ParseHugeJSONNumber(initialChars : PWideChar; initialCharCount : Integer; var result : Double);
-         procedure ParseJSONNumber(initialChar : WideChar; var result : Double);
+         procedure ParseHugeJSONNumber(
+            initialChars : PWideChar; initialCharCount : Integer;
+            var result : Double; var jvt : TdwsJSONValueType
+         );
+         procedure ParseJSONNumber(initialChar : WideChar; var result : Double; var jvt : TdwsJSONValueType);
 
          // reads from [ to ]
          procedure ParseIntegerArray(dest : TSimpleInt64List; const nullValue : Int64 = 0);
          procedure ParseNumberArray(dest : TSimpleDoubleList);
          procedure ParseStringArray(dest : TUnicodeStringList);
    end;
-
-   TdwsJSONValueType = (jvtUndefined, jvtNull, jvtObject, jvtArray, jvtString, jvtNumber, jvtBoolean);
 
    // TdwsJSONValue
    //
@@ -278,7 +288,7 @@ type
          property AsInteger : Int64 read GetAsInteger write SetAsInteger;
 
          const ValueTypeStrings : array [TdwsJSONValueType] of UnicodeString = (
-            'Undefined', 'Null', 'Object', 'Array', 'String', 'Number', 'Boolean'
+            'Undefined', 'Null', 'Object', 'Array', 'String', 'Number', 'Number', 'Boolean'
             );
 
          type
@@ -745,33 +755,44 @@ end;
 // ParseJSONNumber
 //
 procedure TdwsJSONParserState.ParseHugeJSONNumber(
-      initialChars : PWideChar; initialCharCount : Integer; var result : Double);
+      initialChars : PWideChar; initialCharCount : Integer;
+      var result : Double; var jvt : TdwsJSONValueType
+);
 var
    buf : String;
    c : WideChar;
 begin
+   jvt := jvtInt64;
    SetString(buf, initialChars, initialCharCount);
    repeat
       c := NeedChar();
       case c of
-         '0'..'9', '-', '+', 'e', 'E', '.' : buf := buf + Char(c);
+         '0'..'9', '-', '+' : buf := buf + Char(c);
+         'e', 'E', '.' : begin
+            jvt := jvtNumber;
+            buf := buf + Char(c);
+         end
       else
          TrailCharacter := c;
          Break;
       end;
    until False;
-
+   if jvt = jvtInt64 then begin
+      // attempt Int64, if too large, fallback to Double
+      if TryStrToInt64(buf, PInt64(@Result)^) then Exit;
+      jvt := jvtNumber;
+   end;
    if not TryStrToDouble(buf, Result, vJSONFormatSettings) then
       TdwsJSONValue.RaiseJSONParseError('Invalid number');
 end;
 
 // ParseJSONNumber
 //
-procedure TdwsJSONParserState.ParseJSONNumber(initialChar : WideChar; var result : Double);
+procedure TdwsJSONParserState.ParseJSONNumber(initialChar : WideChar; var result : Double; var jvt : TdwsJSONValueType);
 var
    bufPtr : PWideChar;
    c : WideChar;
-   buf : array [0..50] of WideChar;
+   buf : array [0..15] of WideChar;
 begin
    buf[0]:=initialChar;
    bufPtr:=@buf[1];
@@ -781,16 +802,17 @@ begin
          '0'..'9', '-', '+', 'e', 'E', '.' : begin
             bufPtr^:=c;
             Inc(bufPtr);
-            if bufPtr=@buf[High(buf)] then begin
-               ParseHugeJSONNumber(@buf[0], Length(buf)-1, result);
+            if bufPtr = @buf[High(buf)] then begin
+               ParseHugeJSONNumber(@buf[0], Length(buf)-1, result, jvt);
                Exit;
             end;
          end;
       else
-         TrailCharacter:=c;
+         TrailCharacter := c;
          Break;
       end;
    until False;
+   jvt := jvtNumber;
    case NativeUInt(bufPtr)-NativeUInt(@buf[0]) of
       SizeOf(WideChar) : // special case of single-character number
          case buf[0] of
@@ -919,6 +941,7 @@ procedure TdwsJSONParserState.ParseNumberArray(dest : TSimpleDoubleList);
 var
    c : WideChar;
    num : Double;
+   jvt : TdwsJSONValueType;
 begin
    c:=SkipBlanks(' ');
    if c<>'[' then
@@ -929,8 +952,10 @@ begin
    repeat
       case c of
          '0'..'9', '-' : begin
-            ParseJSONNumber(c, num);
-            dest.Add(num);
+            ParseJSONNumber(c, num, jvt);
+            if jvt = jvtInt64 then
+               dest.Add(PInt64(@num)^)
+            else dest.Add(num);
          end;
       else
          raise EdwsJSONParseError.CreateFmt('Unexpected character U+%.04x', [Ord(c)]);
@@ -1352,7 +1377,7 @@ end;
 //
 function TdwsJSONValue.IsNumber : Boolean;
 begin
-   Result := (ValueType = jvtNumber);
+   Result := (ValueType in [ jvtNumber, jvtInt64 ]);
 end;
 
 // IsString
@@ -1484,7 +1509,7 @@ end;
 function TdwsJSONValue.GetIsNaN : Boolean;
 begin
    Result:=not (    Assigned(Self)
-                and (ValueType=jvtNumber)
+                and (ValueType = jvtNumber)
                 and System.Math.IsNan(Value.AsNumber));
 end;
 
@@ -2511,7 +2536,7 @@ end;
 //
 function TdwsJSONImmediate.GetType : TdwsJSONValueType;
 begin
-   Result:=TdwsJSONValueType(FRawOwner and $7);
+   Result := TdwsJSONValueType(FRawOwner and $7);
 end;
 
 // SetType
@@ -2545,6 +2570,7 @@ begin
          jvtNull : Result := 'null';
          jvtString : Result := PUnicodeString(@FData)^;
          jvtNumber : Result := UnicodeString(FloatToStr(FData));
+         jvtInt64 : Result := UnicodeString(IntToStr(PInt64(@FData)^));
          jvtBoolean :
             if PBoolean(@FData)^ then
                Result:='true'
@@ -2595,6 +2621,7 @@ begin
    case FType of
       jvtBoolean : Result:=PBoolean(@FData)^;
       jvtNumber : Result:=(FData<>0);
+      jvtInt64  : Result := (PInt64(@FData)^ <> 0);
       jvtString : Result:=(PUnicodeString(@FData)^='true');
    else
       Result:=False;
@@ -2618,7 +2645,8 @@ begin
    if not Assigned(Self) then Exit(NaN);
    case FType of
       jvtBoolean : if PBoolean(@FData)^ then Result:=-1 else Result:=0;
-      jvtNumber : Result:=FData;
+      jvtNumber : Result := FData;
+      jvtInt64 : Result := PInt64(@FData)^;
       jvtString : Result := StrToFloatDef(String(PUnicodeString(@FData)^), 0)
    else
       Result:=0;
@@ -2629,24 +2657,29 @@ end;
 //
 procedure TdwsJSONImmediate.SetAsNumber(const val : Double);
 begin
-   if FType=jvtString then
-      PUnicodeString(@FData)^:='';
-   FData:=val;
-   FType:=jvtNumber;
+   if FType = jvtString then
+      PUnicodeString(@FData)^ := '';
+   FData := val;
+   FType := jvtNumber;
 end;
 
 // GetAsInteger
 //
 function TdwsJSONImmediate.GetAsInteger : Int64;
 begin
-   Result:=Round(GetAsNumber);
+   if FType = jvtInt64 then
+      Result := PInt64(@FData)^
+   else Result := Round(GetAsNumber);
 end;
 
 // SetAsInteger
 //
 procedure TdwsJSONImmediate.SetAsInteger(const val : Int64);
 begin
-   AsNumber:=val;
+   if FType = jvtString then
+      PUnicodeString(@FData)^ := '';
+   PInt64(@FData)^ := val;
+   FType := jvtInt64;
 end;
 
 // GetIsImmediateValue
@@ -2667,8 +2700,9 @@ begin
          FType:=jvtString;
       end;
       '0'..'9', '-' : begin
-         parserState.ParseJSONNumber(initialChar, FData);
-         FType:=jvtNumber;
+         var jvt : TdwsJSONValueType;
+         parserState.ParseJSONNumber(initialChar, FData, jvt);
+         FType := jvt;
       end;
       't' :
          if     (parserState.NeedChar()='r')
@@ -2722,7 +2756,9 @@ begin
       jvtString :
          Result:=PUnicodeString(@FData)^='';
       jvtNumber :
-         Result:=FData=0;
+         Result := (FData=0);
+      jvtInt64 :
+         Result := (PInt64(@FData)^ = 0);
       jvtBoolean :
          Result:=not PBoolean(@FData)^;
    else
@@ -2750,6 +2786,8 @@ begin
          writer.WriteBoolean(PBoolean(@FData)^);
       jvtNumber :
          writer.WriteNumber(FData);
+      jvtInt64 :
+         writer.WriteInteger(PInt64(@FData)^);
       jvtString :
          writer.WriteString(PUnicodeString(@FData)^);
    else
@@ -2817,6 +2855,7 @@ begin
       jvtNull : VarSetNull(Result);
       jvtString : VarCopySafe(Result, PUnicodeString(@FData)^);
       jvtNumber : VarCopySafe(Result, FData);
+      jvtInt64 : VarCopySafe(Result, PInt64(@FData)^);
       jvtBoolean : VarCopySafe(Result, PBoolean(@FData)^);
    else
       VarClearSafe(Result);
