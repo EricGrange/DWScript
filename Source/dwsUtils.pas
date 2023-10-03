@@ -3180,16 +3180,34 @@ var
       Result := Result + ReadDigit;
    end;
 
-   function Read3Digits : Integer; inline;
-   begin
-      Result := Read2Digits*10;
-      Result := Result + ReadDigit;
-   end;
-
    function Read4Digits : Integer; inline;
    begin
       Result := Read2Digits*100;
       Result := Result + Read2Digits;
+   end;
+
+   function ReadUpTo6Digits : Integer;
+   begin
+      var nbDigits := 1;
+      Result := ReadDigit;
+      repeat
+         case p^ of
+            '0'..'9' : begin
+               Inc(nbDigits);
+               Result := Result * 10 + ReadDigit;
+            end;
+         else
+            Break;
+         end;
+      until nbDigits >= 6;
+      case nbDigits of
+         1 : Result := Result * 100;
+         2 : Result := Result * 10;
+         3 : ;
+         4 : Result := Result div 10;
+         5 : Result := Result div 100;
+         6 : Result := Result div 1000;
+      end;
    end;
 
 var
@@ -3243,7 +3261,7 @@ begin
          s := Read2Digits;
          if p^ = '.' then begin
             Inc(p);
-            z := Read3Digits;
+            z := ReadUpTo6Digits;
          end else z := 0;
       end;
    else
