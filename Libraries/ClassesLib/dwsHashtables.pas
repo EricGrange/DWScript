@@ -84,28 +84,27 @@ type
 implementation
 
 var
-  HashTable: array[#0..#255] of Byte;
-  InsensitiveHashTable: array[#0..#255] of Word;
+   vHashTable: array[0..255] of Byte;
+   vInsensitiveHashTable: array[0..255] of Word;
 
 procedure InitTables;
 var
-  I, K: Char;
-  Temp: Integer;
+  I, K, Temp: Integer;
 begin
-  for I := #0 to #255 do
+  for I := 0 to 255 do
   begin
-    HashTable[I] := Ord(I);
-    InsensitiveHashTable[I] := Ord(AnsiUpperCase(Char(I))[1]);
+    vHashTable[I] := I;
+    vInsensitiveHashTable[I] := Ord(AnsiUpperCase(Char(I))[1]);
   end;
   RandSeed := 111;
-  for I := #1 to #255 do
+  for I := 1 to 255 do
   begin
     repeat
-      K := Char(Random(255));
-    until K <> #0;
-    Temp := HashTable[I];
-    HashTable[I] := HashTable[K];
-    HashTable[K] := Temp;
+      K := Random(255);
+    until K <> 0;
+    Temp := vHashTable[I];
+    vHashTable[I] := vHashTable[K];
+    vHashTable[K] := Temp;
   end;
 end;
 
@@ -284,8 +283,8 @@ begin
   Result := 0;
   for i := 1 to length(Key) do
   begin
-    Result := (Result shr 4) xor (((Result xor InsensitiveHashTable[Key[I]]) and $F) * $80);
-    Result := (Result shr 4) xor (((Result xor (ord(InsensitiveHashTable[Key[I]]) shr 4)) and $F) * $80);
+    Result := (Result shr 4) xor (((Result xor vInsensitiveHashTable[Ord(Key[I]) and 255]) and $F) * $80);
+    Result := (Result shr 4) xor (((Result xor (ord(vInsensitiveHashTable[Ord(Key[I]) and 255]) shr 4)) and $F) * $80);
     if I = 3 then break;
   end;
   if Result = 0 then Result := Length(Key) mod 8 + 1;
