@@ -20,6 +20,7 @@
 unit dwsConstExprs;
 
 {$I dws.inc}
+{$WARN DUPLICATE_CTOR_DTOR OFF}
 
 interface
 

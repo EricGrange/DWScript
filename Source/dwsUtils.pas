@@ -19,6 +19,7 @@ unit dwsUtils;
 {$I dws.inc}
 {$R-}
 {$Q-}
+{$WARN DUPLICATE_CTOR_DTOR OFF}
 
 {.$define DOUBLE_FREE_PROTECTOR}
 
