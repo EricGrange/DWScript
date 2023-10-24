@@ -24,7 +24,8 @@ interface
 {$I dws.inc}
 
 uses
-  Windows, Messages, SysUtils, Classes, Graphics, Controls, Forms, Dialogs,
+  Windows, Messages,
+  System.UITypes, System.SysUtils, Classes, Graphics, Controls, Forms, Dialogs,
   ExtCtrls, StdCtrls, Menus, StdActns, ActnList, ExtDlgs, ComCtrls,
   Types, SyncObjs, ImgList, dwsComp, dwsExprs, dwsSymbols, dwsErrors,
   dwsSuggestions, dwsStrings, dwsUnitSymbols, dwsDocBuilder, dwsCompiler,
@@ -32,7 +33,8 @@ uses
 
   SynEdit, SynEditHighlighter, SynHighlighterDWS, SynCompletionProposal,
   SynEditMiscClasses, SynEditSearch, SynEditOptionsDialog, SynEditPlugins,
-  SynMacroRecorder, SynHighlighterHtml, SynHighlighterMulti, SynEditTypes;
+  SynMacroRecorder, SynHighlighterHtml, SynHighlighterMulti, SynEditTypes,
+  dwsFilter, System.Actions, System.ImageList;
 
 type
   TRescanThread = class(TThread)
@@ -205,8 +207,9 @@ implementation
 {$R *.dfm}
 
 uses
-  Math, Registry, DockingUtils, dwsUtils, PreviewUnit, OptionsUnit,
-  LocalVariables;
+  Math, Registry, DockingUtils,
+  dwsUtils, dwsScriptSource, dwsSymbolDictionary, dwsXPlatform, dwsXXHash,
+  PreviewUnit, OptionsUnit, LocalVariables;
 
 { TRescanThread }
 
@@ -901,9 +904,11 @@ procedure TFrmBasic.SynParametersExecute(Kind: SynCompletionType;
 
       if TFuncSymbol(Symbol).IsOverloaded then
       begin
-        for ItemIndex := 0 to SymbolDictionary.Count - 1 do
+        for var symPosList in SymbolDictionary do
+//        for ItemIndex := 0 to SymbolDictionary.Count - 1 do
         begin
-          TestSymbol := SymbolDictionary.Items[ItemIndex].Symbol;
+//          TestSymbol := SymbolDictionary.Items[ItemIndex].Symbol;
+          TestSymbol := symPosList.Symbol;
 
           if (TestSymbol.ClassType = Symbol.ClassType) and
             SameText(TFuncSymbol(TestSymbol).Name, TFuncSymbol(Symbol).Name) and

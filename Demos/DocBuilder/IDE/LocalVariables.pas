@@ -26,7 +26,8 @@ implementation
 {$R *.dfm}
 
 uses
-  System.Variants, dwsDebugger, dwsSymbols, dwsCompiler, dwsExprs, DockingUtils,
+  System.Variants, dwsDebugger, dwsSymbols, dwsCompiler, dwsExprs, dwsEvaluate,
+  DockingUtils,
   MainUnit;
 
 function DebuggerEvaluate(ADebugger : TDwsDebugger; const AExpression : string) : String;

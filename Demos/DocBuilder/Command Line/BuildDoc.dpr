@@ -5,6 +5,7 @@ program DocBuilder;
 uses
   System.SysUtils, System.Classes, dwsComp, dwsExprs, dwsSymbols, dwsErrors,
   dwsStrings, dwsUnitSymbols, dwsXPlatform, dwsCompiler, dwsFunctions, dwsUtils,
+  dwsCompilerContext,
   dwsDocBuilder in '..\..\..\Libraries\DocBuilder\dwsDocBuilder.pas',
   dwsSymbolsLibModule in '..\..\..\Libraries\SymbolsLib\dwsSymbolsLibModule.pas';
 
