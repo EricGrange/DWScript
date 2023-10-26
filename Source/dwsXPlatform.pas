@@ -686,10 +686,29 @@ function TzSpecificLocalTimeToSystemTime(lpTimeZoneInformation: PTimeZoneInforma
 
 // LocalDateTimeToUTCDateTime
 //
+type TTimeZoneCracker = class (TTimeZone);
 function LocalDateTimeToUTCDateTime(t : TDateTime) : TDateTime;
 {$ifdef DELPHI_XE3_PLUS}
+var
+   utcOffsetInSeconds, dstOffset : Int64;
+   timeType: TLocalTimeType;
 begin
-   Result := TTimeZone.Local.ToUniversalTime(t, False);
+   // ideally this would be just this line, but DoGetOffsetsAndType has the undesirable behavior
+   // of unconditionnally raising an exception in case of a time falling in DST "hole",
+   // which is something that can happen in historic data when a clock did not get adjusted
+   // we handle it the same way as the ambiguous one here: we ignore it and assume DST off
+
+   // Result := TTimeZone.Local.ToUniversalTime(t, False);
+
+   TTimeZoneCracker(TTimeZone.Local).DoGetOffsetsAndType(t, utcOffsetInSeconds, dstOffset, timeType);
+   case timeType of
+      lttDaylight, lttAmbiguous :
+         utcOffsetInSeconds := utcOffsetInSeconds + dstOffset;
+   end;
+
+   if utcOffsetInSeconds <> 0 then
+      Result := IncMilliSecond(t, utcOffsetInSeconds*1000)
+   else Result := t;
 end;
 {$else}{$ifdef FPC}
 begin
