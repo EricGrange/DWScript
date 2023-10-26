@@ -1,5 +1,4 @@
 object dwsDatabaseLib: TdwsDatabaseLib
-  OldCreateOrder = False
   OnCreate = DataModuleCreate
   OnDestroy = DataModuleDestroy
   Height = 150
@@ -148,6 +147,16 @@ object dwsDatabaseLib: TdwsDatabaseLib
             ResultType = 'array of String'
             Kind = mkFunction
             OnEval = dwsDatabaseClassesDataBaseMethodsOptionListEval
+          end
+          item
+            Name = 'SetStringifyDateTimeAsUnixTime'
+            Parameters = <
+              item
+                Name = 'val'
+                DataType = 'Boolean'
+              end>
+            Kind = mkProcedure
+            OnEval = dwsDatabaseClassesDataBaseMethodsSetStringifyDateTimeAsUnixTimeEval
           end>
         Properties = <
           item
