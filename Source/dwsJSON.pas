@@ -30,7 +30,7 @@ type
    TdwsJSONImmediate = class;
 
    TdwsJSONWriterState = (wsNone, wsObject, wsObjectName, wsObjectValue, wsArray, wsArrayValue, wsDone);
-   TdwsJSONWriterOption = (woLowerCaseNames);
+   TdwsJSONWriterOption = ( woLowerCaseNames, woDateTimeAsUnixTime );
    TdwsJSONWriterOptions = set of TdwsJSONWriterOption;
 
    // TdwsJSONWriter
@@ -79,6 +79,7 @@ type
 
          // ISO 8601 Date Time
          procedure WriteDate(dt : TDateTime; utc : Boolean = False);
+         procedure WriteUnixTime(dt : TDateTime; utc : Boolean = False);
 
          procedure WriteStrings(const str : TStrings); overload;
          procedure WriteStrings(const str : TUnicodeStringList); overload;
@@ -3189,6 +3190,18 @@ begin
    else FStream.WriteChar('"');
 
    AfterWriteImmediate;
+end;
+
+// WriteUnixTime
+//
+procedure TdwsJSONWriter.WriteUnixTime(dt : TDateTime; utc : Boolean = False);
+var
+   d : TdwsDateTime;
+begin
+   if utc then
+      d.AsUTCDateTime := dt
+   else d.AsLocalDateTime := dt;
+   WriteInteger(d.AsUnixTime);
 end;
 
 // WriteStrings
