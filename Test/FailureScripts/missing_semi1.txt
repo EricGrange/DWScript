@@ -1,4 +1,4 @@
 Hint: "inttostr" does not match case of declaration ("IntToStr") [line: 1, column: 14]
-Syntax Error: ";" expected. [line: 2, column: 1]
+Syntax Error: ";" expected [line: 2, column: 1]
 Hint: "inttostr" does not match case of declaration ("IntToStr") [line: 2, column: 14]
-Syntax Error: ";" expected. [line: 2, column: 24]
+Syntax Error: ";" expected [line: 2, column: 24]

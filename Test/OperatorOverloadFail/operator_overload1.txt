@@ -5,4 +5,4 @@ Syntax Error: An overload already exists for this operator and types [line: 22, 
 Syntax Error: Parameter 1 - Type "TObject" expected (instead of "Integer") [line: 23, column: 45]
 Syntax Error: Parameter 0 - Type "Integer" expected (instead of "TObject") [line: 24, column: 45]
 Syntax Error: Overloadable operator expected [line: 26, column: 10]
-Syntax Error: "(" expected. [line: 26, column: 10]
+Syntax Error: "(" expected [line: 26, column: 10]

@@ -1,1 +1,1 @@
-Syntax Error: "end" expected but "finalization" found. [line: 9, column: 1]
+Syntax Error: "end" expected but "finalization" found [line: 9, column: 1]

@@ -108,13 +108,13 @@ const
 const
 
   // Missing Tokens
-  CPE_XxxExpected = ' expected.';
-  CPE_Unexpected_X = 'Unexpected "%s".';
-  CPE_X_ExpectedBut_Y_Found = '%s expected but %s found.';
-  CPE_CommaExpected = '"," expected.';
-  CPE_SemiExpected = '";" expected.';
-  CPE_BrackLeftExpected = '"(" expected.';
-  CPE_BrackRightExpected = '")" expected.';
+  CPE_XxxExpected = ' expected';
+  CPE_Unexpected_X = 'Unexpected "%s"';
+  CPE_X_ExpectedBut_Y_Found = '%s expected but %s found';
+  CPE_CommaExpected = '"," expected';
+  CPE_SemiExpected = '";" expected';
+  CPE_BrackLeftExpected = '"(" expected';
+  CPE_BrackRightExpected = '")" expected';
   CPE_ArrayBracketRightExpected = '"]" expected';
   CPE_ArrayBracketLeftExpected = '"[" expected';
   CPE_AtExpected = '"@" expected';
@@ -213,6 +213,7 @@ const
   CPE_WriteOnlyProperty = 'Cannot read a write only property';
   CPE_ReadOnlyProperty = 'Cannot set a value for a read-only property';
   CPE_CantReadProperty = 'Property cannot be read-accessed';
+  CPE_FieldIsReadOnly = 'Field "%s" is readonly';
   CPE_ObjectReferenceExpected = 'Object reference needed to read/write an object field';
   CPE_StaticPropertyWriteExpected = 'Write access of property should be a static method';
   CPE_StaticPropertyReadExpected = 'Read access of property should be a static method';
@@ -520,7 +521,7 @@ const
   CPE_DivisionByZero = 'Division by zero';
 
   // Contracts
-  CPE_PreconditionsMustBeInRootMethod = 'Preconditions must be defined in the root method only.';
+  CPE_PreconditionsMustBeInRootMethod = 'Preconditions must be defined in the root method only';
 
   // Units
   CPE_UnitExpected = '"unit" expected';
@@ -528,8 +529,8 @@ const
   CPE_UnitNameDoesntMatch = 'Unit name does not match file name';
   CPH_UnitNameCaseDoesntMatch = 'Unit name case does not match file name';
   CPE_UnitCircularReference = 'Circular referencing units detected';
-  CPE_FilterDependsOnUnit = 'The filter "%s" depends on unit "%s" that is not available.';
-  CPE_ResultTypeDependsOnUnit = 'The result-type "%s" depends on unit "%s" that is not available.';
+  CPE_FilterDependsOnUnit = 'The filter "%s" depends on unit "%s" that is not available';
+  CPE_ResultTypeDependsOnUnit = 'The result-type "%s" depends on unit "%s" that is not available';
   CPE_NoStaticSymbols = 'Invalid use of static symbols';
 
   // Filter
@@ -537,7 +538,7 @@ const
 
   // TOKENIZER ERRORS
   TOK_InvalidChar = 'Invalid character';
-  TOK_EqualityExpected = '"=" expected.';
+  TOK_EqualityExpected = '"=" expected';
   TOK_NumberExpected = 'Number expected';
   TOK_HexDigitExpected = 'Hexadecimal digit expected';
   TOK_BinDigitExpected = 'Binary digit expected';
@@ -576,10 +577,10 @@ const
   RTE_CantRunScript = 'Script compiled with errors. Cannot execute';
   RTE_ScriptAlreadyRunning = 'Script is already running';
   RTE_ScriptStillRunning = 'Script is still running';
-  RTE_ScriptStopped = 'Script was stopped.';
+  RTE_ScriptStopped = 'Script was stopped';
   RTE_ScriptHasLiveExecutions = 'Script has %d live executions';
-  RTE_StateInitializedExpected = 'ProgramState "psInitialized" expected.';
-  RTE_StateReadyToRunExpected = 'ProgramState "psReadyToRun" expected.';
+  RTE_StateInitializedExpected = 'ProgramState "psInitialized" expected';
+  RTE_StateReadyToRunExpected = 'ProgramState "psReadyToRun" expected';
 
   RTE_InstanceOfAbstractClass = 'Trying to create an instance of an abstract class';
   RTE_ArrayUpperBoundExceeded = 'Upper bound exceeded! Index %d';

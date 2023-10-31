@@ -1,1 +1,1 @@
-Syntax Error: "(" expected. [line: 3, column: 11]
+Syntax Error: "(" expected [line: 3, column: 11]
