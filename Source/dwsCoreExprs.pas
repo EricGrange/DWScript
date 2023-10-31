@@ -365,11 +365,14 @@ type
          property Addr : Integer read FAddr;
    end;
 
+   TFieldExprReadOnlyState = ( feroDefault, feroWriteable, feroReadOnly );
+
    // Field expression: obj.Field
    TFieldExpr = class(TDataExpr)
       protected
          FObjectExpr : TTypedExpr;
          FFieldSym : TFieldSymbol;
+         FReadOnly : TFieldExprReadOnlyState;
 
          function GetSubExpr(i : Integer) : TExprBase; override;
          function GetSubExprCount : Integer; override;
@@ -378,7 +381,8 @@ type
 
       public
          constructor Create(const aScriptPos: TScriptPos;
-                            fieldSym : TFieldSymbol; objExpr: TTypedExpr);
+                            fieldSym : TFieldSymbol; objExpr: TTypedExpr;
+                            readOnly : TFieldExprReadOnlyState);
          destructor Destroy; override;
 
          procedure AssignValueAsInteger(exec : TdwsExecution; const value : Int64); override;
@@ -401,8 +405,11 @@ type
 
          function SameDataExpr(expr : TTypedExpr) : Boolean; override;
 
+         function IsWritable : Boolean; override;
+
          property ObjectExpr : TTypedExpr read FObjectExpr;
          property FieldSym : TFieldSymbol read FFieldSym;
+         property ReadOnlyState : TFieldExprReadOnlyState read FReadOnly;
    end;
 
    // Field expression: obj.Field
@@ -423,17 +430,6 @@ type
          procedure Append(exec : TdwsExecution; const value : String);
 
          procedure GetDataPtr(exec : TdwsExecution; var result : IDataContext); override;
-
-         function SpecializeDataExpr(const context : ISpecializationContext) : TDataExpr; override;
-   end;
-
-   TReadOnlyFieldExpr = class sealed (TFieldExpr)
-      public
-         constructor Create(const aScriptPos: TScriptPos;
-                            fieldSym : TFieldSymbol; objExpr: TTypedExpr;
-                            propertyType : TTypeSymbol);
-
-         function IsWritable: Boolean; override;
 
          function SpecializeDataExpr(const context : ISpecializationContext) : TDataExpr; override;
    end;
@@ -2769,7 +2765,7 @@ end;
 //
 function TRecordExpr.IsWritable : Boolean;
 begin
-   Result:=FBaseExpr.IsWritable and not FieldSymbol.StructSymbol.IsImmutable;
+   Result := FBaseExpr.IsWritable and not FieldSymbol.StructSymbol.IsImmutable;
 end;
 
 // ------------------
@@ -2988,11 +2984,13 @@ end;
 // Create
 //
 constructor TFieldExpr.Create(const aScriptPos: TScriptPos;
-                              fieldSym: TFieldSymbol; objExpr: TTypedExpr);
+                              fieldSym: TFieldSymbol; objExpr: TTypedExpr;
+                              readOnly : TFieldExprReadOnlyState);
 begin
    inherited Create(aScriptPos, fieldSym.Typ);
    FObjectExpr := objExpr;
    FFieldSym := fieldSym;
+   FReadOnly := readOnly;
 end;
 
 // Destroy
@@ -3074,6 +3072,18 @@ begin
    Result:=    (ClassType=expr.ClassType)
            and (FieldSym=TFieldExpr(expr).FieldSym)
            and ObjectExpr.SameDataExpr(TFieldExpr(expr).ObjectExpr);
+end;
+
+// IsWritable
+//
+function TFieldExpr.IsWritable : Boolean;
+begin
+   case FReadOnly of
+      feroWriteable : Result := True;
+      feroReadOnly : Result := False;
+   else
+      Result := not FieldSym.ReadOnly;
+   end;
 end;
 
 // EvalAsString
@@ -3223,37 +3233,7 @@ end;
 function TFieldVarExpr.SpecializeDataExpr(const context : ISpecializationContext) : TDataExpr;
 begin
    Result := TFieldVarExpr.Create(ScriptPos, context.SpecializeField(FieldSym),
-                                  ObjectExpr.SpecializeTypedExpr(context));
-end;
-
-// ------------------
-// ------------------ TReadOnlyFieldExpr ------------------
-// ------------------
-
-// Create
-//
-constructor TReadOnlyFieldExpr.Create(const aScriptPos: TScriptPos;
-                         fieldSym : TFieldSymbol; objExpr: TTypedExpr;
-                         propertyType : TTypeSymbol);
-begin
-   inherited Create(aScriptPos, fieldSym, objExpr);
-   Typ := propertyType;
-end;
-
-// IsWritable
-//
-function TReadOnlyFieldExpr.IsWritable: Boolean;
-begin
-   Result := False;
-end;
-
-// SpecializeDataExpr
-//
-function TReadOnlyFieldExpr.SpecializeDataExpr(const context : ISpecializationContext) : TDataExpr;
-begin
-   Result := TReadOnlyFieldExpr.Create(ScriptPos, context.SpecializeField(FieldSym),
-                                       ObjectExpr.SpecializeTypedExpr(context),
-                                       context.SpecializeType(Typ));
+                                  ObjectExpr.SpecializeTypedExpr(context), FReadOnly);
 end;
 
 // ------------------

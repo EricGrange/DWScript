@@ -1028,6 +1028,7 @@ type
    TdwsMember = class(TdwsVariable)
       private
          FVisibility : TdwsVisibility;
+         FReadOnly : Boolean;
 
       public
          constructor Create(Collection: TCollection); override;
@@ -1037,6 +1038,7 @@ type
 
       published
          property Visibility : TdwsVisibility read FVisibility write FVisibility default cvPublic;
+         property ReadOnly : Boolean read FReadOnly write FReadOnly;
    end;
 
    TdwsMembers = class(TdwsCollection)
@@ -4385,9 +4387,12 @@ end;
 
 function TdwsMember.DoGenerate(systemTable : TSystemSymbolTable; Table: TSymbolTable; ParentSym: TSymbol = nil): TSymbol;
 begin
-  FIsGenerating := True;
-  CheckName(TRecordSymbol(ParentSym).Members, Name);
-  Result := TFieldSymbol.Create(Name, GetDataType(systemTable, Table, DataType), Visibility);
+   FIsGenerating := True;
+   CheckName(TRecordSymbol(ParentSym).Members, Name);
+   var fieldType := GetDataType(systemTable, Table, DataType);
+   var fieldSym := TFieldSymbol.Create(Name, fieldType, Visibility);
+   fieldSym.ReadOnly := ReadOnly;
+   Result := fieldSym;
 end;
 
 // Assign
@@ -4395,8 +4400,10 @@ end;
 procedure TdwsMember.Assign(Source: TPersistent);
 begin
    inherited;
-   if Source is TdwsMember then
+   if Source is TdwsMember then begin
       FVisibility := TdwsMember(Source).Visibility;
+      FReadOnly := TdwsMember(Source).ReadOnly;
+   end;
 end;
 
 // ------------------

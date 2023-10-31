@@ -1,0 +1,2 @@
+Syntax Error: Field "FMyField" is readonly [line: 5, column: 39]
+Syntax Error: Cannot assign a value to the left-side argument [line: 10, column: 12]

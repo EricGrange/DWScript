@@ -273,8 +273,13 @@ begin
       ToOutline('type TTest = class (TParent, IInterface)')
    );
    CheckEquals(
-      'Main,1TypeInline,2Token type,2TypeDecl,3Reference,4Token name <<TTest>>,3Token =,3ClassDecl,4ClassFwd,5Token class,4ClassBody,5TypeInnerDecl,6VarDeclaration,7NameList,8Token name <<Field>>,7Token :,7Reference,8Token name <<Integer>>,5Token end',
+      'Main,1TypeInline,2Token type,2TypeDecl,3Reference,4Token name <<TTest>>,3Token =,3ClassDecl,4ClassFwd,5Token class,4ClassBody,5TypeInnerDecl,6FieldDeclaration,7NameList,8Token name <<Field>>,7Token :,7Reference,8Token name <<Integer>>,5Token end',
       ToOutline('type TTest=class Field : Integer end')
+   );
+   CheckEquals(
+       'Main,1TypeInline,2Token type,2TypeDecl,3Reference,4Token name <<TTest>>,3Token =,3ClassDecl,4ClassFwd,5Token class,4ClassBody,5TypeInnerDecl,6FieldDeclaration,7NameList,8Token name <<Field>>,7Token :,7Reference,8Token name <<Integer>>,'
+      +'7Node,8Token ;,8Token readonly,6Token ;,5Token end',
+      ToOutline('type TTest=class Field : Integer; readonly; end')
    );
 end;
 

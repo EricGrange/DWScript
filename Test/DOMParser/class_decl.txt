@@ -11,7 +11,7 @@ Main
                   Token class [LF]
                ClassBody
                   TypeInnerDecl
-                     VarDeclaration
+                     FieldDeclaration
                         NameList
                            Token name <<FField>>
                         Token :

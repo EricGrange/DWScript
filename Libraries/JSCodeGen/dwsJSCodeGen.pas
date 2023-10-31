@@ -1483,7 +1483,6 @@ begin
 
    RegisterCodeGen(TFieldExpr,                  TJSFieldExpr.Create(cgwNotNeeded));
    RegisterCodeGen(TFieldVarExpr,               TJSFieldExpr.Create(cgwNotNeeded));
-   RegisterCodeGen(TReadOnlyFieldExpr,          TJSFieldExpr.Create(cgwNotNeeded));
 
    RegisterCodeGen(TAssertExpr,                 TJSAssertExpr.Create);
    RegisterCodeGen(TDeclaredExpr,               TJSDeclaredExpr.Create);

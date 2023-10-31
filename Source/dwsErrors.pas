@@ -806,7 +806,7 @@ end;
 function TdwsCompileMessageList.AddCompilerError(const aScriptPos: TScriptPos;
       const Text: String; messageClass : TScriptMessageClass) : TScriptMessage;
 begin
-   Result:=messageClass.Create(Self, Text, aScriptPos);
+   Result := messageClass.Create(Self, Text, aScriptPos);
 end;
 
 // AddCompilerError

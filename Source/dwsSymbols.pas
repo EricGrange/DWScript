@@ -1598,6 +1598,7 @@ type
          FDefaultValue : IDataContext;
          FDefaultExpr : TExprBase;
          FNextField : TFieldSymbol;
+         FReadOnly : Boolean;
 
       public
          constructor Create(const name : String; typ : TTypeSymbol;
@@ -1615,6 +1616,7 @@ type
          property DefaultValue : IDataContext read FDefaultValue write FDefaultValue;
          property DefaultExpr : TExprBase read FDefaultExpr write FDefaultExpr;
          property NextField : TFieldSymbol read FNextField write FNextField;
+         property ReadOnly : Boolean read FReadOnly write FReadOnly;
    end;
 
    TRecordSymbolFlag = (

@@ -42,7 +42,7 @@ const
    cDefaultStackChunkSize = 4096;  // 64 kB in 32bit Delphi, each stack entry is a Variant
 
    // compiler version is date in YYYYMMDD format, dot subversion number
-   cCompilerVersion = 20221206.0;
+   cCompilerVersion = 20231031.0;
 
 type
    TdwsCompiler = class;
@@ -734,6 +734,8 @@ type
 
          function GetCompilerContext : TdwsCompilerContext;
 
+         function GetFieldReadOnlyState(fieldSym : TFieldSymbol) : TFieldExprReadOnlyState;
+
          procedure DoProgramDestroyed(Sender : TObject);
 
       protected
@@ -1362,6 +1364,22 @@ end;
 function TdwsCompiler.GetCompilerContext : TdwsCompilerContext;
 begin
    Result := FCompilerContext;
+end;
+
+// GetFieldReadOnlyState
+//
+function TdwsCompiler.GetFieldReadOnlyState(fieldSym : TFieldSymbol) : TFieldExprReadOnlyState;
+begin
+   Result := feroDefault;
+   if (CurrentProg = nil) or not fieldSym.ReadOnly then
+      Exit;
+
+   if CurrentProg is TdwsProcedure then begin
+      // readonly fields are writeable in constructors of their structure
+      var func := TdwsProcedure(CurrentProg).Func;
+      if (func.Kind = fkConstructor) and (TMethodSymbol(func).StructSymbol = fieldSym.StructSymbol) then
+         Result := feroWriteable;
+   end;
 end;
 
 // DoProgramDestroyed
@@ -3967,7 +3985,7 @@ var
    progExpr : TBlockExpr;
 begin
    // Stop if declaration was forwarded or external
-   if (funcSymbol.IsForwarded or funcSymbol.IsExternal) then begin
+   if funcSymbol.IsForwarded or funcSymbol.IsExternal then begin
       // Closed context of procedure (was only a forward)
       if coContextMap in FOptions then
          FSourceContextMap.CloseContext(FTok.HotPos);
@@ -4932,11 +4950,11 @@ begin
             if (selfSym=nil) or (selfSym.Typ is TStructuredTypeMetaSymbol) then begin
 
                FMsgs.AddCompilerError(FTok.HotPos, CPE_ObjectReferenceExpected);
-               fieldExpr:=TFieldExpr.Create(namePos, TFieldSymbol(sym), nil);
+               fieldExpr := TFieldExpr.Create(namePos, TFieldSymbol(sym), nil, feroDefault);
 
             end else begin
 
-               fieldExpr:=ReadField(namePos, selfSym, TFieldSymbol(sym));
+               fieldExpr := ReadField(namePos, selfSym, TFieldSymbol(sym));
 
             end;
             Result:=ReadImplicitCall(fieldExpr, IsWrite, expecting);
@@ -5301,8 +5319,8 @@ function TdwsCompiler.ReadField(const scriptPos : TScriptPos; selfSym : TDataSym
 var
    varExpr : TTypedExpr;
 begin
-   varExpr:=nil;
-   Result:=ReadField(scriptPos, selfSym, fieldSym, varExpr);
+   varExpr := nil;
+   Result := ReadField(scriptPos, selfSym, fieldSym, varExpr);
 end;
 
 // ReadField
@@ -5316,9 +5334,12 @@ begin
       if varExpr.ClassType=TVarExpr then
          Result:=TRecordVarExpr.Create(scriptPos, TVarExpr(varExpr), fieldSym)
       else Result:=TRecordExpr.Create(scriptPos, (varExpr as TDataExpr), fieldSym)
-   end else if varExpr is TObjectVarExpr then
-      Result:=TFieldVarExpr.Create(FTok.HotPos, fieldSym, varExpr)
-   else Result:=TFieldExpr.Create(FTok.HotPos, fieldSym, varExpr);
+   end else begin
+      var readOnlyState := GetFieldReadOnlyState(fieldSym);
+      if varExpr is TObjectVarExpr then
+         Result:=TFieldVarExpr.Create(FTok.HotPos, fieldSym, varExpr, readOnlyState)
+      else Result:=TFieldExpr.Create(FTok.HotPos, fieldSym, varExpr, readOnlyState);
+   end;
    varExpr:=nil;
 end;
 
@@ -5418,7 +5439,6 @@ function TdwsCompiler.ReadPropertyWriteExpr(var expr : TTypedExpr; propertySym :
 var
    sym : TSymbol;
    aPos : TScriptPos;
-   fieldExpr : TDataExpr;
    tokenType : TTokenType;
    typedExprList : TTypedExprList;
    argPosArray : TScriptPosArray;
@@ -5453,16 +5473,16 @@ begin
             RecordSymbolUseImplicitReference(sym, aPos, True);
             if Expr.Typ is TClassOfSymbol then
                FMsgs.AddCompilerError(FTok.HotPos, CPE_ObjectReferenceExpected);
-            fieldExpr:=ReadField(aPos, nil, TFieldSymbol(sym), expr);
-            Result:=ReadAssign(ttASSIGN, fieldExpr);
+            var fieldExpr := ReadField(aPos, nil, TFieldSymbol(sym), expr);
+            Result := ReadAssign(ttASSIGN, fieldExpr);
 
          end else if sym is TClassVarSymbol then begin
 
             // WriteSym is a class var
             RecordSymbolUseImplicitReference(sym, aPos, True);
             OrphanAndNil(expr);
-            fieldExpr:=GetVarExpr(aPos, TClassVarSymbol(sym));
-            Result:=ReadAssign(ttASSIGN, fieldExpr);
+            var fieldExpr : TDataExpr := GetVarExpr(aPos, TClassVarSymbol(sym));
+            Result := ReadAssign(ttASSIGN, fieldExpr);
 
          end else if sym is TMethodSymbol then begin
 
@@ -5497,7 +5517,11 @@ begin
                end;
                if propertySym.OwnerSymbol is TRecordSymbol then
                   Result := TRecordExpr.Create(FTok.HotPos, expr as TDataExpr, TFieldSymbol(sym))
-               else Result := TReadOnlyFieldExpr.Create(FTok.HotPos, TFieldSymbol(sym), expr, propertySym.Typ);
+               else begin
+                  var fieldExpr := TFieldExpr.Create(FTok.HotPos, TFieldSymbol(sym), expr, feroReadOnly);
+                  fieldExpr.Typ := propertySym.Typ;
+                  Result := fieldExpr;
+               end;
                expr:=nil;
 
             end else if sym is TClassVarSymbol then begin
@@ -9262,8 +9286,8 @@ begin
                else
 
                   ReadFieldsDecl(Result, visibility, allowNonConstExpressions, False);
-                  if not (FTok.TestDelete(ttSEMI) or FTok.Test(ttEND)) then
-                     Break;
+//                  if not (FTok.TestDelete(ttSEMI) or FTok.Test(ttEND)) then
+//                     Break;
 
                end;
 
@@ -9715,9 +9739,12 @@ begin
 
             FMsgs.AddCompilerErrorFmt(FTok.HotPos, CPE_ConstantCannotBeWrittenTo, [sym.Name]);
 
-         end else if classProperty and (sym.ClassType=TFieldSymbol) then begin
+         end else if sym.ClassType=TFieldSymbol then begin
 
-            FMsgs.AddCompilerError(accessPos, CPE_ClassMemberExpected);
+            if classProperty then
+               FMsgs.AddCompilerError(accessPos, CPE_ClassMemberExpected);
+            if TFieldSymbol(sym).ReadOnly then
+               FMsgs.AddCompilerErrorFmt(accessPos, CPE_FieldIsReadOnly, [ sym.Name ]);
 
          end;
 
@@ -10076,8 +10103,10 @@ begin
 
                ReadFieldsDecl(Result, visibility, allowNonConstExpressions, Result.IsExternal);
 
-               if not FTok.TestDelete(ttSEMI) then
+               if FTok.Test(ttEND) then
                   Break;
+//               if not FTok.TestDelete(ttSEMI) then
+//                  Break;
             end;
          until not FTok.HasTokens;
       finally
@@ -10117,8 +10146,12 @@ var
    detachTyp : Boolean;
    options : TdwsNameListOptions;
    factory : IdwsDataSymbolFactory;
+   readOnlyPos : TScriptPos;
+   readOnlyName : String;
+   missingColon : Boolean;
 begin
-   names:=FStringListPool.Acquire;
+   missingColon := False;
+   names := FStringListPool.Acquire;
    try
       options:=[];
       if struct.Name='' then
@@ -10198,22 +10231,24 @@ begin
          end;
       end else begin
          exprData:=nil;
-         if typ=nil then begin
+         if typ = nil then begin
+            missingColon := True;
             FMsgs.AddCompilerError(FTok.HotPos, CPE_ColonExpected);
-            typ:=FCompilerContext.TypVariant;
+            typ := FCompilerContext.TypVariant;
          end;
       end;
       if (typ=struct) and (typ.ClassType=TRecordSymbol) then
          FMsgs.AddCompilerStopFmt(FTok.HotPos, CPE_RecordTypeNotFullyDefined, [typ.Name]);
 
-      member:=nil;
-      for x:=0 to names.Count - 1 do begin
+      var firstAddedFieldIndex := struct.Members.Count;
+      member := nil;
+      for x := 0 to names.Count - 1 do begin
          sym:=struct.Members.FindLocal(names[x]);
          if Assigned(sym) then
             MemberSymbolWithNameAlreadyExists(sym, posArray[x]);
 
-         member:=TFieldSymbol.Create(names[x], typ, visibility);
-         if exprDyn<>nil then begin
+         member := TFieldSymbol.Create(names[x], typ, visibility);
+         if exprDyn <> nil then begin
             case x of
                0 : member.DefaultExpr:=exprDyn;
                1 : FMsgs.AddCompilerError(FTok.HotPos, CPE_OnlyOneFieldExpectedForExternal);
@@ -10242,7 +10277,42 @@ begin
                FTok.KillToken;
             end else FMsgs.AddCompilerError(FTok.HotPos, CPE_StringExpected);
 
-         end else FTok.SimulateToken(ttSEMI, FTok.HotPos);
+            if not FTok.TestDelete(ttSEMI) then
+               FMsgs.AddCompilerError(FTok.HotPos, CPE_SemiExpected);
+
+         end;
+
+         if struct.IsClassSymbol then begin
+
+            if FTok.Test(ttREADONLY) then begin
+
+               // this may not be a qualifier, but a field named readonly
+               // we need to acquire its string representation to preserve case
+               FTok.TestDeleteNamePos(readOnlyName, readOnlyPos);
+
+               if not FTok.Test(ttSEMI) then begin
+
+                  // this is not a qualifier but a field named readonly
+                  FTok.SimulateNameToken(readOnlyPos, readOnlyName);
+
+               end else begin
+
+                  // this actually a readonly qualifier
+                  for var i := firstAddedFieldIndex to struct.Members.Count-1 do
+                     (struct.Members[i] as TFieldSymbol).ReadOnly := True;
+                  if not FTok.TestDelete(ttSEMI) then
+                     FMsgs.AddCompilerError(FTok.HotPos, CPE_SemiExpected);
+
+               end;
+
+            end;
+
+         end;
+
+      end else if not FTok.Test(ttEND) then begin
+
+         if not missingColon then
+            FMsgs.AddCompilerError(FTok.HotPos, CPE_SemiExpected);
 
       end;
 

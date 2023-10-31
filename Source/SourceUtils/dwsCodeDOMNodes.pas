@@ -165,6 +165,8 @@ type
    TdwsCodeDOMVarDeclaration = class (TdwsCodeDOMDeclarationStatement);
    TdwsCodeDOMConstDeclaration = class (TdwsCodeDOMStatement);
 
+   TdwsCodeDOMFieldDeclaration = class (TdwsCodeDOMVarDeclaration);
+
    TdwsCodeDOMConstDeclarationType = class (TdwsCodeDOMStatement);
    TdwsCodeDOMResourceString = class (TdwsCodeDOMStatement);
 
@@ -229,7 +231,9 @@ type
 
    TdwsCodeDOMDeprecatedQualifier = class (TdwsCodeDOMNode);
    TdwsCodeDOMExternalQualifier = class (TdwsCodeDOMNode);
+   TdwsCodeDOMReadOnlyQualifier = class (TdwsCodeDOMNode);
    TdwsCodeDOMHelperQualifier = class (TdwsCodeDOMNode);
+   TdwsCodeDOMVarQualifier = class (TdwsCodeDOMNode);
 
    TdwsCodeDOMContractDescription = class (TdwsCodeDOMNode);
    TdwsCodeDOMContractClause = class (TdwsCodeDOMNode);

@@ -2129,7 +2129,7 @@ begin
       prog:=FCompiler.Compile('{$HINT "hello"}'#13#10'...');
       prog.Msgs.WriteJSONValue(wr);
       CheckEquals('[{"text":"hello","type":"Hint","pos":{"file":"*MainModule*","line":1,"col":3},"hintLevel":"Normal"},'
-                 +'{"text":"Unexpected \"..\".","type":"SyntaxError","pos":{"file":"*MainModule*","line":2,"col":2}}]', wr.ToString);
+                 +'{"text":"Unexpected \"..\"","type":"SyntaxError","pos":{"file":"*MainModule*","line":2,"col":2}}]', wr.ToString);
    finally
       wr.Free;
    end;

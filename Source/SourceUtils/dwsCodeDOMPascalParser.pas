@@ -111,7 +111,7 @@ begin
       .AddMatchTokenType(ttDEPRECATED)
       .AddMatchTokenType(ttStrVal, [ rifOptional ])
    ;
-   var external_qualifier := Result.NewRuleNode('external_qualifier', TdwsCodeDOMDeprecatedQualifier)
+   var external_qualifier := Result.NewRuleNode('external_qualifier', TdwsCodeDOMExternalQualifier)
       .AddMatchTokenType(ttEXTERNAL)
       .AddMatchTokenType(ttStrVal, [ rifOptional ])
       .AddMatchTokenType(ttPROPERTY, [ rifOptional ])
@@ -119,6 +119,22 @@ begin
    var helper_qualifier := Result.NewRuleNode('helper_qualifier', TdwsCodeDOMHelperQualifier)
       .AddMatchTokenType(ttHELPER)
       .AddMatchName('', [ rifOptional ])
+   ;
+   var qualifier := Result.NewRuleNode('qualifier', TdwsCodeDOMFunctionQualifier)
+      .AddMatchTokenType(ttSEMI)
+      .AddSubRule(Result.NewRuleAlternative('qualifier_alt')
+         .AddMatchTokenTypes([
+            ttVIRTUAL, ttABSTRACT, ttOVERRIDE, ttSTATIC,
+            ttOVERLOAD, ttREINTRODUCE, ttFORWARD, ttEMPTY, ttDEFAULT,
+            ttSAFECALL, ttSTDCALL, ttCDECL, ttREGISTER, ttPASCAL, ttINLINE
+            ])
+         .AddSubRule(external_qualifier)
+         .AddSubRule(helper_qualifier)
+      )
+   ;
+   var var_qualifier := Result.NewRuleNode('var_qualifier', TdwsCodeDOMVarQualifier)
+      .AddMatchTokenType(ttSEMI)
+      .AddSubRule(external_qualifier)
    ;
 
    var type_decl_type := Result.NewRuleAlternative('type_decl_type');
@@ -150,14 +166,18 @@ begin
       .AddSubRule(name_list)
       .AddMatchTokenType(ttCOLON)
       .AddSubRule(type_decl_type)
-      .AddMatchTokenTypes([ ttEQ, ttASSIGN ], [ rifEndIfNotPresent ])
-      .AddSubRule(expression)
+      .AddSubRule(Result.NewRuleNode('var_decl_assign', TdwsCodeDOMNode)
+         .AddMatchTokenTypes([ ttEQ, ttASSIGN ])
+         .AddSubRule(expression)
+         , [ rifOptional ])
+      .AddSubRule(var_qualifier, [ rifOptional, rifRepeat ])
    ;
 
    var var_infer  := Result.NewRuleNode('var_infer', TdwsCodeDOMVarDeclaration)
       .AddMatchName
       .AddMatchTokenTypes([ ttASSIGN, ttEQ ])
       .AddSubRule(expression)
+      .AddSubRule(var_qualifier, [ rifOptional, rifRepeat ])
    ;
 
    var var_decl_or_infer := Result.NewRuleAlternative('var_decl_or_infer')
@@ -500,19 +520,6 @@ begin
       .AddMatchTokenType(ttBRIGHT)
    ;
 
-   var qualifier := Result.NewRuleNode('qualifier', TdwsCodeDOMFunctionQualifier)
-      .AddMatchTokenType(ttSEMI)
-      .AddSubRule(Result.NewRuleAlternative('qualifier_alt')
-         .AddMatchTokenTypes([
-            ttVIRTUAL, ttABSTRACT, ttOVERRIDE, ttSTATIC,
-            ttOVERLOAD, ttREINTRODUCE, ttFORWARD, ttEMPTY, ttDEFAULT,
-            ttSAFECALL, ttSTDCALL, ttCDECL, ttREGISTER, ttPASCAL, ttINLINE
-            ])
-         .AddSubRule(external_qualifier)
-         .AddSubRule(helper_qualifier)
-      )
-   ;
-
    var contract_description := Result.NewRuleNode('contract_description', TdwsCodeDOMContractDescription)
       .AddMatchTokenType(ttCOLON)
       .AddSubRule(expression)
@@ -628,6 +635,24 @@ begin
 
    var type_decl_inline := Result.NewRuleNode('type_inline', TdwsCodeDOMTypeInline);
 
+   var field_decl := Result.NewRuleNode('field_decl', TdwsCodeDOMFieldDeclaration)
+      .AddSubRule(name_list)
+      .AddMatchTokenType(ttCOLON)
+      .AddSubRule(type_decl_type)
+      .AddSubRule(Result.NewRuleNode('field_decl_assign', TdwsCodeDOMNode)
+         .AddMatchTokenTypes([ ttEQ, ttASSIGN ])
+         .AddSubRule(expression)
+         , [ rifOptional ])
+      .AddSubRule(Result.NewRuleNode('field_decl_external', TdwsCodeDOMNode)
+         .AddMatchTokenType(ttSEMI)
+         .AddSubRule(external_qualifier)
+         , [ rifOptional ])
+      .AddSubRule(Result.NewRuleNode('var_qualifier_alt', TdwsCodeDOMNode)
+         .AddMatchTokenType(ttSEMI)
+         .AddMatchTokenTypePairPeek(ttREADONLY, ttSEMI)
+         , [ rifOptional ])
+   ;
+
    var type_inner_decl := Result.NewRuleNode('type_inner_decl', TdwsCodeDOMTypeInnerDecl)
       .AddSubRule(Result.NewRuleAlternative('type_inner_decl_alt')
          .AddSubRule(property_decl)
@@ -636,7 +661,7 @@ begin
          .AddSubRule(class_var_decl)
          .AddSubRule(class_const_decl)
          .AddSubRule(class_operator_decl)
-         .AddSubRule(var_decl)
+         .AddSubRule(field_decl)
          .AddSubRule(var_infer)
          .AddSubRule(type_decl_inline)
          , [ rifOptional ])

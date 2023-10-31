@@ -9,7 +9,7 @@ Main
                RecordDecl
                   Token record
                   TypeInnerDecl
-                     VarDeclaration
+                     FieldDeclaration
                         NameList
                            Token name <<x>>
                         Token :

@@ -94,6 +94,7 @@ type
          function AddMatchTokenType(aTokenType : TTokenType; const flags : TdwsRuleItemFlags = []) : TdwsParserRule;
          function AddMatchTokenTypes(aTokenTypes : TTokenTypes; const flags : TdwsRuleItemFlags = []) : TdwsParserRule;
          function AddMatchTokenTypePair(aTokenType1, aTokenType2 : TTokenType; const flags : TdwsRuleItemFlags = []) : TdwsParserRule;
+         function AddMatchTokenTypePairPeek(aTokenType1, aTokenType2 : TTokenType; const flags : TdwsRuleItemFlags = []) : TdwsParserRule;
          function AddMatchAnyExceptTokenTypes(aTokenTypes : TTokenTypes; const flags : TdwsRuleItemFlags = []) : TdwsParserRule;
          function AddMatchStatementEnd : TdwsParserRule;
          function AddSubRule(aRule : TdwsParserRule; const flags : TdwsRuleItemFlags = []) : TdwsParserRule;
@@ -206,9 +207,10 @@ type
       private
          FTokenType1 : TTokenType;
          FTokenType2 : TTokenType;
+         FPeekSecond : Boolean;
 
       public
-         constructor Create(aTokenType1, aTokenType2 : TTokenType);
+         constructor Create(aTokenType1, aTokenType2 : TTokenType; peekSecond : Boolean);
 
          function Parse(context : TdwsCodeDOMContext) : TdwsCodeDOMNode; override;
          function StartTokens : TTokenTypes; override;
@@ -363,7 +365,14 @@ end;
 //
 function TdwsParserRule.AddMatchTokenTypePair(aTokenType1, aTokenType2 : TTokenType; const flags : TdwsRuleItemFlags = []) : TdwsParserRule;
 begin
-   Result := Add(TdwsRuleItem_MatchTokenTypePair.Create(aTokenType1, aTokenType2).SetFlags(flags));
+   Result := Add(TdwsRuleItem_MatchTokenTypePair.Create(aTokenType1, aTokenType2, False).SetFlags(flags));
+end;
+
+// AddMatchTokenTypePairPeek
+//
+function TdwsParserRule.AddMatchTokenTypePairPeek(aTokenType1, aTokenType2 : TTokenType; const flags : TdwsRuleItemFlags = []) : TdwsParserRule;
+begin
+   Result := Add(TdwsRuleItem_MatchTokenTypePair.Create(aTokenType1, aTokenType2, True).SetFlags(flags));
 end;
 
 // AddMatchAnyExceptTokenTypes
@@ -625,11 +634,12 @@ end;
 
 // Create
 //
-constructor TdwsRuleItem_MatchTokenTypePair.Create(aTokenType1, aTokenType2 : TTokenType);
+constructor TdwsRuleItem_MatchTokenTypePair.Create(aTokenType1, aTokenType2 : TTokenType; peekSecond : Boolean);
 begin
    inherited Create;
    FTokenType1 := aTokenType1;
    FTokenType2 := aTokenType2;
+   FPeekSecond := peekSecond;
 end;
 
 // Parse
@@ -641,7 +651,8 @@ begin
       and (context.Token.Next.TokenType = TokenType2) then begin
 
       Result := TdwsCodeDOMSnippet.ParseFromContext(context);
-      Result.AddChild(TdwsCodeDOMSnippet.ParseFromContext(context))
+      if not FPeekSecond then
+         Result.AddChild(TdwsCodeDOMSnippet.ParseFromContext(context))
 
    end else Result := nil;
 end;
