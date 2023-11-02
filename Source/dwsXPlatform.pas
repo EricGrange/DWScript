@@ -707,7 +707,7 @@ begin
    end;
 
    if utcOffsetInSeconds <> 0 then
-      Result := IncMilliSecond(t, utcOffsetInSeconds*1000)
+      Result := IncMilliSecond(t, -utcOffsetInSeconds*1000)
    else Result := t;
 end;
 {$else}{$ifdef FPC}
