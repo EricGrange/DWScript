@@ -76,7 +76,8 @@ type
       _yy, _yyyy,
       _h24, _hh24, _h12, _hh12,
       _n, _nn, _s, _ss, _z, _zzz,
-      _ampm, _am_pm, _a_p
+      _ampm, _am_pm, _a_p,
+      _uuu
       );
 
    TDateTimeItem = record
@@ -279,6 +280,12 @@ begin
                Inc(p);
             end;
          end;
+         'u' : begin
+            if (p[1] = 'u') and (p[2] = 'u') then begin
+               AddToken(_uuu);
+               Inc(p, 3);
+            end;
+         end;
          '"', '''' : begin
             quoteStart := p;
             Inc(p);
@@ -354,6 +361,25 @@ begin
                if hours in [1..12] then
                   wobs.WriteString('a')
                else wobs.WriteString('p');
+            end;
+            _uuu : begin
+               wobs.WriteString('UTC');
+               var offsetMinutes := Round((dt - LocalDateTimeToUTCDateTime(dt))*1440);
+               if offsetMinutes >= 0 then
+                  wobs.WriteChar('+')
+               else begin
+                  wobs.WriteChar('-');
+                  offsetMinutes := -offsetMinutes;
+               end;
+               var offsetHours := offsetMinutes div 60;
+               wobs.WriteString(offsetHours);
+               offsetMinutes := offsetMinutes - offsetHours * 60;
+               if offsetMinutes <> 0 then begin
+                  wobs.WriteChar(':');
+                  if offsetMinutes < 10 then
+                     wobs.WriteChar('0');
+                  wobs.WriteString(offsetMinutes);
+               end;
             end;
             _string : wobs.WriteString(Items[i].Literal);
          else
