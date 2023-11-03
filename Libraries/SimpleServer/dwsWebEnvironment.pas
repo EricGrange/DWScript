@@ -124,6 +124,7 @@ type
          SameSite : TWebResponseCookieSameSite;
 
          procedure WriteStringLn(dest : TWriteOnlyBlockStream);
+         function AsHeader : RawByteString;
    end;
 
    TWebResponseCookies = class (TObjectList<TWebResponseCookie>)
@@ -802,6 +803,20 @@ begin
    end;
 
    dest.WriteCRLF;
+end;
+
+// AsHeader
+//
+function TWebResponseCookie.AsHeader : RawByteString;
+begin
+   var wobs := TWriteOnlyBlockStream.AllocFromPool;
+   try
+      WriteStringLn(wobs);
+      Result := wobs.ToUTF8String;
+      SetLength(Result, Length(Result)-2); // strip tail CRLF
+   finally
+      wobs.ReturnToPool;
+   end;
 end;
 
 // ------------------
