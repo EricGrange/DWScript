@@ -126,8 +126,8 @@ begin
 
    vAnalyzingCPUUsage := True;
 
-   systemCurrent:=GetCurrentSystemTimes;
-   processCurrent:=GetCurrentProcessTimes(GetCurrentProcess);
+   systemCurrent := GetCurrentSystemTimes;
+   processCurrent := GetCurrentProcessTimes(GetCurrentProcess);
 
    vCPUUsageLock.BeginWrite;
    try
@@ -191,16 +191,19 @@ begin
    vCycleSystem[cpuIdle]:=0;
 
    vCPUUsageScaleFactor:=100/(Count*everyMilliseconds*(1/1000/86400));
-   vCPUUsageTimerID:=timeSetEvent(everyMilliseconds, 0, @CPUUsageCallBack, 0, TIME_PERIODIC);
+   vCPUUsageTimerID := timeSetEvent(
+      everyMilliseconds, 0, @CPUUsageCallBack, 0,
+      TIME_PERIODIC or TIME_KILL_SYNCHRONOUS
+   );
 end;
 
 // UnTrack
 //
 class procedure SystemCPU.UnTrack;
 begin
-   if vCPUUsageTimerID<>0 then begin
+   if vCPUUsageTimerID <> 0 then begin
       TimeKillEvent(vCPUUsageTimerID);
-      vCPUUsageTimerID:=0;
+      vCPUUsageTimerID := 0;
    end;
 end;
 
