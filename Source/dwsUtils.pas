@@ -4803,7 +4803,7 @@ end;
 procedure TObjectList<T>.Move(idx, idxNew, itemCount : Integer);
 var
    saveItems : ArrayT;
-   moveByteCount, saveByteCount : NativeInt;
+   saveByteCount : NativeInt;
    idxSave, idxRestore, saveItemCount : Integer;
 begin
    Assert(itemCount >= 0 , 'Negative item count');
@@ -5946,14 +5946,11 @@ end;
 //
 procedure TSimpleHash<T>.Grow(capacityPreAdjusted : Boolean);
 var
-   i, j, n : Integer;
-   h : Cardinal;
    {$IFDEF DELPHI_XE3}
    oldBuckets : array of TSimpleHashBucket<T>;
    {$ELSE}
    oldBuckets : TSimpleHashBucketArray<T>;
    {$ENDIF}
-   ptrOld, ptrNew, p : IntPtr;
 begin
    if not capacityPreAdjusted then begin
       if FCapacity = 0 then
@@ -6028,7 +6025,8 @@ begin
    hashCode:=GetItemHashCode(anItem);
    i:=(hashCode and (FCapacity-1));
    if LinearFind(anItem, i) then begin
-      FBuckets[i].Value:=anItem
+      FBuckets[i].Value:=anItem;
+      Result := False;
    end else begin
       FBuckets[i].HashCode:=hashCode;
       FBuckets[i].Value:=anItem;
@@ -6952,7 +6950,6 @@ end;
 procedure TSimpleObjectObjectHash<TKey, TValue>.Grow;
 var
    i, j, n : Integer;
-   hashCode : Integer;
    oldBuckets : TObjectObjectHashBuckets;
 begin
    if FCapacity=0 then
@@ -7046,7 +7043,8 @@ begin
    hashCode:=GetItemHashCode(anItem);
    i:=(hashCode and (FCapacity-1));
    if LinearFind(anItem, i) then begin
-      FBuckets[i]:=anItem
+      FBuckets[i]:=anItem;
+      Replace := False;
    end else begin
       FBuckets[i]:=anItem;
       FBuckets[i].HashCode:=hashCode;
