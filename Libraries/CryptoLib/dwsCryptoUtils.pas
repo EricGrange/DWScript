@@ -30,6 +30,7 @@ function HMAC(const key, msg : RawByteString; h : THashFunction; blockSize : Int
 
 function HashSHA3_256(const data : RawByteString) : RawByteString;
 function HashSHA256(const data : RawByteString) : RawByteString;
+function HashSHA256_P(p : Pointer; sizeBytes : Integer) : RawByteString;
 function HashSHA512(const data : RawByteString) : RawByteString;
 function HashRIPEMD160(const data : RawByteString) : RawByteString;
 
@@ -84,14 +85,23 @@ begin
    Result := BinToHex(h(oPad+h(iPad+msg)));
 end;
 
-function HashSHA256(const data : RawByteString) : RawByteString;
+// HashSHA256_P
+//
+function HashSHA256_P(p : Pointer; sizeBytes : Integer) : RawByteString;
 var
    SHA : TSHA256;
    digest : TSHA256Digest;
 begin
-   SHA.Full(Pointer(data), Length(data), digest);
+   SHA.Full(p, sizeBytes, digest);
    SetLength(Result, SizeOf(digest));
    System.Move(digest, Result[1], SizeOf(digest));
+end;
+
+// HashSHA256
+//
+function HashSHA256(const data : RawByteString) : RawByteString;
+begin
+   Result := HashSHA256_P(Pointer(data), Length(data));
 end;
 
 // HashSHA512
