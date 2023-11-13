@@ -3155,6 +3155,7 @@ begin
          field := TFieldSymbol(member);
          fieldType := context.SpecializeType(field.Typ);
          specializedField := TFieldSymbol.Create(field.Name, fieldType, field.Visibility);
+         specializedField.ExternalName := field.ExternalName;
          destination.AddField(specializedField);
          context.RegisterSpecialization(field, specializedField);
       end;
