@@ -11,8 +11,6 @@ object MainForm: TMainForm
   Font.Name = 'Arial'
   Font.Style = []
   Menu = MainMenu
-  OldCreateOrder = False
-  PixelsPerInch = 96
   TextHeight = 14
   object Splitter1: TSplitter
     Left = 0
