@@ -35,6 +35,7 @@ type
          sAssign0 : TState;
          sPlus, sMinus, sTimes, sPipe, sPercent : TState;
          sStringSingle, sStringSingleF : TState;
+         sStringTriple, sStringTripleF : TState;
          sStringDouble, sStringDoubleF : TState;
          sStringIndentDouble, sStringIndentDoubleF : TState;
          sStringIndentSingle, sStringIndentSingleF : TState;
@@ -154,14 +155,16 @@ begin
    sHexF:=CreateState;
    sBin:=CreateState;
    sBinF:=CreateState;
-   sStringSingle:=CreateState;
-   sStringSingleF:=CreateState;
-   sStringDouble:=CreateState;
-   sStringDoubleF:=CreateState;
-   sStringIndentSingle:=CreateState;
-   sStringIndentSingleF:=CreateState;
-   sStringIndentDouble:=CreateState;
-   sStringIndentDoubleF:=CreateState;
+   sStringSingle:=CreateState('sStringSingle');
+   sStringSingleF:=CreateState('sStringSingleF');
+   sStringTriple:=CreateState('sStringTriple');
+   sStringTripleF:=CreateState('sStringTripleF');
+   sStringDouble:=CreateState('sStringDouble');
+   sStringDoubleF:=CreateState('sStringDoubleF');
+   sStringIndentSingle:=CreateState('sStringIndentSingle');
+   sStringIndentSingleF:=CreateState('sStringIndentSingleF');
+   sStringIndentDouble:=CreateState('sStringIndentDouble');
+   sStringIndentDoubleF:=CreateState('sStringIndentDoubleF');
    sAssign0:=CreateState;
    sPlus:=CreateState;
    sMinus:=CreateState;
@@ -331,14 +334,23 @@ begin
    sBinF.AddTransition(cSTOP, TCheckTransition.Create(sStart, [toFinal], caBin));
    sBinF.SetElse(TErrorTransition.Create(TOK_BinDigitExpected));
 
-   sStringSingle.AddTransition(cANYCHAR - ['''', #13, #10], TConsumeTransition.Create(sStringSingle, [], caNone));
+   sStringSingle.AddTransition(cANYCHAR - ['''', #0, #13, #10], TConsumeTransition.Create(sStringSingle, [], caNone));
+   sStringSingle.AddTransition([#13, #10], TConsumeTransition.Create(sStringTriple, [], caNone));
    sStringSingle.AddTransition([''''], TSeekTransition.Create(sStringSingleF, [], caNone));
-   sStringSingle.AddTransition([#0, #13, #10], TErrorTransition.Create(TOK_StringTerminationError));
+   sStringSingle.AddEOFTransition(TErrorTransition.Create(TOK_HereDocTerminationError));
 
    sStringSingleF.AddTransition([''''], TConsumeTransition.Create(sStringSingle, [], caNone));
    sStringSingleF.AddTransition(['#'], TCheckTransition.Create(sStart, [], caString));
    sStringSingleF.AddTransition(cSTOP, TCheckTransition.Create(sStart, [toFinal], caString));
    sStringSingleF.SetElse(TErrorTransition.Create(TOK_InvalidChar));
+
+   sStringTriple.AddTransition(cANYCHAR - ['''', #0], TConsumeTransition.Create(sStringTriple, [], caNone));
+   sStringTriple.AddTransition([''''], TSeekTransition.Create(sStringTripleF, [], caNone));
+   sStringTriple.AddEOFTransition(TErrorTransition.Create(TOK_StringTerminationError, etlocStartPosition));
+
+   sStringTripleF.AddTransition([''''], TConsumeTransition.Create(sStringTriple, [], caNone));
+   sStringTripleF.AddTransition(cSTOP, TCheckTransition.Create(sStart, [toFinal], caStringTriple));
+   sStringTripleF.SetElse(TErrorTransition.Create(TOK_InvalidChar, etlocStartPosition));
 
    sStringDouble.AddTransition(cANYCHAR - ['"', #0], TConsumeTransition.Create(sStringDouble, [], caNone));
    sStringDouble.AddTransition(['"'], TSeekTransition.Create(sStringDoubleF, [], caNone));

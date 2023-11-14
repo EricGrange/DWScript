@@ -54,8 +54,9 @@ type
       function LastChar : Char;
       function ToStr : String; overload; inline;
       procedure ToStr(var result : String); overload;
-      procedure AppendMultiToStr(var result : String);
       procedure AppendToStr(var result : String);
+      procedure AppendMultiToStr(var result : String);
+      procedure AppendTripleToStr(var result : String; msgs : TdwsCompileMessageList; const scriptPos : TScriptPos);
       procedure ToUpperStr(var result : String); overload;
       function UpperFirstChar : Char;
       function UpperMatchLen(const str : String) : Boolean;
@@ -99,6 +100,7 @@ type
       private
          FOwnedTransitions : TTightList;
          FTransitions : TTransitionArray;
+         FName : String;
 
       public
          destructor Destroy; override;
@@ -115,7 +117,8 @@ type
       caClear,
       caName, caNameEscaped,
       caBin, caHex, caInteger, caFloat,
-      caChar, caCharHex, caString, caMultiLineString,
+      caChar, caCharHex,
+      caString, caMultiLineString, caStringTriple,
       caSwitch,
       caDotDot, caAmp, caAmpAmp,
       caEndOfText
@@ -141,12 +144,18 @@ type
      constructor Create(actn : TConvertAction);
    end;
 
+   TErrorTransitionLocation = (
+      etlocCurrentPosition, // tokenizer position where error was detected
+      etlocStartPosition    // start of token
+   );
+
    TErrorTransition = class(TTransition)
       private
          ErrorMessage : String;
+         ErrorLocation : TErrorTransitionLocation;
 
       public
-         constructor Create(const msg : String);
+         constructor Create(const msg : String; errLocation : TErrorTransitionLocation = etlocCurrentPosition);
    end;
 
    TCheckTransition = class(TTransition);
@@ -172,7 +181,7 @@ type
          FCaseSensitive : TTokenizerCaseSensitivity;
 
       protected
-         function CreateState : TState;
+         function CreateState(const stateName : String = '') : TState;
          function StartState : TState; virtual; abstract;
 
       public
@@ -461,6 +470,102 @@ begin
    end;
 
    SetLength(result, k);
+end;
+
+// AppendTripleToStr
+//
+procedure TTokenBuffer.AppendTripleToStr(
+   var result : String; msgs : TdwsCompileMessageList;
+   const scriptPos : TScriptPos
+);
+var
+   temp : String;
+begin
+   result := '';
+   AppendToStr(temp);
+   // triple quoted string should
+   // - start with apos (dedup) + newline
+   // - end with newline + (optional indent) + apos (dedup)
+   // - mid line should have same indent as what's before the last apos
+   var n := Length(temp);
+   if    (n < 4)
+      or (temp[1] <> '''')
+      or (not CharInSet(temp[2], [ #13, #10 ]))
+      or (temp[n] <> '''') then begin
+      msgs.AddCompilerError(scriptPos, TOK_TripleAposStringError);
+      Exit;
+   end;
+
+   var lastIndentOffset := n;
+   repeat
+      Dec(n);
+      case temp[n] of
+         ' ', #9 :   // indent whitespace
+            lastIndentOffset := n;
+         #10 : begin
+            if temp[n-1] = #13 then
+               Dec(n);
+            Break;
+         end;
+         #13 : Break;
+      else
+         msgs.AddCompilerError(scriptPos, TOK_TripleAposStringIndentError);
+         Exit;
+      end;
+   until False; // we are guarded by the check for starting apos
+
+   var pIndentPatternStart := PChar(@temp[lastIndentOffset]);
+   var pIndentPatternLength := Length(temp) - lastIndentOffset;
+
+   SetLength(result, n);
+   var pSrc := PChar(@temp[2]);
+   var pSrcTail := PChar(@temp[n]);
+   var pDest := PChar(result);
+   var firstLine := True;
+   var column : Integer := 0;
+   while UIntPtr(pSrc) < UIntPtr(pSrcTail) do begin
+      case pSrc^ of
+         #13 : begin
+            if not firstLine then begin
+               pDest^ := pSrc^;
+               Inc(pDest);
+            end;
+            Inc(pSrc);
+            if pSrc^ = #10 then begin
+               if not firstLine then begin
+                  pDest^ := pSrc^;
+                  Inc(pDest);
+               end;
+               Inc(pSrc);
+            end;
+            firstLine := False;
+            column := 0;
+         end;
+         #10 : begin
+            if not firstLine then begin
+               pDest^ := pSrc^;
+               Inc(pDest);
+            end;
+            Inc(pSrc);
+            firstLine := False;
+            column := 0;
+         end;
+      else
+         if column < pIndentPatternLength then begin
+            if pSrc^ <> pIndentPatternStart[column] then begin
+               msgs.AddCompilerError(scriptPos, TOK_TripleAposStringIndentError);
+               Exit;
+            end;
+            Inc(column);
+            Inc(pSrc);
+         end else begin
+            pDest^ := pSrc^;
+            Inc(pSrc);
+            Inc(pDest);
+         end;
+      end;
+   end;
+   SetLength(Result, (UIntPtr(pDest) - UIntPtr(result)) div SizeOf(Char));
 end;
 
 // ToUpperStr
@@ -1014,11 +1119,12 @@ end;
 // ------------------ TErrorTransition ------------------
 // ------------------
 
-constructor TErrorTransition.Create(const msg : String);
+constructor TErrorTransition.Create(const msg : String; errLocation : TErrorTransitionLocation = etlocCurrentPosition);
 begin
    inherited Create(nil, [], caNone);
    IsError := True;
    ErrorMessage := msg;
+   ErrorLocation := errLocation;
 end;
 
 // ------------------
@@ -1466,15 +1572,16 @@ procedure TTokenizer.ConsumeToken;
    // don't trigger error for EOF
    procedure DoErrorTransition(trns : TErrorTransition; ch : Char);
    begin
-      if trns.ErrorMessage <> '' then begin
-         case ch of
-            #0 :
-               FMsgs.AddCompilerError(CurrentPos, trns.ErrorMessage);
-            #1..#31 :
-               FMsgs.AddCompilerStopFmt(CurrentPos, '%s (found #%d)', [trns.ErrorMessage, Ord(ch)]);
-         else
-            FMsgs.AddCompilerStopFmt(CurrentPos, '%s (found "%s")', [trns.ErrorMessage, ch])
-         end;
+      if trns.ErrorMessage = '' then Exit;
+      if trns.ErrorLocation = etlocStartPosition then
+         FMsgs.AddCompilerStop(FToken.FScriptPos, trns.ErrorMessage)
+      else case ch of
+         #0 :
+            FMsgs.AddCompilerStop(CurrentPos, trns.ErrorMessage);
+         #1..#31 :
+            FMsgs.AddCompilerStopFmt(CurrentPos, '%s (found #%d)', [trns.ErrorMessage, Ord(ch)]);
+      else
+         FMsgs.AddCompilerStopFmt(CurrentPos, '%s (found "%s")', [trns.ErrorMessage, ch])
       end;
    end;
 
@@ -1512,6 +1619,11 @@ procedure TTokenizer.ConsumeToken;
 
          caMultiLineString : begin
             FTokenBuf.AppendMultiToStr(FToken.FString);
+            FToken.FTyp:=ttStrVal;
+         end;
+
+         caStringTriple : begin
+            FTokenBuf.AppendTripleToStr(FToken.FString, FMsgs, FToken.FScriptPos);
             FToken.FTyp:=ttStrVal;
          end;
 
@@ -1755,9 +1867,10 @@ end;
 
 // CreateState
 //
-function TTokenizerRules.CreateState : TState;
+function TTokenizerRules.CreateState(const stateName : String) : TState;
 begin
-   Result:=TState.Create;
+   Result := TState.Create;
+   Result.FName := stateName;
    FStates.Add(Result);
 end;
 

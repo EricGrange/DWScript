@@ -29,6 +29,7 @@ type
          procedure NoBreakSpace;
          procedure EqualsTokens;
          procedure PlusMinus;
+         procedure TripleApos;
 
          procedure ActionStream;
    end;
@@ -371,6 +372,44 @@ begin
       t.KillToken;
       CheckTrue(t.Test(ttMINUS), '- in +-');
       t.KillToken;
+
+      t.EndSourceFile;
+   finally
+      t.Free;
+      rules.Free;
+   end;
+end;
+
+// TripleApos
+//
+procedure TTokenizerTests.TripleApos;
+var
+   rules : TPascalTokenizerStateRules;
+   t : TTokenizer;
+begin
+   FSourceFile.Code := ''''''''#13#10'hello'#13#10''''''';'
+                     + ''''''''#10#9#9'world'#9#10#9''''''';'
+                     + ''''''''#10#10'      space'#10#10'   '''''';'
+                     ;
+   rules := TPascalTokenizerStateRules.Create;
+   t := rules.CreateTokenizer(FMsgs, nil);
+   try
+      t.BeginSourceFile(FSourceFile);
+
+      CheckTrue(t.Test(ttStrVal), '1st string');
+      CheckEquals('hello', t.GetToken.AsString, '1st string value');
+      t.KillToken;
+
+      CheckTrue(t.TestDelete(ttSEMI), '1st semi');
+
+      CheckTrue(t.Test(ttStrVal), '2nd string');
+      CheckEquals(#9'world'#9, t.GetToken.AsString, '2nd string value');
+      t.KillToken;
+
+      CheckTrue(t.TestDelete(ttSEMI), '2nd semi');
+
+      CheckTrue(t.Test(ttStrVal), '3rd string');
+      CheckEquals(#10'   space'#10, t.GetToken.AsString, '3rd string value');
 
       t.EndSourceFile;
    finally
