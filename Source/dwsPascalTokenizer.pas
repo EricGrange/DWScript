@@ -35,7 +35,7 @@ type
          sAssign0 : TState;
          sPlus, sMinus, sTimes, sPipe, sPercent : TState;
          sStringSingle, sStringSingleF : TState;
-         sStringTriple, sStringTripleF : TState;
+         sStringTriple, sStringTripleF1, sStringTripleF2 : TState;
          sStringDouble, sStringDoubleF : TState;
          sStringIndentDouble, sStringIndentDoubleF : TState;
          sStringIndentSingle, sStringIndentSingleF : TState;
@@ -158,7 +158,8 @@ begin
    sStringSingle:=CreateState('sStringSingle');
    sStringSingleF:=CreateState('sStringSingleF');
    sStringTriple:=CreateState('sStringTriple');
-   sStringTripleF:=CreateState('sStringTripleF');
+   sStringTripleF1:=CreateState('sStringTripleF1');
+   sStringTripleF2:=CreateState('sStringTripleF2');
    sStringDouble:=CreateState('sStringDouble');
    sStringDoubleF:=CreateState('sStringDoubleF');
    sStringIndentSingle:=CreateState('sStringIndentSingle');
@@ -345,12 +346,16 @@ begin
    sStringSingleF.SetElse(TErrorTransition.Create(TOK_InvalidChar));
 
    sStringTriple.AddTransition(cANYCHAR - ['''', #0], TConsumeTransition.Create(sStringTriple, [], caNone));
-   sStringTriple.AddTransition([''''], TSeekTransition.Create(sStringTripleF, [], caNone));
+   sStringTriple.AddTransition([''''], TConsumeTransition.Create(sStringTripleF1, [], caNone));
    sStringTriple.AddEOFTransition(TErrorTransition.Create(TOK_StringTerminationError, etlocStartPosition));
 
-   sStringTripleF.AddTransition([''''], TConsumeTransition.Create(sStringTriple, [], caNone));
-   sStringTripleF.AddTransition(cSTOP, TCheckTransition.Create(sStart, [toFinal], caStringTriple));
-   sStringTripleF.SetElse(TErrorTransition.Create(TOK_InvalidChar, etlocStartPosition));
+   sStringTripleF1.AddTransition([''''], TConsumeTransition.Create(sStringTripleF2, [], caNone));
+   sStringTripleF1.AddEOFTransition(TErrorTransition.Create(TOK_StringTerminationError, etlocStartPosition));
+   sStringTripleF1.SetElse(TConsumeTransition.Create(sStringTriple, [], caNone));
+
+   sStringTripleF2.AddTransition([''''], TSeekTransition.Create(sStart, [toFinal], caStringTriple));
+   sStringTripleF2.AddEOFTransition(TErrorTransition.Create(TOK_StringTerminationError, etlocStartPosition));
+   sStringTripleF2.SetElse(TConsumeTransition.Create(sStringTriple, [], caNone));
 
    sStringDouble.AddTransition(cANYCHAR - ['"', #0], TConsumeTransition.Create(sStringDouble, [], caNone));
    sStringDouble.AddTransition(['"'], TSeekTransition.Create(sStringDoubleF, [], caNone));

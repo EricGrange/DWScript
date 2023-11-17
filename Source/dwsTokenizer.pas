@@ -485,17 +485,19 @@ begin
    AppendToStr(temp);
    // triple quoted string should
    // - start with apos (dedup) + newline
-   // - end with newline + (optional indent) + apos (dedup)
+   // - end with newline + (optional indent) + 2x apos
    // - mid line should have same indent as what's before the last apos
    var n := Length(temp);
-   if    (n < 4)
+   if    (n < 5)
       or (temp[1] <> '''')
       or (not CharInSet(temp[2], [ #13, #10 ]))
-      or (temp[n] <> '''') then begin
+      or (temp[n] <> '''')
+      or (temp[n-1] <> '''') then begin
       msgs.AddCompilerError(scriptPos, TOK_TripleAposStringError);
       Exit;
    end;
 
+   Dec(n);
    var lastIndentOffset := n;
    repeat
       Dec(n);
@@ -515,7 +517,7 @@ begin
    until False; // we are guarded by the check for starting apos
 
    var pIndentPatternStart := PChar(@temp[lastIndentOffset]);
-   var pIndentPatternLength := Length(temp) - lastIndentOffset;
+   var pIndentPatternLength := Length(temp) - lastIndentOffset - 1;
 
    SetLength(result, n);
    var pSrc := PChar(@temp[2]);
