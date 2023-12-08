@@ -219,12 +219,51 @@ begin
    end;
 end;
 
+function RunCommandLine(var compileOnly : Boolean) : TRunnerProject;
 var
    fileName : String;
+begin
+   if ParamCount<1 then begin
+      WriteHeader;
+      Writeln('Run a simple script with:');
+      Writeln('   dws <sourcefile> [param1] [param2] ... [paramN]');
+      Writeln('');
+      Writeln('Run a zip project with (starts from "main.pas" in the zip):');
+      Writeln('   dws <zipfile> [param1] [param2] ... [paramN]');
+      Writeln('');
+      Writeln('Bundle a zip project into an executable:');
+      Writeln('   dws make <zipFile|sourcefile> [exeName]');
+      Writeln('');
+      Writeln('Compile but do not run a script:');
+      Writeln('   dws compile <zipFile|sourcefile>');
+      Exit(nil);
+   end;
+   fileName:=ParamStr(1);
+   if fileName='make' then begin
+      MakeExecutable;
+      Exit(nil);
+   end;
+   if fileName = 'compile' then begin
+      compileOnly := True;
+      fileName := ParamStr(2);
+   end;
+   if FileExists(fileName) then
+      if StrEndsWith(fileName, '.zip') then
+         Result := TZipProject.Create(fileName)
+      else Result := TFileProject.Create(fileName)
+   else if DirectoryExists(fileName) then
+      Result := TDirectoryProject.Create(fileName)
+   else begin
+      Writeln('File "', fileName, '" not found.');
+      Exit(nil);
+   end;
+end;
+
+var
    paramOffset : Integer;
    project : TRunnerProject;
    zr : TZipRead;
-   embedded, compileOnly : Boolean;
+   compileOnly, embedded : Boolean;
 begin
    zr:=TZipRead.Create(HInstance, 'SCRIPT', RT_RCDATA);
    if zr.Count=0 then begin
@@ -238,42 +277,10 @@ begin
       embedded:=True;
    end;
    compileOnly := False;
-   if project=nil then begin
-      if ParamCount<1 then begin
-         WriteHeader;
-         Writeln('Run a simple script with:');
-         Writeln('   dws <sourcefile> [param1] [param2] ... [paramN]');
-         Writeln('');
-         Writeln('Run a zip project with (starts from "main.pas" in the zip):');
-         Writeln('   dws <zipfile> [param1] [param2] ... [paramN]');
-         Writeln('');
-         Writeln('Bundle a zip project into an executable:');
-         Writeln('   dws make <zipFile|sourcefile> [exeName]');
-         Writeln('');
-         Writeln('Compile but do not run a script:');
-         Writeln('   dws compile <zipFile|sourcefile>');
-         Exit;
-      end;
-      fileName:=ParamStr(1);
-      if fileName='make' then begin
-         MakeExecutable;
-         Exit;
-      end;
-      if fileName = 'compile' then begin
-         compileOnly := True;
-         fileName := ParamStr(2);
-      end;
-      if FileExists(fileName) then
-         if StrEndsWith(fileName, '.zip') then
-            project:=TZipProject.Create(fileName)
-         else project:=TFileProject.Create(fileName)
-      else if DirectoryExists(fileName) then
-         project:=TDirectoryProject.Create(fileName)
-      else begin
-         Writeln('File "', fileName, '" not found.');
-         Exit;
-      end;
+   if project=nil then
+      project := RunCommandLine(compileOnly);
+   if project <> nil then begin
+      CoInitialize(nil);
+      Execute(project, paramOffset, embedded, compileOnly);
    end;
-   CoInitialize(nil);
-   Execute(project, paramOffset, embedded, compileOnly);
 end.
