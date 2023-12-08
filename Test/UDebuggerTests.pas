@@ -51,6 +51,8 @@ type
          procedure EvaluateContextTest;
          procedure EvaluateLocalVar;
          procedure EvaluateBlockVar;
+         procedure EvaluateForVar;
+         procedure EvaluateForVarInStr;
          procedure EvaluateAfterBlock;
          procedure EvaluateArray;
          procedure EvaluateEnumInUnit;
@@ -443,6 +445,67 @@ begin
          FDebugger.BeginDebug(exec);
          try
             CheckEquals('123', FDebugLastEvalResult, 'i at line 3');
+         finally
+            FDebugger.EndDebug;
+         end;
+      finally
+         exec:=nil;
+      end;
+   finally
+      prog:=nil;
+   end;
+end;
+
+// EvaluateForVar
+//
+procedure TDebuggerTests.EvaluateForVar;
+var
+   prog : IdwsProgram;
+   exec : IdwsProgramExecution;
+begin
+   prog:=FCompiler.Compile(  'for var i := 3 to 3 do'#10
+                           + '  PrintLn(i);'#10);
+   try
+      exec:=prog.CreateNewExecution;
+      try
+         FDebugEvalExpr:='i';
+
+         FDebugEvalAtLine:=2;
+         FDebugLastEvalResult:='';
+         FDebugger.BeginDebug(exec);
+         try
+            CheckEquals('3', FDebugLastEvalResult, 'i at line 2');
+         finally
+            FDebugger.EndDebug;
+         end;
+      finally
+         exec:=nil;
+      end;
+   finally
+      prog:=nil;
+   end;
+end;
+
+// EvaluateForVarInStr
+//
+procedure TDebuggerTests.EvaluateForVarInStr;
+var
+   prog : IdwsProgram;
+   exec : IdwsProgramExecution;
+begin
+   prog:=FCompiler.Compile(  'var s := "z";'#10
+                           + 'for var char in s do'#10
+                           + '  PrintLn(char);'#10);
+   try
+      exec:=prog.CreateNewExecution;
+      try
+         FDebugEvalExpr:='char';
+
+         FDebugEvalAtLine:=3;
+         FDebugLastEvalResult:='';
+         FDebugger.BeginDebug(exec);
+         try
+            CheckEquals('z', FDebugLastEvalResult, 'char at line 3');
          finally
             FDebugger.EndDebug;
          end;
