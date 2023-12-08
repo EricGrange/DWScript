@@ -413,7 +413,7 @@ type
    TSymbolTableFlag = (stfSorted,
                        stfHasChildTables, stfHasHelpers,
                        stfHasLocalOperators, stfHasParentOperators, stfHasOperators,
-                       stfHasClassSymbols);
+                       stfHasClassSymbols, stfHasNestedTypes );
    TSymbolTableFlags = set of TSymbolTableFlag;
 
    TSimpleSymbolList = TSimpleList<TSymbol>;
@@ -487,6 +487,7 @@ type
          function HasSymbol(sym : TSymbol) : Boolean;
          function HasMethods : Boolean;
          function HasClassSymbols : Boolean;
+         function HasNestedtypes : Boolean; inline;
          class function IsUnitTable : Boolean; virtual;
 
          procedure Initialize(const msgs : TdwsCompileMessageList); virtual;
@@ -1426,7 +1427,6 @@ type
       private
          FOwner : TCompositeTypeSymbol;
 
-
       public
          procedure AddParent(parent : TMembersSymbolTable);
 
@@ -1522,6 +1522,8 @@ type
          function FindDefaultConstructor(minVisibility : TdwsVisibility) : TMethodSymbol; virtual;
 
          function MembersVisibilities : TdwsVisibilities;
+
+         function HasNestedTypes : Boolean; inline;
 
          function CreateSelfParameter(methSym : TMethodSymbol) : TDataSymbol; virtual; abstract;
          function CreateAnonymousMethod(aFuncKind : TFuncKind; aVisibility : TdwsVisibility;
@@ -3019,6 +3021,13 @@ begin
    Result:=Members.Visibilities;
    if Parent<>nil then
       Result:=Result+Parent.MembersVisibilities;
+end;
+
+// HasNestedTypes
+//
+function TCompositeTypeSymbol.HasNestedTypes : Boolean;
+begin
+   Result := Members.HasNestedTypes;
 end;
 
 // CheckMethodsImplemented
@@ -7284,6 +7293,13 @@ begin
    Result := stfHasClassSymbols in FFlags;
 end;
 
+// HasNestedtypes
+//
+function TSymbolTable.HasNestedtypes : Boolean;
+begin
+   Result := stfHasNestedTypes in FFlags;
+end;
+
 // IsUnitTable
 //
 class function TSymbolTable.IsUnitTable : Boolean;
@@ -7306,9 +7322,11 @@ begin
       if ct = TOperatorSymbol then
          FFlags := FFlags + [ stfHasOperators, stfHasLocalOperators ]
       else if ct = TClassSymbol then
-         Include(FFlags, stfHasClassSymbols)
+         FFlags := FFlags + [ stfHasClassSymbols, stfHasNestedTypes ]
       else if ct = THelperSymbol then
-         Include(FFlags, stfHasHelpers);
+         FFlags := FFlags + [ stfHasHelpers, stfHasNestedTypes ]
+      else if (ct = TRecordSymbol) or (ct = TAliasSymbol) then
+         Include(FFlags, stfHasNestedTypes);
    end;
 end;
 

@@ -3870,7 +3870,11 @@ begin
    declaredMethod:=(sym is TMethodSymbol) and (TMethodSymbol(sym).StructSymbol=ownerSym);
    if declaredMethod then
       Result:=TMethodSymbol(sym)
-   else begin
+   else if sym is TCompositeTypeSymbol then begin
+      // nested type
+      Result := ReadMethodImpl(TCompositeTypeSymbol(sym), funcKind, aCreateOptions);
+      Exit;
+   end else begin
       // keep compiling
       FMsgs.AddCompilerErrorFmt(methPos, CPE_ImplInvalidClass, [methName, ownerSym.Name]);
       Result := TSourceMethodSymbol.Create(methName, funcKind, ownerSym, cvPublic, aCreateOptions);
@@ -3884,11 +3888,25 @@ begin
       try
          // Don't store these params to Dictionary. They will become invalid when the method is freed.
          if not FTok.TestDelete(ttSEMI) then begin
-            ReadParams(tmpMeth.HasParam, tmpMeth.AddParam, Result.Params, nil, posArray);
-            tmpMeth.Typ:=ReadFuncResultType(funcKind);
+            if ownerSym.HasNestedTypes then begin
+               // composite has nested types, enable their scope
+               // since it is rather costly and nested types are infrequent,
+               // only use this code path when necessary
+               CurrentProg.EnterSubTable(ownerSym.Members);
+               try
+                  ReadParams(tmpMeth.HasParam, tmpMeth.AddParam, Result.Params, nil, posArray);
+                  tmpMeth.Typ:=ReadFuncResultType(funcKind);
+               finally
+                  CurrentProg.LeaveSubTable;
+               end;
+            end else begin
+               ReadParams(tmpMeth.HasParam, tmpMeth.AddParam, Result.Params, nil, posArray);
+               tmpMeth.Typ:=ReadFuncResultType(funcKind);
+            end;
             if not FTok.TestDelete(ttSEMI) then
                FMsgs.AddCompilerWarning(FTok.HotPos, CPE_SemiExpected);
          end;
+
          if Result.IsOverloaded then begin
             overloadedMeth:=MethPerfectMatchOverload(tmpMeth, False);
             if overloadedMeth=nil then
@@ -3902,6 +3920,7 @@ begin
                tmpMeth.SetIsStatic;
             CompareFuncSymbolParams(Result, tmpMeth);
          end;
+
       finally
          OrphanObject(tmpMeth);
       end;
@@ -6561,6 +6580,8 @@ begin
 
       forInExpr:=TForCharInStrExpr.Create(FCompilerContext, forPos, loopVarExpr as TStrVarExpr,
                                           TTypedExpr(inExpr));
+      if coContextMap in Options then
+         FSourceContextMap.OpenContext(FTok.CurrentPos, nil, ttFOR);
       CurrentProg.EnterSubTable(blockExpr.Table);
       EnterLoop(forInExpr);
       try
@@ -6569,6 +6590,10 @@ begin
       finally
          LeaveLoop;
          CurrentProg.LeaveSubTable;
+         if coContextMap in Options then begin
+            FSourceContextMap.Current.LocalTable := blockExpr.Table;
+            FSourceContextMap.CloseContext(FTok.CurrentPos);
+         end;
          blockExpr.AddStatement(forInExpr);
          Result:=blockExpr;
       end;
