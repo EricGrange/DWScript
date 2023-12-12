@@ -38,6 +38,7 @@ type
          procedure TailComment;
          procedure IfThenElse;
          procedure SimpleClassDecl;
+         procedure SimpleClassScope;
          procedure ClassOfDecl;
          procedure Conditionals;
          procedure ArrayTypes;
@@ -280,6 +281,16 @@ begin
        'Main,1TypeInline,2Token type,2TypeDecl,3Reference,4Token name <<TTest>>,3Token =,3ClassDecl,4ClassFwd,5Token class,4ClassBody,5TypeInnerDecl,6FieldDeclaration,7NameList,8Token name <<Field>>,7Token :,7Reference,8Token name <<Integer>>,'
       +'7Node,8Token ;,8Token readonly,6Token ;,5Token end',
       ToOutline('type TTest=class Field : Integer; readonly; end')
+   );
+end;
+
+// SimpleClassScope
+//
+procedure TCodeDOMTests.SimpleClassScope;
+begin
+   CheckEquals(
+      'Main,1StatementList,2TypeInline,3Token type,3TypeDecl,4Reference,5Token name <<TTest>>,4Token =,4ClassDecl,5ClassFwd,6Token class,5ClassBody,6TypeVisibilitySection,7Token private,6Token end,2Token ;',
+      ToOutline('type TTest = class private end;')
    );
 end;
 
