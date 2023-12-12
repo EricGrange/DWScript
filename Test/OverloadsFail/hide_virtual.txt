@@ -1,0 +1,3 @@
+Warning: Method "Toto" overlaps a virtual method [line: 6, column: 13]
+Syntax Error: Method "Toto" of class "A" not implemented [line: 2, column: 13]
+Syntax Error: Method "Toto" of class "B" not implemented [line: 6, column: 13]

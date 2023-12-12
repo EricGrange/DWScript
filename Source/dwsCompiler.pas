@@ -3717,8 +3717,8 @@ begin
 
       end;
 
-      if funcResult.IsOverloaded then
-         isReintroduced:=False;
+      if funcResult.IsOverloaded and (meth <> nil) and meth.IsOverloaded then
+         isReintroduced := False;
 
       if ownerSym.AllowVirtualMembers then begin
          qualifier := FTok.TestDeleteAny([ttVIRTUAL, ttOVERRIDE, ttABSTRACT]);
