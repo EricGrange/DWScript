@@ -98,6 +98,9 @@ type
          procedure JSONPathBasic;
          procedure JSONPathObjectArray;
          procedure JSONPathFails;
+
+         procedure JSON5_WriteNaNs;
+         procedure JSON5_ReadNaNs;
    end;
 
 // ------------------------------------------------------------------
@@ -1288,6 +1291,49 @@ begin
    CheckException(JSONPathFailProperty, EJSONPathException);
    CheckException(JSONPathFailPropertyUnfinished, EJSONPathException);
    CheckException(JSONPathFailDeepPropertyUnfinished, EJSONPathException);
+end;
+
+// JSON5_WriteNaNs
+//
+procedure TdwsJSONTests.JSON5_WriteNaNs;
+begin
+   var writer := TdwsJSONWriter.Create;
+   try
+      writer.BeginArray;
+         writer.WriteNumber(-1/0);
+         writer.WriteNumber(0/0);
+         writer.WriteNumber(1/0);
+      writer.EndArray;
+      CheckEquals('[null,null,null]', writer.ToString);
+   finally
+      writer.Free;
+   end;
+   writer := TdwsJSONWriter.Create(nil, [ woNaNNumbersJSON5 ]);
+   try
+      writer.BeginArray;
+         writer.WriteNumber(-1/0);
+         writer.WriteNumber(0/0);
+         writer.WriteNumber(1/0);
+      writer.EndArray;
+      CheckEquals('[-Infinity,NaN,Infinity]', writer.ToString);
+   finally
+      writer.Free;
+   end;
+end;
+
+// JSON5_ReadNaNs
+//
+procedure TdwsJSONTests.JSON5_ReadNaNs;
+begin
+   var j := TdwsJSONValue.ParseString('[-Infinity,NaN,Infinity]');
+   try
+      CheckEquals(3, j.ElementCount);
+      CheckTrue(fsNInf = j.Elements[0].AsNumber.SpecialType, '-inf');
+      CheckTrue(fsNaN = j.Elements[1].AsNumber.SpecialType, 'nan');
+      CheckTrue(fsInf = j.Elements[2].AsNumber.SpecialType, 'inf');
+   finally
+      j.Free;
+   end;
 end;
 
 // ------------------------------------------------------------------
