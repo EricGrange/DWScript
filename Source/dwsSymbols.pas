@@ -1294,6 +1294,8 @@ type
          function ValueToOffsetMask(value : Integer; var mask : Int64) : Integer; inline;
          function ValueToByteOffsetMask(value : Integer; var mask : Byte) : Integer; inline;
 
+         function GetValueDescription(const value : IDataContext) : String;
+
          function ElementByValue(value : Integer) : TElementSymbol;
 
          property MinValue : Integer read FMinValue write FMinValue;
@@ -6443,8 +6445,12 @@ function TConstSymbol.GetDescription : String;
    var
       nbApos, nbQuotes : Integer;
    begin
+      var uTyp := Typ.UnAliasedType;
+      if uTyp is TSetOfSymbol then
+         Exit(TSetOfSymbol(uTyp).GetValueDescription(FDataContext));
+
       FDataContext.EvalAsString(0, Result);
-      if Typ.UnAliasedTypeIs(TBaseStringSymbol) then begin
+      if uTyp is TBaseStringSymbol then begin
          nbApos := StrCountChar(Result, '''');
          if nbApos = 0 then
             nbQuotes := 1
@@ -6690,6 +6696,8 @@ begin
          Result := Result + ' = ''' + VariantToString(FDefaultValue[0]) + ''''  // put quotes around value
       else if (Typ is TArraySymbol) then
          Result := Result + ' = []'
+      else if (Typ is TSetOfSymbol) then
+         Result := Result + ' = ' + TSetOfSymbol(Typ).GetValueDescription(FDefaultValue)
       else Result := Result + ' = ' + VariantToString(FDefaultValue[0]);
    end;
 end;
@@ -7700,6 +7708,34 @@ function TSetOfSymbol.ValueToByteOffsetMask(value : Integer; var mask : Byte) : 
 begin
    Result := (value-MinValue) shr 3;
    mask := 1 shl (value and 7);
+end;
+
+// GetValueDescription
+//
+function TSetOfSymbol.GetValueDescription(const value : IDataContext) : String;
+begin
+   Result := '';
+   for var i := 0 to Size-1 do begin
+      var v := UInt64(value.AsInteger[i]);
+      while v <> 0 do begin
+         for var j := 0 to 63 do begin
+            var bit := UInt64(1) shl j;
+            if (v and bit) <> 0 then begin
+               v :=  v - bit;
+               var elemValue := j + (i shl 6);
+               var elem := ElementByValue(elemValue);
+               if Result <> '' then
+                  Result := Result + ', ';
+               if elem <> nil then
+                  Result := Result + elem.StandardName
+               else Result := Result + Typ.Name + '(' + IntToStr(elemValue) + ')';
+            end;
+         end;
+      end;
+   end;
+   if Result = '' then
+      Result := '[]'
+   else Result := '[ ' + Result + ' ]';
 end;
 
 // ElementByValue

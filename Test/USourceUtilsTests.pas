@@ -74,6 +74,7 @@ type
          procedure FunctionCaptionDescription;
          procedure PropertiesDescription;
          procedure ConstantsDescription;
+         procedure SetOfDescription;
    end;
 
 // ------------------------------------------------------------------
@@ -1255,6 +1256,28 @@ begin
    CheckEquals('const s: String = ''foobar''', (prog.Table.FindLocal('s') as TConstSymbol).Description);
    CheckEquals('const s2: String = "foo''bar"', (prog.Table.FindLocal('s2') as TConstSymbol).Description);
    CheckEquals('const v: Variant = Null', (prog.Table.FindLocal('v') as TConstSymbol).Description);
+end;
+
+// SetOfDescription
+//
+procedure TSourceUtilsTests.SetOfDescription;
+var
+   prog : IdwsProgram;
+begin
+   prog := FCompiler.Compile(
+        'type TTestEnum = enum (Alpha = 0, Beta = 3, Gamma = 100);'#10
+      + 'type TTestSet = set of TTestEnum;'#10
+      + 'const s1 : TTestSet = [];'#10
+      + 'const s2 : TTestSet = [ TTestEnum.Alpha ];'#10
+      + 'const s3 : TTestSet = [ TTestEnum.Beta, TTestEnum.Gamma ];'#10
+      + 'const s4 : TTestSet = [ TTestEnum(10) ];'#10
+   );
+   CheckFalse(prog.Msgs.HasErrors, prog.Msgs.AsInfo);
+
+   CheckEquals('const s1: TTestSet = []', (prog.Table.FindLocal('s1') as TConstSymbol).Description);
+   CheckEquals('const s2: TTestSet = [ TTestEnum.Alpha ]', (prog.Table.FindLocal('s2') as TConstSymbol).Description);
+   CheckEquals('const s3: TTestSet = [ TTestEnum.Beta, TTestEnum.Gamma ]', (prog.Table.FindLocal('s3') as TConstSymbol).Description);
+   CheckEquals('const s4: TTestSet = [ TTestEnum(10) ]', (prog.Table.FindLocal('s4') as TConstSymbol).Description);
 end;
 
 // SuggestInBlockWithError
