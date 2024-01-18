@@ -121,6 +121,8 @@ type
          procedure RoundTripTest;
 
          procedure ConstructorOverload;
+
+         procedure EndDot;
    end;
 
    ETestException = class (Exception);
@@ -2374,6 +2376,27 @@ begin
    finally
       u.Free;
    end;
+end;
+
+// EndDot
+//
+procedure TCornerCasesTests.EndDot;
+var
+   prog : IdwsProgram;
+begin
+   prog := FCompiler.Compile(
+        'unit Test; interface implementation'#10
+      + 'initialization'#10
+      + 'end'
+   );
+   CheckEquals('Warning: Dot "." expected [line: 3, column: 1]'#13#10, prog.Msgs.AsInfo);
+   prog := FCompiler.Compile(
+        'unit Test; interface implementation'#10
+      + 'initialization'#10
+      + 'finalization'#10
+      + 'end'
+   );
+   CheckEquals('Warning: Dot "." expected [line: 4, column: 1]'#13#10, prog.Msgs.AsInfo);
 end;
 
 // ------------------------------------------------------------------

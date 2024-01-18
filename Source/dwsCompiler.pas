@@ -2522,6 +2522,11 @@ begin
          if coContextMap in Options then
             FSourceContextMap.CloseContext(FTok.HotPos);
       end;
+      if (Result = ttEND) and (FUnitSection <> secEnd) then begin
+         FUnitSection := secEnd;
+         if not FTok.TestDelete(ttDOT) then
+            FMsgs.AddCompilerWarning(FTok.HotPos, CPE_DotExpected);
+      end;
 
       if coContextMap in Options then
          FSourceContextMap.CloseAllContexts(FTok.CurrentPos);

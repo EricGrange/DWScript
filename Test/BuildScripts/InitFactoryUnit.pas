@@ -32,4 +32,4 @@ initialization
   FMyStuff := TMyStuff.Create;
 finalization
   //FMyStuff.Free;
-end;
+end.

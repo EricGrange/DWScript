@@ -12,4 +12,4 @@ initialization
   MyStuff;
 finalization
 
-end;
+end.

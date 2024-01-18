@@ -12,4 +12,4 @@ initialization
 	PrintLn('Init Init1');
 finalization
 	PrintLn('Init1');
-end;
+end.
