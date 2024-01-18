@@ -2402,7 +2402,7 @@ implementation
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
 
-uses dwsCompilerUtils, dwsStrings, dwsXPlatform;
+uses System.Variants, dwsCompilerUtils, dwsStrings, dwsXPlatform;
 
 // ------------------
 // ------------------ TdwsExprLocation ------------------
