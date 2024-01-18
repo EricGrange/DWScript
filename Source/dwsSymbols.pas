@@ -3924,8 +3924,23 @@ end;
 //
 procedure GenerateParams(table : TSymbolTable; const funcParams : TParamArray;
                          const addProc : TAddParamSymbolMethod);
+
+   procedure ConvertSetOfdefaultValue(paramRec : PParamRec);
+   var
+      v : Variant;
+   begin
+      v := paramRec.DefaultValue[0];
+      if VariantIsString(v) then begin
+         Assert((v = '[]') or (v = ''),
+            'Unsupported "set of" default string value'
+         );
+         paramRec.DefaultValue.AsInteger[0] := 0;
+      end else if VariantIsOrdinal(v) or VariantIsFloat(v) then begin
+         paramRec.DefaultValue.AsInteger[0] := Round(v);
+      end else Assert(False, 'Unsupported "set of" default value');
+   end;
+
 var
-   i : Integer;
    i64 : Int64;
    typSym : TTypeSymbol;
    baseTypClass : TClass;
@@ -3935,7 +3950,7 @@ var
 begin
    typSym:=nil;
 
-   for i:=0 to High(FuncParams) do begin
+   for var i := 0 to High(FuncParams) do begin
 
       paramRec:=@FuncParams[i];
       if (typSym=nil) or not UnicodeSameText(typSym.Name, paramRec.ParamType) then
@@ -3966,6 +3981,8 @@ begin
                paramRec.DefaultValue[0] := VariantToFloat(paramRec.DefaultValue[0]);
             end else if baseTypClass.InheritsFrom(TBaseBooleanSymbol) then begin
                paramRec.DefaultValue[0] := SameText(paramRec.DefaultValue[0], 'True');
+            end else if baseTypClass.InheritsFrom(TSetOfSymbol) then begin
+               ConvertSetOfdefaultValue(paramRec);
             end;
          end;
 
