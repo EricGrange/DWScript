@@ -11868,7 +11868,7 @@ begin
       end;
       ttIF : begin
          FTok.KillToken;
-         Result := ReadIfExpr;
+         Result := ReadIfExpr(expecting);
       end;
       ttPROCEDURE, ttFUNCTION : begin
          FTok.KillToken;
@@ -11969,13 +11969,12 @@ end;
 //
 function TdwsCompiler.ReadIfExpr(expecting : TTypeSymbol = nil) : TTypedExpr;
 var
-   hotPos : TScriptPos;
    boolExpr : TTypedExpr;
    trueExpr, falseExpr : TTypedExpr;
    trueTyp, falseTyp : TTypeSymbol;
    typ : TTypeSymbol;
 begin
-   hotPos:=FTok.HotPos;
+   var hotPos := FTok.HotPos;
    boolExpr:=ReadBooleanExpr;
    trueExpr:=nil;
    falseExpr:=nil;
@@ -11983,24 +11982,40 @@ begin
       if not FTok.TestDelete(ttTHEN) then
          FMsgs.AddCompilerStop(FTok.HotPos, CPE_ThenExpected);
 
+      var truePos := FTok.CurrentPos;
       trueExpr:=ReadExpr(expecting);
       if trueExpr=nil then
          trueTyp:=nil
       else begin
+         truePos.ReplaceIfArgIsDefined(trueExpr.ScriptPos);
          trueTyp:=trueExpr.Typ;
          if trueTyp=nil then
-            FMsgs.AddCompilerError(FTok.HotPos, CPE_ExpressionExpected);
+            FMsgs.AddCompilerError(truePos, CPE_ExpressionExpected);
+         if (expecting <> nil) and not trueTyp.IsOfType(expecting) then begin
+            trueExpr := CompilerUtils.WrapWithImplicitConversion(
+               FCompilerContext, trueExpr, expecting, truePos, '', True
+            );
+            trueTyp := trueExpr.Typ;
+         end;
       end;
 
       if FTok.TestDelete(ttELSE) then begin
 
+         var falsePos := FTok.CurrentPos;
          falseExpr:=ReadExpr(expecting);
          if falseExpr=nil then
             falseTyp:=nil
          else begin
+            falsePos.ReplaceIfArgIsDefined(falseExpr.ScriptPos);
             falseTyp:=falseExpr.Typ;
             if falseTyp=nil then
-               FMsgs.AddCompilerError(FTok.HotPos, CPE_ExpressionExpected);
+               FMsgs.AddCompilerError(falsePos, CPE_ExpressionExpected);
+            if (expecting <> nil) and not falseTyp.IsOfType(expecting) then begin
+               falseExpr := CompilerUtils.WrapWithImplicitConversion(
+                  FCompilerContext, falseExpr, expecting, falsePos, '', True
+               );
+               falseTyp := falseExpr.Typ;
+            end;
          end;
 
       end else if trueTyp<>nil then begin

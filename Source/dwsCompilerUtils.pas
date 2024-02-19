@@ -21,7 +21,7 @@ unit dwsCompilerUtils;
 interface
 
 uses
-   SysUtils, TypInfo,
+   System.SysUtils, System.TypInfo,
    dwsErrors, dwsStrings, dwsXPlatform, dwsUtils, dwsScriptSource,
    dwsSymbols, dwsUnitSymbols, dwsCompilerContext, dwsExprList,
    dwsExprs, dwsCoreExprs, dwsConstExprs, dwsMethodExprs, dwsMagicExprs,
@@ -39,7 +39,8 @@ type
          class function WrapWithImplicitConversion(
                         context : TdwsCompilerContext; expr : TTypedExpr; toTyp : TTypeSymbol;
                         const hotPos : TScriptPos;
-                        const msg : String = CPE_IncompatibleTypes) : TTypedExpr; static;
+                        const msg : String = CPE_IncompatibleTypes;
+                        ignoreUnsupportedConversions : Boolean = False) : TTypedExpr; static;
 
          class function CanConvertArrayToSetOf(context : TdwsCompilerContext;
                                                expr : TTypedExpr; setOf : TSetOfSymbol) : Boolean;
@@ -1010,7 +1011,8 @@ end;
 class function CompilerUtils.WrapWithImplicitConversion(
       context : TdwsCompilerContext; expr : TTypedExpr; toTyp : TTypeSymbol;
       const hotPos : TScriptPos;
-      const msg : String = CPE_IncompatibleTypes) : TTypedExpr;
+      const msg : String = CPE_IncompatibleTypes;
+      ignoreUnsupportedConversions : Boolean = False) : TTypedExpr;
 var
    exprTyp : TTypeSymbol;
 begin
@@ -1040,6 +1042,14 @@ begin
 
       Result := TConstNilExpr.Create(expr.ScriptPos, toTyp);
       expr.Free;
+
+   end else if toTyp.IsOfType(context.TypVariant) then begin
+
+      Result := TConvExpr.WrapWithConvCast(context, hotPos, toTyp, expr, msg);
+
+   end else if ignoreUnsupportedConversions then begin
+
+      Result := expr;
 
    end else begin
 

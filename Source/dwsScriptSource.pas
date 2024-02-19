@@ -75,6 +75,8 @@ type
          function IsBeforeOrEqual(const aPos : TScriptPos) : Boolean;
          function Compare(const aPos : TScriptPos) : Integer;
 
+         procedure ReplaceIfArgIsDefined(const aPos : TScriptPos);
+
          function AsInfo : String;
    end;
    TScriptPosArray = array of TScriptPos; // dynamic array that can hold ScriptPos settings (needed for ReadNameList)
@@ -288,6 +290,14 @@ begin
    else if Col > aPos.Col then
       Result := 1
    else Result := 0;
+end;
+
+// ReplaceIfArgIsDefined
+//
+procedure TScriptPos.ReplaceIfArgIsDefined(const aPos : TScriptPos);
+begin
+   if aPos.Defined then
+      Self := aPos;
 end;
 
 // AsInfo
