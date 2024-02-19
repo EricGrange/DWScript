@@ -40,7 +40,10 @@ function Base32Decode(const data : String) : RawByteString;
 
 function Base64Encode(const data : RawByteString) : String; overload; inline;
 function Base64Encode(data : Pointer; len : Integer) : String; overload; inline;
-function Base64Encode(data : Pointer; len : Integer; const alphabet : TBase64Alphabet) : String; overload;
+function Base64Encode(
+   data : Pointer; len : Integer;
+   const alphabet : TBase64Alphabet; isMime : Boolean = False
+   ) : String; overload;
 function Base64EncodeToBytes(data : Pointer; len : Integer; const alphabet : TBase64Alphabet) : TBytes;
 function Base64Decode(const data : String) : RawByteString;
 
@@ -333,16 +336,19 @@ end;
 
 // Base64Encode
 //
-function Base64Encode(data : Pointer; len : Integer; const alphabet : TBase64Alphabet) : String; overload;
+function Base64Encode(data : Pointer; len : Integer; const alphabet : TBase64Alphabet; isMime : Boolean = False) : String; overload;
 var
-   outLen, blocks, tail, i : Integer;
+   outLen, blocks, tail, i, lineLength : Integer;
    dest : PChar;
    src : PByte;
    c : Cardinal;
 begin
    outLen := ((len+2) div 3)*4;
+   if isMime then
+      Inc(outLen, (outLen div 76) * 2 + 2);
    SetLength(Result, outLen);
    if outLen = 0 then Exit;
+   lineLength := 0;
    blocks := len div 3;
    tail := len - blocks*3;
    dest := Pointer(Result);
@@ -355,6 +361,14 @@ begin
       dest[3] := alphabet[c and $3f];
       Inc(dest, 4);
       Inc(src, 3);
+      if isMime then begin
+         if (lineLength >= 76 - 4) and (i < blocks) then begin
+            dest[0] := #13;
+            dest[1] := #10;
+            Inc(dest, 2);
+            lineLength := 0;
+         end else Inc(lineLength, 4);
+      end;
    end;
    case tail of
       1 : begin
@@ -363,6 +377,7 @@ begin
          dest[1] := alphabet[c and $3f];
          dest[2] := '=';
          dest[3] := '=';
+         Inc(dest, 4);
       end;
       2 : begin
          c := (src[0] shl 10) + (src[1] shl 2);
@@ -370,8 +385,11 @@ begin
          dest[1] := alphabet[(c shr 6) and $3f];
          dest[2] := alphabet[c and $3f];
          dest[3] := '=';
+         Inc(dest, 4);
       end;
    end;
+   if isMime then
+      SetLength(Result, (IntPtr(dest) - IntPtr(Result)) div SizeOf(Char));
 end;
 
 // Base64EncodeToBytes
