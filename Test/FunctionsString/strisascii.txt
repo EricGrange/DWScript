@@ -1,0 +1,20 @@
+﻿True
+True
+False
+abcdefghijkl: A
+ébcdefghijkl: -
+aécdefghijkl: -
+abédefghijkl: -
+abcéefghijkl: -
+abcdéfghijkl: -
+abcdeéghijkl: -
+abcdeféhijkl: -
+abcdefgéijkl: -
+abcdefghéjkl: -
+abcdefghiékl: -
+abcdefghijél: -
+abcdefghijké: -
+abcdefghijkl: A
+abcdefghijkl: A
+abcdefghijkl: A
+abcdefghijkl: A

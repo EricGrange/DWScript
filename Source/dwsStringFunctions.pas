@@ -341,6 +341,10 @@ type
     procedure DoEvalAsString(const args : TExprBaseListExec; var Result : String); override;
   end;
 
+  TStrIsASCIIFunc = class(TInternalMagicBoolFunction)
+    function DoEvalAsBoolean(const args : TExprBaseListExec) : Boolean; override;
+  end;
+
   TGetTextFunc = class(TInternalMagicStringFunction)
     procedure DoEvalAsString(const args : TExprBaseListExec; var Result : String); override;
   end;
@@ -1405,6 +1409,13 @@ begin
    Result := StripAccents(args.AsString[0]);
 end;
 
+{ TStrIsASCIIFunc }
+
+function TStrIsASCIIFunc.DoEvalAsBoolean(const args : TExprBaseListExec) : Boolean;
+begin
+   Result := StrIsASCII(args.AsString[0]);
+end;
+
 { TByteSizeToStrFunc }
 
 procedure TByteSizeToStrFunc.DoEvalAsString(const args : TExprBaseListExec; var Result : String);
@@ -1531,6 +1542,8 @@ initialization
 
    RegisterInternalStringFunction(TNormalizeStringFunc, 'NormalizeString', ['str', SYS_STRING, 'form=NFC', SYS_STRING], [iffStateLess], 'Normalize');
    RegisterInternalStringFunction(TStripAccentsFunc, 'StripAccents', ['str', SYS_STRING], [iffStateLess], 'StripAccents');
+
+   RegisterInternalBoolFunction(TStrIsASCIIFunc, 'StrIsASCII', ['str', SYS_STRING], [iffStateLess], 'IsASCII');
 
    RegisterInternalStringFunction(TGetTextFunc, '_', ['str', SYS_STRING], []);
 

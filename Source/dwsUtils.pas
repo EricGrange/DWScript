@@ -3797,17 +3797,25 @@ end;
 // StrIsASCII
 //
 function StrIsASCII(const s : String) : Boolean;
-var
-   i : Integer;
 begin
-   for i:=1 to Length(s)-1 do begin
-      case s[i] of
-         #0..#127 :;
-      else
+   var n := Length(s);
+   var p : PChar := Pointer(s);
+   {$ifndef FPC}
+   var mask := UInt64($FF80FF80FF80FF80);
+   while n >= 4 do begin
+      if (PUInt64(p)^ and mask) <> 0 then
          Exit(False);
-      end;
+      Dec(n, 4);
+      Inc(p, 4);
    end;
-   Result:=True;
+   {$endif}
+   while n > 0 do begin
+      if Ord(p^) > 127  then
+         Exit(False);
+      Inc(p);
+      Dec(n);
+   end;
+   Result := True;
 end;
 
 // StrNonNilLength
