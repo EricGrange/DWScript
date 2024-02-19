@@ -1,5 +1,4 @@
 object dwsEncodingLib: TdwsEncodingLib
-  OldCreateOrder = False
   Height = 150
   Width = 215
   object dwsEncoding: TdwsUnit
@@ -44,8 +43,8 @@ object dwsEncodingLib: TdwsEncodingLib
               end>
             ResultType = 'String'
             Attributes = [maVirtual, maOverride]
-            OnEval = dwsEncodingClassesUTF8EncoderMethodsEncodeEval
             Kind = mkClassFunction
+            OnEval = dwsEncodingClassesUTF8EncoderMethodsEncodeEval
           end
           item
             Name = 'Decode'
@@ -56,8 +55,8 @@ object dwsEncodingLib: TdwsEncodingLib
               end>
             ResultType = 'String'
             Attributes = [maVirtual, maOverride]
-            OnEval = dwsEncodingClassesUTF8EncoderMethodsDecodeEval
             Kind = mkClassFunction
+            OnEval = dwsEncodingClassesUTF8EncoderMethodsDecodeEval
           end>
       end
       item
@@ -73,8 +72,8 @@ object dwsEncodingLib: TdwsEncodingLib
               end>
             ResultType = 'String'
             Attributes = [maVirtual, maOverride]
-            OnEval = dwsEncodingClassesUTF16BigEndianEncoderMethodsEncodeEval
             Kind = mkClassFunction
+            OnEval = dwsEncodingClassesUTF16BigEndianEncoderMethodsEncodeEval
           end
           item
             Name = 'Decode'
@@ -85,8 +84,8 @@ object dwsEncodingLib: TdwsEncodingLib
               end>
             ResultType = 'String'
             Attributes = [maVirtual, maOverride]
-            OnEval = dwsEncodingClassesUTF16BigEndianEncoderMethodsDecodeEval
             Kind = mkClassFunction
+            OnEval = dwsEncodingClassesUTF16BigEndianEncoderMethodsDecodeEval
           end>
       end
       item
@@ -102,8 +101,8 @@ object dwsEncodingLib: TdwsEncodingLib
               end>
             ResultType = 'String'
             Attributes = [maVirtual, maOverride]
-            OnEval = dwsEncodingClassesUTF16LittleEndianEncoderMethodsEncodeEval
             Kind = mkClassFunction
+            OnEval = dwsEncodingClassesUTF16LittleEndianEncoderMethodsEncodeEval
           end
           item
             Name = 'Decode'
@@ -114,8 +113,8 @@ object dwsEncodingLib: TdwsEncodingLib
               end>
             ResultType = 'String'
             Attributes = [maVirtual, maOverride]
-            OnEval = dwsEncodingClassesUTF16LittleEndianEncoderMethodsDecodeEval
             Kind = mkClassFunction
+            OnEval = dwsEncodingClassesUTF16LittleEndianEncoderMethodsDecodeEval
           end>
       end
       item
@@ -131,8 +130,8 @@ object dwsEncodingLib: TdwsEncodingLib
               end>
             ResultType = 'String'
             Attributes = [maVirtual, maOverride]
-            OnEval = dwsEncodingClassesBase64EncoderMethodsEncodeEval
             Kind = mkClassFunction
+            OnEval = dwsEncodingClassesBase64EncoderMethodsEncodeEval
           end
           item
             Name = 'Decode'
@@ -143,8 +142,20 @@ object dwsEncodingLib: TdwsEncodingLib
               end>
             ResultType = 'String'
             Attributes = [maVirtual, maOverride]
-            OnEval = dwsEncodingClassesBase64EncoderMethodsDecodeEval
             Kind = mkClassFunction
+            OnEval = dwsEncodingClassesBase64EncoderMethodsDecodeEval
+          end
+          item
+            Name = 'EncodeMIME'
+            Parameters = <
+              item
+                Name = 'v'
+                DataType = 'String'
+              end>
+            ResultType = 'String'
+            Attributes = [maClassMethod, maStatic]
+            Kind = mkClassFunction
+            OnFastEvalString = dwsEncodingClassesBase64EncoderMethodsEncodeMIMEFastEvalString
           end>
       end
       item
@@ -160,8 +171,8 @@ object dwsEncodingLib: TdwsEncodingLib
               end>
             ResultType = 'String'
             Attributes = [maVirtual, maOverride]
-            OnEval = dwsEncodingClassesBase64URLEncoderMethodsEncodeEval
             Kind = mkClassFunction
+            OnEval = dwsEncodingClassesBase64URLEncoderMethodsEncodeEval
           end
           item
             Name = 'Decode'
@@ -172,8 +183,8 @@ object dwsEncodingLib: TdwsEncodingLib
               end>
             ResultType = 'String'
             Attributes = [maVirtual, maOverride]
-            OnEval = dwsEncodingClassesBase64URLEncoderMethodsDecodeEval
             Kind = mkClassFunction
+            OnEval = dwsEncodingClassesBase64URLEncoderMethodsDecodeEval
           end>
       end
       item
@@ -189,8 +200,8 @@ object dwsEncodingLib: TdwsEncodingLib
               end>
             ResultType = 'String'
             Attributes = [maVirtual, maOverride]
-            OnEval = dwsEncodingClassesBase58EncoderMethodsEncodeEval
             Kind = mkClassFunction
+            OnEval = dwsEncodingClassesBase58EncoderMethodsEncodeEval
           end
           item
             Name = 'Decode'
@@ -201,8 +212,8 @@ object dwsEncodingLib: TdwsEncodingLib
               end>
             ResultType = 'String'
             Attributes = [maVirtual, maOverride]
-            OnEval = dwsEncodingClassesBase58EncoderMethodsDecodeEval
             Kind = mkClassFunction
+            OnEval = dwsEncodingClassesBase58EncoderMethodsDecodeEval
           end>
       end
       item
@@ -218,8 +229,8 @@ object dwsEncodingLib: TdwsEncodingLib
               end>
             ResultType = 'String'
             Attributes = [maVirtual, maOverride]
-            OnEval = dwsEncodingClassesBase32EncoderMethodsEncodeEval
             Kind = mkClassFunction
+            OnEval = dwsEncodingClassesBase32EncoderMethodsEncodeEval
           end
           item
             Name = 'Decode'
@@ -230,8 +241,8 @@ object dwsEncodingLib: TdwsEncodingLib
               end>
             ResultType = 'String'
             Attributes = [maVirtual, maOverride]
-            OnEval = dwsEncodingClassesBase32EncoderMethodsDecodeEval
             Kind = mkClassFunction
+            OnEval = dwsEncodingClassesBase32EncoderMethodsDecodeEval
           end>
       end
       item
@@ -247,8 +258,8 @@ object dwsEncodingLib: TdwsEncodingLib
               end>
             ResultType = 'String'
             Attributes = [maVirtual, maOverride]
-            OnEval = dwsEncodingClassesHexadecimalEncoderMethodsEncodeEval
             Kind = mkClassFunction
+            OnEval = dwsEncodingClassesHexadecimalEncoderMethodsEncodeEval
           end
           item
             Name = 'Decode'
@@ -259,8 +270,8 @@ object dwsEncodingLib: TdwsEncodingLib
               end>
             ResultType = 'String'
             Attributes = [maVirtual, maOverride]
-            OnEval = dwsEncodingClassesHexadecimalEncoderMethodsDecodeEval
             Kind = mkClassFunction
+            OnEval = dwsEncodingClassesHexadecimalEncoderMethodsDecodeEval
           end>
       end
       item
@@ -276,8 +287,8 @@ object dwsEncodingLib: TdwsEncodingLib
               end>
             ResultType = 'String'
             Attributes = [maVirtual, maOverride]
-            OnEval = dwsEncodingClassesURLEncodedEncoderMethodsEncodeEval
             Kind = mkClassFunction
+            OnEval = dwsEncodingClassesURLEncodedEncoderMethodsEncodeEval
           end
           item
             Name = 'Decode'
@@ -288,8 +299,37 @@ object dwsEncodingLib: TdwsEncodingLib
               end>
             ResultType = 'String'
             Attributes = [maVirtual, maOverride]
-            OnEval = dwsEncodingClassesURLEncodedEncoderMethodsDecodeEval
             Kind = mkClassFunction
+            OnEval = dwsEncodingClassesURLEncodedEncoderMethodsDecodeEval
+          end>
+      end
+      item
+        Name = 'MIMEEncodedWordEncoder'
+        Ancestor = 'Encoder'
+        Methods = <
+          item
+            Name = 'Encode'
+            Parameters = <
+              item
+                Name = 'v'
+                DataType = 'String'
+              end>
+            ResultType = 'String'
+            Attributes = [maVirtual, maOverride]
+            Kind = mkClassFunction
+            OnEval = dwsEncodingClassesMIMEEncodedWordEncoderMethodsEncodeEval
+          end
+          item
+            Name = 'Decode'
+            Parameters = <
+              item
+                Name = 'v'
+                DataType = 'String'
+              end>
+            ResultType = 'String'
+            Attributes = [maVirtual, maOverride]
+            Kind = mkClassFunction
+            OnEval = dwsEncodingClassesMIMEEncodedWordEncoderMethodsDecodeEval
           end>
       end
       item
@@ -305,8 +345,8 @@ object dwsEncodingLib: TdwsEncodingLib
               end>
             ResultType = 'String'
             Attributes = [maVirtual, maOverride]
-            OnEval = dwsEncodingClassesHTMLTextEncoderMethodsEncodeEval
             Kind = mkClassFunction
+            OnEval = dwsEncodingClassesHTMLTextEncoderMethodsEncodeEval
           end
           item
             Name = 'Decode'
@@ -317,8 +357,8 @@ object dwsEncodingLib: TdwsEncodingLib
               end>
             ResultType = 'String'
             Attributes = [maVirtual, maOverride]
-            OnEval = dwsEncodingClassesHTMLTextEncoderMethodsDecodeEval
             Kind = mkClassFunction
+            OnEval = dwsEncodingClassesHTMLTextEncoderMethodsDecodeEval
           end>
       end
       item
@@ -334,8 +374,8 @@ object dwsEncodingLib: TdwsEncodingLib
               end>
             ResultType = 'String'
             Attributes = [maVirtual, maOverride]
-            OnEval = dwsEncodingClassesHTMLAttributeEncoderMethodsEncodeEval
             Kind = mkClassFunction
+            OnEval = dwsEncodingClassesHTMLAttributeEncoderMethodsEncodeEval
           end
           item
             Name = 'Decode'
@@ -346,8 +386,8 @@ object dwsEncodingLib: TdwsEncodingLib
               end>
             ResultType = 'String'
             Attributes = [maVirtual, maOverride]
-            OnEval = dwsEncodingClassesHTMLAttributeEncoderMethodsDecodeEval
             Kind = mkClassFunction
+            OnEval = dwsEncodingClassesHTMLAttributeEncoderMethodsDecodeEval
           end>
       end
       item
@@ -363,8 +403,8 @@ object dwsEncodingLib: TdwsEncodingLib
               end>
             ResultType = 'String'
             Attributes = [maVirtual, maOverride]
-            OnEval = dwsEncodingClassesXMLTextEncoderMethodsEncodeEval
             Kind = mkClassFunction
+            OnEval = dwsEncodingClassesXMLTextEncoderMethodsEncodeEval
           end
           item
             Name = 'Decode'
@@ -375,8 +415,8 @@ object dwsEncodingLib: TdwsEncodingLib
               end>
             ResultType = 'String'
             Attributes = [maVirtual, maOverride]
-            OnEval = dwsEncodingClassesXMLTextEncoderMethodsDecodeEval
             Kind = mkClassFunction
+            OnEval = dwsEncodingClassesXMLTextEncoderMethodsDecodeEval
           end>
       end>
     UnitName = 'System.Encoding'

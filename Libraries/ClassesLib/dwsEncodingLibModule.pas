@@ -20,7 +20,7 @@ interface
 
 uses
   SysUtils, Classes,
-  dwsExprs, dwsComp, dwsWebUtils, dwsUtils;
+  dwsExprs, dwsComp, dwsWebUtils, dwsUtils, dwsExprList, dwsSymbols;
 
 type
   TdwsEncodingLib = class(TDataModule)
@@ -72,6 +72,12 @@ type
     procedure dwsEncodingClassesBase64URLEncoderMethodsEncodeEval(
       Info: TProgramInfo; ExtObject: TObject);
     procedure dwsEncodingClassesBase64URLEncoderMethodsDecodeEval(
+      Info: TProgramInfo; ExtObject: TObject);
+    procedure dwsEncodingClassesBase64EncoderMethodsEncodeMIMEFastEvalString(
+      baseExpr: TTypedExpr; const args: TExprBaseListExec; var result: string);
+    procedure dwsEncodingClassesMIMEEncodedWordEncoderMethodsDecodeEval(
+      Info: TProgramInfo; ExtObject: TObject);
+    procedure dwsEncodingClassesMIMEEncodedWordEncoderMethodsEncodeEval(
       Info: TProgramInfo; ExtObject: TObject);
   private
     { Private declarations }
@@ -127,6 +133,13 @@ begin
    Info.ResultAsString := Base64Encode(Info.ParamAsDataString[0]);
 end;
 
+procedure TdwsEncodingLib.dwsEncodingClassesBase64EncoderMethodsEncodeMIMEFastEvalString(
+  baseExpr: TTypedExpr; const args: TExprBaseListExec; var result: string);
+begin
+   var data := args.AsDataString[0];
+   result := Base64Encode(Pointer(data), Length(data), cBase64, True);
+end;
+
 procedure TdwsEncodingLib.dwsEncodingClassesBase64URLEncoderMethodsDecodeEval(
   Info: TProgramInfo; ExtObject: TObject);
 begin
@@ -173,6 +186,18 @@ procedure TdwsEncodingLib.dwsEncodingClassesHTMLTextEncoderMethodsEncodeEval(
   Info: TProgramInfo; ExtObject: TObject);
 begin
    Info.ResultAsString := WebUtils.HTMLTextEncode(Info.ParamAsString[0]);
+end;
+
+procedure TdwsEncodingLib.dwsEncodingClassesMIMEEncodedWordEncoderMethodsDecodeEval(
+  Info: TProgramInfo; ExtObject: TObject);
+begin
+   raise Exception.Create('MIMEEncodedWordEncoder.Decode is not yet supported');
+end;
+
+procedure TdwsEncodingLib.dwsEncodingClassesMIMEEncodedWordEncoderMethodsEncodeEval(
+  Info: TProgramInfo; ExtObject: TObject);
+begin
+   Info.ResultAsString := WebUtils.EncodeEncodedWord(Info.ParamAsString[0]);
 end;
 
 procedure TdwsEncodingLib.dwsEncodingClassesURLEncodedEncoderMethodsDecodeEval(
