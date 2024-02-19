@@ -1,5 +1,4 @@
 object dwsWebLib: TdwsWebLib
-  OldCreateOrder = False
   Height = 150
   Width = 215
   object dwsWeb: TdwsUnit

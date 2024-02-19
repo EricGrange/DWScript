@@ -221,6 +221,9 @@ type
   public
     { Public declaration }
     property Server : IWebServerInfo read FServer write FServer;
+
+    class procedure DeflateDecompress(var data : RawByteString); static;
+    class procedure DeflateCompress(var data : RawByteString; compressionLevel : Integer); static;
   end;
 
 implementation
@@ -264,7 +267,7 @@ end;
 
 // DeflateCompress
 //
-procedure DeflateCompress(var data : RawByteString; compressionLevel : Integer);
+class procedure TdwsWebLib.DeflateCompress(var data : RawByteString; compressionLevel : Integer);
 var
    strm : TZStream;
    tmp : RawByteString;
@@ -288,7 +291,7 @@ end;
 
 // DeflateDecompress
 //
-procedure DeflateDecompress(var data : RawByteString);
+class procedure TdwsWebLib.DeflateDecompress(var data : RawByteString);
 const
    cDeflateErrors : array [-6 .. -1] of String = (
       'incompatible version', // Z_VERSION_ERROR (-6)
