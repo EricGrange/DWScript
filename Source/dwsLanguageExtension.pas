@@ -21,7 +21,8 @@ interface
 
 uses
   Classes, Types,
-  dwsCompiler, dwsExprs, dwsErrors, dwsSymbols, dwsUnitSymbols, dwsScriptSource;
+  dwsCompiler, dwsExprs, dwsErrors, dwsSymbols, dwsUnitSymbols, dwsScriptSource,
+  dwsOperators;
 
 type
 
@@ -34,6 +35,7 @@ type
 
          function CreateBaseVariantSymbol(table : TSystemSymbolTable) : TBaseVariantSymbol; virtual;
          procedure CreateSystemSymbols(table : TSystemSymbolTable); virtual;
+         procedure RegisterSystemOperators(table : TSystemSymbolTable; operators: TOperators); virtual;
          function StaticSymbols : Boolean; virtual;
          function ReadInstr(compiler : TdwsCompiler) : TNoResultExpr; virtual;
          function ReadUnknownName(compiler: TdwsCompiler) : TTypedExpr; virtual;
@@ -65,6 +67,7 @@ type
 
          function CreateBaseVariantSymbol(table : TSystemSymbolTable) : TBaseVariantSymbol; override;
          procedure CreateSystemSymbols(table : TSystemSymbolTable); override;
+         procedure RegisterSystemOperators(table : TSystemSymbolTable; operators: TOperators); override;
          function StaticSymbols : Boolean; override;
          function ReadInstr(compiler : TdwsCompiler) : TNoResultExpr; override;
          function ReadUnknownName(compiler: TdwsCompiler) : TTypedExpr; override;
@@ -110,6 +113,13 @@ end;
 // CreateSystemSymbols
 //
 procedure TdwsLanguageExtension.CreateSystemSymbols(table : TSystemSymbolTable);
+begin
+   // nothing
+end;
+
+// RegisterSystemOperators
+//
+procedure TdwsLanguageExtension.RegisterSystemOperators(table : TSystemSymbolTable; operators: TOperators);
 begin
    // nothing
 end;
@@ -258,6 +268,16 @@ begin
    for i:=0 to FList.Count-1 do begin
       ext:=TdwsLanguageExtension(FList.List[i]);
       ext.CreateSystemSymbols(table);
+   end;
+end;
+
+// RegisterSystemOperators
+//
+procedure TdwsLanguageExtensionAggregator.RegisterSystemOperators(table : TSystemSymbolTable; operators: TOperators);
+begin
+   for var i := 0 to FList.Count-1 do begin
+      var ext := TdwsLanguageExtension(FList.List[i]);
+      ext.RegisterSystemOperators(table, operators);
    end;
 end;
 

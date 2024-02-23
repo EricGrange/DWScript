@@ -57,6 +57,7 @@ type
 
    TCompilerCreateBaseVariantSymbolEvent = function (table : TSystemSymbolTable) : TBaseVariantSymbol of object;
    TCompilerCreateSystemSymbolsEvent = procedure (table : TSystemSymbolTable) of object;
+   TCompilerRegisterSystemOperatorsEvent = procedure (table : TSystemSymbolTable; operators : TOperators) of object;
    TCompilerReadInstrEvent = function (compiler : TdwsCompiler) : TNoResultExpr of object;
    TCompilerReadInstrSwitchEvent = function (compiler : TdwsCompiler) : Boolean of object;
    TCompilerFindUnknownNameEvent = function (compiler : TdwsCompiler; const name : String) : TSymbol of object;
@@ -103,6 +104,7 @@ type
          FOnFilter : TdwsFilterEvent;
          FOnCreateBaseVariantSymbol : TCompilerCreateBaseVariantSymbolEvent;
          FOnCreateSystemSymbols : TCompilerCreateSystemSymbolsEvent;
+         FOnRegisterSystemOperators : TCompilerRegisterSystemOperatorsEvent;
          FOnExecutionStarted : TdwsExecutionEvent;
          FOnExecutionEnded : TdwsExecutionEvent;
          FOwner : TComponent;
@@ -372,6 +374,7 @@ type
          FStaticExtensionSymbols : Boolean;
          FOnCreateBaseVariantSymbol : TCompilerCreateBaseVariantSymbolEvent;
          FOnCreateSystemSymbols : TCompilerCreateSystemSymbolsEvent;
+         FOnRegisterSystemOperators : TCompilerRegisterSystemOperatorsEvent;
          FOnReadInstr : TCompilerReadInstrEvent;
          FOnReadInstrSwitch : TCompilerReadInstrSwitchEvent;
          FOnFindUnknownName : TCompilerFindUnknownNameEvent;
@@ -863,6 +866,7 @@ type
          property StaticExtensionSymbols : Boolean read FStaticExtensionSymbols write FStaticExtensionSymbols;
          property OnCreateBaseVariantSymbol : TCompilerCreateBaseVariantSymbolEvent read FOnCreateBaseVariantSymbol write FOnCreateBaseVariantSymbol;
          property OnCreateSystemSymbols : TCompilerCreateSystemSymbolsEvent read FOnCreateSystemSymbols write FOnCreateSystemSymbols;
+         property OnRegisterSystemOperators : TCompilerRegisterSystemOperatorsEvent read FOnRegisterSystemOperators write FOnRegisterSystemOperators;
          property OnReadInstr : TCompilerReadInstrEvent read FOnReadInstr write FOnReadInstr;
          property OnReadInstrSwitch : TCompilerReadInstrSwitchEvent read FOnReadInstrSwitch write FOnReadInstrSwitch;
          property OnFindUnknownName : TCompilerFindUnknownNameEvent read FOnFindUnknownName write FOnFindUnknownName;
@@ -1539,6 +1543,7 @@ begin
 
    conf.FOnCreateBaseVariantSymbol:=FOnCreateBaseVariantSymbol;
    conf.FOnCreateSystemSymbols:=FOnCreateSystemSymbols;
+   conf.FOnRegisterSystemOperators := FOnRegisterSystemOperators;
    if not StaticExtensionSymbols then
       conf.DetachSystemTable;
 
@@ -15065,7 +15070,10 @@ begin
    if Assigned(FOnCreateSystemSymbols) then
       FOnCreateSystemSymbols(sysTable);
 
-   sysTable.FOperators:=TSystemOperators.Create(sysTable);
+   sysTable.FOperators := TSystemOperators.Create(sysTable);
+
+   if Assigned(FOnRegisterSystemOperators) then
+      FOnRegisterSystemOperators(sysTable, sysTable.FOperators);
 end;
 
 // SetFilter

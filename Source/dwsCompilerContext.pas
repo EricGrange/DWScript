@@ -126,7 +126,8 @@ implementation
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
 
-uses Variants,
+uses
+   System.Variants,
    dwsExprs, dwsUnifiedConstants, dwsConstExprs, dwsOperators, dwsCompilerUtils,
    dwsConvExprs, dwsDynamicArrays, dwsAssociativeArrays;
 

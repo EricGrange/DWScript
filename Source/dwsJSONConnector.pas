@@ -22,12 +22,10 @@ interface
 
 uses
    System.Classes, System.SysUtils, System.Variants,
-   dwsLanguageExtension, dwsComp, dwsCompiler, dwsDataContext, dwsExprList,
-   dwsExprs, dwsTokenizer, dwsSymbols, dwsErrors, dwsCoreExprs, dwsStack,
-   dwsStrings, dwsXPlatform, dwsUtils, dwsOperators, dwsUnitSymbols,
+   dwsLanguageExtension, dwsComp, dwsDataContext, dwsExprList, dwsExprs,
+   dwsSymbols, dwsCoreExprs, dwsStack, dwsUtils, dwsOperators, dwsUnitSymbols,
    dwsFunctions, dwsJSON, dwsMagicExprs, dwsConnectorSymbols, dwsScriptSource,
-   dwsXXHash, dwsCompilerContext, dwsCompilerUtils, dwsUnicode,
-   dwsConvExprs;
+   dwsCompilerContext, dwsConvExprs;
 
 type
 
@@ -52,6 +50,8 @@ type
 
       public
          procedure CreateSystemSymbols(table : TSystemSymbolTable); override;
+         procedure RegisterSystemOperators(table : TSystemSymbolTable; operators: TOperators); override;
+
          function StaticSymbols : Boolean; override;
 
          property LegacyCastsToBoolean : Boolean read FLegacyCastsToBoolean write FLegacyCastsToBoolean;
@@ -338,7 +338,9 @@ implementation
 // ------------------------------------------------------------------
 // -----------------------------------------------------------------
 
-uses dwsConstExprs, dwsJSONScript, dwsDynamicArrays;
+uses
+   dwsConstExprs, dwsJSONScript, dwsDynamicArrays, dwsErrors, dwsUnicode,
+   dwsStrings, dwsXXHash, dwsXPlatform;
 
 const
    SYS_JSON = 'JSON';
@@ -668,6 +670,18 @@ begin
       table, SYS_JSON_SERIALIZE, ['val', SYS_ANY_TYPE], SYS_JSONVARIANT,
       [iffStaticMethod], jsonObject, ''
    );
+end;
+
+// RegisterSystemOperators
+//
+procedure TdwsJSONLanguageExtension.RegisterSystemOperators(table : TSystemSymbolTable; operators: TOperators);
+begin
+   var connSym := TJSONConnectorSymbol(table.FindLocalOfClass(SYS_JSONVARIANT, TJSONConnectorSymbol));
+
+   operators.RegisterCaster(table.TypInteger, connSym, TConvVarToIntegerExpr, True);
+   operators.RegisterCaster(table.TypFloat,   connSym, TConvVarToFloatExpr, True);
+   operators.RegisterCaster(table.TypBoolean, connSym, TConvVarToBoolExpr, True);
+   operators.RegisterCaster(table.TypString,  connSym, TConvVarToStringExpr, True);
 end;
 
 // StaticSymbols

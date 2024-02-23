@@ -1724,6 +1724,7 @@ begin
       c.StaticExtensionSymbols:=FExtensions.StaticSymbols;
       c.OnCreateBaseVariantSymbol:=FExtensions.CreateBaseVariantSymbol;
       c.OnCreateSystemSymbols:=FExtensions.CreateSystemSymbols;
+      c.OnRegisterSystemOperators:=FExtensions.RegisterSystemOperators;
       c.OnReadInstr:=FExtensions.ReadInstr;
       c.OnReadInstrSwitch:=FExtensions.ReadInstrSwitch;
       c.OnFindUnknownName:=FExtensions.FindUnknownName;
@@ -1737,6 +1738,7 @@ begin
       c.StaticExtensionSymbols:=True;
       c.OnCreateBaseVariantSymbol:=nil;
       c.OnCreateSystemSymbols:=nil;
+      c.OnRegisterSystemOperators:=nil;
       c.OnReadInstr:=nil;
       c.OnReadInstrSwitch:=nil;
       c.OnFindUnknownName:=nil;
