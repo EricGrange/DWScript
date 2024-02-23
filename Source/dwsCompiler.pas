@@ -6947,11 +6947,12 @@ var
    blockExpr : TBlockExpr;
 begin
    // Read a block of instructions enclosed in "begin" and "end"
+   Result := nil;
    blockExpr:=TBlockExpr.Create(FCompilerContext, FTok.HotPos);
    try
       if coContextMap in FOptions then begin
          FSourceContextMap.OpenContext(FTok.CurrentPos, nil, ttWRITE);
-         closePos:=FTok.CurrentPos;     // default to close context where it opened (used on errors)
+         closePos.Clear;
       end;
 
       CurrentProg.EnterSubTable(blockExpr.Table);
@@ -6968,19 +6969,26 @@ begin
          doExpr:=ReadBlock;
          blockExpr.AddStatement(doExpr);
 
+         if (coContextMap in FOptions) and (doExpr is TBlockExpr) then
+            closePos:= FSourceContextMap.Current.SubContext[FSourceContextMap.Current.SubContexts.Count - 1].EndPos;
+
          HintUnusedSymbols;
+
+         if Optimize then begin
+            Result := blockExpr.Optimize(FCompilerContext);
+            blockExpr := nil;
+         end else Result := blockExpr;
       finally
          CurrentProg.LeaveSubTable;
-      end;
-
-      if Optimize then
-         Result:=blockExpr.Optimize(FCompilerContext)
-      else Result:=blockExpr;
-
-      if coContextMap in FOptions then begin
-         if Result is TBlockExpr then
-            FSourceContextMap.Current.LocalTable:=TBlockExpr(Result).Table;
-         FSourceContextMap.CloseContext(closePos);
+         if coContextMap in FOptions then begin
+            if blockExpr<>nil then
+               FSourceContextMap.Current.LocalTable:=blockExpr.Table
+            else if Result is TBlockExpr then
+               FSourceContextMap.Current.LocalTable := TBlockExpr(Result).Table;
+            if not closePos.Defined then
+               closePos := FTok.CurrentPos; // means an error occured
+            FSourceContextMap.CloseContext(closePos);
+         end;
       end;
 
    except

@@ -53,6 +53,7 @@ type
          procedure StaticClassSuggest;
          procedure ClassFieldSuggest;
          procedure RecordConstSuggest;
+         procedure WithBlockSuggest;
          procedure SuggestInBlockWithError;
          procedure NormalizeOverload;
          procedure NormalizeImplicit;
@@ -954,6 +955,25 @@ begin
    Check(sugg.Count > 2);
    CheckEquals('abc', sugg.Code[0]);
    CheckEquals('xyz', sugg.Code[1]);
+end;
+
+// WithBlockSuggest
+//
+procedure TSourceUtilsTests.WithBlockSuggest;
+var
+   prog : IdwsProgram;
+   sugg : IdwsSuggestions;
+   scriptPos : TScriptPos;
+begin
+   prog:=FCompiler.Compile( 'with v := 1 do'#13#10
+                           +'Print(v.ToS'#13#10);
+
+   scriptPos := TScriptPos.Create(prog.SourceList[0].SourceFile, 2, 12);
+
+   sugg:=TdwsSuggestions.Create(prog, scriptPos);
+   CheckEquals(2, sugg.Count);
+   CheckEquals('ToString () : String', sugg.Caption[0]);
+   CheckEquals('ToString (base: Integer) : String', sugg.Caption[1]);
 end;
 
 // UnitNamesSuggest
