@@ -21,9 +21,7 @@ unit dwsMath3DFunctions;
 interface
 
 uses
-   System.Classes, System.SysUtils,
-   dwsStrings, dwsUtils, dwsXPlatform,
-   dwsFunctions, dwsExprs, dwsSymbols, dwsOperators, dwsDataContext,
+   dwsFunctions, dwsExprs, dwsSymbols, dwsDataContext,
    dwsTokenTypes, dwsMagicExprs, dwsUnitSymbols, dwsExprList;
 
 type
@@ -84,6 +82,11 @@ implementation
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
+
+uses
+   System.SysUtils,
+   dwsUtils, dwsStrings, dwsOperators;
+
 
 const cZero : Double = 0;
 

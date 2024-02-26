@@ -21,10 +21,9 @@ unit dwsMathComplexFunctions;
 interface
 
 uses
-   SysUtils,
-   dwsUtils, dwsXPlatform, dwsCompilerContext, dwsScriptSource,
-   dwsFunctions, dwsSymbols, dwsExprs, dwsStrings, dwsOperators, dwsExprList,
-   dwsTokenTypes, dwsMagicExprs, dwsUnitSymbols, dwsDataContext;
+   System.SysUtils,
+   dwsFunctions, dwsSymbols, dwsExprs, dwsExprList,
+   dwsTokenTypes, dwsMagicExprs, dwsDataContext;
 
 type
    TComplexMakeExpr = class(TInternalMagicDataFunction)
@@ -97,7 +96,9 @@ implementation
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
 
-uses Math;
+uses
+   System.Math,
+   dwsStrings, dwsUtils, dwsOperators, dwsUnitSymbols;
 
 // RegisterComplexType
 //
