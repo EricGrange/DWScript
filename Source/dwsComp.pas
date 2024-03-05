@@ -24,11 +24,11 @@ unit dwsComp;
 interface
 
 uses
-  System.Classes, System.SysUtils, System.TypInfo, System.Variants,
+  System.Classes, System.SysUtils, System.TypInfo,
   dwsCompiler, dwsExprs, dwsSymbols, dwsDataContext, dwsExprList, dwsScriptSource,
-  dwsStack, dwsFunctions, dwsStrings, dwsLanguageExtension, dwsCompilerContext,
-  dwsTokenTypes, dwsTokenizer, dwsUtils, dwsOperators, dwsUnitSymbols,
-  dwsXPlatform, dwsUnicode,
+  dwsFunctions, dwsLanguageExtension, dwsCompilerContext,
+  dwsTokenTypes, dwsUtils, dwsOperators, dwsUnitSymbols,
+  dwsXPlatform,
   // Built-In functions
 {$IFNDEF DWS_NO_BUILTIN_FUNCTIONS}
   dwsMathFunctions, dwsStringFunctions, dwsTimeFunctions, dwsVariantFunctions,
@@ -1517,7 +1517,8 @@ implementation
 // ------------------------------------------------------------------
 
 uses
-  dwsPascalTokenizer;
+   System.Variants,
+   dwsPascalTokenizer, dwsStack, dwsStrings, dwsTokenizer;
 
 type
    EGenerationError = class(Exception);

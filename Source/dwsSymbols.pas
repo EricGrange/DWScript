@@ -24,7 +24,7 @@ unit dwsSymbols;
 interface
 
 uses
-   System.SysUtils, System.Classes, System.Math, System.Types, System.TypInfo,
+   System.SysUtils, System.Classes, System.Types,
    dwsErrors, dwsUtils, dwsDateTime, dwsScriptSource, dwsSpecialKeywords,
    dwsTokenTypes, dwsStack, dwsDataContext, dwsArrayMethodKinds
    {$ifdef FPC},LazUTF8{$endif};
@@ -2402,7 +2402,9 @@ implementation
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
 
-uses System.Variants, dwsCompilerUtils, dwsStrings, dwsXPlatform;
+uses
+   System.Math, System.Variants, System.TypInfo,
+   dwsCompilerUtils, dwsStrings, dwsXPlatform;
 
 // ------------------
 // ------------------ TdwsExprLocation ------------------

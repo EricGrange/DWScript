@@ -25,7 +25,7 @@ interface
 
 uses
    System.Classes, System.SysUtils,
-   dwsStrings, dwsUtils, dwsScriptSource, dwsXPlatform, dwsJSON;
+   dwsUtils, dwsScriptSource, dwsJSON;
 
 type
 
@@ -325,6 +325,8 @@ implementation
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
+
+uses dwsStrings;
 
 // ------------------
 // ------------------ ECompileException ------------------

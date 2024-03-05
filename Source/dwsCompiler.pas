@@ -24,16 +24,15 @@ unit dwsCompiler;
 interface
 
 uses
-  System.Classes, System.SysUtils, System.TypInfo, System.Variants, System.Math,
-  dwsFileSystem, dwsUtils, dwsXPlatform, dwsUnicode, dwsArrayMethodKinds,
-  dwsExprs, dwsSymbols, dwsTokenizer, dwsTokenTypes, dwsErrors, dwsDataContext, dwsExprList,
-  dwsStrings, dwsFunctions, dwsStack, dwsConnectorSymbols, dwsFilter,
-  dwsCoreExprs, dwsMagicExprs, dwsRelExprs, dwsMethodExprs, dwsConstExprs,
-  dwsConnectorExprs, dwsConvExprs, dwsSetOfExprs, dwsUnifiedConstants,
-  dwsOperators, dwsPascalTokenizer, dwsSystemOperators, dwsContextMap,
-  dwsUnitSymbols, dwsCompilerUtils, dwsScriptSource, dwsSymbolDictionary,
-  dwsCompilerContext, dwsGenericSymbols, dwsSpecializationContext,
-  dwsGenericExprs, dwsSpecialKeywords, dwsArrayExprs;
+  System.Classes, System.SysUtils, System.TypInfo,
+  dwsFileSystem, dwsUtils, dwsArrayMethodKinds,
+  dwsExprs, dwsSymbols, dwsTokenizer, dwsTokenTypes, dwsErrors, dwsDataContext,
+  dwsExprList, dwsFunctions, dwsStack, dwsConnectorSymbols, dwsFilter,
+  dwsCoreExprs, dwsMagicExprs, dwsMethodExprs, dwsConstExprs, dwsConnectorExprs,
+  dwsUnifiedConstants, dwsOperators, dwsPascalTokenizer,
+  dwsSystemOperators, dwsContextMap, dwsUnitSymbols, dwsScriptSource,
+  dwsSymbolDictionary, dwsCompilerContext, dwsGenericSymbols,
+  dwsSpecializationContext, dwsSpecialKeywords, dwsArrayExprs;
 
 const
    cDefaultCompilerOptions = [ coOptimize, coAssertions ];
@@ -887,7 +886,10 @@ implementation
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
 
-uses dwsArrayIndexOfExprs;
+uses
+   System.Variants, System.Math,
+   dwsArrayIndexOfExprs, dwsStrings, dwsSetOfExprs, dwsConvExprs, dwsRelExprs,
+   dwsGenericExprs, dwsCompilerUtils, dwsXPlatform;
 
 const
    cSwitchInstructions : array [TSwitchInstruction] of String = (

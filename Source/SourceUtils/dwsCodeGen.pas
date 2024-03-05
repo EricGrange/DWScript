@@ -21,10 +21,8 @@ interface
 
 uses
    System.Classes, System.SysUtils,
-   dwsXPlatform,
-   dwsUtils, dwsSymbols, dwsExprs, dwsCoreExprs, dwsDataContext, dwsConstExprs,
-   dwsStrings, dwsUnitSymbols, dwsErrors, dwsRTTIFunctions, dwsSymbolDictionary,
-   dwsContextMap, dwsCompilerContext;
+   dwsUtils, dwsSymbols, dwsExprs, dwsDataContext, dwsUnitSymbols, dwsErrors,
+   dwsSymbolDictionary, dwsContextMap, dwsCompilerContext;
 
    // experimental codegen support classes for DWScript
 
@@ -372,6 +370,8 @@ implementation
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
+
+uses dwsStrings, dwsConstExprs, dwsCoreExprs, dwsRTTIFunctions;
 
 // ------------------
 // ------------------ TdwsRegisteredCodeGen ------------------

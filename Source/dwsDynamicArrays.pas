@@ -24,7 +24,7 @@ unit dwsDynamicArrays;
 interface
 
 uses
-   System.Classes, System.SysUtils, System.Types, System.Variants,
+   System.Classes, System.SysUtils, System.Types,
    dwsSymbols, dwsUtils, dwsDataContext, dwsJSON;
 
 type

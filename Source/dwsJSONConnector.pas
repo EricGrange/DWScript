@@ -21,7 +21,7 @@ unit dwsJSONConnector;
 interface
 
 uses
-   System.Classes, System.SysUtils, System.Variants,
+   System.Classes, System.SysUtils,
    dwsLanguageExtension, dwsComp, dwsDataContext, dwsExprList, dwsExprs,
    dwsSymbols, dwsCoreExprs, dwsStack, dwsUtils, dwsOperators, dwsUnitSymbols,
    dwsFunctions, dwsJSON, dwsMagicExprs, dwsConnectorSymbols, dwsScriptSource,
@@ -339,6 +339,7 @@ implementation
 // -----------------------------------------------------------------
 
 uses
+   System.Variants,
    dwsConstExprs, dwsJSONScript, dwsDynamicArrays, dwsErrors, dwsUnicode,
    dwsStrings, dwsXXHash, dwsXPlatform;
 
