@@ -329,6 +329,8 @@ type
          FParams : TVariantDynArray;
          FBeginOptions : TdwsDebugBeginOptions;
 
+         FExecuteDebugThread : TThread;
+
       protected
          procedure DoDebug(exec : TdwsExecution; expr : TExprBase); override;
          procedure DoDebugSuspended; virtual;
@@ -1006,7 +1008,7 @@ begin
       case FState of
          dsDebugRun : begin
             Result:=[daCanSuspend, daCanEndDebug];
-            if Mode in [dmMainThread] then
+            if (Mode in [ dmMainThread ]) or (FExecuteDebugThread = TThread.Current) then
                Include(Result, daCanEvaluate);
          end;
          dsDebugSuspended : begin
@@ -1035,6 +1037,7 @@ end;
 //
 procedure TdwsDebugger.ExecuteDebug(const notifyStageChanged : TThreadMethod);
 begin
+   FExecuteDebugThread := TThread.Current;
    FState:=dsDebugRun;
    try
       FExecution.Debugger:=Self;
@@ -1048,6 +1051,7 @@ begin
       end;
    finally
       FState:=dsDebugDone;
+      FExecuteDebugThread := nil;
    end;
    notifyStageChanged();
 end;
