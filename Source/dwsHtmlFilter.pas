@@ -31,10 +31,9 @@ unit dwsHtmlFilter;
 interface
 
 uses
-   System.Classes, System.SysUtils, System.StrUtils,
+   System.Classes, System.SysUtils,
    dwsComp, dwsExprs, dwsFunctions, dwsSymbols, dwsExprList, dwsFilter,
-   dwsErrors, dwsCompiler, dwsStrings, dwsUtils, dwsMagicExprs,
-   dwsResultFunctions;
+   dwsErrors, dwsCompiler;
 
 type
 
@@ -90,6 +89,9 @@ implementation
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
 
+uses
+   dwsStrings, dwsUtils, dwsMagicExprs, dwsResultFunctions;
+
 { TdwsHtmlFilter }
 
 constructor TdwsHtmlFilter.Create(AOwner: TComponent);
@@ -132,15 +134,14 @@ var
          (0,0,0,0,0,0,0,0,0,1,1,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1);
    var
       isQuoted : Boolean;
-      i, k, lineCount, nbSpaces : Integer;
-      c : Char;
+      k, lineCount, nbSpaces : Integer;
    begin
-      if start>stop then Exit;
+      if start > stop then Exit;
 
       if EditorMode then begin
          nbSpaces := 0;
-         for i := start to stop do begin
-            c := input[i];
+         for var i := start to stop do begin
+            var c := input[i];
             case c of
                #13, #10, #9 : begin
                   if nbSpaces > 0 then begin
@@ -161,21 +162,21 @@ var
       output.WriteString('Print(');
       isQuoted:=False;
       lineCount:=0;
-      i:=start;
-      while i<=stop do begin
+      var p := start;
+      while p <= stop do begin
          if isQuoted then begin
-            k:=i;
+            k := p;
             repeat
-               c:=input[i];
+               var c := input[p];
                if (c<=High(cSpecial)) and (cSpecial[c]<>0) then
                   break
-               else Inc(i);
-            until i>stop;
-            if i>k then begin
-               output.WriteP(@input[k], i-k);
-               if i>stop then break;
+               else Inc(p);
+            until p > stop;
+            if p > k then begin
+               output.WriteP(@input[k], p-k);
+               if p > stop then break;
             end;
-            case input[i] of
+            case input[p] of
                '''':
                   output.WriteString('''''');
                #10: begin
@@ -193,7 +194,7 @@ var
                end;
             end
          end else begin
-            case input[i] of
+            case input[p] of
                '''': begin
                   output.WriteString('''''''');
                   isQuoted:=True;
@@ -205,19 +206,19 @@ var
                #13: output.WriteString('#13');
                #9: output.WriteString('#9');
             else
-               endQuote[1]:=input[i];
+               endQuote[1] := input[p];
                output.WriteP(@endQuote, 2);
-               isQuoted:=True;
+               isQuoted := True;
             end;
          end;
-         Inc(i);
+         Inc(p);
       end;
 
       if isQuoted then
          output.WriteString(''');')
       else output.WriteString(');');
 
-      for i:=1 to lineCount do
+      for var i := 1 to lineCount do
          output.WriteCRLF;
    end;
 
@@ -240,7 +241,7 @@ begin
       {$ifndef DELPHI_TOKYO_PLUS} stop:=1; {$endif}
       p:=1;
       repeat
-         start:=PosEx(PatternOpen, input, p);
+         start:=Pos(PatternOpen, input, p);
          if start<=0 then begin
             StuffString(input, p, Length(input));
             Break;
@@ -257,7 +258,7 @@ begin
             end else output.WriteString('Print(');
          end else if EditorMode then StuffSpaces(1);
 
-         stop:=PosEx(PatternClose, input, start);
+         stop:=Pos(PatternClose, input, start);
          if stop<=0 then
             output.WriteSubString(input, start)
          else begin
