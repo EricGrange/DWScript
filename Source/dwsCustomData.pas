@@ -24,7 +24,6 @@ unit dwsCustomData;
 interface
 
 uses
-   SysUtils, Variants,
    dwsUtils;
 
 type
@@ -80,6 +79,8 @@ implementation
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
+
+uses System.SysUtils, System.Variants;
 
 // GUIDToHash
 //

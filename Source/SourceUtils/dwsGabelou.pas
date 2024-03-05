@@ -19,8 +19,9 @@ unit dwsGabelou;
 
 interface
 
-uses SysUtils, dwsExprs, dwsSymbols, dwsErrors, dwsUtils, dwsGabelouStrings,
-   dwsScriptSource, dwsSymbolDictionary;
+uses
+   System.SysUtils,
+   dwsUtils, dwsExprs, dwsSymbols, dwsErrors, dwsScriptSource, dwsSymbolDictionary;
 
 type
 
@@ -126,6 +127,8 @@ implementation
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
+
+uses dwsGabelouStrings;
 
 // ------------------
 // ------------------ TdwsGabelouRule ------------------

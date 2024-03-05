@@ -24,9 +24,8 @@ unit dwsUnitSymbols;
 interface
 
 uses
-   SysUtils, Classes,
-   dwsUtils, dwsSymbols, dwsErrors, dwsXPlatform,
-   dwsStrings, dwsTokenTypes, dwsDataContext, dwsUnicode, dwsXXHash;
+   System.SysUtils, System.Classes,
+   dwsUtils, dwsSymbols, dwsErrors, dwsTokenTypes, dwsDataContext;
 
 type
 
@@ -344,7 +343,7 @@ implementation
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
 
-uses dwsExprs, dwsCoreExprs;
+uses dwsStrings, dwsExprs, dwsCoreExprs, dwsXPlatform, dwsXXHash;
 
 // ------------------
 // ------------------ TIdwsUnitList ------------------

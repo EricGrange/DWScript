@@ -24,8 +24,7 @@ unit dwsExternalSymbols;
 interface
 
 uses
-   dwsUtils,
-   dwsExprs, dwsSymbols;
+   dwsUtils, dwsExprs, dwsSymbols;
 
 type
 

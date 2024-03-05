@@ -21,8 +21,7 @@ interface
 {$I dws.inc}
 
 uses
-   dwsExprs, dwsExprList, dwsMagicExprs, dwsSymbols, dwsStrings,
-   dwsFunctions, dwsCoreExprs, dwsConstExprs, dwsUtils;
+   dwsExprs, dwsExprList, dwsMagicExprs, dwsSymbols, dwsFunctions;
 
 type
 
@@ -46,6 +45,8 @@ implementation
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
+
+uses dwsStrings, dwsConstExprs, dwsUtils, dwsCoreExprs;
 
 // RegisterStandardResultFunctions
 //

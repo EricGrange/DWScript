@@ -3,8 +3,8 @@ unit dwsIniFileModule;
 interface
 
 uses
-  SysUtils, Classes, dwsComp, IniFiles,
-  dwsExprs, dwsWebUtils, dwsUtils, dwsXPlatform, dwsSymbols;
+  System.SysUtils, System.Classes, System.IniFiles,
+  dwsComp, dwsExprs, dwsSymbols;
 
 type
   TdwsIniFileConstructor = function (const fileName : String) : TCustomIniFile of object;

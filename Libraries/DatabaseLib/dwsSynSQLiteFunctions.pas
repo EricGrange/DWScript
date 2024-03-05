@@ -20,7 +20,7 @@ unit dwsSynSQLiteFunctions;
 interface
 
 uses
-   SysUtils, SynSQLite3;
+   System.SysUtils, SynSQLite3;
 
 // Sqrt()
 procedure SQLiteFunc_Sqrt(context : TSQLite3FunctionContext; argc : Integer; var argv : TSQLite3ValueArray); cdecl;

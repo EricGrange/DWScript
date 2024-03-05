@@ -20,8 +20,11 @@ unit dwsSampling;
 
 interface
 
-uses Windows, Classes, dwsDebugger, dwsUtils, dwsErrors, dwsSymbols,
-   SysUtils, dwsExprs, dwsJSON, MMSystem, dwsStrings, dwsScriptSource;
+uses
+   Winapi.Windows, Winapi.MMSystem,
+   System.SysUtils, System.Classes,
+   dwsDebugger, dwsUtils, dwsErrors, dwsSymbols,
+   dwsExprs, dwsJSON, dwsScriptSource;
 
 type
 
@@ -96,6 +99,8 @@ implementation
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
+
+uses dwsStrings;
 
 type
    // TdwsSamplingsSorter

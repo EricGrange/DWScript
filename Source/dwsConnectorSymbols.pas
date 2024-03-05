@@ -24,7 +24,7 @@ unit dwsConnectorSymbols;
 interface
 
 uses
-   SysUtils,
+   System.SysUtils,
    dwsUtils, dwsDataContext, dwsSymbols, dwsExprList, dwsExprs, dwsErrors,
    dwsScriptSource, dwsCompilerContext;
 

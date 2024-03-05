@@ -22,7 +22,7 @@ interface
 
 uses
    System.Classes, System.SysUtils, System.Types,
-   dwsUtils, dwsDatabase, dwsXPlatform, dwsDataContext, dwsSymbols, dwsExprs, dwsLibpq;
+   dwsUtils, dwsDatabase, dwsDataContext, dwsSymbols, dwsExprs, dwsLibpq;
 
 type
 
@@ -149,7 +149,7 @@ implementation
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
 
-uses dwsRandom, dwsXXHash;
+uses dwsRandom, dwsXXHash, dwsXPlatform;
 
 const
    cInitialFetch = 'FETCH 2 in ';

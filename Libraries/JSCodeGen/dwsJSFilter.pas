@@ -21,7 +21,7 @@ unit dwsJSFilter;
 interface
 
 uses
-   System.Classes, System.StrUtils, System.SysUtils,
+   System.Classes, System.SysUtils,
    dwsComp, dwsCompiler, dwsErrors, dwsJSCodeGen, dwsCodeGen, dwsUtils, dwsFilter,
    dwsExprs, dwsScriptSource;
 
@@ -152,7 +152,7 @@ begin
       output:=TWriteOnlyBlockStream.Create;
       try
          p:=1;
-         nextStart := PosEx(PatternOpen, input, p);
+         nextStart := Pos(PatternOpen, input, p);
          repeat
             start := nextStart;
             if start<=0 then begin
@@ -160,7 +160,7 @@ begin
                Break;
             end else output.WriteSubString(input, p, start-p);
             start:=start+Length(PatternOpen);
-            stop:=PosEx(PatternClose, input, start);
+            stop := Pos(PatternClose, input, start);
             while lineColPos<start do begin
                case input[lineColPos] of
                   #10 : begin
@@ -180,7 +180,7 @@ begin
                Break;
             end else begin
                p:=stop+Length(PatternClose);
-               nextStart := PosEx(PatternOpen, input, p);
+               nextStart := Pos(PatternOpen, input, p);
                output.WriteString(CompileToJS(prog, Copy(input, start, stop-start), '', False, nextStart <= 0));
             end;
             msgs.AddMsgs(prog.Msgs, lineOffset, colOffset);

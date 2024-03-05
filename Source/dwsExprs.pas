@@ -24,10 +24,10 @@ unit dwsExprs;
 interface
 
 uses
-   System.Classes, System.SysUtils, System.TypInfo, System.Types, System.Variants,
+   System.Classes, System.SysUtils, System.Types, System.SyncObjs,
    dwsSymbols, dwsErrors, dwsUtils, dwsDataContext, dwsExprList,
-   dwsStrings, dwsStack, SyncObjs, dwsFileSystem, dwsTokenTypes, dwsUnitSymbols,
-   dwsJSON, dwsXPlatform, dwsInfo, dwsScriptSource, dwsCustomData, dwsSymbolDictionary,
+   dwsStrings, dwsStack, dwsFileSystem, dwsTokenTypes, dwsUnitSymbols,
+   dwsXPlatform, dwsInfo, dwsScriptSource, dwsCustomData, dwsSymbolDictionary,
    dwsContextMap, dwsCompilerContext;
 
 type
@@ -1677,7 +1677,9 @@ implementation
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
 
-uses dwsFunctions, dwsCoreExprs, dwsMagicExprs, dwsMethodExprs, dwsUnifiedConstants,
+uses
+   System.Variants, System.TypInfo,
+   dwsFunctions, dwsCoreExprs, dwsMagicExprs, dwsMethodExprs, dwsUnifiedConstants,
    dwsInfoClasses, dwsCompilerUtils, dwsConstExprs, dwsResultFunctions,
    dwsSpecializationContext, dwsDynamicArrays, dwsArrayExprs, dwsAssociativeArrays;
 

@@ -20,7 +20,7 @@ unit dwsBCryptCNG;
 
 interface
 
-uses WinAPI.Windows, SysUtils;
+uses WinApi.Windows, System.SysUtils;
 
 type
    NTSTATUS = Cardinal;

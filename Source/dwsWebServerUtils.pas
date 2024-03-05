@@ -21,8 +21,7 @@ unit dwsWebServerUtils;
 interface
 
 uses
-   Classes, SysUtils,
-   dwsUtils, dwsXPlatform,
+   System.Classes, System.SysUtils,
    SynCommons, SynCrypto;
 
 type
@@ -44,6 +43,8 @@ implementation
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
+
+uses dwsUtils, dwsXPlatform;
 
 // ETag
 //

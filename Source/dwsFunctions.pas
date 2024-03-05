@@ -25,9 +25,8 @@ interface
 
 uses
    System.Classes, System.SysUtils,
-   dwsXPlatform, dwsUtils, dwsErrors, dwsCompilerContext, dwsUnicode,
-   dwsExprs, dwsSymbols, dwsStrings, dwsTokenizer, dwsScriptSource,
-   dwsOperators, dwsUnitSymbols;
+   dwsXPlatform, dwsUtils, dwsErrors, dwsCompilerContext, dwsExprs,
+   dwsSymbols, dwsScriptSource, dwsOperators, dwsUnitSymbols;
 
 type
 
@@ -229,7 +228,7 @@ implementation
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
 
-uses dwsCompilerUtils, dwsDataContext;
+uses dwsCompilerUtils, dwsDataContext, dwsStrings;
 
 var
    vInternalUnit : TInternalUnit;
