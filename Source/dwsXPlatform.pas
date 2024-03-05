@@ -59,13 +59,12 @@ uses
       {$ENDIF}
    {$ELSE}
       {$IFDEF WINDOWS}
-      Winapi.Windows, System.Win.Registry
+      Winapi.Windows, System.Win.Registry, System.IOUtils
       {$ENDIF}
-      {$IFNDEF VER200}, IOUtils{$ENDIF}
       {$IFDEF UNIX}
          {$IFDEF POSIXSYSLOG}, Posix.Syslog{$ENDIF}
          Posix.Unistd, Posix.Time, Posix.Pthread, System.Internal.ICU,
-         dwsXPlatformTimer,
+         dwsXPlatformTimer
       {$ENDIF}
    {$ENDIF}
    ;
