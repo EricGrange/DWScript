@@ -1,5 +1,4 @@
 object dwsSQLiteLib: TdwsSQLiteLib
-  OldCreateOrder = False
   Height = 150
   Width = 215
   object dwsSQLite: TdwsUnit

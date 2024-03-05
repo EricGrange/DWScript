@@ -1,5 +1,4 @@
 object dwsIniFileLib: TdwsIniFileLib
-  OldCreateOrder = False
   Height = 150
   Width = 215
   object dwsIniFile: TdwsUnit
@@ -29,8 +28,8 @@ object dwsIniFileLib: TdwsIniFileLib
           item
             Name = 'FileName'
             ResultType = 'String'
-            OnEval = dwsIniFileClassesTIniFileMethodsFileNameEval
             Kind = mkFunction
+            OnEval = dwsIniFileClassesTIniFileMethodsFileNameEval
           end
           item
             Name = 'EraseSection'
@@ -39,8 +38,8 @@ object dwsIniFileLib: TdwsIniFileLib
                 Name = 'section'
                 DataType = 'String'
               end>
-            OnEval = dwsIniFileClassesTIniFileMethodsEraseSectionEval
             Kind = mkProcedure
+            OnEval = dwsIniFileClassesTIniFileMethodsEraseSectionEval
           end
           item
             Name = 'DeleteKey'
@@ -53,8 +52,8 @@ object dwsIniFileLib: TdwsIniFileLib
                 Name = 'name'
                 DataType = 'String'
               end>
-            OnEval = dwsIniFileClassesTIniFileMethodsDeleteKeyEval
             Kind = mkProcedure
+            OnEval = dwsIniFileClassesTIniFileMethodsDeleteKeyEval
           end
           item
             Name = 'ReadString'
@@ -74,8 +73,8 @@ object dwsIniFileLib: TdwsIniFileLib
                 DefaultValue = ''
               end>
             ResultType = 'String'
-            OnEval = dwsIniFileClassesTIniFileMethodsReadStringEval
             Kind = mkFunction
+            OnEval = dwsIniFileClassesTIniFileMethodsReadStringEval
           end
           item
             Name = 'WriteString'
@@ -92,14 +91,14 @@ object dwsIniFileLib: TdwsIniFileLib
                 Name = 'value'
                 DataType = 'String'
               end>
-            OnEval = dwsIniFileClassesTIniFileMethodsWriteStringEval
             Kind = mkProcedure
+            OnEval = dwsIniFileClassesTIniFileMethodsWriteStringEval
           end
           item
             Name = 'ReadSections'
             ResultType = 'array of String'
-            OnEval = dwsIniFileClassesTIniFileMethodsReadSectionsEval
             Kind = mkFunction
+            OnEval = dwsIniFileClassesTIniFileMethodsReadSectionsEval
           end
           item
             Name = 'ReadSectionNames'
@@ -109,14 +108,14 @@ object dwsIniFileLib: TdwsIniFileLib
                 DataType = 'String'
               end>
             ResultType = 'array of String'
-            OnEval = dwsIniFileClassesTIniFileMethodsReadSectionNamesEval
             Kind = mkFunction
+            OnEval = dwsIniFileClassesTIniFileMethodsReadSectionNamesEval
           end
           item
             Name = 'GetEncoding'
             ResultType = 'String'
-            OnEval = dwsIniFileClassesTIniFileMethodsGetEncodingEval
             Kind = mkFunction
+            OnEval = dwsIniFileClassesTIniFileMethodsGetEncodingEval
           end
           item
             Name = 'SetEncoding'
@@ -125,14 +124,14 @@ object dwsIniFileLib: TdwsIniFileLib
                 Name = 'n'
                 DataType = 'String'
               end>
-            OnEval = dwsIniFileClassesTIniFileMethodsSetEncodingEval
             Kind = mkProcedure
+            OnEval = dwsIniFileClassesTIniFileMethodsSetEncodingEval
           end
           item
             Name = 'ToString'
             ResultType = 'String'
-            OnEval = dwsIniFileClassesTIniFileMethodsToStringEval
             Kind = mkFunction
+            OnEval = dwsIniFileClassesTIniFileMethodsToStringEval
           end>
         Properties = <
           item
