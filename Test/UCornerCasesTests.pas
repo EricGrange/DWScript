@@ -114,6 +114,8 @@ type
          procedure DiscardEmptyElse;
          procedure AnonymousRecordWithConstArrayField;
 
+         procedure UnderscoreNumbers;
+
          procedure DelphiDialectProcedureTypes;
 
          procedure LambdaAsConstParam;
@@ -2242,6 +2244,27 @@ begin
    prog := nil;
    prog := FCompiler.Compile(code);
    CheckEquals(0, prog.Msgs.Count, 'second');
+   prog := nil;
+end;
+
+// UnderscoreNumbers
+//
+procedure TCornerCasesTests.UnderscoreNumbers;
+var
+   prog : IdwsProgram;
+   code : String;
+begin
+   code := 'Print(1_);'#10
+         + 'Print(1_2);'#10
+         + 'Print(1_2_3);'#10
+         + 'Print(4_.5);'#10
+         + 'Print(4_5.6);'#10
+         + 'Print(4_5_6.7);';
+
+   prog := FCompiler.Compile(code);
+   CheckEquals(0, prog.Msgs.Count, 'compile');
+
+   CheckEquals('1121234.545.6456.7', prog.Execute.Result.ToString);
    prog := nil;
 end;
 

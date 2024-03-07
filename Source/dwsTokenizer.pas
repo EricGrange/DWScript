@@ -64,6 +64,7 @@ type
       procedure RaiseInvalidIntegerConstant;
       function BinToInt64 : Int64;
       function HexToInt64 : Int64;
+      procedure RemoveUnderscoresFromBuffer;
       function ToInt64 : Int64;
       function ToFloat : Double;
       function ToType : TTokenType;
@@ -663,12 +664,32 @@ begin
    end;
 end;
 
+// RemoveUnderscoresFromBuffer
+//
+procedure TTokenBuffer.RemoveUnderscoresFromBuffer;
+begin
+   var pSrc := PChar(@Buffer[0]);
+   var pDest := pSrc;
+   for var i := 0 to Len-1 do begin
+      if pSrc^ = '_' then begin
+         Dec(Len);
+      end else begin
+         if pSrc <> pDest then
+            pDest^ := pSrc^;
+         Inc(pDest);
+      end;
+      Inc(pSrc);
+   end;
+end;
+
 // ToInt64
 //
 function TTokenBuffer.ToInt64 : Int64;
 
    function ComplexToInt64(var buffer : TTokenBuffer) : Int64;
    begin
+      if Len > 1 then
+         RemoveUnderscoresFromBuffer;
       Result := StrToInt64(buffer.ToStr);
    end;
 
@@ -696,6 +717,9 @@ end;
 //
 function TTokenBuffer.ToFloat : Double;
 begin
+   if Len > 1 then
+      RemoveUnderscoresFromBuffer;
+
    AppendChar(#0);
    if not TryStrToDouble(PChar(@Buffer[0]), Result, cFormatSettings) then
       raise EConvertError.Create('');

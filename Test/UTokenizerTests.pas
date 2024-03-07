@@ -30,6 +30,7 @@ type
          procedure EqualsTokens;
          procedure PlusMinus;
          procedure TripleApos;
+         procedure UnderscoreInNumbers;
 
          procedure ActionStream;
    end;
@@ -410,6 +411,44 @@ begin
 
       CheckTrue(t.Test(ttStrVal), '3rd string');
       CheckEquals(#10'   space'#10, t.GetToken.AsString, '3rd string value');
+
+      t.EndSourceFile;
+   finally
+      t.Free;
+      rules.Free;
+   end;
+end;
+
+// UnderscoreInNumbers
+//
+procedure TTokenizerTests.UnderscoreInNumbers;
+var
+   rules : TPascalTokenizerStateRules;
+   t : TTokenizer;
+begin
+   FSourceFile.Code := '1_ 1_2 1_2_3 4_.5 4_5.6 4_5_6.7';
+   rules := TPascalTokenizerStateRules.Create;
+   t := rules.CreateTokenizer(FMsgs, nil);
+   try
+      t.BeginSourceFile(FSourceFile);
+
+      CheckTrue(t.Test(ttIntVal), '1_');
+      t.KillToken;
+
+      CheckTrue(t.Test(ttIntVal), '1_2');
+      t.KillToken;
+
+      CheckTrue(t.Test(ttIntVal), '1_2_3');
+      t.KillToken;
+
+      CheckTrue(t.Test(ttFloatVal), '4_.5');
+      t.KillToken;
+
+      CheckTrue(t.Test(ttFloatVal), '4_5.6');
+      t.KillToken;
+
+      CheckTrue(t.Test(ttFloatVal), '4_5_6.7');
+      t.KillToken;
 
       t.EndSourceFile;
    finally
