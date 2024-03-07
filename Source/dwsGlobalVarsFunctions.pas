@@ -37,10 +37,9 @@ unit dwsGlobalVarsFunctions;
 interface
 
 uses
-   System.Variants, Winapi.Windows, System.Classes, System.SysUtils, System.Masks,
-   dwsXPlatform, dwsUtils, dwsStrings, dwsExprList, dwsConstExprs, dwsErrors,
-   dwsFunctions, dwsExprs, dwsSymbols, dwsMagicExprs, dwsDataContext,
-   dwsGlobalVars, dwsScriptSource;
+   System.Classes, System.SysUtils,
+   dwsXPlatform, dwsExprList, dwsConstExprs, dwsFunctions, dwsExprs, dwsSymbols,
+   dwsMagicExprs, dwsDataContext, dwsGlobalVars, dwsScriptSource;
 
 type
 
@@ -218,7 +217,9 @@ implementation
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
 
-uses dwsDynamicArrays;
+uses
+   System.Masks, System.Variants,
+   dwsStrings, dwsUtils, dwsDynamicArrays;
 
 type
 
@@ -369,13 +370,11 @@ end;
 // SaveGlobalVarsToString
 //
 function SaveGlobalVarsToString : RawByteString;
-var
-   wobs : TWriteOnlyBlockStream;
 begin
-   wobs:=TWriteOnlyBlockStream.Create;
+   var wobs := TWriteOnlyBlockStream.Create;
    try
       SaveGlobalVarsToStream(wobs);
-      Result:=wobs.ToRawBytes;
+      Result := wobs.ToRawBytes;
    finally
       wobs.Free;
    end;
@@ -384,15 +383,13 @@ end;
 // LoadGlobalVarsFromString
 //
 procedure LoadGlobalVarsFromString(const srcString : RawByteString);
-var
-  ms : TMemoryStream;
 begin
-   if srcString='' then
+   if srcString = '' then
       CleanupGlobalVars
    else begin
-      ms:=TMemoryStream.Create;
+      var ms := TMemoryStream.Create;
       try
-         ms.SetSize(Length(srcString));
+         ms.SetSize(Int64(Length(srcString)));
          Move(srcString[1], ms.Memory^, Length(srcString));
          LoadGlobalVarsFromStream(ms);
       finally
@@ -402,10 +399,8 @@ begin
 end;
 
 procedure SaveGlobalVarsToFile(const destFileName : String);
-var
-   fs : TFileStream;
 begin
-   fs:=TFileStream.Create(destFileName, fmCreate);
+   var fs := TFileStream.Create(destFileName, fmCreate);
    try
       SaveGlobalVarsToStream(fs);
    finally
