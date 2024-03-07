@@ -1,11 +1,26 @@
+{**********************************************************************}
+{                                                                      }
+{    "The contents of this file are subject to the Mozilla Public      }
+{    License Version 1.1 (the "License"); you may not use this         }
+{    file except in compliance with the License. You may obtain        }
+{    a copy of the License at http://www.mozilla.org/MPL/              }
+{                                                                      }
+{    Software distributed under the License is distributed on an       }
+{    "AS IS" basis, WITHOUT WARRANTY OF ANY KIND, either express       }
+{    or implied. See the License for the specific language             }
+{    governing rights and limitations under the License.               }
+{                                                                      }
+{    Copyright Eric Grange / Creative IT                               }
+{                                                                      }
+{**********************************************************************}
 unit dwsDatabaseLibModule;
 
 interface
 
 uses
-  SysUtils, Classes, Masks,
-  dwsStrings, dwsUtils, dwsExprList, dwsXPlatform, dwsInfo, dwsFileSystem,
-  dwsComp, dwsExprs, dwsSymbols, dwsStack, dwsDatabase, dwsJSON, dwsErrors;
+   System.SysUtils, System.Classes,
+   dwsExprList, dwsInfo, dwsFileSystem, dwsComp, dwsExprs, dwsSymbols,
+   dwsDatabase, dwsJSON;
 
 type
 
@@ -125,7 +140,7 @@ type
     FFileSystem : IdwsFileSystem;
 
     procedure SetScript(aScript : TDelphiWebScript);
-    procedure RaiseDBException(Info: TProgramInfo; const msg : String);
+    procedure RaiseDBException(Info: TProgramInfo; const msgFmt : String; const args: array of const);
 
   public
     { Public declarations }
@@ -165,14 +180,19 @@ type
          property WriterOptions : TdwsJSONWriterOptions read FWriterOptions;
    end;
 
+// ------------------------------------------------------------------
+// ------------------------------------------------------------------
+// ------------------------------------------------------------------
 implementation
+// ------------------------------------------------------------------
+// ------------------------------------------------------------------
+// ------------------------------------------------------------------
 
 {$R *.dfm}
 
-uses dwsRandom;
-
-resourcestring
-   FIELD_NOT_FOUND = 'Field ''%s'' not found';
+uses
+   System.Masks,
+   dwsXPlatform, dwsRandom, dwsConstExprs, dwsStrings, dwsUtils;
 
 type
 
@@ -482,10 +502,12 @@ end;
 
 // RaiseDBException
 //
-procedure TdwsDatabaseLib.RaiseDBException(Info: TProgramInfo; const msg : String);
+procedure TdwsDatabaseLib.RaiseDBException(Info: TProgramInfo; const msgFmt : String; const args: array of const);
 var
    exceptObj : IScriptObj;
+   msg : String;
 begin
+   msg := Format(msgFmt, args);
    exceptObj:=Info.Vars['EDBException'].Method[SYS_TOBJECT_CREATE].Call([msg]).ScriptObj;
    (exceptObj.ExternalObject as TdwsExceptionContext).Skip(1); // temporary constructor expression
    Info.RaiseExceptObj(msg, exceptObj);
@@ -532,10 +554,8 @@ begin
    if obj is TScriptDataBase then begin
       db := TScriptDataBase(obj).Intf;
       checkRelease := db.CanReleaseToPool;
-      if checkRelease <> '' then begin
-         checkRelease := 'Releasing to pool not allowed: ' + checkRelease;
-         RaiseDBException(Info, checkRelease);
-      end;
+      if checkRelease <> '' then
+         RaiseDBException(Info, 'Releasing to pool not allowed: %s', [ checkRelease ]);
    end;
    nb := Info.ParamAsInteger[2];
    Info.ParamAsVariant[1] := IUnknown(nil);
@@ -1000,7 +1020,7 @@ begin
    fieldName:=Info.ParamAsString[0];
    index:=(ExtObject as TScriptDataSet).IndexOfField(fieldName);
    if index<0 then
-      RaiseDBException(Info, Format(FIELD_NOT_FOUND, [fieldName]))
+      RaiseDBException(Info, 'Field ''%s'' not found', [ fieldName ])
    else begin
       TScriptDataSet.NeedScriptFields(Info, ExtObject, fieldsInfo);
       Info.ResultAsVariant:=fieldsInfo.Element([index]).Value;
