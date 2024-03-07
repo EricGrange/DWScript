@@ -21,12 +21,10 @@ unit dwsRTTIConnector;
 interface
 
 uses
-   Vcl.Forms, System.Classes, System.SysUtils, System.SysConst,
-   System.TypInfo, System.RTTI, System.Variants,
+   System.Classes, System.SysUtils, System.RTTI,
    dwsComp, dwsSymbols, dwsDataContext, dwsErrors, dwsUnitSymbols, dwsUtils,
-   dwsExprs, dwsStrings, dwsFunctions, dwsStack, dwsOperators, dwsLegacy,
-   dwsLanguageExtension, dwsCompiler, dwsConnectorSymbols,
-   dwsCompilerContext, dwsScriptSource;
+   dwsExprs, dwsFunctions, dwsOperators, dwsLanguageExtension, dwsCompiler,
+   dwsConnectorSymbols, dwsCompilerContext, dwsScriptSource;
 
 const
    RTTI_ConnectorCaption = 'RTTI Connector 1.0';
@@ -190,6 +188,11 @@ implementation
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
+
+uses
+   System.Variants, System.TypInfo,
+   {$ifdef WINDOWS} Vcl.Forms, {$endif}
+   dwsStrings, dwsLegacy;
 
 var
    vRTTIContext : TRttiContext;
@@ -410,16 +413,18 @@ end;
 // ------------------
 
 procedure TConnectFormFunc.Execute(info : TProgramInfo);
-var
-   c : TComponent;
+{$ifdef WINDOWS}
 begin
-   c:=Application.FindComponent(Info.ParamAsString[0]);
-   if not (c is TForm) then
-      Info.ResultSetNull
-   else begin
-      Info.ResultAsVariant:=TdwsRTTIVariant.FromObject(c);
-   end;
+   var c := Application.FindComponent(Info.ParamAsString[0]);
+   if c is TForm then
+      Info.ResultAsVariant:=TdwsRTTIVariant.FromObject(c)
+   else Info.ResultSetNull;
 end;
+{$else}
+begin
+  { TODO : Check unix implementation }
+  raise Exception.Create('not implemented');
+end;{$endif}
 
 // ------------------
 // ------------------ TCreateComponentFunc ------------------
