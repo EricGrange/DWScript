@@ -24,10 +24,9 @@ unit dwsFileFunctions;
 interface
 
 uses
-   System.Classes, System.SysUtils, Winapi.Windows,
-   dwsXPlatform, dwsUtils, dwsStrings,
-   dwsFunctions, dwsSymbols, dwsExprs, dwsCoreExprs, dwsExprList, dwsUnitSymbols,
-   dwsConstExprs, dwsMagicExprs, dwsDataContext;
+   System.Classes, System.SysUtils,
+   dwsXPlatform, dwsUtils, dwsFunctions, dwsSymbols, dwsExprs, dwsCoreExprs,
+   dwsExprList, dwsMagicExprs, dwsDataContext;
 
 const
    SYS_FILE = 'File';
@@ -261,7 +260,7 @@ implementation
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
 
-uses dwsDynamicArrays;
+uses dwsDynamicArrays, dwsStrings, dwsUnitSymbols;
 
 // RegisterFileTypes
 //
@@ -851,7 +850,7 @@ begin
    try
       FileSetDateTime(f, TdwsDateTime.FromLocalDateTime(args.AsFloat[1]));
    finally
-      FileClose(f);
+      CloseFileHandle(f);
    end;
 end;
 
