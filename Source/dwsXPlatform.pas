@@ -46,8 +46,7 @@ unit dwsXPlatform;
 interface
 
 uses
-   System.Classes, System.SysUtils, System.Types, System.Masks,
-   System.SyncObjs, System.Variants, System.StrUtils,
+   System.Classes, System.SysUtils, System.Types,
    {$ifdef DELPHI_XE3_PLUS}
    DateUtils,
    {$endif}
@@ -58,12 +57,13 @@ uses
          LCLIntf
       {$ENDIF}
    {$ELSE}
+      System.IOUtils,
       {$IFDEF WINDOWS}
-      Winapi.Windows, System.Win.Registry, System.IOUtils
+      Winapi.Windows, System.Win.Registry
       {$ENDIF}
       {$IFDEF UNIX}
-         {$IFDEF POSIXSYSLOG}, Posix.Syslog{$ENDIF}
-         Posix.Unistd, Posix.Time, Posix.Pthread, System.Internal.ICU,
+         {$IFDEF POSIXSYSLOG}Posix.Syslog,{$ENDIF}
+         Posix.Unistd, Posix.Time, Posix.Pthread, Posix.Base, Posix.Stdlib, Posix.Stdio, System.Internal.ICU,
          dwsXPlatformTimer
       {$ENDIF}
    {$ENDIF}
@@ -90,7 +90,7 @@ type
    // see http://delphitools.info/2011/11/30/fixing-tcriticalsection/
    {$HINTS OFF}
    {$ifdef UNIX}
-   TdwsCriticalSection = class (TCriticalSection);
+   TdwsCriticalSection = class (TCriticalSection)
       public
          function TryEnterOrTimeout(delayMSec : Integer) : Boolean;
    end;
@@ -481,9 +481,13 @@ implementation
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
 
+uses
+   System.Masks, System.SyncObjs, System.Variants, System.StrUtils;
+
 // FileMemoryMapReadOnly
 //
 function FileMemoryMapReadOnly(const fileName : TFileName) : TdwsMemoryMappedFile;
+{$ifdef WINDOWS}
 begin
    Result.Size := 0;
    Result.Base := nil;
@@ -516,10 +520,17 @@ begin
       raise;
    end;
 end;
+{$else}
+begin
+  { TODO : Check unix implementation }
+  raise Exception.Create('not implemented');
+end;
+{$endif}
 
 // FileUnMap
 //
 procedure FileUnMap(var map : TdwsMemoryMappedFile);
+{$ifdef WINDOWS}
 begin
    if map.Base <> nil then begin
       UnmapViewOfFile(map.Base);
@@ -534,7 +545,12 @@ begin
       map.FileHandle := 0;
    end;
 end;
-
+{$else}
+begin
+  { TODO : Check unix implementation }
+  raise Exception.Create('not implemented');
+end;
+{$endif}
 // DetectEncoding
 //
 function TdwsMemoryMappedFile.DetectEncoding(var encoding : TEncoding) : Integer;
@@ -623,13 +639,14 @@ begin
 end;
 {$else}
 begin
-   Result := Now; // TODO : correct implementation
+   Result := TTimeZone.Local.ToUniversalTime(Now);
 end;
 {$endif}
 
 // UnixTime
 //
 function UnixTime : Int64;
+{$ifdef WINDOWS}
 const
    cUNIX_TIME_START : Int64 = $019DB1DED53E8000;
    cTICKS_PER_SECOND : Int64 = 10000000;  // 100ns
@@ -642,10 +659,15 @@ begin
    t.HighPart := ft.dwHighDateTime;
    Result := (t.QuadPart - cUNIX_TIME_START) div cTICKS_PER_SECOND;
 end;
-
+{$else}
+begin
+  Result := Trunc(UTCDateTime*86400)-Int64(25569)*86400;
+end;
+{$endif}
 // EpochTimeStamp
 //
 function EpochTimeStamp : Int64;
+{$ifdef WINDOWS}
 const
    cUNIX_TIME_START : Int64 = $019DB1DED53E8000;
    cTICKS_PER_SECOND : Int64 = 10000000;  // 100ns
@@ -659,7 +681,12 @@ begin
    t.HighPart := ft.dwHighDateTime;
    Result := (t.QuadPart - cUNIX_TIME_START) div (cTICKS_PER_SECOND div cEPOCH_TICKS_PER_SECOND);
 end;
-
+{$else}
+begin
+  { TODO : Check unix implementation }
+  raise Exception.Create('not implemented');
+end;
+{$endif}
 {$IFNDEF LINUX}
 type
    TDynamicTimeZoneInformation = record
@@ -878,6 +905,7 @@ end;
 // UnicodeCompareEx
 //
 function UnicodeCompareEx(const a, b : UnicodeString; const locale : UnicodeString; caseSensitive : Boolean) : Integer;
+{$ifdef WINDOWS}
 var
    flags : Integer;
 begin
@@ -889,7 +917,12 @@ begin
       RaiseLastOSError
    else Dec(Result, CSTR_EQUAL);
 end;
-
+{$else}
+begin
+  { TODO : Check unix implementation }
+  raise Exception.Create('not implemented');
+end;
+{$endif}
 // UnicodeCompareP
 //
 function UnicodeCompareP(p1, p2 : PWideChar; n : Integer) : Integer; overload;
@@ -1373,7 +1406,7 @@ begin
       end;
 
       fileName := directory + '*';
-      if SysUtils.FindFirst(fileName,faAnyfile,searchRec) = 0 then begin
+      if System.SysUtils.FindFirst(fileName,faAnyfile,searchRec) = 0 then begin
          repeat
             if (searchRec.Attr and faVolumeId) = 0 then begin
                if (searchRec.Attr and faDirectory) = 0 then begin
@@ -1394,10 +1427,10 @@ begin
                   CollectFilesMasked(fileName, masks, list, recurseSubdirectories, onProgress);
                end;
             end;
-         until SysUtils.FindNext(searchRec) <> 0;
+         until System.SysUtils.FindNext(searchRec) <> 0;
       end;
    finally
-      SysUtils.FindClose(searchRec);
+      System.SysUtils.FindClose(searchRec);
    end;
 end;
 {$endif}
@@ -1480,16 +1513,16 @@ var
    searchRec : TSearchRec;
 begin
    try
-      if SysUtils.FindFirst(directory + '*', faDirectory, searchRec) = 0 then begin
+      if System.SysUtils.FindFirst(directory + '*', faDirectory, searchRec) = 0 then begin
          repeat
             if     (searchRec.Attr and faDirectory > 0)
                and (searchRec.Name <> '.' )
                and (searchRec.Name <> '..' ) then
                list.Add(searchRec.Name);
-         until SysUtils.FindNext(searchRec) <> 0;
+         until System.SysUtils.FindNext(searchRec) <> 0;
       end;
    finally
-      SysUtils.FindClose(searchRec);
+      System.SysUtils.FindClose(searchRec);
    end;
 end;
 {$endif}
@@ -1900,7 +1933,7 @@ end;
 begin
    if fileName = '' then
       Result := nil
-   else Result := IOUTils.TFile.ReadAllBytes(filename);
+   else Result := System.IOUTils.TFile.ReadAllBytes(filename);
 end;
 {$endif}
 
@@ -1924,7 +1957,7 @@ begin
 end;
 {$ELSE}
 begin
-   IOUTils.TFile.WriteAllBytes(fileName, data);
+   System.IOUTils.TFile.WriteAllBytes(fileName, data);
 end;
 {$ENDIF}
 
@@ -2149,7 +2182,7 @@ begin
          RaiseLastOSError;
    end;
    {$ELSE}
-   Result := SysUtils.FileCreate(fileName, fmOpenRead, $007);
+   Result := System.SysUtils.FileCreate(fileName, fmOpenRead, $007);
    if Result = INVALID_HANDLE_VALUE then
       raise Exception.Create('invalid file handle');
    {$ENDIF}
@@ -2158,10 +2191,9 @@ end;
 // OpenFileForSequentialWriteOnly
 //
 function OpenFileForSequentialWriteOnly(const fileName : TFileName) : THandle;
-var
-   attributes : Cardinal;
 begin
    {$ifdef WINDOWS}
+   var attributes : Cardinal;
    Result:=CreateFile(
       PChar(fileName), GENERIC_WRITE, 0, nil, CREATE_ALWAYS,
       FILE_ATTRIBUTE_NORMAL or FILE_FLAG_SEQUENTIAL_SCAN, 0
@@ -2177,7 +2209,7 @@ begin
       end;
    end;
    {$else}
-   Result := SysUtils.FileCreate(fileName, fmOpenWrite, $007);
+   Result := System.SysUtils.FileCreate(fileName, fmOpenWrite, $007);
    {$endif}
    if Result = INVALID_HANDLE_VALUE then
       RaiseLastOSError;
@@ -2190,7 +2222,7 @@ begin
    {$IFDEF WINDOWS}
    Result := CloseHandle(hFile);
    {$else}
-   SysUtils.FileClose(hFile);
+   System.SysUtils.FileClose(hFile);
    Result := True; // assume success, as RTL does not say
    {$endif}
 end;
@@ -2212,9 +2244,9 @@ begin
       if not WriteFile(hFile, buffer^, bytesToWrite, Cardinal(bytesToWrite), nil) then
          RaiseLastOSError;
       {$else}
-      bytesToWrite := SysUtils.FileWrite(hFile, buffer^, byteCount);
+      bytesToWrite := System.SysUtils.FileWrite(hFile, buffer^, byteCount);
       if bytesToWrite = -1 then
-         raise Exception.Create('file write exception')
+         raise Exception.Create('file write exception');
       {$endif}
       Assert(bytesToWrite > 0);
       Dec(byteCount, bytesToWrite);
@@ -2240,9 +2272,9 @@ begin
       if not ReadFile(hFile, buffer^, bytesToRead, Cardinal(bytesToRead), nil) then
          RaiseLastOSError;
       {$else}
-      bytesToRead := SysUtils.FileRead(hFile, buffer^, byteCount);
+      bytesToRead := System.SysUtils.FileRead(hFile, buffer^, byteCount);
       if bytesToRead = -1 then
-         raise Exception.Create('file read exception')
+         raise Exception.Create('file read exception');
       {$endif}
       if bytesToRead > 0 then begin
          Dec(byteCount, bytesToRead);
@@ -2271,8 +2303,11 @@ end;
 //
 function SetEndOfFile(hFile : THandle) : Boolean;
 begin
+   {$ifdef WINDOWS}
    Result := Winapi.Windows.SetEndOfFile(hFile);
-end;
+   {$else}
+   Result := (ftruncate(hFile,lseek(hfile, 0, SEEK_CUR)) = 0);
+   {$endif}end;
 
 // FileCopy
 //
@@ -2282,7 +2317,7 @@ begin
    Result := Winapi.Windows.CopyFileW(PWideChar(existing), PWideChar(new), failIfExists);
    {$else}
    try
-      IOUtils.TFile.Copy(existing, new, not failIfExists);
+      System.IOUtils.TFile.Copy(existing, new, not failIfExists);
       Result := True;
    except
       Result := False;
@@ -2298,7 +2333,7 @@ begin
    Result := Winapi.Windows.MoveFileW(PWideChar(existing), PWideChar(new));
    {$else}
    try
-      IOUtils.TFile.Move(existing, new);
+      System.IOUtils.TFile.Move(existing, new);
       Result := True;
    except
       Result := False;
@@ -2336,11 +2371,11 @@ var
    searchRec : TSearchRec;
 begin
    try
-      if SysUtils.FindFirst(name, faAnyFile, searchRec) = 0 then
+      if System.SysUtils.FindFirst(name, faAnyFile, searchRec) = 0 then
          Result := searchRec.Size
       else Result := 0;
    finally
-      SysUtils.FindClose(searchRec);
+      System.SysUtils.FindClose(searchRec);
    end;
 end;
 {$endif}
@@ -2360,7 +2395,7 @@ begin
 end;
 {$else}
 begin
-   Result.AsLocalDateTime := FileDateTime(name);
+   Result := FileDateTime(name);
 end;
 {$endif}
 
@@ -2405,11 +2440,11 @@ var
    buf : TdwsDateTime;
 begin
    try
-      if SysUtils.FindFirst(name, faAnyFile, searchRec) = 0 then
+      if System.SysUtils.FindFirst(name, faAnyFile, searchRec) = 0 then
          buf.AsLocalDateTime := searchRec.TimeStamp
       else buf.Clear;
    finally
-      SysUtils.FindClose(searchRec);
+      System.SysUtils.FindClose(searchRec);
    end;
    Result := buf;
 end;
@@ -2564,7 +2599,7 @@ function RDTSC : UInt64;
 begin
    // TODO : Implement true RDTSC function
    // if asm does not work we use a fake, monotonous, vaguely random ersatz
-   Result := Int64(InterlockedAdd64(vFakeRDTSC, 1+(GetSystemTimeMilliseconds and $ffff)*7919));
+   Result := Int64(AtomicIncrement(vFakeRDTSC, 1+(GetSystemTimeMilliseconds and $ffff)*7919));
 end;
 {$endif}
 
@@ -2716,10 +2751,9 @@ end;
 // ApplicationVersion
 //
 function ApplicationVersion(const options : TApplicationVersionOptions = [ avoBitness ]) : String;
-var
-   version : TModuleVersion;
 begin
    {$ifdef WINDOWS}
+      var version : TModuleVersion;
       {$ifdef WIN64}
       if GetApplicationVersion(version) then
          Result := version.AsString
@@ -2890,7 +2924,7 @@ begin
    Result:=tempPath;
 {$ELSE}
 begin
-   Result:=IOUTils.TPath.GetTempPath;
+   Result := System.IOUTils.TPath.GetTempPath;
 {$ENDIF}
 end;
 
@@ -2910,7 +2944,7 @@ begin
    Result:=tempFileName;
 {$ELSE}
 begin
-   Result:=IOUTils.TPath.GetTempFileName;
+   Result := System.IOUTils.TPath.GetTempFileName;
 {$ENDIF}
 end;
 
@@ -3183,7 +3217,7 @@ begin
 end;
 {$else}
 begin
-   Result.AsLocalDateTime := SysUtils.Now;
+   Result.AsLocalDateTime := System.SysUtils.Now;
 end;
 {$endif}
 
@@ -3293,7 +3327,7 @@ begin
 end;
 {$ELSE}
 begin
-   Result := Integer(SysUtils.DateTimeToFileDate(Self.AsLocalDateTime));
+   Result := Integer(System.SysUtils.DateTimeToFileDate(Self.AsLocalDateTime));
 end;
 {$ENDIF}
 
