@@ -65,6 +65,9 @@ type
    TStaticStringArray = array [0..High(MaxInt) shr 4] of String;
    PStringArray = ^TStaticStringArray;
 
+   TStaticVariantArray = array [0..High(MaxInt) shr 5] of Variant;
+   PVariantArray = ^TStaticVariantArray;
+
    TInt64DynArrayHelper = record helper for TInt64DynArray
       function High : Integer; inline;
       function Length : Integer; inline;
@@ -1208,6 +1211,7 @@ procedure TransferSimpleHashBuckets(const src, dest; nbSrcBuckets, nbDestBuckets
 procedure QuickSortDoublePrecision(a : PDoubleArray; minIndex, maxIndex : NativeInt);
 procedure QuickSortInt64(a : PInt64Array; minIndex, maxIndex : NativeInt);
 procedure QuickSortString(a : PStringArray; minIndex, maxIndex : NativeInt);
+procedure QuickSortVariant(a : PVariantArray; minIndex, maxIndex : NativeInt);
 
 type
    EISO8601Exception = class (Exception);
@@ -5945,6 +5949,63 @@ begin
          until i > j;
          if minIndex < j then
             QuickSortString(a, minIndex, j);
+         minIndex := i;
+      until i >= maxIndex;
+   end;
+end;
+
+// QuickSortVariant
+//
+procedure QuickSortVariant(a : PVariantArray; minIndex, maxIndex : NativeInt);
+
+   procedure Swap(a : PVariantArray; i1, i2 : NativeInt); inline;
+   begin
+      var buf := TVarData(a[i1]);
+      TVarData(a[i1]) := TVarData(a[i2]);
+      TVarData(a[i2]) := buf;
+   end;
+
+var
+   i, j, p, n : NativeInt;
+begin
+   n := maxIndex-minIndex;
+   case n of
+      1 : begin
+         if VarCompareSafe(a[minIndex], a[maxIndex]) = vrGreaterThan then
+            Swap(a, minIndex, maxIndex);
+      end;
+      2 : begin
+         i := minIndex+1;
+         if VarCompareSafe(a[minIndex], a[i]) = vrGreaterThan then
+            Swap(a, minIndex, i);
+         if VarCompareSafe(a[i], a[maxIndex]) = vrGreaterThan then begin
+            Swap(a, i, maxIndex);
+            if VarCompareSafe(a[minIndex], a[i]) = vrGreaterThan then
+               Swap(a, minIndex, i);
+         end;
+      end;
+   else
+      if n <= 0 then Exit;
+      repeat
+         i := minIndex;
+         j := maxIndex;
+         p := ((i+j) shr 1);
+         repeat
+            while VarCompareSafe(a[i], a[p]) = vrLessThan do Inc(i);
+            while VarCompareSafe(a[j], a[p]) = vrGreaterThan do Dec(j);
+            if i <= j then begin
+               if i <> j then
+                  Swap(a, i, j);
+               if p = i then
+                  p := j
+               else if p = j then
+                  p := i;
+               Inc(i);
+               Dec(j);
+            end;
+         until i > j;
+         if minIndex < j then
+            QuickSortVariant(a, minIndex, j);
          minIndex := i;
       until i >= maxIndex;
    end;
