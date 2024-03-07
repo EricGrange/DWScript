@@ -25,9 +25,8 @@ unit dwsConstExprs;
 interface
 
 uses
-   SysUtils,
-   dwsUtils, dwsDataContext, dwsStack, dwsXPlatform, dwsErrors, dwsStrings,
-   dwsExprs, dwsExprList, dwsSymbols, dwsUnitSymbols, dwsScriptSource,
+   System.SysUtils,
+   dwsUtils, dwsDataContext, dwsExprs, dwsExprList, dwsSymbols, dwsScriptSource,
    dwsCompilerContext;
 
 type
@@ -51,6 +50,7 @@ type
 
          procedure EvalAsString(exec : TdwsExecution; var result : String); override;
          procedure EvalAsVariant(exec : TdwsExecution; var result : Variant); override;
+         procedure EvalAsInterface(exec : TdwsExecution; var result : IUnknown); override;
          procedure EvalAsScriptObj(exec : TdwsExecution; var result : IScriptObj); override;
          procedure EvalAsScriptObjInterface(exec : TdwsExecution; var result : IScriptObjInterface); override;
 
@@ -171,7 +171,7 @@ type
          procedure GetDataPtr(exec : TdwsExecution; var result : IDataContext); override;
 
          property Elements[idx : Integer] : TTypedExpr read GetElement;
-         property ElementCount : Integer read GetElementCount;
+         property ElementCount : Integer read FElementExprs.FCount;
          procedure AddElementExpr(const scriptPos : TScriptPos; context : TdwsCompilerContext; ElementExpr: TTypedExpr);
          procedure AddElementRange(context : TdwsCompilerContext; const range1, range2 : Int64; typ : TTypeSymbol);
          procedure Prepare(context : TdwsCompilerContext; elementTyp : TTypeSymbol);
@@ -181,7 +181,7 @@ type
          function Size : Integer; inline;
 
          procedure EvalNoResult(exec : TdwsExecution); override;
-         procedure EvalAsVariant(exec : TdwsExecution; var Result : Variant); override;
+         procedure EvalAsVariant(exec : TdwsExecution; var result : Variant); override;
          procedure EvalToDataContext(exec : TdwsExecution; const destDC : IDataContext; offset : Integer);
          function  EvalAsVarRecArray(exec : TdwsExecution) : TVarRecArrayContainer;
 
@@ -197,7 +197,9 @@ implementation
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
 
-uses dwsConvExprs, dwsSpecializationContext, dwsDynamicArrays;
+uses
+   dwsSpecializationContext, dwsDynamicArrays, dwsXPlatform, dwsConvExprs,
+   dwsErrors, dwsStrings;
 
 // ------------------
 // ------------------ TConstExpr ------------------
@@ -264,6 +266,13 @@ end;
 procedure TConstExpr.EvalAsVariant(exec : TdwsExecution; var result : Variant);
 begin
    FDataContext.EvalAsVariant(0, result);
+end;
+
+// EvalAsInterface
+//
+procedure TConstExpr.EvalAsInterface(exec : TdwsExecution; var result : IUnknown);
+begin
+   FDataContext.EvalAsInterface(0, result);
 end;
 
 // EvalAsScriptObj
@@ -635,7 +644,10 @@ end;
 //
 function TArrayConstantExpr.GetSubExpr(i : Integer) : TExprBase;
 begin
-   Result:=TExprBase(FElementExprs.List[i]);
+   // range check here is meaningless as the compiler would do it against the static size
+   {$ifdef RANGEON}{$R-}{$endif}
+   Result := TExprBase(FElementExprs.List[i]);
+   {$ifdef RANGEON}{$R+}{$endif}
 end;
 
 // GetSubExprCount
@@ -649,7 +661,10 @@ end;
 //
 function TArrayConstantExpr.GetElement(idx : Integer) : TTypedExpr;
 begin
-   Result:=TTypedExpr(FElementExprs.List[idx]);
+   // range check here is meaningless as the compiler would do it against the static size
+   {$ifdef RANGEON}{$R-}{$endif}
+   Result := TTypedExpr(FElementExprs.List[idx]);
+   {$ifdef RANGEON}{$R+}{$endif}
 end;
 
 // GetElementCount
@@ -675,7 +690,7 @@ end;
 
 // EvalAsVariant
 //
-procedure TArrayConstantExpr.EvalAsVariant(exec : TdwsExecution; var Result : Variant);
+procedure TArrayConstantExpr.EvalAsVariant(exec : TdwsExecution; var result : Variant);
 begin
    if FElementExprs.Count = 0 then begin
       if TVarData(result).VType <> varUnknown then begin
@@ -683,7 +698,7 @@ begin
          TVarData(result).VType := varUnknown;
       end;
       CreateNewDynamicArray(Typ, IScriptDynArray(TVarData(result).VUnknown));
-   end else TTypedExpr(FElementExprs.List[0]).EvalAsVariant(exec, Result);
+   end else Elements[0].EvalAsVariant(exec, Result);
 end;
 
 // EvalToDataContext
@@ -727,14 +742,11 @@ end;
 // Optimize
 //
 function TArrayConstantExpr.Optimize(context : TdwsCompilerContext) : TProgramExpr;
-var
-   i : Integer;
-   expr : TTypedExpr;
 begin
    Result:=Self;
-   for i:=0 to FElementExprs.Count-1 do begin
-      expr:=TTypedExpr(FElementExprs.List[i]);
-      FElementExprs.List[i]:=expr.Optimize(context);
+   for var i := 0 to FElementExprs.Count-1 do begin
+      var expr := Elements[i];
+      FElementExprs.List[i] := expr.Optimize(context);
    end;
 end;
 
@@ -819,14 +831,11 @@ end;
 // ElementsFromIntegerToFloat
 //
 procedure TArrayConstantExpr.ElementsFromIntegerToFloat(context : TdwsCompilerContext);
-var
-   x : Integer;
-   expr : TTypedExpr;
 begin
-   for x:=0 to FElementExprs.Count-1 do begin
-      expr:=Elements[x];
+   for var x := 0 to FElementExprs.Count-1 do begin
+      var expr := Elements[x];
       if expr.Typ.IsOfType(context.TypInteger) then begin
-         expr:=TConvIntToFloatExpr.Create(context, ScriptPos, expr);
+         expr := TConvIntToFloatExpr.Create(context, ScriptPos, expr);
          FElementExprs.List[x]:=expr;
       end;
    end;
