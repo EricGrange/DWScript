@@ -365,6 +365,71 @@ type
          procedure WriteToJSON(writer : TdwsJSONWriter);
    end;
 
+   TScriptDynamicNativeVariantArray = class (TScriptDynamicNativeArray, IScriptDynArray, IJSONWriteAble)
+      protected
+         FData : TData;
+
+      public
+         class function InterfaceOffsets : TDynamicArrayInterfaceToOffsets; override; final;
+
+         procedure SetArrayLength(n : NativeInt);
+
+         function ToStringArray : TStringDynArray;
+         function ToInt64Array : TInt64DynArray;
+
+         procedure Add(const v : Variant);
+         procedure Insert(index : NativeInt);
+         procedure Delete(index, count : NativeInt);
+         procedure MoveItem(source, destination : NativeInt);
+         procedure Swap(index1, index2 : NativeInt);
+
+         function IndexOfValue(const item : Variant; fromIndex : NativeInt) : NativeInt;
+         function IndexOfInteger(item : Int64; fromIndex : NativeInt) : NativeInt;
+         function IndexOfFloat(item : Double; fromIndex : NativeInt) : NativeInt;
+         function IndexOfString(const item : String; fromIndex : NativeInt) : NativeInt;
+         function IndexOfInterface(const item : IUnknown; fromIndex : NativeInt) : NativeInt;
+         function IndexOfFuncPtr(const item : Variant; fromIndex : NativeInt) : NativeInt;
+
+         procedure WriteData(destAddr : NativeInt; const src : IDataContext; srcAddr, size : NativeInt); overload;
+         procedure Concat(const src : IScriptDynArray; index, size : NativeInt);
+
+         procedure Reverse;
+         function  Compare(index1, index2 : NativeInt) : Integer;
+         procedure NaturalSort;
+
+         procedure AddStrings(sl : TStrings);
+         procedure AppendString(index : NativeInt; const str : String);
+
+         function GetAsFloat(index : NativeInt) : Double;
+         procedure SetAsFloat(index : NativeInt; const v : Double);
+
+         function GetAsInteger(index : NativeInt) : Int64;
+         procedure SetAsInteger(index : NativeInt; const v : Int64);
+
+         function GetAsBoolean(index : NativeInt) : Boolean;
+         procedure SetAsBoolean(index : NativeInt; const v : Boolean);
+
+         procedure SetAsVariant(index : NativeInt; const v : Variant);
+         procedure EvalAsVariant(index : NativeInt; var result : Variant);
+
+         procedure SetAsString(index : NativeInt; const v : String); inline;
+         procedure EvalAsString(index : NativeInt; var result : String); inline;
+//         function  AsStringPtr(index : NativeInt) : PString; inline;
+
+         procedure SetAsInterface(index : NativeInt; const v : IUnknown);
+         procedure EvalAsInterface(index : NativeInt; var result : IUnknown);
+
+         procedure AddFromExpr(exec : TdwsExecution; valueExpr : TExprBase);
+         function SetFromExpr(index : NativeInt; exec : TdwsExecution; valueExpr : TExprBase) : Boolean;
+
+         function IsEmpty(addr : NativeInt) : Boolean;
+         function VarType(addr : NativeInt) : TVarType;
+
+         function HashCode(addr : NativeInt; size : NativeInt) : Cardinal;
+
+         procedure WriteToJSON(writer : TdwsJSONWriter);
+   end;
+
    TScriptDynamicNativeBaseInterfaceArray = class (TScriptDynamicNativeArray)
       protected
          FData : TInterfaceDynArray;
@@ -526,7 +591,7 @@ implementation
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
 
-uses dwsExprs, dwsXXHash;
+uses System.Variants, dwsExprs, dwsXXHash;
 
 (*
 // BoundsCheckFailed
@@ -579,6 +644,8 @@ begin
          Result := TScriptDynamicNativeIntegerArray.Create(elemTyp)
       else if ct = TBaseBooleanSymbol then
          Result := TScriptDynamicNativeBooleanArray.Create(elemTyp)
+//      else if ct = TBaseVariantSymbol then
+//         Result := TScriptDynamicNativeVariantArray.Create(elemTyp)
       else if ct = TClassSymbol then
          Result := TScriptDynamicNativeObjectArray.Create(elemTyp)
       else if ct = TDynamicArraySymbol then
@@ -2357,6 +2424,389 @@ var
    intf : IScriptDynArray;
 begin
    instance := TScriptDynamicNativeIntegerArray.Create(nil);
+   intf := instance;
+   Result.DataPtrOffset := NativeInt(@instance.FData) - NativeInt(intf);
+   Result.ArrayLengthOffset := NativeInt(@instance.FArrayLength) - NativeInt(intf);
+end;
+
+// ------------------
+// ------------------ TScriptDynamicNativeVariantArray ------------------
+// ------------------
+
+// SetArrayLength
+//
+procedure TScriptDynamicNativeVariantArray.SetArrayLength(n : NativeInt);
+begin
+   SetLength(FData, n);
+   FArrayLength := n;
+end;
+
+// ToStringArray
+//
+function TScriptDynamicNativeVariantArray.ToStringArray : TStringDynArray;
+begin
+   SetLength(Result, FArrayLength);
+   for var i : NativeInt := 0 to FArrayLength-1 do
+      VariantToString(FData[i], Result[i]);
+end;
+
+// ToInt64Array
+//
+function TScriptDynamicNativeVariantArray.ToInt64Array : TInt64DynArray;
+var
+   i : NativeInt;
+begin
+   SetLength(Result, FArrayLength);
+   for i := 0 to FArrayLength-1 do
+      Result[i] := StrToInt64(FData[i]);
+end;
+
+// Add
+//
+procedure TScriptDynamicNativeVariantArray.Add(const v : Variant);
+var
+   n : NativeInt;
+begin
+   n := FArrayLength+1;
+   SetLength(FData, n);
+   FData[FArrayLength] := v;
+   FArrayLength := n;
+end;
+
+// Insert
+//
+procedure TScriptDynamicNativeVariantArray.Insert(index : NativeInt);
+begin
+   System.Insert(Default(Variant), FData, index);
+   Inc(FArrayLength);
+end;
+
+// Delete
+//
+procedure TScriptDynamicNativeVariantArray.Delete(index, count : NativeInt);
+begin
+   System.Delete(FData, index, count);
+   Dec(FArrayLength, count);
+end;
+
+// MoveItem
+//
+procedure TScriptDynamicNativeVariantArray.MoveItem(source, destination : NativeInt);
+var
+   buf : TVarData;
+begin
+   if source = destination then Exit;
+
+   buf := PVarData(@FData[source])^;
+   if source < destination then
+      System.Move(FData[source+1], FData[source], SizeOf(Pointer)*(destination-source))
+   else System.Move(FData[destination], FData[destination+1], SizeOf(Pointer)*(source-destination));
+   PVarData(@FData[destination])^ := buf;
+end;
+
+// Swap
+//
+procedure TScriptDynamicNativeVariantArray.Swap(index1, index2 : NativeInt);
+var
+   buf : TVarData;
+begin
+   buf := PVardata(@FData[index1])^;
+   PVardata(@FData[index2])^ := PVardata(@FData[index1])^;
+   PVardata(@FData[index1])^ := buf;
+end;
+
+// IndexOfValue
+//
+function TScriptDynamicNativeVariantArray.IndexOfValue(const item : Variant; fromIndex : NativeInt) : NativeInt;
+var
+   i : NativeInt;
+   p : PVariant;
+begin
+   if fromIndex < 0 then
+      fromIndex := 0;
+   if fromIndex < FArrayLength then begin
+      p := @FData[fromIndex];
+      for i := fromIndex to FArrayLength-1 do begin
+         if VarCompareSafe(p^, item) = vrEqual then
+            Exit(i);
+         Inc(p);
+      end;
+   end;
+   Result := -1;
+end;
+
+// IndexOfInteger
+//
+function TScriptDynamicNativeVariantArray.IndexOfInteger(item : Int64; fromIndex : NativeInt) : NativeInt;
+begin
+   Result := IndexOfValue(item, fromIndex);
+end;
+
+// IndexOfFloat
+//
+function TScriptDynamicNativeVariantArray.IndexOfFloat(item : Double; fromIndex : NativeInt) : NativeInt;
+begin
+   Result := IndexOfValue(item, fromIndex);
+end;
+
+// IndexOfString
+//
+function TScriptDynamicNativeVariantArray.IndexOfString(const item : String; fromIndex : NativeInt) : NativeInt;
+begin
+   Result := IndexOfValue(item, fromIndex);
+end;
+
+// IndexOfInterface
+//
+function TScriptDynamicNativeVariantArray.IndexOfInterface(const item : IUnknown; fromIndex : NativeInt) : NativeInt;
+begin
+   Result := IndexOfValue(item, fromIndex);
+end;
+
+// IndexOfFuncPtr
+//
+function TScriptDynamicNativeVariantArray.IndexOfFuncPtr(const item : Variant; fromIndex : NativeInt) : NativeInt;
+begin
+   Result := IndexOfValue(item, fromIndex);
+end;
+
+// WriteData
+//
+procedure TScriptDynamicNativeVariantArray.WriteData(destAddr : NativeInt; const src : IDataContext; srcAddr, size : NativeInt);
+var
+   i : NativeInt;
+begin
+   for i := 0 to size-1 do
+      src.EvalAsVariant(i + srcAddr, FData[i + destAddr]);
+end;
+
+// Concat
+//
+procedure TScriptDynamicNativeVariantArray.Concat(const src : IScriptDynArray; index, size : NativeInt);
+var
+   srcSelf : TObject;
+   srcDyn : TScriptDynamicNativeVariantArray;
+   n, i : NativeInt;
+begin
+   srcSelf := src.GetSelf;
+   Assert(srcSelf.ClassType = TScriptDynamicNativeVariantArray);
+   Assert(index >= 0);
+
+   srcDyn := TScriptDynamicNativeVariantArray(srcSelf);
+   if size > srcDyn.ArrayLength - index then
+      size := srcDyn.ArrayLength - index;
+   if size > 0 then begin
+      n := FArrayLength;
+      SetArrayLength(n + size);
+      for i := 0 to size-1 do
+         FData[n + i] := srcDyn.FData[index + i];
+   end;
+end;
+
+// Reverse
+//
+procedure TScriptDynamicNativeVariantArray.Reverse;
+var
+   pLow, pHigh : PVarData;
+   t : TVarData;
+begin
+   if FArrayLength <= 1 then Exit;
+
+   pLow := @FData[0];
+   pHigh := @FData[FArrayLength-1];
+   while NativeUInt(pHigh) > NativeUInt(pLow) do begin
+      t := pLow^;
+      pLow^ := pHigh^;
+      pHigh^ := t;
+      Inc(pLow);
+      Dec(pHigh);
+   end;
+end;
+
+// Compare
+//
+function TScriptDynamicNativeVariantArray.Compare(index1, index2 : NativeInt) : Integer;
+begin
+   case VarCompareSafe(FData[index1], FData[index2]) of
+      vrLessThan : Result := -1;
+      vrGreaterThan : Result := 1;
+   else
+      Result := 0;
+   end;
+end;
+
+// NaturalSort
+//
+procedure TScriptDynamicNativeVariantArray.NaturalSort;
+begin
+   if FArrayLength > 1 then
+      QuickSortVariant(PVariantArray(FData), 0, FArrayLength-1);
+end;
+
+// AddStrings
+//
+procedure TScriptDynamicNativeVariantArray.AddStrings(sl : TStrings);
+var
+   i, n : NativeInt;
+begin
+   n := FArrayLength;
+   SetArrayLength(n + sl.Count);
+   for i := 0 to sl.Count-1 do
+      VarCopySafe(FData[i+n], sl[i]);
+end;
+
+// AppendString
+//
+procedure TScriptDynamicNativeVariantArray.AppendString(index : NativeInt; const str : String);
+begin
+   VarCopySafe(FData[index], VariantToString(FData[index]) + str);
+end;
+
+// GetAsFloat
+//
+function TScriptDynamicNativeVariantArray.GetAsFloat(index : NativeInt) : Double;
+begin
+   Result := VariantToFloat(FData[index]);
+end;
+
+// SetAsFloat
+//
+procedure TScriptDynamicNativeVariantArray.SetAsFloat(index : NativeInt; const v : Double);
+begin
+   VarCopySafe(FData[index], v);
+end;
+
+// GetAsInteger
+//
+function TScriptDynamicNativeVariantArray.GetAsInteger(index : NativeInt) : Int64;
+begin
+   Result := VariantToInt64(FData[index]);
+end;
+
+// SetAsInteger
+//
+procedure TScriptDynamicNativeVariantArray.SetAsInteger(index : NativeInt; const v : Int64);
+begin
+   VarCopySafe(FData[index], v);
+end;
+
+// GetAsBoolean
+//
+function TScriptDynamicNativeVariantArray.GetAsBoolean(index : NativeInt) : Boolean;
+begin
+   Result := VariantToBool(FData[index]);
+end;
+
+// SetAsBoolean
+//
+procedure TScriptDynamicNativeVariantArray.SetAsBoolean(index : NativeInt; const v : Boolean);
+begin
+   VarCopySafe(FData[index], v);
+end;
+
+// SetAsVariant
+//
+procedure TScriptDynamicNativeVariantArray.SetAsVariant(index : NativeInt; const v : Variant);
+begin
+   VarCopySafe(FData[index], v);
+end;
+
+// EvalAsVariant
+//
+procedure TScriptDynamicNativeVariantArray.EvalAsVariant(index : NativeInt; var result : Variant);
+begin
+   VarCopySafe(result, FData[index]);
+end;
+
+// SetAsString
+//
+procedure TScriptDynamicNativeVariantArray.SetAsString(index : NativeInt; const v : String);
+begin
+   VarCopySafe(FData[index], v);
+end;
+
+// EvalAsString
+//
+procedure TScriptDynamicNativeVariantArray.EvalAsString(index : NativeInt; var result : String);
+begin
+   VariantToString(FData[index], result);
+end;
+
+// SetAsInterface
+//
+procedure TScriptDynamicNativeVariantArray.SetAsInterface(index : NativeInt; const v : IUnknown);
+begin
+   VarCopySafe(FData[index], v);
+end;
+
+// EvalAsInterface
+//
+procedure TScriptDynamicNativeVariantArray.EvalAsInterface(index : NativeInt; var result : IUnknown);
+begin
+   result := FData[index];
+end;
+
+// AddFromExpr
+//
+procedure TScriptDynamicNativeVariantArray.AddFromExpr(exec : TdwsExecution; valueExpr : TExprBase);
+var
+   v : Variant;
+begin
+   valueExpr.EvalAsVariant(exec, v);
+   Add(v);
+end;
+
+// SetFromExpr
+//
+function TScriptDynamicNativeVariantArray.SetFromExpr(index : NativeInt; exec : TdwsExecution; valueExpr : TExprBase) : Boolean;
+begin
+   if BoundsCheckPassed(index) then begin
+      valueExpr.EvalAsVariant(exec, FData[index]);
+      Result := True;
+   end else Result := False;
+end;
+
+// IsEmpty
+//
+function TScriptDynamicNativeVariantArray.IsEmpty(addr : NativeInt) : Boolean;
+begin
+   Result := VarIsEmpty(FData[addr]);
+end;
+
+// VarType
+//
+function TScriptDynamicNativeVariantArray.VarType(addr : NativeInt) : TVarType;
+begin
+   Result := VarType(FData[addr]);
+end;
+
+// HashCode
+//
+function TScriptDynamicNativeVariantArray.HashCode(addr : NativeInt; size : NativeInt) : Cardinal;
+begin
+   Result := DWSHashCode(FData, addr, size);
+end;
+
+// WriteToJSON
+//
+procedure TScriptDynamicNativeVariantArray.WriteToJSON(writer : TdwsJSONWriter);
+var
+   i : NativeInt;
+begin
+   writer.BeginArray;
+   for i := 0 to FArrayLength-1 do
+      writer.WriteVariant(FData[i]);
+   writer.EndArray;
+end;
+
+// InterfaceOffsets
+//
+class function TScriptDynamicNativeVariantArray.InterfaceOffsets : TDynamicArrayInterfaceToOffsets;
+var
+   instance : TScriptDynamicNativeVariantArray;
+   intf : IScriptDynArray;
+begin
+   instance := TScriptDynamicNativeVariantArray.Create(nil);
    intf := instance;
    Result.DataPtrOffset := NativeInt(@instance.FData) - NativeInt(intf);
    Result.ArrayLengthOffset := NativeInt(@instance.FArrayLength) - NativeInt(intf);
