@@ -30,8 +30,7 @@ unit dwsStringResult;
 interface
 
 uses
-  System.Classes, System.SysUtils,
-  dwsExprs, dwsSymbols, dwsComp, dwsUtils, dwsLegacy;
+  dwsExprs, dwsSymbols, dwsUtils;
 
 type
    TdwsStringResult = class(TdwsResult)
@@ -44,9 +43,9 @@ type
          constructor Create(resultType : TdwsResultType); override;
          destructor Destroy; override;
 
-         procedure AddString(const Str: String); override;
+         procedure AddString(const str : String); override;
          procedure Clear; override;
-         procedure SetStr(const Str: String);
+         procedure SetStr(const str : String);
 
          function ReadLn : String;
          function ReadChar : String;
@@ -91,7 +90,8 @@ implementation
 // ------------------------------------------------------------------
 
 uses
-   dwsFunctions, dwsStrings;
+   System.SysUtils,
+   dwsFunctions, dwsStrings, dwsLegacy;
 
 type
   TWriteFunction = class(TInternalFunctionWithExecute)
@@ -144,7 +144,7 @@ end;
 
 // AddString
 //
-procedure TdwsStringResult.AddString(const Str: String);
+procedure TdwsStringResult.AddString(const str : String);
 var
    buf : String;
 begin
@@ -162,7 +162,7 @@ end;
 
 // SetStr
 //
-procedure TdwsStringResult.SetStr(const Str: String);
+procedure TdwsStringResult.SetStr(const str : String);
 var
    buf : String;
 begin

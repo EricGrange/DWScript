@@ -24,9 +24,8 @@ unit dwsArrayExprs;
 interface
 
 uses
-   SysUtils,
-   dwsUtils, dwsDataContext, dwsExprs, dwsCompilerContext, dwsSymbols, dwsScriptSource,
-   dwsDynamicArrays, dwsCoreExprs;
+   dwsUtils, dwsDataContext, dwsExprs, dwsCompilerContext, dwsSymbols,
+   dwsScriptSource, dwsCoreExprs;
 
 type
 
@@ -750,9 +749,10 @@ implementation
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
 
-uses dwsStrings, dwsConstExprs, dwsArrayElementContext,
+uses
+   dwsStrings, dwsConstExprs, dwsArrayElementContext,
    dwsCompilerUtils, dwsSpecializationContext, dwsStack, dwsExprList,
-   dwsAssociativeArrays;
+   dwsAssociativeArrays, dwsDynamicArrays;
 
 type
    // this needs to be in a helper (or more precisely implemented at the top of this unit)

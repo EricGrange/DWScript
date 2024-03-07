@@ -21,8 +21,8 @@ unit dwsArrayElementContext;
 interface
 
 uses
-   System.Classes, System.SysUtils,
-   dwsSymbols, dwsDataContext, dwsErrors, dwsStrings, dwsUtils;
+   System.Classes,
+   dwsSymbols, dwsDataContext;
 
 type
    TArrayElementDataContext = class (TInterfacedObject, IDataContext)
@@ -103,7 +103,9 @@ implementation
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
 
-uses Variants;
+uses
+   System.SysUtils,
+   dwsStrings, dwsUtils;
 
 // ------------------
 // ------------------ TArrayElementDataContext ------------------
@@ -340,7 +342,9 @@ end;
 //
 procedure TArrayElementDataContext.SetNullVariant(addr : NativeInt);
 begin
-   SetAsVariant(addr, Null);
+   var null := Default(TVarData);
+   null.VType := varNull;
+   SetAsVariant(addr, Variant(null));
 end;
 
 // SetNilInterface

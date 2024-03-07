@@ -24,11 +24,10 @@ unit dwsComp;
 interface
 
 uses
-  System.Classes, System.SysUtils, System.TypInfo,
+  System.Classes, System.TypInfo, System.SysUtils,
   dwsCompiler, dwsExprs, dwsSymbols, dwsDataContext, dwsExprList, dwsScriptSource,
-  dwsFunctions, dwsLanguageExtension, dwsCompilerContext,
-  dwsTokenTypes, dwsUtils, dwsOperators, dwsUnitSymbols,
-  dwsXPlatform,
+  dwsFunctions, dwsLanguageExtension, dwsCompilerContext, dwsTokenTypes,
+  dwsUtils, dwsOperators, dwsUnitSymbols, dwsXPlatform,
   // Built-In functions
 {$IFNDEF DWS_NO_BUILTIN_FUNCTIONS}
   dwsMathFunctions, dwsStringFunctions, dwsTimeFunctions, dwsVariantFunctions,

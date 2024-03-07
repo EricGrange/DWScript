@@ -24,9 +24,9 @@ unit dwsArrayIndexOfExprs;
 interface
 
 uses
-   SysUtils,
-   dwsUtils, dwsDataContext, dwsExprs, dwsCompilerContext, dwsSymbols, dwsScriptSource,
-   dwsXPlatform, dwsDynamicArrays, dwsArrayExprs;
+   System.SysUtils,
+   dwsDataContext, dwsExprs, dwsCompilerContext, dwsSymbols, dwsScriptSource,
+   dwsArrayExprs;
 
 type
 
@@ -135,6 +135,8 @@ implementation
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
+
+uses dwsUtils, dwsDynamicArrays;
 
 // ------------------
 // ------------------ TArrayIndexOfExpr ------------------

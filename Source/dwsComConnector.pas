@@ -24,11 +24,10 @@ unit dwsComConnector;
 interface
 
 uses
-   System.Classes, System.Variants, System.SysUtils, System.Win.ComObj, Winapi.ActiveX,
-   dwsUtils, dwsDataContext, dwsExprList, dwsConnectorSymbols, dwsXPlatform,
-   dwsStrings, dwsFunctions, dwsStack, dwsMagicExprs, dwsErrors,
-   dwsExprs, dwsComp, dwsSymbols, dwsOperators, dwsUnitSymbols,
-   dwsCompilerUtils, dwsScriptSource, dwsArrayMethodKinds, dwsConvExprs;
+   System.Classes,
+   dwsUtils, dwsDataContext, dwsExprList, dwsConnectorSymbols,
+   dwsMagicExprs, dwsExprs, dwsComp, dwsSymbols, dwsOperators, dwsUnitSymbols,
+   dwsScriptSource;
 
 const
    COM_ConnectorCaption = 'COM Connector 2.0';
@@ -58,6 +57,11 @@ implementation
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
+
+uses
+    System.Win.ComObj, Winapi.ActiveX, System.SysUtils, System.Variants,
+    dwsStrings, dwsXPlatform, dwsFunctions, dwsCompilerUtils,
+    dwsArrayMethodKinds, dwsConvExprs;
 
 const
    MaxDispArgs = 64;
