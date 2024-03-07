@@ -99,3 +99,8 @@
    {$DEFINE WIN64}
 {$IFEND}
 
+{$IFOPT R+}
+   {$DEFINE RANGEON}
+{$ELSE}
+   {$UNDEF RANGEON}
+{$ENDIF}
