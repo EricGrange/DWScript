@@ -21,7 +21,7 @@ unit dwsDataContext;
 interface
 
 uses
-   dwsXPlatform, dwsUtils, dwsXXHash;
+   dwsUtils;
 
 type
 
@@ -308,7 +308,7 @@ implementation
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
 
-uses Variants;
+uses System.Variants, dwsXXHash;
 
 // DWSCopyPVariants
 //

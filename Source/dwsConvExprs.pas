@@ -24,10 +24,9 @@ unit dwsConvExprs;
 interface
 
 uses
-   System.Variants, System.SysUtils,
-   dwsUtils, dwsDataContext, dwsStack, dwsXPlatform, dwsErrors, dwsStrings,
-   dwsExprs, dwsExprList, dwsConstExprs, dwsSymbols, dwsUnitSymbols,
-   dwsScriptSource, dwsCompilerContext;
+   System.SysUtils,
+   dwsUtils, dwsDataContext, dwsStack, dwsExprs, dwsExprList,
+   dwsConstExprs, dwsSymbols, dwsScriptSource, dwsCompilerContext;
 
 type
 
@@ -227,7 +226,7 @@ implementation
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
 
-uses dwsCoreExprs, dwsConnectorSymbols, dwsDynamicArrays;
+uses dwsCoreExprs, dwsConnectorSymbols, dwsDynamicArrays, dwsErrors, dwsStrings;
 
 // ------------------
 // ------------------ TConvExpr ------------------
@@ -549,10 +548,8 @@ var
    end;
 
    procedure ConvDirectly;
-   var
-      i : Integer;
    begin
-      for i := 0 to arr.ElementCount-1 do
+      for var i := 0 to arr.ElementCount-1 do
          result.SetFromExpr(i, exec, arr.Elements[i]);
    end;
 

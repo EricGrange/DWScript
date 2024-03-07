@@ -3,7 +3,7 @@ unit UdwsTabularTests;
 interface
 
 uses
-   Classes, SysUtils, IOUtils,
+   System.Classes, System.SysUtils, System.IOUtils,
    dwsXPlatformTests, dwsComp, dwsCompiler, dwsExprs, dwsErrors,
    dwsDataBaseLibModule, dwsXPlatform, dwsSymbols, dwsUtils,
    dwsSynSQLiteDatabase, dwsCompilerContext, dwsTabularLibModule,
