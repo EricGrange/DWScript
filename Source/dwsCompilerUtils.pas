@@ -377,14 +377,14 @@ begin
          Result:=CreateMethodExpr(context, TMethodSymbol(funcSym),
                                   instanceExpr, rkObjRef, aScriptPos, options)
       end else if structSym<>nil then begin
-         instanceExpr:=TConstExpr.CreateValue(aScriptPos, structSym.MetaSymbol, Int64(structSym));
+         instanceExpr := TConstIntExpr.Create(aScriptPos, structSym.MetaSymbol, Int64(structSym));
          Result:=CreateMethodExpr(context, TMethodSymbol(funcSym),
                                   instanceExpr, rkClassOfRef, aScriptPos, options)
       end else begin
          // static method
          structSym:=TMethodSymbol(funcSym).StructSymbol;
          if structSym is TStructuredTypeSymbol then begin
-            instanceExpr:=TConstExpr.CreateValue(aScriptPos, structSym.MetaSymbol, Int64(structSym));
+            instanceExpr := TConstIntExpr.Create(aScriptPos, structSym.MetaSymbol, Int64(structSym));
             Result:=CreateMethodExpr(context, TMethodSymbol(funcSym),
                                      instanceExpr, rkClassOfRef, aScriptPos, options)
          end else begin

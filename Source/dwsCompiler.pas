@@ -5215,8 +5215,8 @@ begin
 
    end else begin
 
-      constExpr := TConstExpr.CreateValue(FTok.HotPos, baseType.MetaSymbol, Int64(baseType));
-      Result:=ReadSymbol(constExpr, IsWrite, expecting);
+      constExpr := TConstIntExpr.Create(FTok.HotPos, baseType.MetaSymbol, Int64(baseType));
+      Result := ReadSymbol(constExpr, IsWrite, expecting);
 
    end;
 end;
@@ -5227,7 +5227,7 @@ function TdwsCompiler.ReadInterfaceSymbolName(baseType : TInterfaceSymbol; isWri
 var
    constExpr : TTypedExpr;
 begin
-   constExpr := TConstExpr.CreateValue(cNullPos, baseType, Int64(baseType));
+   constExpr := TConstIntExpr.Create(cNullPos, baseType, Int64(baseType));
    Result := ReadSymbol(constExpr, IsWrite, expecting);
 end;
 
@@ -5237,7 +5237,7 @@ function TdwsCompiler.ReadRecordSymbolName(baseType : TRecordSymbol; isWrite : B
 var
    constExpr : TTypedExpr;
 begin
-   constExpr := TConstExpr.CreateValue(cNullPos, baseType.MetaSymbol, Int64(baseType));
+   constExpr := TConstIntExpr.Create(cNullPos, baseType.MetaSymbol, Int64(baseType));
    Result:=ReadSymbol(constExpr, IsWrite, expecting);
 end;
 
@@ -7092,7 +7092,7 @@ begin
    if progMeth <> nil then begin
       if progMeth.IsStatic then begin
          structSym := progMeth.StructSymbol;
-         selfExpr := TConstExpr.CreateValue(FTok.HotPos, structSym.MetaSymbol, Int64(structSym));
+         selfExpr := TConstIntExpr.Create(FTok.HotPos, structSym.MetaSymbol, Int64(structSym));
          refKind := rkClassOfRef;
       end else if progMeth.SelfSym is TConstByRefParamSymbol then begin
          selfExpr := GetConstByRefParamExpr(TConstByRefParamSymbol(progMeth.SelfSym));
@@ -7106,7 +7106,7 @@ begin
       end;
    end else begin
       structSym := methodSym.StructSymbol;
-      selfExpr := TConstExpr.CreateValue(FTok.HotPos, structSym.MetaSymbol, Int64(structSym));
+      selfExpr := TConstIntExpr.Create(FTok.HotPos, structSym.MetaSymbol, Int64(structSym));
       refKind := rkClassOfRef;
    end;
 
@@ -8881,7 +8881,7 @@ begin
       end;
 
       if sym.IsClassSymbol then
-         baseExpr := TConstExpr.CreateValue(hotPos, classSym.MetaSymbol, Int64(classSym))
+         baseExpr := TConstIntExpr.Create(hotPos, classSym.MetaSymbol, Int64(classSym))
       else baseExpr := TVarExpr.CreateTyped(FCompilerContext, hotPos, TDataSymbol(sym));
    end;
 
@@ -8890,7 +8890,7 @@ begin
    if classSym.IsStatic then begin
       OrphanAndNil(baseExpr);
       FMsgs.AddCompilerErrorFmt(hotPos, CPE_ClassIsStaticNoInstantiation, [classSym.Name]);
-      Result:=TConstExpr.CreateValue(cNullPos, classSym, 0);
+      Result:=TConstIntExpr.Create(cNullPos, classSym, 0);
       Exit;
    end;
    if (restrictTo<>nil) and not classSym.IsOfType(restrictTo) then
@@ -14601,7 +14601,7 @@ function TdwsCompiler.ReadTypeExpr(const namePos : TScriptPos; typeSym : TTypeSy
 
    function CreateClassSymbolExpr(typeSym : TTypeSymbol) : TConstExpr;
    begin
-      Result:=TConstExpr.CreateValue(namePos, typeSym, Int64(TClassOfSymbol(typeSym).TypClassSymbol));
+      Result := TConstIntExpr.Create(namePos, typeSym, Int64(TClassOfSymbol(typeSym).TypClassSymbol));
    end;
 
 var
@@ -14811,7 +14811,7 @@ begin
                      if expr<>nil then begin
                         if expr.Typ is TStructuredTypeSymbol then
                            expr:=TObjToClassTypeExpr.Create(FCompilerContext, namePos, expr)
-                     end else expr:=TConstExpr.CreateValue(namePos, meta, Int64(bestHelper.ForType));
+                     end else expr := TConstIntExpr.Create(namePos, meta, Int64(bestHelper.ForType));
                   end else begin
                      OrphanAndNil(expr);
                   end;
@@ -14862,7 +14862,7 @@ begin
          structSym:=progMeth.StructSymbol;
          if structSym.MetaSymbol = nil then
             Exit(nil)
-         else selfExpr := TConstExpr.CreateValue(namePos, structSym.MetaSymbol, Int64(structSym));
+         else selfExpr := TConstIntExpr.Create(namePos, structSym.MetaSymbol, Int64(structSym));
       end else if progMeth.SelfSym=nil then
          Exit(nil)
       else if progMeth.SelfSym.ClassType = TConstByRefParamSymbol then

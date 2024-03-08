@@ -5917,12 +5917,12 @@ end;
 
 function TTypedExprList.GetExpr(const x: Integer): TTypedExpr;
 begin
-  Result := TTypedExpr(FList.List[x]);
+   Result := TTypedExpr(FList.List[x]);
 end;
 
 procedure TTypedExprList.SetExpr(const x: Integer; const Value: TTypedExpr);
 begin
-  FList.List[x] := Value;
+   FList.List[x] := Value;
 end;
 
 // ------------------
