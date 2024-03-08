@@ -63,7 +63,8 @@ uses
       {$ENDIF}
       {$IFDEF UNIX}
          {$IFDEF POSIXSYSLOG}Posix.Syslog,{$ENDIF}
-         Posix.Unistd, Posix.Time, Posix.Pthread, Posix.Base, Posix.Stdlib, Posix.Stdio, System.Internal.ICU,
+         System.Internal.ICU, System.SyncObjs,
+         Posix.Unistd, Posix.Time, Posix.Pthread, Posix.Base, Posix.Stdlib, Posix.Stdio,
          dwsXPlatformTimer
       {$ENDIF}
    {$ENDIF}
@@ -482,7 +483,7 @@ implementation
 // ------------------------------------------------------------------
 
 uses
-   System.Masks, System.SyncObjs, System.Variants, System.StrUtils;
+   System.Masks, System.Variants, System.StrUtils;
 
 // FileMemoryMapReadOnly
 //
