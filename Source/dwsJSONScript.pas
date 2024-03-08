@@ -164,42 +164,47 @@ end;
 // StringifyUnknown
 //
 class procedure JSONScript.StringifyUnknown(exec : TdwsExecution; writer : TdwsJSONWriter; const unk : IUnknown);
-var
-   getSelf : IGetSelf;
-   selfObj : TObject;
-   writeable : IJSONWriteAble;
-   scriptObj : IScriptObj;
-   scryptDynArray : IScriptDynArray;
-begin
-   if unk = nil then
 
-      writer.WriteNull
-
-   else if unk.QueryInterface(IJSONWriteAble, writeable) = S_OK then begin
-
-      writeable.WriteToJSON(writer);
-
-   end else if unk.QueryInterface(IScriptDynArray, scryptDynArray) = S_OK then begin
-
-      StringifyDynamicArray(exec, writer, scryptDynArray);
-
-   end else if unk.QueryInterface(IGetSelf, getSelf) = S_OK then begin
-
-      selfObj:=getSelf.GetSelf;
+   procedure StringifyIGetSelf(const getSelf : IGetSelf);
+   var
+      selfObj : TObject;
+      scriptObj : IScriptObj;
+   begin
+      selfObj := getSelf.GetSelf;
       if selfObj is TScriptObjInstance then begin
 
-         scriptObj:=TScriptObjInstance(selfObj);
+         scriptObj := TScriptObjInstance(selfObj);
          StringifyClass(exec, writer, scriptObj);
 
       end else if selfObj is TScriptAssociativeArray then begin
 
          StringifyAssociativeArray(exec, writer, TScriptAssociativeArray(selfObj))
 
-      end else if selfObj<>nil then begin
+      end else if selfObj <> nil then begin
 
          writer.WriteString(selfObj.ToString)
 
       end else writer.WriteString('null');
+   end;
+
+var
+   intf : IInterface;
+begin
+   if unk = nil then
+
+      writer.WriteNull
+
+   else if unk.QueryInterface(IJSONWriteAble, intf) = S_OK then begin
+
+      IJSONWriteAble(intf).WriteToJSON(writer);
+
+   end else if unk.QueryInterface(IScriptDynArray, intf) = S_OK then begin
+
+      StringifyDynamicArray(exec, writer, IScriptDynArray(intf));
+
+   end else if unk.QueryInterface(IGetSelf, intf) = S_OK then begin
+
+      StringifyIGetSelf(IGetSelf(intf));
 
    end else writer.WriteString('IUnknown');
 end;

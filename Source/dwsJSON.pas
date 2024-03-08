@@ -16,12 +16,13 @@
 unit dwsJSON;
 
 {$I dws.inc}
+{$R-}
 
 interface
 
 uses
-   System.Classes, System.SysUtils, System.Math, System.Variants,
-   dwsUtils, dwsXPlatform, dwsXXHash, dwsUnicode;
+   System.Classes, System.SysUtils,
+   dwsUtils, dwsUnicode;
 
 type
 
@@ -527,6 +528,10 @@ implementation
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
+
+uses
+   System.Variants, System.Math,
+   dwsXXHash, dwsXPlatform;
 
 var
    vJSONFormatSettings : TFormatSettings;
@@ -1726,13 +1731,13 @@ end;
 // WriteTo
 //
 procedure TdwsJSONObject.WriteTo(writer : TdwsJSONWriter);
-var
-   i : Integer;
 begin
    writer.BeginObject;
-   for i:=0 to ElementCount-1 do begin
-      writer.WriteName(FItems^[i].Name);
-      FItems^[i].Value.WriteTo(writer);
+   var pair := PdwsJSONPair(FItems);
+   for var i := 0 to FCount-1 do begin
+      writer.WriteName(pair.Name);
+      pair.Value.WriteTo(writer);
+      Inc(pair);
    end;
    writer.EndObject;
 end;
@@ -1776,7 +1781,7 @@ end;
 //
 procedure TdwsJSONObject.SetCapacity(newCapacity : Integer);
 begin
-   FCapacity:=newCapacity;
+   FCapacity := newCapacity;
    ReallocMem(FItems, FCapacity*SizeOf(TdwsJSONPair));
    FillChar(FItems[FCount], (FCapacity-FCount)*SizeOf(TdwsJSONPair), 0);
 end;
@@ -1793,13 +1798,14 @@ end;
 procedure TdwsJSONObject.AddHashed(hash : Cardinal; const aName : UnicodeString; aValue : TdwsJSONValue);
 begin
    if aValue = nil then
-      aValue := AllocImmediate;
-   Assert(aValue.Owner = nil);
-   aValue.FOwner:=Self;
-   if FCount=FCapacity then Grow;
-   FItems^[FCount].Value:=aValue;
-   FItems^[FCount].Name:=aName;
-   FItems^[FCount].Hash:=hash;
+      aValue := AllocImmediate
+   else Assert(aValue.Owner = nil);
+   aValue.FOwner := Self;
+   if FCount = FCapacity then Grow;
+   var pair : PdwsJSONPair := @FItems[FCount];
+   pair.Value := aValue;
+   pair.Name := aName;
+   pair.Hash := hash;
    Inc(FCount);
 end;
 
@@ -2090,10 +2096,8 @@ end;
 // IndexOfHashedName
 //
 function TdwsJSONObject.IndexOfHashedName(hash : Cardinal; const name : UnicodeString) : Integer;
-var
-   i : Integer;
 begin
-   for i:=0 to FCount-1 do begin
+   for var i := 0 to FCount-1 do begin
       if (FItems^[i].Hash=hash) and (FItems^[i].Name=name) then
          Exit(i);
    end;
@@ -2150,12 +2154,10 @@ end;
 // WriteTo
 //
 procedure TdwsJSONArray.WriteTo(writer : TdwsJSONWriter);
-var
-   i : Integer;
 begin
    writer.BeginArray;
-   for i:=0 to ElementCount-1 do
-      Elements[i].WriteTo(writer);
+   for var i := 0 to FCount-1 do
+      FElements[i].WriteTo(writer);
    writer.EndArray;
 end;
 
@@ -2985,12 +2987,11 @@ end;
 procedure TdwsJSONWriter.EndObject;
 begin
    if FState in [wsObject, wsObjectName] then begin
-      Assert(FStateStack.Count>0);
-      FState:=TdwsJSONWriterState(FStateStack.Peek);
-      FStateStack.Pop;
+      Assert(FStateStack.Count > 0);
+      FState := TdwsJSONWriterState(FStateStack.PeekAndPop);
       FStream.WriteChar('}');
       AfterWriteImmediate;
-   end else raise EdwsJSONWriterError.Create('Value expected');
+   end else raise EdwsJSONWriterError.Create('Value expected or not in object');
 end;
 
 // BeginArray
@@ -3015,12 +3016,12 @@ end;
 //
 procedure TdwsJSONWriter.EndArray;
 begin
-   Assert(FState in [wsArray, wsArrayValue]);
-   Assert(FStateStack.Count>0);
-   FState:=TdwsJSONWriterState(FStateStack.Peek);
-   FStateStack.Pop;
-   FStream.WriteChar(']');
-   AfterWriteImmediate;
+   if FState in [wsArray, wsArrayValue] then begin
+      Assert(FStateStack.Count>0);
+      FState := TdwsJSONWriterState(FStateStack.PeekAndPop);
+      FStream.WriteChar(']');
+      AfterWriteImmediate;
+   end else raise EdwsJSONWriterError.Create('Not in array');
 end;
 
 // WriteName
@@ -3363,11 +3364,11 @@ procedure TdwsJSONWriter.AfterWriteImmediate;
 begin
    case FState of
       wsNone :
-         FState:=wsDone;
+         FState := wsDone;
       wsArray :
-         FState:=wsArrayValue;
+         FState := wsArrayValue;
       wsObjectValue :
-         FState:=wsObjectName;
+         FState := wsObjectName;
    end;
 end;
 
