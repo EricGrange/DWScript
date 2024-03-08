@@ -1428,7 +1428,6 @@ type
 
          function GetExpr(const x: Integer): TTypedExpr;
          procedure SetExpr(const x: Integer; const Value: TTypedExpr);
-         function GetCount : Integer;
 
       public
          destructor Destroy; override;
@@ -1443,7 +1442,7 @@ type
          procedure Clear; inline;
 
          property Expr[const x: Integer]: TTypedExpr read GetExpr write SetExpr; default;
-         property Count : Integer read GetCount;
+         property Count : Integer read FList.FCount;
          property Table : TSymbolTable read FTable write FTable;
          property DefaultExpected : TParamSymbol read FDefaultExpected write FDefaultExpected;
    end;
@@ -5924,13 +5923,6 @@ end;
 procedure TTypedExprList.SetExpr(const x: Integer; const Value: TTypedExpr);
 begin
   FList.List[x] := Value;
-end;
-
-// GetCount
-//
-function TTypedExprList.GetCount : Integer;
-begin
-   Result:=FList.Count;
 end;
 
 // ------------------

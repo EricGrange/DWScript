@@ -426,12 +426,10 @@ type
          FParents : TTightList;
          FFlags : TSymbolTableFlags;
 
-         function GetParentCount : Integer;
          function GetParents(Index: Integer) : TSymbolTable; inline;
 
       protected
          function GetSymbol(Index: Integer): TSymbol; inline;
-         function GetCount : Integer; inline;
 
          procedure SortSymbols(minIndex, maxIndex : Integer);
 
@@ -493,9 +491,9 @@ type
          procedure Initialize(const msgs : TdwsCompileMessageList); virtual;
 
          property AddrGenerator : TAddrGenerator read FAddrGenerator;
-         property Count : Integer read GetCount;
+         property Count : Integer read FSymbols.FCount;
          property Symbols[x : Integer] : TSymbol read GetSymbol; default;
-         property ParentCount : Integer read GetParentCount;
+         property ParentCount : Integer read FParents.FCount;
          property Parents[Index : Integer] : TSymbolTable read GetParents;
 
          type
@@ -3060,13 +3058,12 @@ procedure TCompositeTypeSymbol.CheckMethodsImplemented(const msgs : TdwsCompileM
    end;
 
 var
-   i : Integer;
    methSym : TMethodSymbol;
    msg : TScriptMessage;
    errorList : TTightList;
 begin
    errorList.Initialize;
-   for i := 0 to FMembers.Count-1 do begin
+   for var i := 0 to FMembers.Count-1 do begin
       if FMembers[i] is TMethodSymbol then begin
          methSym := TMethodSymbol(FMembers[i]);
          if methSym.ClassType=TAliasMethodSymbol then continue;
@@ -3087,7 +3084,7 @@ begin
    end;
    if errorList.Count > 0 then begin
       errorList.Sort(CompareSourceMethSymbolByDeclarePos);
-      for i := 0 to errorList.Count-1 do begin
+      for var i := 0 to errorList.Count-1 do begin
          methSym := TMethodSymbol(errorList.List[i]);
          msg:=msgs.AddCompilerErrorFmt(methSym.DeclarationPosition, CPE_MethodNotImplemented,
                                        [methSym.Name, methSym.StructSymbol.Caption]);
@@ -6882,13 +6879,6 @@ begin
    inherited;
 end;
 
-// GetCount
-//
-function TSymbolTable.GetCount : Integer;
-begin
-   Result:=FSymbols.Count
-end;
-
 // GetSymbol
 //
 function TSymbolTable.GetSymbol(index : Integer) : TSymbol;
@@ -7431,13 +7421,6 @@ end;
 procedure TSymbolTable.ClearParents;
 begin
    FParents.Clear;
-end;
-
-// GetParentCount
-//
-function TSymbolTable.GetParentCount: Integer;
-begin
-   Result := FParents.Count
 end;
 
 // GetParents

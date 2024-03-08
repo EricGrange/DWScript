@@ -1717,7 +1717,7 @@ type
 
          procedure AddDoExpr(expr : TExceptDoExpr);
          property DoExpr[i : Integer] : TExceptDoExpr read GetDoExpr;
-         function DoExprCount : Integer;
+         property DoExprCount : Integer read FDoExprs.FCount;
 
          procedure EnumerateSteppableExprs(const callback : TExprBaseProc); override;
 
@@ -7811,13 +7811,6 @@ end;
 procedure TExceptExpr.AddDoExpr(expr : TExceptDoExpr);
 begin
    FDoExprs.Add(expr);
-end;
-
-// DoExprCount
-//
-function TExceptExpr.DoExprCount : Integer;
-begin
-   Result:=FDoExprs.Count;
 end;
 
 // EnumerateSteppableExprs

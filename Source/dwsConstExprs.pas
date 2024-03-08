@@ -171,7 +171,7 @@ type
          procedure GetDataPtr(exec : TdwsExecution; var result : IDataContext); override;
 
          property Elements[idx : Integer] : TTypedExpr read GetElement;
-         property ElementCount : Integer read FElementExprs.FCount;// GetElementCount;
+         property ElementCount : Integer read FElementExprs.FCount;
          procedure AddElementExpr(const scriptPos : TScriptPos; context : TdwsCompilerContext; ElementExpr: TTypedExpr);
          procedure AddElementRange(context : TdwsCompilerContext; const range1, range2 : Int64; typ : TTypeSymbol);
          procedure Prepare(context : TdwsCompilerContext; elementTyp : TTypeSymbol);
