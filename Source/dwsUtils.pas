@@ -279,9 +279,10 @@ type
 
       public
          procedure Push(item : TRefCountedObject); inline;
-         function  Peek : TRefCountedObject;  overload; inline;
+         function  Peek : TRefCountedObject; overload; inline;
          function  Peek(n : Integer) : TRefCountedObject; overload;
          procedure Pop; inline;
+         function  PeekAndPop : TRefCountedObject; inline;
 
          procedure Clear; inline;
          procedure Clean;
@@ -2312,7 +2313,7 @@ procedure VariantToString(const v : Variant; var s : String);
       Result := Format('IDispatch (%p)', [disp]);
    end;
 
-   procedure UnknownAsString(const unknown : IUnknown; var Result : String);
+   procedure UnknownAsString(const unknown : IUnknown; var result : String);
    var
       intf : IGetSelf;
    begin
@@ -5696,6 +5697,17 @@ end;
 procedure TTightStack.Pop;
 begin
    Dec(FCount);
+end;
+
+// PeekAndPop
+//
+function TTightStack.PeekAndPop : TRefCountedObject;
+begin
+   var n := FCount;
+   if n > 0 then begin
+      Result := FList[n-1];
+      FCount := n-1;
+   end else Result := nil;
 end;
 
 // Clear
