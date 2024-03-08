@@ -38,11 +38,14 @@ type
       fomFastSequentialRead // opens file for sequential read-only, return nil if doesn't exist
       );
 
-   EdwsFileSystemException = class (Exception)
-   end;
+   TdwsFileSystemTextFormat = (
+      fstfUTF8_with_BOM,
+      fstfUTF8_no_BOM
+   );
 
-   EdwsFSInvalidFileName = class (EdwsFileSystemException)
-   end;
+   EdwsFileSystemException = class (Exception);
+
+   EdwsFSInvalidFileName = class (EdwsFileSystemException);
 
    TFileStreamOpenedEvent = procedure (Sender : TObject; const fileName : TFileName; const mode : TdwsFileOpenMode) of object;
 
@@ -51,10 +54,16 @@ type
    IdwsFileSystem = interface
       ['{D49F19A9-46C6-43E1-AF29-BDB8602A098C}']
       function FileExists(const fileName : TFilename) : Boolean;
+      function DirectoryExists(const directoryName : TFilename) : Boolean;
+      function ForceDirectories(const directoryName : TFilename) : Boolean;
+
       function FindFileName(const fileName : TFileName) : TFileName;
       function OpenFileStream(const fileName : TFilename; const mode : TdwsFileOpenMode) : TStream;
       function ValidateFileName(const fileName : TFilename) : TFilename;
+      function FileTimeStamp(const fileName : TFilename) : TdwsDateTime;
+
       function LoadTextFile(const fileName : TFilename) : UnicodeString;
+      procedure SaveTextFile(const fileName : TFileName; const strData : String; fmt : TdwsFileSystemTextFormat);
 
       function GetSearchPaths : TStrings;
       procedure SetSearchPaths(const val : TStrings);
@@ -81,9 +90,14 @@ type
 
          function FindFileName(const fileName : TFileName) : TFileName; virtual; abstract;
          function FileExists(const fileName : TFilename) : Boolean; virtual; abstract;
+         function DirectoryExists(const directoryName : TFilename) : Boolean; virtual; abstract;
+         function ForceDirectories(const directoryName : TFilename) : Boolean; virtual; abstract;
          function OpenFileStream(const fileName : TFilename; const mode : TdwsFileOpenMode) : TStream; virtual; abstract;
          function ValidateFileName(const fileName : TFilename) : TFilename; virtual; abstract;
+         function FileTimeStamp(const fileName : TFilename) : TdwsDateTime; virtual; abstract;
+
          function LoadTextFile(const fileName : TFilename) : UnicodeString;
+         procedure SaveTextFile(const fileName : TFileName; const strData : String; fmt : TdwsFileSystemTextFormat);
 
          property OnFileStreamOpened : TFileStreamOpenedEvent read FOnFileStreamOpened write FOnFileStreamOpened;
          property SearchPaths : TStrings read FSearchPaths write SetSearchPaths;
@@ -96,8 +110,11 @@ type
       public
          function FindFileName(const fileName : TFileName) : TFileName; override;
          function FileExists(const fileName : TFilename) : Boolean; override;
+         function DirectoryExists(const directoryName : TFilename) : Boolean; override;
+         function ForceDirectories(const directoryName : TFilename) : Boolean; override;
          function OpenFileStream(const fileName : TFilename; const mode : TdwsFileOpenMode) : TStream; override;
          function ValidateFileName(const fileName : TFilename) : TFilename; override;
+         function FileTimeStamp(const fileName : TFilename) : TdwsDateTime; override;
    end;
 
    // TdwsOSFileSystem
@@ -109,6 +126,9 @@ type
 
          function FindFileName(const fileName : TFileName) : TFileName; override;
          function FileExists(const fileName : TFilename) : Boolean; override;
+         function DirectoryExists(const directoryName : TFilename) : Boolean; override;
+         function ForceDirectories(const directoryName : TFilename) : Boolean; override;
+         function FileTimeStamp(const fileName : TFilename) : TdwsDateTime; override;
          function OpenFileStream(const fileName : TFilename; const mode : TdwsFileOpenMode) : TStream; override;
    end;
 
@@ -233,10 +253,8 @@ end;
 // LoadTextFile
 //
 function TdwsBaseFileSystem.LoadTextFile(const fileName : TFilename) : UnicodeString;
-var
-   stream : TStream;
 begin
-   stream := OpenFileStream(fileName, fomFastSequentialRead);
+   var stream := OpenFileStream(fileName, fomFastSequentialRead);
    if stream <> nil then begin
       try
          Result := LoadTextFromStream(stream);
@@ -244,6 +262,34 @@ begin
          stream.Free;
       end;
    end else Result := '';
+end;
+
+// SaveTextFile
+//
+procedure TdwsBaseFileSystem.SaveTextFile(const fileName : TFileName; const strData : String; fmt : TdwsFileSystemTextFormat);
+const
+   cUTF8BOM : array [0..2] of Byte = ( $EF, $BB, $BF );
+var
+   utf8 : RawByteString;
+begin
+   var stream := OpenFileStream(fileName, fomCreate);
+   if stream = nil then
+      raise EdwsFileSystemException.Create('SaveTextFile cannot open stream');
+   try
+      if strData <> '' then begin
+         utf8 := UTF8Encode(strData);
+         case fmt of
+            fstfUTF8_with_BOM :
+               stream.Write(cUTF8BOM[0], 3);
+            fstfUTF8_no_BOM: ;
+         else
+            Assert(False);
+         end;
+         stream.Write(Pointer(utf8)^, Length(utf8));
+      end;
+   finally
+      stream.Free;
+   end;
 end;
 
 // GetSearchPaths
@@ -271,6 +317,20 @@ begin
    Result:=False;
 end;
 
+// DirectoryExists
+//
+function TdwsNullFileSystem.DirectoryExists(const directoryName : TFilename) : Boolean;
+begin
+   Result := False;
+end;
+
+// ForceDirectories
+//
+function TdwsNullFileSystem.ForceDirectories(const directoryName : TFilename) : Boolean;
+begin
+   Result := False;
+end;
+
 // OpenFileStream
 //
 function TdwsNullFileSystem.OpenFileStream(const fileName : TFilename; const mode : TdwsFileOpenMode) : TStream;
@@ -283,6 +343,13 @@ end;
 function TdwsNullFileSystem.ValidateFileName(const fileName : TFilename) : TFilename;
 begin
    Result:='';
+end;
+
+// FileTimeStamp
+//
+function TdwsNullFileSystem.FileTimeStamp(const fileName : TFilename) : TdwsDateTime;
+begin
+   Result := Default(TdwsDateTime);
 end;
 
 // FindFileName
@@ -333,6 +400,36 @@ var
 begin
    validFileName := ValidateFileName(fileName);
    Result := System.SysUtils.FileExists(validFileName);
+end;
+
+// DirectoryExists
+//
+function TdwsOSFileSystem.DirectoryExists(const directoryName : TFilename) : Boolean;
+var
+   validDirectoryName : TFilename;
+begin
+   validDirectoryName := ValidateFileName(directoryName);
+   Result := System.SysUtils.DirectoryExists(validDirectoryName);
+end;
+
+// ForceDirectories
+//
+function TdwsOSFileSystem.ForceDirectories(const directoryName : TFilename) : Boolean;
+var
+   validDirectoryName : TFilename;
+begin
+   validDirectoryName := ValidateFileName(directoryName);
+   Result := System.SysUtils.ForceDirectories(directoryName);
+end;
+
+// FileTimeStamp
+//
+function TdwsOSFileSystem.FileTimeStamp(const fileName : TFilename) : TdwsDateTime;
+var
+   validFileName : TFilename;
+begin
+   validFileName := ValidateFileName(fileName);
+   Result := FileDateTime(validFileName);
 end;
 
 // OpenFileStream

@@ -525,7 +525,8 @@ begin
   { TODO : Check unix implementation }
   raise Exception.Create('not implemented');
 end;
-{$endif}
+{$endif}
+
 
 // FileUnMap
 //
@@ -550,7 +551,8 @@ begin
   { TODO : Check unix implementation }
   raise Exception.Create('not implemented');
 end;
-{$endif}
+{$endif}
+
 // DetectEncoding
 //
 function TdwsMemoryMappedFile.DetectEncoding(var encoding : TEncoding) : Integer;
@@ -663,7 +665,8 @@ end;
 begin
   Result := Trunc(UTCDateTime*86400)-Int64(25569)*86400;
 end;
-{$endif}
+{$endif}
+
 // EpochTimeStamp
 //
 function EpochTimeStamp : Int64;
@@ -686,7 +689,8 @@ begin
   { TODO : Check unix implementation }
   raise Exception.Create('not implemented');
 end;
-{$endif}
+{$endif}
+
 {$IFNDEF LINUX}
 type
    TDynamicTimeZoneInformation = record
@@ -922,7 +926,8 @@ begin
   { TODO : Check unix implementation }
   raise Exception.Create('not implemented');
 end;
-{$endif}
+{$endif}
+
 // UnicodeCompareP
 //
 function UnicodeCompareP(p1, p2 : PWideChar; n : Integer) : Integer; overload;
@@ -2307,7 +2312,8 @@ begin
    Result := Winapi.Windows.SetEndOfFile(hFile);
    {$else}
    Result := (ftruncate(hFile,lseek(hfile, 0, SEEK_CUR)) = 0);
-   {$endif}end;
+   {$endif}
+end;
 
 // FileCopy
 //
