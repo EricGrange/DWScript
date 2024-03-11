@@ -54,26 +54,36 @@ type
    IdwsFileSystem = interface
       ['{D49F19A9-46C6-43E1-AF29-BDB8602A098C}']
       function FileExists(const fileName : TFilename) : Boolean;
-      function DirectoryExists(const directoryName : TFilename) : Boolean;
-      function ForceDirectories(const directoryName : TFilename) : Boolean;
 
       function FindFileName(const fileName : TFileName) : TFileName;
       function OpenFileStream(const fileName : TFilename; const mode : TdwsFileOpenMode) : TStream;
       function ValidateFileName(const fileName : TFilename) : TFilename;
-      function FileTimeStamp(const fileName : TFilename) : TdwsDateTime;
 
       function LoadTextFile(const fileName : TFilename) : UnicodeString;
-      procedure SaveTextFile(const fileName : TFileName; const strData : String; fmt : TdwsFileSystemTextFormat);
 
       function GetSearchPaths : TStrings;
       procedure SetSearchPaths(const val : TStrings);
       property SearchPaths : TStrings read GetSearchPaths write SetSearchPaths;
    end;
 
+   // IdwsFileSystemRW  (work in progress, not stable yet)
+   //
+   IdwsFileSystemRW = interface (IdwsFileSystem)
+      ['{2A9B3826-4A52-4DB4-98B9-F7A3F97814EF}']
+      function DirectoryExists(const directoryName : TFilename) : Boolean;
+      function CreateDirectory(const directoryName : TFilename) : Boolean;
+      function DeleteDirectory(const directoryName : TFilename) : Boolean;
+      function ForceDirectories(const directoryName : TFilename) : Boolean;
+
+      function FileTimeStamp(const fileName : TFilename) : TdwsDateTime;
+
+      procedure SaveTextFile(const fileName : TFileName; const strData : String; fmt : TdwsFileSystemTextFormat);
+   end;
+
    // TdwsBaseFileSystem
    //
    {: Minimal virtualized filesystem interface. }
-   TdwsBaseFileSystem = class abstract (TInterfacedObject, IdwsFileSystem)
+   TdwsBaseFileSystem = class abstract (TInterfacedObject, IdwsFileSystem, IdwsFileSystemRW)
       private
          FOnFileStreamOpened : TFileStreamOpenedEvent;
          FSearchPaths : TStrings;
@@ -91,6 +101,8 @@ type
          function FindFileName(const fileName : TFileName) : TFileName; virtual; abstract;
          function FileExists(const fileName : TFilename) : Boolean; virtual; abstract;
          function DirectoryExists(const directoryName : TFilename) : Boolean; virtual; abstract;
+         function CreateDirectory(const directoryName : TFilename) : Boolean; virtual; abstract;
+         function DeleteDirectory(const directoryName : TFilename) : Boolean; virtual; abstract;
          function ForceDirectories(const directoryName : TFilename) : Boolean; virtual; abstract;
          function OpenFileStream(const fileName : TFilename; const mode : TdwsFileOpenMode) : TStream; virtual; abstract;
          function ValidateFileName(const fileName : TFilename) : TFilename; virtual; abstract;
@@ -110,8 +122,12 @@ type
       public
          function FindFileName(const fileName : TFileName) : TFileName; override;
          function FileExists(const fileName : TFilename) : Boolean; override;
+
          function DirectoryExists(const directoryName : TFilename) : Boolean; override;
+         function CreateDirectory(const directoryName : TFilename) : Boolean; override;
+         function DeleteDirectory(const directoryName : TFilename) : Boolean; override;
          function ForceDirectories(const directoryName : TFilename) : Boolean; override;
+
          function OpenFileStream(const fileName : TFilename; const mode : TdwsFileOpenMode) : TStream; override;
          function ValidateFileName(const fileName : TFilename) : TFilename; override;
          function FileTimeStamp(const fileName : TFilename) : TdwsDateTime; override;
@@ -126,9 +142,14 @@ type
 
          function FindFileName(const fileName : TFileName) : TFileName; override;
          function FileExists(const fileName : TFilename) : Boolean; override;
+
          function DirectoryExists(const directoryName : TFilename) : Boolean; override;
+         function CreateDirectory(const directoryName : TFilename) : Boolean; override;
+         function DeleteDirectory(const directoryName : TFilename) : Boolean; override;
          function ForceDirectories(const directoryName : TFilename) : Boolean; override;
+
          function FileTimeStamp(const fileName : TFilename) : TdwsDateTime; override;
+
          function OpenFileStream(const fileName : TFilename; const mode : TdwsFileOpenMode) : TStream; override;
    end;
 
@@ -324,6 +345,20 @@ begin
    Result := False;
 end;
 
+// CreateDirectory
+//
+function TdwsNullFileSystem.CreateDirectory(const directoryName : TFilename) : Boolean;
+begin
+   Result := False;
+end;
+
+// DeleteDirectory
+//
+function TdwsNullFileSystem.DeleteDirectory(const directoryName : TFilename) : Boolean;
+begin
+   Result := False;
+end;
+
 // ForceDirectories
 //
 function TdwsNullFileSystem.ForceDirectories(const directoryName : TFilename) : Boolean;
@@ -412,6 +447,30 @@ begin
    Result := System.SysUtils.DirectoryExists(validDirectoryName);
 end;
 
+// CreateDirectory
+//
+function TdwsOSFileSystem.CreateDirectory(const directoryName : TFilename) : Boolean;
+var
+   validDirectoryName : TFilename;
+begin
+   validDirectoryName := ValidateFileName(directoryName);
+   if directoryName <> '' then
+      Result := System.SysUtils.CreateDir(directoryName)
+   else Result := False;
+end;
+
+// DeleteDirectory
+//
+function TdwsOSFileSystem.DeleteDirectory(const directoryName : TFilename) : Boolean;
+var
+   validDirectoryName : TFilename;
+begin
+   validDirectoryName := ValidateFileName(directoryName);
+   if directoryName <> '' then
+      Result := System.SysUtils.RemoveDir(directoryName)
+   else Result := False;
+end;
+
 // ForceDirectories
 //
 function TdwsOSFileSystem.ForceDirectories(const directoryName : TFilename) : Boolean;
@@ -419,7 +478,9 @@ var
    validDirectoryName : TFilename;
 begin
    validDirectoryName := ValidateFileName(directoryName);
-   Result := System.SysUtils.ForceDirectories(directoryName);
+   if directoryName <> '' then
+      Result := System.SysUtils.ForceDirectories(directoryName)
+   else Result := False;
 end;
 
 // FileTimeStamp
