@@ -397,7 +397,7 @@ begin
             FastStringReplace(output, #13#10, #10);
             if not (expectedResult=output) then begin
 //               Clipboard.AsText:=jsCode;
-               diagnostic.Add( ExtractFileName(FTests[i])
+               diagnostic.Add( FTests[i]
                               +': expected <'+expectedResult
                               +'> but got <'+output+'>');//+jsCode);
             end;
