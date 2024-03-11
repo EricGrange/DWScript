@@ -377,7 +377,7 @@ function FileCreationTime(const name : TFileName) : TdwsDateTime; overload;
 function FileDateTime(const name : TFileName; lastAccess : Boolean = False) : TdwsDateTime; overload;
 function FileDateTime(hFile : THandle; lastAccess : Boolean = False) : TdwsDateTime; overload;
 procedure FileSetDateTime(hFile : THandle; const aDateTime : TdwsDateTime);
-function DeleteDirectory(const path : String) : Boolean;
+function DeleteDirectory(const path : String; recursive : Boolean = True) : Boolean;
 
 type
    TdwsMemoryMappedFile = record
@@ -2478,13 +2478,13 @@ end;
 
 // DeleteDirectory
 //
-function DeleteDirectory(const path : String) : Boolean;
+function DeleteDirectory(const path : String; recursive : Boolean = True) : Boolean;
 begin
    {$ifdef FPC}
    Result := RemoveDir(path);
    {$else}
    try
-      TDirectory.Delete(path, True);
+      TDirectory.Delete(path, recursive);
    except
       Exit(False);
    end;
