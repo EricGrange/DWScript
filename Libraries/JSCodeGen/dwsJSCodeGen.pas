@@ -4534,11 +4534,11 @@ end;
 // CodeGenNoWrap
 //
 procedure TJSConstIntExpr.CodeGenNoWrap(codeGen : TdwsCodeGen; expr : TTypedExpr);
-var
-   e : TConstIntExpr;
 begin
-   e:=TConstIntExpr(expr);
-   codeGen.WriteInteger(e.Value);
+   var e := TConstIntExpr(expr);
+   if e.Typ.IsBaseType then
+      codeGen.WriteInteger(e.Value)
+   else TdwsJSCodeGen(codeGen).WriteValue(e.Typ, e.DataContext);
 end;
 
 // ------------------
@@ -7443,7 +7443,7 @@ begin
    codeGen.WriteString('.sort(');
    codeGen.CompileNoWrap((e.CompareExpr as TFuncPtrExpr).CodeExpr);
    codeGen.WriteString(')');
-   codeGen.WriteStatementEnd;
+//   codeGen.WriteStatementEnd;
 end;
 
 // ------------------
