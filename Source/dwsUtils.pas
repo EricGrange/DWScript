@@ -4075,13 +4075,16 @@ end;
 // StrReplaceChar
 //
 function StrReplaceChar(const aStr : String; oldChar, newChar : Char) : String;
-var
-   i : Integer;
 begin
-   Result:=aStr;
-   for i:=1 to Length(Result) do
-      if Result[i]=oldChar then
-         Result[i]:=newChar;
+   var n := Length(aStr);
+   SetLength(Result, n);
+   var pSrc := PChar(Pointer(aStr));
+   var pDst := PChar(Pointer(Result));
+   for var i := 0 to n-1 do begin
+      if pSrc[i] = oldChar then
+         pDst[i] := newChar
+      else pDst[i] := pSrc[i]
+   end;
 end;
 
 // StrReplaceMacros
@@ -5232,7 +5235,7 @@ var
 begin
    buf := UTF8Encode(ToString);
    if buf <> '' then
-      destStream.Write(buf[1], Length(buf));
+      destStream.Write(Pointer(buf)^, Length(buf));
 end;
 
 // Seek
@@ -5580,7 +5583,7 @@ begin
    s:=Size;
    SetLength(Result, s);
    if s>0 then
-      StoreData(Result[1]);
+      StoreData(Pointer(Result)^);
 end;
 
 // GetSize

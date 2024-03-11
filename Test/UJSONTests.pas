@@ -101,6 +101,8 @@ type
 
          procedure JSON5_WriteNaNs;
          procedure JSON5_ReadNaNs;
+
+         procedure StoreToStream;
    end;
 
 // ------------------------------------------------------------------
@@ -1331,6 +1333,24 @@ begin
       CheckTrue(fsNInf = j.Elements[0].AsNumber.SpecialType, '-inf');
       CheckTrue(fsNaN = j.Elements[1].AsNumber.SpecialType, 'nan');
       CheckTrue(fsInf = j.Elements[2].AsNumber.SpecialType, 'inf');
+   finally
+      j.Free;
+   end;
+end;
+
+// StoreToStream
+//
+procedure TdwsJSONTests.StoreToStream;
+begin
+   var j := TdwsJSONValue.ParseString('"יא"');
+   try
+      var ms := TMemoryStream.Create;
+      try
+         j.WriteToStream(ms);
+         CheckEquals('22c3a9c3a022', BinToHex(ms.Memory, ms.Size));
+      finally
+         ms.Free;
+      end;
    finally
       j.Free;
    end;

@@ -121,6 +121,8 @@ type
          procedure URLRewriter;
 
          procedure TryStrToDoubleTest;
+
+         procedure StrReplaceCharTest;
    end;
 
 // ------------------------------------------------------------------
@@ -2227,6 +2229,17 @@ begin
       TryStrToDouble(PChar(s), v);
       CheckEquals(s, FloatToStr(v), 'Pi x ' + IntToStr(i));
    end;
+end;
+
+// StrReplaceCharTest
+//
+procedure TdwsUtilsTests.StrReplaceCharTest;
+begin
+   CheckEquals('', StrReplaceChar('', '.', ','), 'empty');
+   CheckEquals('a', StrReplaceChar('a', '.', ','), 'a');
+   CheckEquals(',', StrReplaceChar('.', '.', ','), '.');
+   CheckEquals('a,', StrReplaceChar('a.', '.', ','), 'a.');
+   CheckEquals(',b', StrReplaceChar('.b', '.', ','), '.b');
 end;
 
 // ------------------------------------------------------------------
