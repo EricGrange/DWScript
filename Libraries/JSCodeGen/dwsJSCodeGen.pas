@@ -1399,6 +1399,7 @@ begin
    RegisterCodeGen(TArraySortNaturalFloatExpr,     TJSArrayTypedFluentExpr.Create('.sort($CmpNum)', '$CmpNum'));
 
    RegisterCodeGen(TStaticArrayExpr,         TJSStaticArrayExpr.Create);
+   RegisterCodeGen(TConstStaticArrayExpr,    TJSStaticArrayExpr.Create);
    RegisterCodeGen(TStaticArrayBoolExpr,     TJSStaticArrayBoolExpr.Create);
    RegisterCodeGen(TDynamicArrayExpr,        TJSDynamicArrayExpr.Create);
    RegisterCodeGen(TDynamicArrayVarExpr,     TJSDynamicArrayExpr.Create);

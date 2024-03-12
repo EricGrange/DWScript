@@ -557,8 +557,8 @@ begin
    else begin
       ref.FNext:=FHead;
       FHead:=ref;
-      ref.FData:=nil;
       ref.FAddr:=0;
+      ref.FData:=nil;
    end;
 end;
 
@@ -1253,8 +1253,13 @@ end;
 // GetAsInteger
 //
 function TRelativeDataContext.GetAsInteger(addr : NativeInt) : Int64;
+var
+   p : PVarData;
 begin
-   Result := VariantToInt64(FGetPData^[FAddr+addr]);
+   p := @FGetPData^[FAddr+addr];
+   if p.VType = varInt64 then
+      Result := p.VInt64
+   else Result := VariantToInt64(FGetPData^[FAddr+addr]);
 end;
 
 // SetAsInteger

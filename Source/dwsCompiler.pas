@@ -5800,8 +5800,7 @@ begin
 
                end else begin
 
-                  newBaseExpr:=TStaticArrayExpr.Create(FTok.HotPos, baseExpr as TDataExpr, indexExpr,
-                                                       arraySymbol);
+                  newBaseExpr := CreateArrayExpr(FTok.HotPos, baseExpr as TDataExpr, indexExpr);
                   if indexExpr.IsConstant and (FMsgs.Count=errCount) then begin
                      idx:=indexExpr.EvalAsInteger(FExec);
                      if idx<arraySymbol.LowBound then
@@ -13848,9 +13847,14 @@ begin
       if baseType is TOpenArraySymbol then
          Result:=TOpenArrayExpr.Create(scriptPos, baseExpr, indexExpr,
                                        TOpenArraySymbol(baseType))
-      else begin
-         Result:=TStaticArrayExpr.Create(scriptPos, baseExpr, indexExpr,
-                                         TStaticArraySymbol(baseType));
+      else if baseExpr is TConstExpr then begin
+         Result := TConstStaticArrayExpr.Create(
+            scriptPos, baseExpr, indexExpr, TStaticArraySymbol(baseType)
+         );
+      end else begin
+         Result := TStaticArrayExpr.Create(
+            scriptPos, baseExpr, indexExpr, TStaticArraySymbol(baseType)
+         );
       end;
 
    end else begin

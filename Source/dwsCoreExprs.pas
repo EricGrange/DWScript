@@ -83,7 +83,7 @@ type
          procedure AssignValue(exec : TdwsExecution; const Value: Variant); override;
          procedure AssignValueAsInteger(exec : TdwsExecution; const Value: Int64); override;
 
-         procedure IncValue(exec : TdwsExecution; const value: Int64);
+         function IncValue(exec : TdwsExecution; delta : Int64) : Int64; override;
 
          function  EvalAsInteger(exec : TdwsExecution) : Int64; override;
          function  EvalAsFloat(exec : TdwsExecution) : Double; override;
@@ -2068,9 +2068,9 @@ end;
 
 // IncValue
 //
-procedure TIntVarExpr.IncValue(exec : TdwsExecution; const value: Int64);
+function TIntVarExpr.IncValue(exec : TdwsExecution; delta : Int64) : Int64;
 begin
-   exec.Stack.IncIntValue_BaseRelative(FStackAddr, value);
+   Result := exec.Stack.IncIntValue_BaseRelative(FStackAddr, delta);
 end;
 
 // EvalAsInteger

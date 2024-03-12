@@ -65,8 +65,7 @@ type
          function GetBaseDataP(index : Integer) : PVarData; inline;
 
       public
-
-         function GetPData : PData;
+         class var vFDataOffset : Integer;
 
          procedure Initialize(const params : TStackParameters);
          procedure Finalize;
@@ -118,7 +117,7 @@ type
          function  CreateDataContext(const data : TData; addr : Integer) : TDataContext; inline;
          function  CreateEmpty(size : Integer) : TDataContext;
 
-         procedure IncIntValue_BaseRelative(destAddr : Integer; const value : Int64); inline;
+         function  IncIntValue_BaseRelative(destAddr : Integer; const value : Int64) : Int64; inline;
          procedure AppendStringValue_BaseRelative(destAddr : Integer; const value : String);
 
          // D2010 compiler crashes when inlining those
@@ -240,13 +239,6 @@ end;
 function TStackMixIn.GetBaseDataP(index : Integer) : PVarData;
 begin
    Result := PVarData(NativeUInt(FBaseData) + NativeUInt(index * SizeOf(Variant)));
-end;
-
-// GetPData
-//
-function TStackMixIn.GetPData : PData;
-begin
-   Result:=@FData;
 end;
 
 // SetBasePointer
@@ -580,13 +572,14 @@ end;
 
 // IncIntValue_BaseRelative
 //
-procedure TStackMixIn.IncIntValue_BaseRelative(destAddr: Integer; const value: Int64);
+function TStackMixIn.IncIntValue_BaseRelative(destAddr: Integer; const value: Int64) : Int64;
 var
    varData : PVarData;
 begin
    varData := GetBaseDataP(destAddr);
    Assert(varData.VType=varInt64);
-   varData.VInt64:=varData.VInt64+value
+   Result := varData.VInt64 + value;
+   varData.VInt64 := Result;
 end;
 
 // AppendStringValue_BaseRelative
@@ -766,5 +759,15 @@ begin
    {$endif}
    Result:=True;
 end;
+
+// ------------------------------------------------------------------
+// ------------------------------------------------------------------
+// ------------------------------------------------------------------
+initialization
+// ------------------------------------------------------------------
+// ------------------------------------------------------------------
+// ------------------------------------------------------------------
+
+   TStackMixIn.vFDataOffset := Integer(@TStack(nil).FData);
 
 end.

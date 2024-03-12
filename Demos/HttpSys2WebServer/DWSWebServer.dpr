@@ -40,7 +40,7 @@ program DWSWebServer;
 {$R *.res}
 
 uses
-  FastMM4,
+  FastMM4, //_AVX,
   Windows,
   SysUtils,
   dwsWindowsService,

@@ -1423,11 +1423,9 @@ end;
 // DoInc
 //
 function TIncVarFuncExpr.DoInc(exec : TdwsExecution) : Int64;
-var
-   left : TDataExpr;
 begin
-   left := TDataExpr(FArgs.ExprBase[0]);
-   Result := left.DataPtr[exec].IncInteger(0, FArgs.ExprBase[1].EvalAsInteger(exec));
+   var left := TDataExpr(FArgs.ExprBase[0]);
+   Result := left.IncValue(exec, FArgs.ExprBase[1].EvalAsInteger(exec));
 end;
 
 // EvalNoResult

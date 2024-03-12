@@ -882,6 +882,8 @@ type
 
          property DataPtr[exec : TdwsExecution] : IDataContext read GetDataPtrFunc;
 
+         function IncValue(exec : TdwsExecution; delta : Int64) : Int64; virtual;
+
          function  SpecializeTypedExpr(const context : ISpecializationContext) : TTypedExpr; override; final;
          function  SpecializeDataExpr(const context : ISpecializationContext) : TDataExpr; virtual;
    end;
@@ -4500,6 +4502,13 @@ end;
 function TDataExpr.ScriptPos : TScriptPos;
 begin
    Result := FScriptPos;
+end;
+
+// IncValue
+//
+function TDataExpr.IncValue(exec : TdwsExecution; delta : Int64) : Int64;
+begin
+   Result := DataPtr[exec].IncInteger(0, delta);
 end;
 
 // SpecializeTypedExpr

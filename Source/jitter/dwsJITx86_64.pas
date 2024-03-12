@@ -894,6 +894,8 @@ begin
    RegisterJITter(TVarParamParentExpr,          FInterpretedJITter.IncRefCount);
 
    RegisterJITter(TStaticArrayExpr,             Tx86StaticArray.Create(Self));
+   RegisterJITter(TConstStaticArrayExpr,        Tx86StaticArray.Create(Self));
+   RegisterJITter(TStaticArrayBoolExpr,         FInterpretedJITter.IncRefCount);
    RegisterJITter(TDynamicArrayExpr,            Tx86DynamicArray.Create(Self));
    RegisterJITter(TDynamicArrayVarExpr,         Tx86DynamicArray.Create(Self));
    RegisterJITter(TDynamicArraySetExpr,         Tx86DynamicArraySet.Create(Self));

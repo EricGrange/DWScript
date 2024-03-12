@@ -72,7 +72,7 @@ type
       ['{2A9B3826-4A52-4DB4-98B9-F7A3F97814EF}']
       function DirectoryExists(const directoryName : TFilename) : Boolean;
       function CreateDirectory(const directoryName : TFilename) : Boolean;
-      function DeleteDirectory(const directoryName : TFilename) : Boolean;
+      function DeleteDirectory(const directoryName : TFilename; recursive : Boolean) : Boolean;
       function ForceDirectories(const directoryName : TFilename) : Boolean;
 
       function FileTimeStamp(const fileName : TFilename) : TdwsDateTime;
@@ -102,7 +102,7 @@ type
          function FileExists(const fileName : TFilename) : Boolean; virtual; abstract;
          function DirectoryExists(const directoryName : TFilename) : Boolean; virtual; abstract;
          function CreateDirectory(const directoryName : TFilename) : Boolean; virtual; abstract;
-         function DeleteDirectory(const directoryName : TFilename) : Boolean; virtual; abstract;
+         function DeleteDirectory(const directoryName : TFilename; recursive : Boolean) : Boolean; virtual; abstract;
          function ForceDirectories(const directoryName : TFilename) : Boolean; virtual; abstract;
          function OpenFileStream(const fileName : TFilename; const mode : TdwsFileOpenMode) : TStream; virtual; abstract;
          function ValidateFileName(const fileName : TFilename) : TFilename; virtual; abstract;
@@ -125,7 +125,7 @@ type
 
          function DirectoryExists(const directoryName : TFilename) : Boolean; override;
          function CreateDirectory(const directoryName : TFilename) : Boolean; override;
-         function DeleteDirectory(const directoryName : TFilename) : Boolean; override;
+         function DeleteDirectory(const directoryName : TFilename; recursive : Boolean) : Boolean; override;
          function ForceDirectories(const directoryName : TFilename) : Boolean; override;
 
          function OpenFileStream(const fileName : TFilename; const mode : TdwsFileOpenMode) : TStream; override;
@@ -145,7 +145,7 @@ type
 
          function DirectoryExists(const directoryName : TFilename) : Boolean; override;
          function CreateDirectory(const directoryName : TFilename) : Boolean; override;
-         function DeleteDirectory(const directoryName : TFilename) : Boolean; override;
+         function DeleteDirectory(const directoryName : TFilename; recursive : Boolean) : Boolean; override;
          function ForceDirectories(const directoryName : TFilename) : Boolean; override;
 
          function FileTimeStamp(const fileName : TFilename) : TdwsDateTime; override;
@@ -186,6 +186,7 @@ type
 
       public
          function AllocateFileSystem : IdwsFileSystem; virtual; abstract;
+         function AllocateFileSystemRW : IdwsFileSystemRW; virtual; abstract;
 
          property OnFileStreamOpened : TFileStreamOpenedEvent read FOnFileStreamOpened write FOnFileStreamOpened;
    end;
@@ -195,6 +196,7 @@ type
    TdwsNoFileSystem = class abstract (TdwsCustomFileSystem)
       public
          function AllocateFileSystem : IdwsFileSystem; override;
+         function AllocateFileSystemRW : IdwsFileSystemRW; override;
    end;
 
    // TdwsRestrictedFileSystem
@@ -210,11 +212,14 @@ type
          procedure SetSearchPaths(const val : TStrings);
          procedure SetVariables(const val : TStrings);
 
+         function CreateRestrictedFS : TdwsRestrictedOSFileSystem;
+
       public
          constructor Create(Owner : TComponent); override;
          destructor Destroy; override;
 
          function AllocateFileSystem : IdwsFileSystem; override;
+         function AllocateFileSystemRW : IdwsFileSystemRW; override;
 
       published
          property Paths : TStrings read FPaths write SetPaths;
@@ -354,7 +359,7 @@ end;
 
 // DeleteDirectory
 //
-function TdwsNullFileSystem.DeleteDirectory(const directoryName : TFilename) : Boolean;
+function TdwsNullFileSystem.DeleteDirectory(const directoryName : TFilename; recursive : Boolean) : Boolean;
 begin
    Result := False;
 end;
@@ -454,21 +459,21 @@ var
    validDirectoryName : TFilename;
 begin
    validDirectoryName := ValidateFileName(directoryName);
-   if directoryName <> '' then
-      Result := System.SysUtils.CreateDir(directoryName)
+   if validDirectoryName <> '' then
+      Result := System.SysUtils.CreateDir(validDirectoryName)
    else Result := False;
 end;
 
 // DeleteDirectory
 //
-function TdwsOSFileSystem.DeleteDirectory(const directoryName : TFilename) : Boolean;
+function TdwsOSFileSystem.DeleteDirectory(const directoryName : TFilename; recursive : Boolean) : Boolean;
 var
    validDirectoryName : TFilename;
 begin
    validDirectoryName := ValidateFileName(directoryName);
-   if directoryName <> '' then
-      Result := System.SysUtils.RemoveDir(directoryName)
-   else Result := False;
+   if validDirectoryName <> '' then
+      Result := dwsXPlatform.DeleteDirectory(validDirectoryName, recursive)
+   else Result := True;
 end;
 
 // ForceDirectories
@@ -478,8 +483,8 @@ var
    validDirectoryName : TFilename;
 begin
    validDirectoryName := ValidateFileName(directoryName);
-   if directoryName <> '' then
-      Result := System.SysUtils.ForceDirectories(directoryName)
+   if validDirectoryName <> '' then
+      Result := System.SysUtils.ForceDirectories(validDirectoryName)
    else Result := False;
 end;
 
@@ -627,6 +632,13 @@ begin
    Result:=TdwsNullFileSystem.Create;
 end;
 
+// AllocateFileSystemRW
+//
+function TdwsNoFileSystem.AllocateFileSystemRW : IdwsFileSystemRW;
+begin
+   Result:=TdwsNullFileSystem.Create;
+end;
+
 // ------------------
 // ------------------ TdwsRestrictedFileSystem ------------------
 // ------------------
@@ -651,18 +663,29 @@ begin
    FVariables.Free;
 end;
 
+// CreateRestrictedFS
+//
+function TdwsRestrictedFileSystem.CreateRestrictedFS : TdwsRestrictedOSFileSystem;
+begin
+   Result := TdwsRestrictedOSFileSystem.Create;
+   Result.Paths := Paths;
+   Result.SearchPaths := SearchPaths;
+   Result.Variables := Variables;
+   Result.OnFileStreamOpened := OnFileStreamOpened;
+end;
+
 // AllocateFileSystem
 //
 function TdwsRestrictedFileSystem.AllocateFileSystem : IdwsFileSystem;
-var
-   fs : TdwsRestrictedOSFileSystem;
 begin
-   fs := TdwsRestrictedOSFileSystem.Create;
-   fs.Paths := Paths;
-   fs.SearchPaths := SearchPaths;
-   fs.Variables := Variables;
-   fs.OnFileStreamOpened := OnFileStreamOpened;
-   Result:=fs;
+   Result := CreateRestrictedFS;
+end;
+
+// AllocateFileSystemRW
+//
+function TdwsRestrictedFileSystem.AllocateFileSystemRW : IdwsFileSystemRW;
+begin
+   Result := CreateRestrictedFS;
 end;
 
 // SetPaths

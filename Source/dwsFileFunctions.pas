@@ -861,11 +861,8 @@ end;
 // DoEvalAsBoolean
 //
 function TFileExistsFunc.DoEvalAsBoolean(const args : TExprBaseListExec) : Boolean;
-var
-   fileName : String;
 begin
-   fileName := args.AsFileName[0];
-   Result := (fileName <> '') and FileExists(fileName)
+   Result := args.Exec.FileSystem.FileExists(args.AsFileName[0]);
 end;
 
 // ------------------
@@ -875,11 +872,8 @@ end;
 // DoEvalAsBoolean
 //
 function TDirectoryExistsFunc.DoEvalAsBoolean(const args : TExprBaseListExec) : Boolean;
-var
-   directoryName : String;
 begin
-   directoryName := args.AsFileName[0];
-   Result := (directoryName <> '') and DirectoryExists(args.AsFileName[0]);
+   Result := args.Exec.FileSystem.DirectoryExists(args.AsFileName[0]);
 end;
 
 // ------------------
@@ -989,7 +983,7 @@ end;
 //
 function TForceDirectoriesFunc.DoEvalAsBoolean(const args : TExprBaseListExec) : Boolean;
 begin
-   Result:=ForceDirectories(args.AsFileName[0]);
+   Result := args.Exec.FileSystem.ForceDirectories(args.AsFileName[0]);
 end;
 
 // ------------------
@@ -1000,7 +994,7 @@ end;
 //
 function TCreateDirFunc.DoEvalAsBoolean(const args : TExprBaseListExec) : Boolean;
 begin
-   Result:=CreateDir(args.AsFileName[0]);
+   Result := args.Exec.FileSystem.CreateDirectory(args.AsFileName[0]);
 end;
 
 // ------------------
@@ -1010,13 +1004,8 @@ end;
 // DoEvalAsBoolean
 //
 function TRemoveDirFunc.DoEvalAsBoolean(const args : TExprBaseListExec) : Boolean;
-var
-   path : UnicodeString;
 begin
-   path:=args.AsFileName[0];
-   if args.AsBoolean[1] then
-      Result:=DeleteDirectory(path)
-   else Result:=RemoveDir(path);
+   Result := args.Exec.FileSystem.DeleteDirectory(args.AsFileName[0], args.AsBoolean[1]);
 end;
 
 // ------------------

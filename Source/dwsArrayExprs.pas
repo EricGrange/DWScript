@@ -127,6 +127,21 @@ type
          function GetIndex(exec : TdwsExecution) : Integer; override;
    end;
 
+   // Array expression where the BaseExpr is a TConstExpr
+   TConstStaticArrayExpr = class (TStaticArrayExpr)
+      protected
+         function GetIsConstant : Boolean; override;
+
+      public
+         constructor Create(const aScriptPos: TScriptPos;
+                            baseExpr : TDataExpr; indexExpr : TTypedExpr;
+                            arraySymbol : TStaticArraySymbol);
+
+         function EvalAsInteger(exec : TdwsExecution) : Int64; override;
+         function EvalAsFloat(exec : TdwsExecution) : Double; override;
+         procedure EvalAsString(exec : TdwsExecution; var result : String); override;
+   end;
+
    // Array expressions x[index] for open arrays
    TOpenArrayExpr = class(TArrayExpr)
       public
@@ -1252,6 +1267,48 @@ begin
    if FIndexExpr.EvalAsBoolean(exec) then
       Result:=FElementSize
    else Result:=0;
+end;
+
+// ------------------
+// ------------------ TConstStaticArrayExpr ------------------
+// ------------------
+
+// Create
+//
+constructor TConstStaticArrayExpr.Create(const aScriptPos: TScriptPos;
+                            baseExpr : TDataExpr; indexExpr : TTypedExpr;
+                            arraySymbol : TStaticArraySymbol);
+begin
+   Assert(baseExpr is TConstExpr);
+   inherited Create(aScriptPos, baseExpr, indexExpr, arraySymbol);
+end;
+
+// GetIsConstant
+//
+function TConstStaticArrayExpr.GetIsConstant : Boolean;
+begin
+   Result := FIndexExpr.IsConstant;
+end;
+
+// EvalAsInteger
+//
+function TConstStaticArrayExpr.EvalAsInteger(exec : TdwsExecution) : Int64;
+begin
+   Result := TConstExpr(FBaseExpr).DataContext.AsInteger[GetIndex(exec)];
+end;
+
+// EvalAsFloat
+//
+function TConstStaticArrayExpr.EvalAsFloat(exec : TdwsExecution) : Double;
+begin
+   Result := TConstExpr(FBaseExpr).DataContext.AsFloat[GetIndex(exec)];
+end;
+
+// EvalAsString
+//
+procedure TConstStaticArrayExpr.EvalAsString(exec : TdwsExecution; var result : String);
+begin
+   TConstExpr(FBaseExpr).DataContext.EvalAsString(GetIndex(exec), result);
 end;
 
 // ------------------

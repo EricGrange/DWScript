@@ -26,7 +26,7 @@ interface
 uses
    System.SysUtils, System.Classes, System.Types,
    dwsErrors, dwsUtils, dwsDateTime, dwsScriptSource, dwsSpecialKeywords,
-   dwsTokenTypes, dwsStack, dwsDataContext, dwsArrayMethodKinds
+   dwsTokenTypes, dwsStack, dwsDataContext, dwsArrayMethodKinds, dwsFileSystem
    {$ifdef FPC},LazUTF8{$endif};
 
 type
@@ -2206,6 +2206,7 @@ type
          procedure LocalizeString(const aString : String; var Result : String); virtual;
 
          function ValidateFileName(const path : String) : String; virtual;
+         function FileSystem : IdwsFileSystemRW; virtual;
 
          function Random : Double;
 
@@ -3940,7 +3941,6 @@ procedure GenerateParams(table : TSymbolTable; const funcParams : TParamArray;
    end;
 
 var
-   i64 : Int64;
    typSym : TTypeSymbol;
    baseTypClass : TClass;
    paramSym : TParamSymbol;
@@ -3974,8 +3974,7 @@ begin
          baseTypClass := typSym.BaseType.UnAliasedType.ClassType;
          if not baseTypClass.InheritsFrom(TBaseStringSymbol) then begin
             if baseTypClass.InheritsFrom(TBaseIntegerSymbol) then begin
-               VariantToInt64(paramRec.DefaultValue[0], i64);
-               paramRec.DefaultValue[0] := i64;
+               paramRec.DefaultValue[0] := VariantToInt64(paramRec.DefaultValue[0]);
             end else if baseTypClass.InheritsFrom(TBaseFloatSymbol) then begin
                paramRec.DefaultValue[0] := VariantToFloat(paramRec.DefaultValue[0]);
             end else if baseTypClass.InheritsFrom(TBaseBooleanSymbol) then begin
@@ -9181,6 +9180,13 @@ begin
    raise EScriptException.CreateFmt(RTE_UnauthorizedFilePath, [path]);
 end;
 
+// FileSystem
+//
+function TdwsExecution.FileSystem : IdwsFileSystemRW;
+begin
+   raise EScriptException.Create(RTE_UnauthorizedFileSystem);
+end;
+
 // DataContext_Create
 //
 procedure TdwsExecution.DataContext_Create(const data : TData; addr : Integer; var result : IDataContext);
@@ -9245,7 +9251,7 @@ end;
 //
 function TdwsExecution.GetStackPData : PData;
 begin
-   Result := FStack.GetPData;
+   Result := PData(IntPtr(@FStack) + TStackMixIn.vFDataOffset);
 end;
 
 // SuspendDebug
