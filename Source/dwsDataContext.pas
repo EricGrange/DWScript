@@ -219,10 +219,18 @@ type
 
    TGetPDataFunc = function : PData of object;
 
-   TRelativeDataContext = class (TInterfacedObject, IDataContext, IGetSelf)
+   TRelativeDataContext = class (TObject, IDataContext, IGetSelf)
       private
+         FRefCount : Integer;
          FGetPData : TGetPDataFunc;
          FAddr : NativeInt;
+
+      protected
+         function QueryInterface(const IID: TGUID; out Obj): HResult; stdcall;
+         function _AddRef: Integer; stdcall;
+         function _Release: Integer; stdcall;
+
+         property RefCount : Integer read FRefCount;
 
       public
          constructor Create(const getPData : TGetPDataFunc; addr : NativeInt);
@@ -789,9 +797,11 @@ end;
 //
 function TDataContext._Release: Integer;
 begin
-   Result := AtomicDecrement(FRefCount);
-   if Result = 0 then
+   if FRefCount = 1 then begin
+      FRefCount := 0;
       FPool.Push(Self);
+      Result := 0;
+   end else Result := AtomicDecrement(FRefCount);
 end;
 
 // AfterConstruction
@@ -1189,6 +1199,34 @@ end;
 function TRelativeDataContext.GetSelf : TObject;
 begin
    Result:=Self;
+end;
+
+// QueryInterface
+//
+function TRelativeDataContext.QueryInterface(const IID: TGUID; out Obj): HResult;
+begin
+   if GetInterface(IID, Obj) then
+      Result := 0
+   else Result := E_NOINTERFACE;
+end;
+
+// _AddRef
+//
+function TRelativeDataContext._AddRef: Integer;
+begin
+   Inc(FRefCount);
+   Result := FRefCount;
+end;
+
+// _Release
+//
+function TRelativeDataContext._Release: Integer;
+begin
+   Dec(FRefCount);
+   if FRefCount = 0 then begin
+      Destroy;
+      Result := 0;
+   end else Result := FRefCount;
 end;
 
 // ScriptTypeName
