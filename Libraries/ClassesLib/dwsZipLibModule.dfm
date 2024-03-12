@@ -1,5 +1,4 @@
 object dwsZipLib: TdwsZipLib
-  OldCreateOrder = False
   Height = 150
   Width = 215
   object dwsZip: TdwsUnit
