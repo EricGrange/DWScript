@@ -2347,7 +2347,7 @@ end;
 //
 function TVarParentExpr.EvalAsInteger(exec : TdwsExecution) : Int64;
 begin
-   VariantToInt64(exec.Stack.Data[exec.Stack.GetSavedBp(FLevel)+FStackAddr], Result);
+   Result := VariantToInt64(exec.Stack.Data[exec.Stack.GetSavedBp(FLevel)+FStackAddr]);
 end;
 
 // EvalAsFloat

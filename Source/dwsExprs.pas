@@ -317,7 +317,7 @@ type
 
          FResult : TdwsResult;
          FParameters : TData;
-         FFileSystem : IdwsFileSystem;
+         FFileSystem : IdwsFileSystemRW;
          FLocalizer : IdwsLocalizer;
          FRTTIRawAttributes : IScriptDynArray;
 
@@ -358,8 +358,6 @@ type
          function GetLocalizer : IdwsLocalizer;
          procedure SetLocalizer(const val : IdwsLocalizer);
          function GetExecutionTimedOut : Boolean;
-
-         function GetFileSystem : IdwsFileSystem;
 
          procedure RaiseMaxRecursionReached;
          procedure SetCurrentProg(const val : TdwsProgram); inline;
@@ -409,6 +407,7 @@ type
          procedure LocalizeString(const aString : String; var Result : String); override;
 
          function ValidateFileName(const path : String) : String; override;
+         function FileSystem : IdwsFileSystemRW; override;
 
          property Prog : TdwsMainProgram read FProg;
          property CurrentProg : TdwsProgram read FCurrentProg write SetCurrentProg;
@@ -417,7 +416,6 @@ type
 
          property Parameters : TData read FParameters;
          property Result : TdwsResult read FResult;
-         property FileSystem : IdwsFileSystem read GetFileSystem;
          property CustomStates : TdwsCustomStates read GetCustomStates;
          function HasCustomStates : Boolean;
          property CustomInterfaces : TdwsCustomInterfaces read GetCustomInterfaces;
@@ -1976,8 +1974,8 @@ begin
 
       // Prepare FileSystem
       if FProg.RuntimeFileSystem<>nil then
-         FFileSystem:=FProg.RuntimeFileSystem.AllocateFileSystem
-      else FFileSystem:=TdwsOSFileSystem.Create;
+         FFileSystem := FProg.RuntimeFileSystem.AllocateFileSystemRW
+      else FFileSystem := TdwsOSFileSystem.Create;
 
       // Initialize global variables
       Status:=esrNone;
@@ -2496,11 +2494,11 @@ end;
 
 // GetFileSystem
 //
-function TdwsProgramExecution.GetFileSystem : IdwsFileSystem;
+function TdwsProgramExecution.FileSystem : IdwsFileSystemRW;
 begin
    if FFileSystem = nil then begin
       if FProg.RuntimeFileSystem <> nil then
-         FFileSystem := FProg.RuntimeFileSystem.AllocateFileSystem
+         FFileSystem := FProg.RuntimeFileSystem.AllocateFileSystemRW
       else FFileSystem := TdwsOSFileSystem.Create;
    end;
    Result := FFileSystem;
@@ -3911,7 +3909,7 @@ var
    v : Variant;
 begin
    EvalAsVariant(exec, v);
-   VariantToInt64(v, Result);
+   Result := VariantToInt64(v);
 end;
 
 // EvalAsBoolean

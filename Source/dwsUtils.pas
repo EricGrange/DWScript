@@ -1141,8 +1141,8 @@ procedure VariantToString(const v : Variant; var s : UnicodeString); overload;
 {$endif}
 function  VariantToString(const v : Variant) : String; overload; inline;
 function  VariantToUnicodeString(const v : Variant) : UnicodeString; inline;
-procedure VariantToInt64(const v : Variant; var r : Int64); overload;
-function  VariantToInt64(const v : Variant) : Int64; overload; inline;
+procedure VariantToInt64(const v : Variant; var r : Int64); overload; inline;
+function  VariantToInt64(const v : Variant) : Int64; overload;
 function  VariantToBool(const v : Variant) : Boolean;
 function  VariantToFloat(const v : Variant) : Double;
 
@@ -2406,29 +2406,36 @@ end;
 // VariantToInt64
 //
 procedure VariantToInt64(const v : Variant; var r : Int64);
+begin
+   r := VariantToInt64(v);
+end;
 
-   procedure UnknownAsInteger(const unknown : IUnknown; var r : Int64);
+// VariantToInt64
+//
+function VariantToInt64(const v : Variant) : Int64;
+
+   function UnknownAsInteger(const unknown : IUnknown) : Int64;
    var
       intf : IToNumeric;
    begin
       if unknown = nil then
-         r := 0
+         Result := 0
       else if unknown.QueryInterface(IToNumeric, intf)=0 then
-         r := intf.ToInteger
+         Result := intf.ToInteger
       else raise EVariantTypeCastError.CreateFmt(RTE_VariantCastFailed, [ 'IUnknown', SYS_INTEGER ]);
    end;
 
-   procedure StringToInt64(const s : String; var r : Int64);
+   function StringToInt64(const s : String) : Int64;
    begin
-      if not TryStrToInt64(s, r) then begin
+      if not TryStrToInt64(s, Result) then begin
          raise EVariantTypeCastError.CreateFmt(RTE_VariantCastFailed, [ SYS_STRING, SYS_INTEGER ]);
       end;
    end;
 
-   procedure DefaultCast(const v : Variant; var r : Int64);
+   function DefaultCast(const v : Variant) : Int64;
    begin
       try
-         r := v;
+         Result := v;
       except
          // workaround for RTL bug that will sometimes report a failed cast to Int64
          // as being a failed cast to Boolean
@@ -2444,25 +2451,18 @@ procedure VariantToInt64(const v : Variant; var r : Int64);
 begin
    case TVarData(v).VType of
       varInt64 :
-         r := TVarData(v).VInt64;
+         Result := TVarData(v).VInt64;
       varBoolean :
-         r := Ord(Boolean(TVarData(v).VBoolean));
+         Result := Ord(Boolean(TVarData(v).VBoolean));
       varUnknown :
-         UnknownAsInteger(IUnknown(TVarData(v).VUnknown), r);
+         Result := UnknownAsInteger(IUnknown(TVarData(v).VUnknown));
       varUString :
-         StringToInt64(String(TVarData(v).VString), r);
+         Result := StringToInt64(String(TVarData(v).VString));
       varNull :
-         r := 0;
+         Result := 0;
    else
-      DefaultCast(v, r);
+      Result := DefaultCast(v);
    end;
-end;
-
-// VariantToInt64
-//
-function VariantToInt64(const v : Variant) : Int64;
-begin
-   VariantToInt64(v, Result);
 end;
 
 // VariantToBool

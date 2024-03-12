@@ -666,7 +666,7 @@ begin
    p:=@FData[FAddr+addr];
    if p^.VType=varInt64 then
       Result:=p^.VInt64
-   else VariantToInt64(PVariant(p)^, Result);
+   else Result := VariantToInt64(PVariant(p)^);
 end;
 
 // SetAsInteger
@@ -1254,7 +1254,7 @@ end;
 //
 function TRelativeDataContext.GetAsInteger(addr : NativeInt) : Int64;
 begin
-   VariantToInt64( FGetPData^[FAddr+addr], Result );
+   Result := VariantToInt64(FGetPData^[FAddr+addr]);
 end;
 
 // SetAsInteger
