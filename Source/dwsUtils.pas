@@ -26,9 +26,8 @@ unit dwsUtils;
 interface
 
 uses
-   System.Classes, System.SysUtils, System.Types, System.StrUtils,
-   System.Masks, System.Variants,
-   dwsStrings, dwsXPlatform, Math, dwsXXHash;
+   System.Classes, System.SysUtils, System.Types, System.Variants,
+   dwsXPlatform;
 
 type
 
@@ -1244,6 +1243,10 @@ implementation
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
 
+uses
+   System.Math, System.Masks,
+   dwsStrings, dwsXXHash;
+
 // CoalesceableIsFalsey
 //
 function CoalesceableIsFalsey(const unk : IUnknown) : Boolean;
@@ -2253,8 +2256,8 @@ begin
 
          repeat
             System.Move(pNewSub^, pStr[p-1], subLen*SizeOf(WideChar));
-            p:=PosEx(sub, str, p+subLen);
-         until p<=0;
+            p := Pos(sub, str, p+subLen);
+         until p <= 0;
 
       end;
 
@@ -2271,7 +2274,7 @@ begin
             dp:=dp+newSubLen;
          end;
          p:=p+subLen;
-         np:=PosEx(sub, str, p);
+         np := Pos(sub, str, p);
          if np>0 then begin
             if np>p then begin
                System.Move(pStr[p-1], pStr[dp], (np-p)*SizeOf(WideChar));
@@ -4158,7 +4161,7 @@ begin
    n := Length(needle);
    p := 1;
    while True do begin
-      p := PosEx(needle, haystack, p);
+      p := Pos(needle, haystack, p);
       if p > 0 then begin
          p := p + n;
          Inc(Result);
@@ -4219,12 +4222,12 @@ begin
 
    p1:=Pos(delimiter, Result);
    while p1>0 do begin
-      p2:=PosEx(delimiter, Result, p1+1);
+      p2 := Pos(delimiter, Result, p1+1);
       if p2<p1 then Break;
       Result:= Copy(Result, 1, p1-1)
               +variables.Values[Copy(Result, p1+1, p2-p1-1)]
               +Copy(Result, p2+1);
-      p1:=PosEx('%', Result, p1);
+      p1 := Pos('%', Result, p1);
    end;
 end;
 

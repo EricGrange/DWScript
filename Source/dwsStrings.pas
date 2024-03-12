@@ -621,6 +621,7 @@ const
   RTE_UnHandledExternalCall = 'Unhandled call to external symbol "%s" from%s';
 
   RTE_UnauthorizedFilePath = 'Unauthorized file path: "%s"';
+  RTE_UnauthorizedFileSystem = 'Unauthorized file system access';
 
   // Connectors
   RTE_ConnectorCallFailed = 'Connector Call "%s" failed';

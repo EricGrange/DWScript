@@ -1479,7 +1479,6 @@ begin
    rfs.Free;
    CheckTrue(FCompiler.Config.RuntimeFileSystem=nil, 'rfs cleared');
    CheckTrue(FCompiler.Config.ResultType is TdwsDefaultResultType, 'rt cleared');
-
 end;
 
 // ConfigTimeout

@@ -17,7 +17,8 @@ unit UdwsUtilsTests;
 
 interface
 
-uses Classes, SysUtils, Math, Variants, Types, Graphics,
+uses
+   System.Classes, System.SysUtils, System.Variants, System.Types,
    dwsXPlatformTests, dwsUtils,
    dwsXPlatform, dwsTokenStore, dwsCryptoXPlatform,
    dwsEncodingLibModule, dwsGlobalVars, dwsEncoding, dwsDataContext,
@@ -133,7 +134,9 @@ implementation
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
 
-uses dwsRandom;
+uses
+   System.Math,
+   dwsRandom;
 
 var
    vGlobals : TGlobalVars;
@@ -964,13 +967,13 @@ end;
 //
 procedure TdwsUtilsTests.IntToHexTest;
 begin
-   CheckEquals(SysUtils.IntToHex(Int64(0), -1), Int64ToHex(0, -1));
-   CheckEquals(SysUtils.IntToHex(Int64(0), 16), Int64ToHex(0, 20));
-   CheckEquals(SysUtils.IntToHex(Int64(-1), 1), Int64ToHex(-1, 1));
-   CheckEquals(SysUtils.IntToHex(Int64(0), 3), Int64ToHex(0, 3));
-   CheckEquals(SysUtils.IntToHex(Int64(12345), 3), Int64ToHex(12345, 3));
-   CheckEquals(SysUtils.IntToHex(Int64(12345), 6), Int64ToHex(12345, 6));
-   CheckEquals(SysUtils.IntToHex($123456789, 6), Int64ToHex($123456789, 6));
+   CheckEquals(System.SysUtils.IntToHex(Int64(0), -1), Int64ToHex(0, -1));
+   CheckEquals(System.SysUtils.IntToHex(Int64(0), 16), Int64ToHex(0, 20));
+   CheckEquals(System.SysUtils.IntToHex(Int64(-1), 1), Int64ToHex(-1, 1));
+   CheckEquals(System.SysUtils.IntToHex(Int64(0), 3), Int64ToHex(0, 3));
+   CheckEquals(System.SysUtils.IntToHex(Int64(12345), 3), Int64ToHex(12345, 3));
+   CheckEquals(System.SysUtils.IntToHex(Int64(12345), 6), Int64ToHex(12345, 6));
+   CheckEquals(System.SysUtils.IntToHex($123456789, 6), Int64ToHex($123456789, 6));
 end;
 
 // Int32ToStr
@@ -2140,7 +2143,7 @@ procedure TdwsUtilsTests.TryStrToDoubleTest;
       if TryStrToDouble(PChar(s), v) then begin
          for i := 0 to High(buf) do
             buf[i] := PByteArray(@v)[High(buf)-i];
-         bv := SysUtils.UpperCase(BinToHex(buf, SizeOf(v)));
+         bv := System.SysUtils.UpperCase(BinToHex(buf, SizeOf(v)));
          if bv <> expected  then
             Check(False, Format('expected %s but got %s for "%s"',
                                 [ expected, bv, s ]))
