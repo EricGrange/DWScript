@@ -37,11 +37,9 @@ unit dwsHTTPSysServer;
 interface
 
 uses
-   Windows,
-   ActiveX,
-   SysUtils,
-   Classes,
-   SynWinSock, Registry,
+   Winapi.Windows, Winapi.ActiveX,
+   System.SysUtils, System.Classes,
+   SynWinSock,
    dwsHTTPSysAPI, dwsUtils, dwsXPlatform,
    dwsWebEnvironment, dwsHttpSysWebEnv, dwsWebServerHelpers,
    dwsHTTPSysServerEvents, dwsURLRewriter;

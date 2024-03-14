@@ -30,17 +30,14 @@ unit dwsGraphicLibrary;
 interface
 
 uses
-   System.Classes, System.SysUtils, Vcl.Graphics, System.Types,
+   System.Classes, System.SysUtils, System.Types,
    {$ifdef USE_LIB_JPEG}
    dwsTurboJPEG,
    {$else}
    VCL.Imaging.JPEG,
    {$endif}
-   VCL.Imaging.PNGImage,
-   dwsJPEGEncoderOptions,
-   dwsXPlatform, dwsUtils, dwsStrings,
-   dwsFunctions, dwsSymbols, dwsExprs, dwsCoreExprs, dwsExprList, dwsUnitSymbols,
-   dwsConstExprs, dwsMagicExprs, dwsDataContext, dwsByteBufferFunctions;
+   dwsFunctions, dwsSymbols, dwsExprs, dwsCoreExprs, dwsExprList,
+   dwsMagicExprs, dwsByteBufferFunctions;
 
 const
    SYS_PIXMAP = 'TPixmap';
@@ -108,7 +105,10 @@ implementation
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
 
-uses dwsByteBuffer;
+uses
+   Vcl.Graphics, VCL.Imaging.PNGImage,
+   dwsXPlatform, dwsByteBuffer, dwsStrings, dwsJPEGEncoderOptions, dwsUtils,
+   dwsUnitSymbols;
 
 type
    TRGB24 = record r, g, b : Byte; end;
@@ -687,7 +687,7 @@ procedure TPixmapResizeFunc.DoEvalProc(const args : TExprBaseListExec);
       var f : NativeInt := (oldWidth shl 16) div newWidth;
       var fx : NativeInt := (newWidth-1)*f;
       Inc(pDest, newWidth-1);
-      for var x:= 0 to newWidth-1 do begin
+      for var x := 0 to newWidth-1 do begin
          pDest^ := PRGB32(@PByte(pSrc)[(fx shr 16)*4])^;
          Dec(fx, f);
          Dec(pDest);

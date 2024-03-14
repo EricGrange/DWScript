@@ -6,7 +6,7 @@ unit LibTurboJPEG;
 
 interface
 
-uses Windows, SysUtils;
+uses Winapi.Windows, System.SysUtils;
 
 const
   {$IF Defined(WIN32)}

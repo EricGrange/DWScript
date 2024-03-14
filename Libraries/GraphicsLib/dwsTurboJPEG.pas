@@ -22,9 +22,7 @@ unit dwsTurboJPEG;
 interface
 
 uses
-   SysUtils,
-   dwsUtils,
-   LibTurboJPEG,
+   System.SysUtils,
    dwsJPEGEncoderOptions;
 
 function CompressJPEG(rgbData : Pointer; width, height, quality : Integer;
@@ -41,6 +39,9 @@ implementation
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
+
+uses LibTurboJPEG;
+
 
 // CompressJPEG
 //

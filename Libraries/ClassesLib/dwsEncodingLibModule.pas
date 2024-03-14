@@ -19,8 +19,8 @@ unit dwsEncodingLibModule;
 interface
 
 uses
-  SysUtils, Classes,
-  dwsExprs, dwsComp, dwsWebUtils, dwsUtils, dwsExprList, dwsSymbols;
+  System.SysUtils, System.Classes,
+  dwsExprs, dwsComp, dwsExprList;
 
 type
   TdwsEncodingLib = class(TDataModule)
@@ -93,7 +93,7 @@ implementation
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
 
-uses dwsEncoding;
+uses dwsUtils, dwsEncoding, dwsWebUtils, dwsSymbols;
 
 {$R *.dfm}
 
