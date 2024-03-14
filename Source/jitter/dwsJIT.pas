@@ -912,7 +912,7 @@ begin
             assignExpr.Right.Free;
             assignExpr.Right:=floatJIT;
          end;
-      end;
+      end else GreedyJIT(assignExpr.Right);
    end else if expr is TFuncExprBase then begin
       funcExpr:=TFuncExprBase(expr);
       funcSym:=funcExpr.FuncSym;
@@ -1016,13 +1016,13 @@ end;
 // QueueGreed
 //
 procedure TdwsJIT.QueueGreed(expr : TExprBase);
-var
-   greed : TQueuedJITGreed;
 begin
-   greed:=TQueuedJITGreed.Create;
-   greed.Expr:=expr;
-   greed.Next:=FQueuedGreed;
-   FQueuedGreed:=greed;
+   if expr = nil then Exit;
+
+   var greed := TQueuedJITGreed.Create;
+   greed.Expr := expr;
+   greed.Next := FQueuedGreed;
+   FQueuedGreed := greed;
 end;
 
 // QueueGreed

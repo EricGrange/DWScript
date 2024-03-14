@@ -3867,8 +3867,6 @@ begin
 
    Result := jit.AllocXMMReg(expr);
    x86._movsd_reg_reg(Result, xmm0);
-
-   jit.QueueGreed(expr);
 end;
 
 // DoCompileAssignFloat
@@ -3885,8 +3883,6 @@ end;
 function Tx86InterpretedExpr.DoCompileInteger(expr : TTypedExpr) : TgpRegister64;
 begin
    DoCallEval(expr, vmt_TExprBase_EvalAsInteger);
-
-   jit.QueueGreed(expr);
 
    Result := jit.AllocGPReg(expr);
    x86._mov_reg_reg(Result, gprRAX);
@@ -3909,8 +3905,6 @@ begin
 
    x86._test_al_al;
    jit.Fixups.NewConditionalJumps(flagsNZ, targetTrue, targetFalse);
-
-   jit.QueueGreed(expr);
 end;
 
 // DoCompileBooleanValue
@@ -3924,8 +3918,6 @@ begin
 
    Result := jit.AllocGPReg(expr);
    x86._movsx_reg_al(Result);
-
-   jit.QueueGreed(expr);
 end;
 
 // DoCompileAssignBoolean
@@ -4506,7 +4498,6 @@ end;
 //
 function Tx86DynamicArrayBase.CompileAsItemPtr(base, index : TTypedExpr; var offset : Integer; elementType : TVarType) : TgpRegister64;
 var
-   indexClass : TClass;
    elementSize : Integer;
    regDynBase : TgpRegister64;
    offsets : TDynamicArrayInterfaceToOffsets;
@@ -4520,20 +4511,20 @@ begin
       Assert(False);
    end;
 
-   indexClass := index.ClassType;
-   if indexClass = TAddIntExpr then begin
-      if TAddIntExpr(index).Right.ClassType = TConstIntExpr then begin
-         offset := offset + TConstIntExpr(TAddIntExpr(index).Right).Value * elementSize;
-         Result := CompileAsItemPtr(base, TAddIntExpr(index).Left, offset, elementType);
-         Exit;
-      end;
-   end else if indexClass = TSubIntExpr then begin
-      if TSubIntExpr(index).Right.ClassType = TConstIntExpr then begin
-         offset := offset - TConstIntExpr(TSubIntExpr(index).Right).Value * elementSize;
-         Result := CompileAsItemPtr(base, TSubIntExpr(index).Left, offset, elementType);
-         Exit;
-      end;
-   end;
+//   var indexClass := index.ClassType;
+//   if indexClass = TAddIntExpr then begin
+//      if TAddIntExpr(index).Right.ClassType = TConstIntExpr then begin
+//         offset := offset + TConstIntExpr(TAddIntExpr(index).Right).Value * elementSize;
+//         Result := CompileAsItemPtr(base, TAddIntExpr(index).Left, offset, elementType);
+//         Exit;
+//      end;
+//   end else if indexClass = TSubIntExpr then begin
+//      if TSubIntExpr(index).Right.ClassType = TConstIntExpr then begin
+//         offset := offset - TConstIntExpr(TSubIntExpr(index).Right).Value * elementSize;
+//         Result := CompileAsItemPtr(base, TSubIntExpr(index).Left, offset, elementType);
+//         Exit;
+//      end;
+//   end;
 
    regDynBase := jit.CompileScriptDynArray(base);
    var regIdx := jit.CompileIntegerToRegister(index);
@@ -4740,14 +4731,9 @@ end;
 // DoCompileInteger
 //
 function Tx86NegInt.DoCompileInteger(expr : TTypedExpr) : TgpRegister64;
-var
-   reg : TgpRegister64;
 begin
-   reg := jit.CompileIntegerToRegister(TNegIntExpr(expr).Expr);
-
-   Result := jit.AllocGPReg(expr);
-   x86._mov_reg_reg(Result, reg);
-   jit.ReleaseGPReg(reg);
+   var reg := jit.CompileIntegerToRegister(TNegIntExpr(expr).Expr);
+   Result := jit.AllocOrAcquireGPReg(reg, expr);
    x86._neg_reg(Result);
 end;
 
@@ -4758,14 +4744,9 @@ end;
 // DoCompileInteger
 //
 function Tx86NotInt.DoCompileInteger(expr : TTypedExpr) : TgpRegister64;
-var
-   reg : TgpRegister64;
 begin
-   reg := jit.CompileIntegerToRegister(TNegIntExpr(expr).Expr);
-
-   Result := jit.AllocGPReg(expr);
-   x86._mov_reg_reg(Result, reg);
-   jit.ReleaseGPReg(reg);
+   var reg := jit.CompileIntegerToRegister(TNegIntExpr(expr).Expr);
+   Result := jit.AllocOrAcquireGPReg(reg, expr);
    x86._not_reg(Result);
 end;
 
@@ -4788,21 +4769,16 @@ end;
 function Tx86IntegerBinOpExpr.DoCompileInteger(expr : TTypedExpr) : TgpRegister64;
 
    function CompileConstantOperand(expr, operand : TTypedExpr; const val : Int64) : TgpRegister64;
-   var
-      reg : TgpRegister64;
    begin
-      Result := jit.AllocGPReg(expr);
-      reg := jit.CompileIntegerToRegister(operand);
-      x86._mov_reg_reg(Result, reg);
+      var reg := jit.CompileIntegerToRegister(operand);
+      Result := jit.AllocOrAcquireGPReg(reg, expr);
       jit._op_reg_imm(FOp, Result, val);
-      jit.ReleaseGPReg(reg);
    end;
 
 var
-   e : TIntegerBinOpExpr;
    leftReg, rightReg : TgpRegister64;
 begin
-   e:=TIntegerBinOpExpr(expr);
+   var e := TIntegerBinOpExpr(expr);
 
    if e.Right is TConstIntExpr then
 
@@ -4815,9 +4791,7 @@ begin
    else begin
 
       leftReg := jit.CompileIntegerToRegister(e.Left);
-      Result := jit.AllocGPReg(expr);
-      x86._mov_reg_reg(Result, leftReg);
-      jit.ReleaseGPReg(leftReg);
+      Result := jit.AllocOrAcquireGPReg(leftReg, expr);
 
       rightReg := jit.CompileIntegerToRegister(e.Right);
       x86._op_reg_reg(FOp, Result, rightReg);
@@ -5063,14 +5037,13 @@ end;
 // DoCompileInteger
 //
 function Tx86Shift.DoCompileInteger(expr : TTypedExpr) : TgpRegister64;
-var
-   e : TShiftExpr;
 begin
-   e := TShiftExpr(expr);
+   var e := TShiftExpr(expr);
 
    if e.Right is TConstIntExpr then begin
 
-      Result := jit.CompileIntegerToRegister(e.Left);
+      var reg := jit.CompileIntegerToRegister(e.Left);
+      Result := jit.AllocOrAcquireGPReg(reg, expr);
       x86._shift_reg_imm(FShiftOp, Result, TConstIntExpr(e.Right).Value);
 
    end else Result := inherited;
@@ -6240,9 +6213,7 @@ begin
       doneTarget := jit.Fixups.NewHangingTarget(False);
 
       reg := jit.CompileIntegerToRegister(e.Args[0] as TTypedExpr);
-      Result := jit.AllocGPReg(expr);
-      x86._mov_reg_reg(Result, reg);
-      jit.ReleaseGPReg(reg);
+      Result := jit.AllocOrAcquireGPReg(reg, expr);
 
       x86._mov_reg_imm(gprRAX, TConstIntExpr(minExpr).Value);
       x86._cmp_reg_reg(Result, gprRAX);
