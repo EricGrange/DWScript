@@ -1172,6 +1172,10 @@ begin
                end;
             except
                // handle any exception raised during process: show must go on!
+               on E : EHttpApiServer do begin
+                  if not HttpThreadExceptionIntercepted(E) then
+                     raise;
+               end;
                on E : Exception do begin
                   if HttpThreadExceptionIntercepted(E) then
                      SendError(request, response, 500, 'Internal Server Error')
