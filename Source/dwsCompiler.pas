@@ -6888,6 +6888,17 @@ var
    hotPos : TScriptPos;
    exprFrom, exprTo : TTypedExpr;
    condition : TCaseCondition;
+
+   procedure CheckConstantRange;
+   var
+      vFrom, vTo : Variant;
+   begin
+      exprFrom.EvalAsVariant(FExec, vFrom);
+      exprTo.EvalAsVariant(FExec, vTo);
+      if VarCompareSafe(vFrom, vTo) = vrGreaterThan then
+         FMsgs.AddCompilerHint(hotPos, CPH_CaseRangeLowerBoundIsGreaterThanHigherBound);
+   end;
+
 begin
    // Find a comma sparated list of case conditions  0, 1, 2..4: ;
    repeat
@@ -6898,8 +6909,10 @@ begin
       try
          if FTok.TestDelete(ttDOTDOT) then begin
             // range condition e. g. 0..12
-            exprTo:=ReadExpr;
-            condition:=TRangeCaseCondition.Create(hotPos, exprFrom, exprTo);
+            exprTo := ReadExpr;
+            condition := TRangeCaseCondition.Create(hotPos, exprFrom, exprTo);
+            if exprFrom.IsConstant and exprTo.IsConstant then
+               CheckConstantRange;
          end else begin
             // compare condition e. g. 123:
             if exprFrom is TConstStringExpr then begin

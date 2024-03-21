@@ -1,0 +1,3 @@
+Hint: Case range condition lower bound is greater than higher bound [line: 2, column: 11]
+Hint: Case range condition lower bound is greater than higher bound [line: 3, column: 11]
+Hint: Case range condition lower bound is greater than higher bound [line: 6, column: 11]

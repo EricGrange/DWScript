@@ -407,6 +407,8 @@ const
   CPH_EmptyElseBlock = 'Empty ELSE block';
   CPH_BeginInCaseOfElseClause = 'Redundant "begin" in clause of a case..of';
 
+  CPH_CaseRangeLowerBoundIsGreaterThanHigherBound = 'Case range condition lower bound is greater than higher bound';
+
   // TypeCheck
   CPE_BooleanExpected = 'Boolean expected';
   CPE_IntegerExpected = 'Integer expected';
