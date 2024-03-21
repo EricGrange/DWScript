@@ -363,6 +363,7 @@ type
 
    Tx86InterpretedExpr = class (TdwsJITter_x86)
       procedure DoCallEval(expr : TExprBase; vmt : Integer);
+      procedure DoCallInterface(intfReg : TgpRegister64; vmt : Integer);
 
       procedure CompileStatement(expr : TExprBase); override;
 
@@ -441,6 +442,9 @@ type
    end;
    Tx86DynamicArraySet = class (Tx86DynamicArrayBase)
       procedure CompileStatement(expr : TExprBase); override;
+   end;
+   Tx86DynamicArrayLength = class (Tx86DynamicArrayBase)
+      function DoCompileInteger(expr : TTypedExpr) : TgpRegister64; override;
    end;
 
    Tx86AssignConstToFloatVar = class (TdwsJITter_x86)
@@ -644,6 +648,9 @@ type
       function DoCompileInteger(expr : TTypedExpr) : TgpRegister64; override;
    end;
 
+   Tx86IntegerInOpExpr = class (TdwsJITter_x86)
+      procedure DoCompileBoolean(expr : TTypedExpr; targetTrue, targetFalse : TFixup); override;
+   end;
    Tx86BitwiseInOpExpr = class (TdwsJITter_x86)
       procedure DoCompileBoolean(expr : TTypedExpr; targetTrue, targetFalse : TFixup); override;
    end;
@@ -851,6 +858,35 @@ var
    vAddr_SignFloat : function (const x : Double) : Int64 = SignFloat;
    vAddr_SignInt : function (const x : Int64) : Int64 = SignInt64;
 
+// DynArrayOffsetsFromElementType
+//
+function DynArrayOffsetsFromElementType(elementType : TVarType) : TDynamicArrayInterfaceToOffsets;
+begin
+   case elementType of
+      varInt64 : Result := vmt_ScriptDynamicIntegerArray_IScriptDynArray_Offsets;
+      varDouble : Result := vmt_ScriptDynamicFloatArray_IScriptDynArray_Offsets;
+      varUnknown : Result := vmt_ScriptDynamicInterfaceArray_IScriptDynArray_Offsets;
+   else
+      Assert(False);
+   end;
+end;
+
+// DynArrayOffsetsFromDynArray
+//
+function DynArrayOffsetsFromDynArray(dynSymbol : TDynamicArraySymbol) : TDynamicArrayInterfaceToOffsets;
+begin
+   var typ := dynSymbol.Typ;
+   if typ.UnAliasedTypeIs(TBaseIntegerSymbol) then
+      Result := vmt_ScriptDynamicIntegerArray_IScriptDynArray_Offsets
+   else if typ.UnAliasedTypeIs(TBaseFloatSymbol) then
+      Result := vmt_ScriptDynamicFloatArray_IScriptDynArray_Offsets
+   else if typ.UnAliasedTypeIs(TBaseStringSymbol) then
+      Result := vmt_ScriptDynamicStringArray_IScriptDynArray_Offsets
+   else if typ.UnAliasedTypeIs(TClassSymbol) or typ.UnAliasedTypeIs(TDynamicArraySymbol) then
+      Result := vmt_ScriptDynamicInterfaceArray_IScriptDynArray_Offsets
+   else Result := Default(TDynamicArrayInterfaceToOffsets);
+end;
+
 // ------------------
 // ------------------ TdwsJITx86_64 ------------------
 // ------------------
@@ -902,7 +938,7 @@ begin
    RegisterJITter(TDynamicArraySetVarExpr,      Tx86DynamicArraySet.Create(Self));
    RegisterJITter(TDynamicArraySetDataExpr,     FInterpretedJITter.IncRefCount);
 
-   RegisterJITter(TArrayLengthExpr,             FInterpretedJITter.IncRefCount);
+   RegisterJITter(TArrayLengthExpr,             Tx86DynamicArrayLength.Create(Self));
    RegisterJITter(TArraySetLengthExpr,          FInterpretedJITter.IncRefCount);
    RegisterJITter(TArrayAddExpr,                FInterpretedJITter.IncRefCount);
    RegisterJITter(TArrayAddValueExpr,           FInterpretedJITter.IncRefCount);
@@ -1047,7 +1083,7 @@ begin
    RegisterJITter(TCharacterInOpExpr,           FInterpretedJITter.IncRefCount);
    RegisterJITter(TStringInOpExpr,              FInterpretedJITter.IncRefCount);
    RegisterJITter(TStringInOpStaticSetExpr,     FInterpretedJITter.IncRefCount);
-   RegisterJITter(TIntegerInOpExpr,             FInterpretedJITter.IncRefCount);
+   RegisterJITter(TIntegerInOpExpr,             Tx86IntegerInOpExpr.Create(Self));
    RegisterJITter(TBitwiseInOpExpr,             Tx86BitwiseInOpExpr.Create(Self));
 
    RegisterJITter(TIncIntVarExpr,               Tx86IncIntVar.Create(Self));
@@ -3829,6 +3865,19 @@ begin
    jit.QueueGreed(expr);
 end;
 
+// DoCallInterface
+//
+procedure Tx86InterpretedExpr.DoCallInterface(intfReg : TgpRegister64; vmt : Integer);
+begin
+   jit.SaveRegisters;
+
+   x86._mov_reg_reg(gprRCX, intfReg);
+   x86._mov_reg_qword_ptr_reg(gprRAX, intfReg, 0);
+   x86._call_reg(gprRAX, vmt);
+
+   jit.RestoreRegisters;
+end;
+
 // CompileStatement
 //
 procedure Tx86InterpretedExpr.CompileStatement(expr : TExprBase);
@@ -4529,13 +4578,7 @@ begin
    regDynBase := jit.CompileScriptDynArray(base);
    var regIdx := jit.CompileIntegerToRegister(index);
 
-   case elementType of
-      varInt64 : offsets := vmt_ScriptDynamicIntegerArray_IScriptDynArray_Offsets;
-      varDouble : offsets := vmt_ScriptDynamicFloatArray_IScriptDynArray_Offsets;
-      varUnknown : offsets := vmt_ScriptDynamicInterfaceArray_IScriptDynArray_Offsets;
-   else
-      Assert(False);
-   end;
+   offsets := DynArrayOffsetsFromElementType(elementType);
 
    jit._RangeCheckDynArray(index, regIdx, regDynBase, offsets.ArrayLengthOffset);
 
@@ -4722,6 +4765,47 @@ begin
       jit.ReleaseGPReg(regPtr);
 
    end else inherited;
+end;
+
+// ------------------
+// ------------------ Tx86DynamicArrayLength ------------------
+// ------------------
+
+// DoCompileInteger
+//
+function Tx86DynamicArrayLength.DoCompileInteger(expr : TTypedExpr) : TgpRegister64;
+
+   function GetVMTIndex : Integer;
+   asm
+      mov eax, vmtoffset IScriptDynArray.GetArrayLength
+   end;
+
+begin
+   var e := TArrayLengthExpr(expr);
+
+   if e.Expr.ClassType <> TObjectVarExpr then Exit(inherited);
+
+   var dynSymbol := e.Expr.Typ as TDynamicArraySymbol;
+   var offsets := DynArrayOffsetsFromDynArray(dynSymbol);
+
+//   if offsets.ArrayLengthOffset = 0 then Exit(inherited);
+
+   var regDynBase := jit.CompileScriptDynArray(e.Expr);
+   Result := jit.AllocOrAcquireGPReg(regDynBase, nil);
+
+   if offsets.ArrayLengthOffset = 0 then begin
+
+      DoCallInterface(Result, GetVMTIndex);
+      x86._mov_reg_reg(Result, gprRAX);
+
+   end else begin
+
+      x86._mov_reg_qword_ptr_reg(Result, Result, offsets.ArrayLengthOffset);
+
+   end;
+
+   if e.Delta <> 0 then
+      x86._add_reg_imm(Result, e.Delta);
 end;
 
 // ------------------
@@ -5305,12 +5389,12 @@ end;
 // DoCompileBoolean
 //
 procedure Tx86BoolOrExpr.DoCompileBoolean(expr : TTypedExpr; targetTrue, targetFalse : TFixup);
-var
-   e : TBooleanBinOpExpr;
 begin
-   e := TBooleanBinOpExpr(expr);
+   var e := TBooleanBinOpExpr(expr);
+   var leftFalse := jit.Fixups.NewHangingTarget(False);
 
-   jit.CompileBoolean(e.Left, targetTrue, nil);
+   jit.CompileBoolean(e.Left, targetTrue, leftFalse);
+   jit.Fixups.AddFixup(leftFalse);
    jit.CompileBoolean(e.Right, targetTrue, targetFalse);
 end;
 
@@ -5321,12 +5405,12 @@ end;
 // DoCompileBoolean
 //
 procedure Tx86BoolAndExpr.DoCompileBoolean(expr : TTypedExpr; targetTrue, targetFalse : TFixup);
-var
-   e : TBooleanBinOpExpr;
 begin
-   e := TBooleanBinOpExpr(expr);
+   var e := TBooleanBinOpExpr(expr);
+   var leftTrue := jit.Fixups.NewHangingTarget(False);
 
-   jit.CompileBoolean(e.Left, nil, targetFalse);
+   jit.CompileBoolean(e.Left, leftTrue, targetFalse);
+   jit.Fixups.AddFixup(leftTrue);
    jit.CompileBoolean(e.Right, targetTrue, targetFalse);
 end;
 
@@ -5415,6 +5499,47 @@ begin
    jit.ReleaseGPReg(right);
 
    jit.Fixups.AddFixup(targetDone);
+end;
+
+// ------------------
+// ------------------ Tx86IntegerInOpExpr ------------------
+// ------------------
+
+// DoCompileBoolean
+//
+procedure Tx86IntegerInOpExpr.DoCompileBoolean(expr : TTypedExpr; targetTrue, targetFalse : TFixup);
+begin
+   var e := TIntegerInOpExpr(expr);
+
+   var reg := jit.CompileIntegerToRegister(e.Left);
+   jit.ReleaseGPReg(reg);
+   for var i := 0 to e.Count-1 do begin
+      var cc := e.CaseConditions[i];
+      if cc.ClassType = TCompareCaseCondition then begin
+         var v := TCompareCaseCondition(cc).CompareExpr as TConstIntExpr;
+         x86._cmp_reg_imm(reg, v.Value);
+         jit.Fixups.NewJump(flagsE, targetTrue);
+      end else if cc.ClassType = TRangeCaseCondition then begin
+         var vFrom := TRangeCaseCondition(cc).FromExpr as TConstIntExpr;
+         var vTo := TRangeCaseCondition(cc).ToExpr as TConstIntExpr;
+         var delta : Int64 := vTo.Value - vFrom.Value;
+         if delta >= 0 then begin
+            if vFrom.Value = 0 then
+               x86._cmp_reg_imm(reg, vTo.Value)
+            else begin
+               var deltaReg := jit.AllocGPReg(nil);
+               x86._mov_reg_reg(deltaReg, reg);
+               x86._sub_reg_imm(deltaReg, vFrom.Value);
+               x86._cmp_reg_imm(deltaReg, delta);
+               jit.ReleaseGPReg(deltaReg);
+            end;
+            jit.Fixups.NewJump(flagsNA, targetTrue);
+         end;
+      end else Assert(False);
+
+   end;
+   jit.Fixups.NewJump(targetFalse);
+
 end;
 
 // ------------------
