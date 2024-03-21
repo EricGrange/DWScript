@@ -45,6 +45,7 @@ var
 
    vmt_ScriptDynamicIntegerArray_IScriptDynArray_Offsets : TDynamicArrayInterfaceToOffsets;
    vmt_ScriptDynamicFloatArray_IScriptDynArray_Offsets : TDynamicArrayInterfaceToOffsets;
+   vmt_ScriptDynamicStringArray_IScriptDynArray_Offsets : TDynamicArrayInterfaceToOffsets;
    vmt_ScriptDynamicInterfaceArray_IScriptDynArray_Offsets : TDynamicArrayInterfaceToOffsets;
    vmt_ScriptDynamicBooleanArray_IScriptDynArray_Offsets : TDynamicArrayInterfaceToOffsets;
 
@@ -105,6 +106,7 @@ var
 begin
    vmt_ScriptDynamicIntegerArray_IScriptDynArray_Offsets := TScriptDynamicNativeIntegerArray.InterfaceOffsets;
    vmt_ScriptDynamicFloatArray_IScriptDynArray_Offsets := TScriptDynamicNativeFloatArray.InterfaceOffsets;
+   vmt_ScriptDynamicStringArray_IScriptDynArray_Offsets := TScriptDynamicNativeStringArray.InterfaceOffsets;
    vmt_ScriptDynamicInterfaceArray_IScriptDynArray_Offsets := TScriptDynamicNativeInterfaceArray.InterfaceOffsets;
    vmt_ScriptDynamicBooleanArray_IScriptDynArray_Offsets := TScriptDynamicNativeBooleanArray.InterfaceOffsets;
 
