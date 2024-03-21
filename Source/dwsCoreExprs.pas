@@ -3650,13 +3650,12 @@ end;
 //
 function TIntegerInOpExpr.EvalAsBoolean(exec : TdwsExecution) : Boolean;
 var
-   i : Integer;
    value : Int64;
    cc : TCaseCondition;
 begin
    value:=FLeft.EvalAsInteger(exec);
-   for i:=0 to FCaseConditions.Count-1 do begin
-      cc:=TCaseCondition(FCaseConditions.List[i]);
+   for var i := 0 to FCaseConditions.Count-1 do begin
+      cc := TCaseCondition(FCaseConditions.List[i]);
       if cc.IntegerIsTrue(value) then
          Exit(True);
    end;
