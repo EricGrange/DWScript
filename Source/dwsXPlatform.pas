@@ -361,8 +361,20 @@ function LoadTextFromStream(aStream : TStream) : UnicodeString;
 function LoadTextFromFile(const fileName : TFileName) : UnicodeString;
 procedure SaveTextToUTF8File(const fileName : TFileName; const text : String);
 procedure AppendTextToUTF8File(const fileName : TFileName; const text : UTF8String);
-function OpenFileForSequentialReadOnly(const fileName : TFileName) : THandle;
-function OpenFileForSequentialWriteOnly(const fileName : TFileName) : THandle;
+
+type
+   TOpenFileOption = ( ofoNoRaiseError );
+   TOpenFileOptions = set of TOpenFileOption;
+
+function OpenFileForSequentialReadOnly(
+   const fileName : TFileName;
+   const options : TOpenFileOptions = [ ]
+   ) : THandle;
+function OpenFileForSequentialWriteOnly(
+   const fileName : TFileName;
+   const options : TOpenFileOptions = [ ]
+   ) : THandle;
+
 function CloseFileHandle(hFile : THandle) : Boolean;
 function FileWrite(hFile : THandle; buffer : Pointer; byteCount : Int64) : Int64;
 function FileRead(hFile : THandle; buffer : Pointer; byteCount : Int64) : Int64;
@@ -2178,29 +2190,35 @@ end;
 
 // OpenFileForSequentialReadOnly
 //
-function OpenFileForSequentialReadOnly(const fileName : TFileName) : THandle;
+function OpenFileForSequentialReadOnly(
+   const fileName : TFileName;
+   const options : TOpenFileOptions = [ ]
+   ) : THandle;
 begin
    {$IFDEF WINDOWS}
    Result:=CreateFile(PChar(fileName), GENERIC_READ, FILE_SHARE_READ+FILE_SHARE_WRITE,
                       nil, OPEN_EXISTING, FILE_FLAG_SEQUENTIAL_SCAN, 0);
-   if Result=INVALID_HANDLE_VALUE then begin
+   if (Result = INVALID_HANDLE_VALUE) and not (ofoNoRaiseError in options) then begin
       if GetLastError<>ERROR_FILE_NOT_FOUND then
          RaiseLastOSError;
    end;
    {$ELSE}
    Result := System.SysUtils.FileCreate(fileName, fmOpenRead, $007);
-   if Result = INVALID_HANDLE_VALUE then
+   if (Result = INVALID_HANDLE_VALUE) and not (ofoNoRaiseError in options) then
       raise Exception.Create('invalid file handle');
    {$ENDIF}
 end;
 
 // OpenFileForSequentialWriteOnly
 //
-function OpenFileForSequentialWriteOnly(const fileName : TFileName) : THandle;
+function OpenFileForSequentialWriteOnly(
+   const fileName : TFileName;
+   const options : TOpenFileOptions = [ ]
+   ) : THandle;
 begin
    {$ifdef WINDOWS}
    var attributes : Cardinal;
-   Result:=CreateFile(
+   Result := CreateFile(
       PChar(fileName), GENERIC_WRITE, 0, nil, CREATE_ALWAYS,
       FILE_ATTRIBUTE_NORMAL or FILE_FLAG_SEQUENTIAL_SCAN, 0
    );
@@ -2217,7 +2235,7 @@ begin
    {$else}
    Result := System.SysUtils.FileCreate(fileName, fmOpenWrite, $007);
    {$endif}
-   if Result = INVALID_HANDLE_VALUE then
+   if (Result = INVALID_HANDLE_VALUE) and not (ofoNoRaiseError in options) then
       RaiseLastOSError;
 end;
 
