@@ -2757,6 +2757,7 @@ procedure Tx86_64_WriteOnlyStream._imul_reg_reg_imm(dest, operand : TgpRegister6
 var
    p : Integer;
 begin
+   Assert(Int32(value) = value);
    case value of
       -1 : begin
          _mov_reg_reg(dest, operand);
@@ -2989,13 +2990,13 @@ end;
 //
 procedure Tx86_64_WriteOnlyStream._add_reg_imm(reg : TgpRegister64; value : Int64);
 begin
-   case value of
-      0 : ;
-      1 : _inc(reg);
-      -1 : _dec(reg);
-   else
-      _op_reg_imm(gpOp_add, reg, value);
-   end;
+   // DO NOT use a "case..of" here, case..of is Int32 only
+   if value = 0 then Exit;
+   if value = 1 then
+      _inc(reg)
+   else if value = -1 then
+      _dec(reg)
+   else _op_reg_imm(gpOp_add, reg, value);
 end;
 
 // _add_reg_reg
@@ -3009,13 +3010,13 @@ end;
 //
 procedure Tx86_64_WriteOnlyStream._sub_reg_imm(reg : TgpRegister64; value : Int64);
 begin
-   case value of
-      0 : ;
-      1 : _dec(reg);
-      -1 : _inc(reg);
-   else
-      _op_reg_imm(gpOp_sub, reg, value);
-   end;
+   // DO NOT use a "case..of" here, case..of is Int32 only
+   if value = 0 then Exit;
+   if value = 1 then
+      _dec(reg)
+   else if value = -1 then
+      _inc(reg)
+   else _op_reg_imm(gpOp_sub, reg, value);
 end;
 
 // _sub_reg_reg
