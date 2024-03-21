@@ -196,6 +196,7 @@ type
          FOutputFailedOn : TExprBase;
          FSeenByGreedy : TSimpleObjectHash<TSymbol>;
          FQueuedGreed : TQueuedJITGreed;
+         FDeQueuing : Integer;
 
          FFixups : TFixupLogic;
          FLoopContext : TJITLoopContext;
@@ -1000,16 +1001,21 @@ procedure TdwsJIT.DeQueueGreed;
 var
    greed : TQueuedJITGreed;
 begin
-   while FQueuedGreed<>nil do begin
-      greed:=FQueuedGreed;
-      FQueuedGreed:=greed.Next;
-      try
-         if greed.Expr<>nil then
-            GreedyJIT(greed.Expr)
-         else GreedyJIT(greed.Prog);
-      finally
-         greed.Free;
+   Inc(FDeQueuing);
+   try
+      while FQueuedGreed<>nil do begin
+         greed := FQueuedGreed;
+         FQueuedGreed := greed.Next;
+         try
+            if greed.Expr<>nil then
+               GreedyJIT(greed.Expr)
+            else GreedyJIT(greed.Prog);
+         finally
+            greed.Free;
+         end;
       end;
+   finally
+      Dec(FDeQueuing);
    end;
 end;
 
@@ -1041,11 +1047,10 @@ end;
 //
 procedure TdwsJIT.GreedyJIT(prog : TdwsProgram);
 var
-   i : Integer;
    initStatement : TExprBase;
    statementJIT : TJITTedProgramExpr;
 begin
-   for i := 0 to prog.InitExpr.StatementCount-1 do begin
+   for var i := 0 to prog.InitExpr.StatementCount-1 do begin
       initStatement := prog.InitExpr.SubExpr[i];
       if initStatement is TBlockExpr then begin
          statementJIT := JITStatement(TBlockExpr(initStatement), True);
@@ -1061,7 +1066,8 @@ begin
          prog.Expr:=statementJIT;
       end;
    end;
-   DeQueueGreed;
+   if FDeQueuing = 0 then
+      DeQueueGreed;
 end;
 
 // ------------------
