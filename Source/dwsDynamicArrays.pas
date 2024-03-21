@@ -2420,10 +2420,10 @@ end;
 //
 class function TScriptDynamicNativeStringArray.InterfaceOffsets : TDynamicArrayInterfaceToOffsets;
 var
-   instance : TScriptDynamicNativeIntegerArray;
+   instance : TScriptDynamicNativeStringArray;
    intf : IScriptDynArray;
 begin
-   instance := TScriptDynamicNativeIntegerArray.Create(nil);
+   instance := TScriptDynamicNativeStringArray.Create(nil);
    intf := instance;
    Result.DataPtrOffset := NativeInt(@instance.FData) - NativeInt(intf);
    Result.ArrayLengthOffset := NativeInt(@instance.FArrayLength) - NativeInt(intf);
