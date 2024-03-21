@@ -449,6 +449,7 @@ const
 
   // Others
   CPE_CompilationAborted = 'Compilation aborted';
+  CPE_RecompileInContextDoesntSupportUnits = 'RecompileInContect does not support units';
 
   CPE_ConstantExpressionExpected = 'Constant expression expected';
   CPE_IntegerExpressionExpected = 'Integer expression expected';

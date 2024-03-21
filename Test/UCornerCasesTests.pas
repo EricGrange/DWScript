@@ -62,6 +62,8 @@ type
          procedure RecompileInContext2;
          procedure RecompileInContext3;
          procedure RecompileInContext4;
+         procedure RecompileInContextUses;
+         procedure RecompileInContextUnit;
 //         procedure RecompileInContextVarArray;
          procedure ScriptPos;
          procedure MonkeyTest;
@@ -1075,6 +1077,66 @@ begin
    end;
 end;
 *)
+
+// RecompileInContextUses
+//
+procedure TCornerCasesTests.RecompileInContextUses;
+var
+   prog : IdwsProgram;
+   exec : IdwsProgramExecution;
+begin
+   prog := FCompiler.Compile( 'uses HelloWorld; Print(1);');
+
+   exec:=prog.BeginNewExecution;
+   try
+      exec.RunProgram(0);
+      CheckEquals('1', exec.Result.ToString, 'compile 1');
+   finally
+      exec.EndProgram;
+   end;
+
+   FCompiler.RecompileInContext(prog, 'uses HelloWorld; Print(2);');
+
+   exec:=prog.BeginNewExecution;
+   try
+      exec.RunProgram(0);
+      CheckEquals('2', exec.Result.ToString, 'compile 2');
+   finally
+      exec.EndProgram;
+   end;
+
+   FCompiler.RecompileInContext(prog, 'uses HelloWorld; Print(3);');
+
+   exec:=prog.BeginNewExecution;
+   try
+      exec.RunProgram(0);
+      CheckEquals('3', exec.Result.ToString, 're compile 3');
+   finally
+      exec.EndProgram;
+   end;
+end;
+
+// RecompileInContextUnit
+//
+procedure TCornerCasesTests.RecompileInContextUnit;
+var
+   prog : IdwsProgram;
+   exec : IdwsProgramExecution;
+begin
+   prog := FCompiler.Compile( 'unit Recomp; uses HelloWorld; Print(1);');
+
+   exec:=prog.BeginNewExecution;
+   try
+      exec.RunProgram(0);
+      CheckEquals('1', exec.Result.ToString, 'compile 1');
+   finally
+      exec.EndProgram;
+   end;
+
+   FCompiler.RecompileInContext(prog, 'unit Recomp; uses HelloWorld; Print(2);');
+   CheckEquals('Syntax Error: RecompileInContect does not support units [line: 1, column: 1]'#13#10, prog.Msgs.AsInfo);
+end;
+
 // ScriptPos
 //
 procedure TCornerCasesTests.ScriptPos;

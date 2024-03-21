@@ -1780,20 +1780,24 @@ end;
 //
 procedure TdwsCompiler.HandleUnitDependencies(scriptType : TScriptSourceType);
 var
-   i : Integer;
    unitsResolved : TIdwsUnitList;
    unitTable : TUnitSymbolTable;
    unitSymbol : TUnitMainSymbol;
    u : IdwsUnit;
 begin
-   unitsResolved:=ResolveUnitReferences(scriptType);
+   unitsResolved := ResolveUnitReferences(scriptType);
    try
       // Get the symboltables of the units
-      for i:=0 to unitsResolved.Count-1 do begin
+      for var i := 0 to unitsResolved.Count-1 do begin
          u := unitsResolved[i];
-         unitTable:=(u as IdwsUnitTableFactory).GetUnitTable(FSystemTable, FMainProg.UnitMains, FOperators, FMainProg.RootTable);
-         unitSymbol:=TUnitMainSymbol.Create(u.GetUnitName, unitTable, FMainProg.UnitMains);
-         unitSymbol.DeprecatedMessage:=u.GetDeprecatedMessage;
+         unitSymbol := FMainProg.UnitMains.Find(u.GetUnitName);
+         if not Assigned(unitSymbol) then begin
+            unitTable := (u as IdwsUnitTableFactory).GetUnitTable(
+               FSystemTable, FMainProg.UnitMains, FOperators, FMainProg.RootTable
+            );
+            unitSymbol := TUnitMainSymbol.Create(u.GetUnitName, unitTable, FMainProg.UnitMains);
+            unitSymbol.DeprecatedMessage := u.GetDeprecatedMessage;
+         end;
          unitSymbol.ReferenceInSymbolTable(CurrentProg.Table, True);
       end;
    finally
@@ -2240,8 +2244,11 @@ begin
       FUnitSection:=secMixed;
 
       // Start compilation
-      CurrentProg.Expr:=ReadScript(sourceFile, stRecompile);
+      CurrentProg.Expr := ReadScript(sourceFile, stRecompile);
       ReadScriptImplementations;
+
+      if CurrentProg.Expr = nil then
+         CurrentProg.Expr := TNullExpr.Create(cNullPos);
 
       // Initialize symbol table
       CurrentProg.Table.Initialize(FMsgs);
@@ -2396,6 +2403,9 @@ begin
 
       if readingMain then begin
          if FTok.Test(ttUNIT) then begin
+            if scriptType = stRecompile then
+               FMsgs.AddCompilerError(FTok.HotPos, CPE_RecompileInContextDoesntSupportUnits);
+
             if coContextMap in Options then begin
                // need to fix the context map
                // the convoluted code below is required in case the first code content encountered
@@ -2408,7 +2418,7 @@ begin
                if contextFix<>nil then
                   contextFix.Token:=ttUNIT;
             end;
-            scriptType:=stUnit;
+            scriptType := stUnit;
             HandleUnitDependencies(scriptType);
          end else begin
             initialToken:=FTok.TestDeleteAny([ttPROGRAM, ttLIBRARY]);
