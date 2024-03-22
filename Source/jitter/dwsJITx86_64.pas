@@ -256,6 +256,11 @@ type
          procedure CompileBoolean(expr : TTypedExpr; targetTrue, targetFalse : TFixup);
          function  CompileBooleanValueToRegister(expr : TTypedExpr) : TgpRegister64;
 
+         function CompileIntegerCaseCondition(
+            operandReg : TgpRegister64; caseCondition : TCaseCondition;
+            targetTrue, targetFalse : TFixup
+            ) : Boolean;
+
          function CompiledOutput : TdwsJITCodeBlock; override;
 
          procedure _xmm_reg_expr(op : TxmmOp; dest : TxmmRegister; expr : TTypedExpr);
@@ -492,6 +497,10 @@ type
 
    Tx86IfThenElseValue = class (Tx86InterpretedExpr)
       function  DoCompileInteger(expr : TTypedExpr) : TgpRegister64; override;
+   end;
+
+   Tx86CaseInteger = class (Tx86InterpretedExpr)
+      procedure CompileStatement(expr : TExprBase); override;
    end;
 
    Tx86Loop = class (TdwsJITter_x86)
@@ -1028,9 +1037,10 @@ begin
    RegisterJITter(TIfThenExpr,                  Tx86IfThen.Create(Self));
    RegisterJITter(TIfThenElseExpr,              Tx86IfThenElse.Create(Self));
    RegisterJITter(TIfThenElseValueExpr,         Tx86IfThenElseValue.Create(Self));
+
    RegisterJITter(TCaseExpr,                    FInterpretedJITter.IncRefCount);
    RegisterJITter(TCaseStringExpr,              FInterpretedJITter.IncRefCount);
-   RegisterJITter(TCaseIntegerExpr,             FInterpretedJITter.IncRefCount);
+   RegisterJITter(TCaseIntegerExpr,             Tx86CaseInteger.Create(Self));
 
    RegisterJITter(TLoopExpr,                    Tx86Loop.Create(Self));
    RegisterJITter(TRepeatExpr,                  Tx86Repeat.Create(Self));
@@ -1743,6 +1753,44 @@ end;
 function TdwsJITx86_64.CompileBooleanValueToRegister(expr : TTypedExpr) : TgpRegister64;
 begin
    Result := TgpRegister64(inherited CompileBooleanValue(expr));
+end;
+
+// CompileIntegerCaseCondition
+//
+function TdwsJITx86_64.CompileIntegerCaseCondition(
+   operandReg : TgpRegister64; caseCondition : TCaseCondition;
+   targetTrue, targetFalse : TFixup
+   ) : Boolean;
+begin
+   if caseCondition.ClassType = TCompareCaseCondition then begin
+
+      var compareExpr := TCompareCaseCondition(caseCondition).CompareExpr;
+      var v := compareExpr as TConstIntExpr;
+      x86._cmp_reg_imm(operandReg, v.Value);
+      Fixups.NewJump(flagsE, targetTrue);
+      Result := True;
+
+   end else if caseCondition.ClassType = TRangeCaseCondition then begin
+
+      var rangeCondition := TRangeCaseCondition(caseCondition);
+      var vFrom := rangeCondition.FromExpr as TConstIntExpr;
+      var vTo := rangeCondition.ToExpr as TConstIntExpr;
+      var delta : Int64 := vTo.Value - vFrom.Value;
+      if delta >= 0 then begin
+         if vFrom.Value = 0 then
+            x86._cmp_reg_imm(operandReg, vTo.Value)
+         else begin
+            var deltaReg := AllocGPReg(nil);
+            x86._mov_reg_reg(deltaReg, operandReg);
+            x86._sub_reg_imm(deltaReg, vFrom.Value);
+            x86._cmp_reg_imm(deltaReg, delta);
+            ReleaseGPReg(deltaReg);
+         end;
+         Fixups.NewJump(flagsNA, targetTrue);
+      end;
+      Result := True;
+
+   end else Result := False;
 end;
 
 // CompiledOutput
@@ -3307,6 +3355,64 @@ begin
       regFalse := jit.CompileIntegerToRegister(e.FalseExpr);
       x86._mov_reg_reg(Result, regFalse);
       jit.ReleaseGPReg(regFalse);
+   end;
+
+   jit.Fixups.AddFixup(targetDone);
+end;
+
+// ------------------
+// ------------------ Tx86CaseInteger ------------------
+// ------------------
+
+// CompileStatement
+//
+procedure Tx86CaseInteger.CompileStatement(expr : TExprBase);
+var
+   caseTargets : array of TFixupTarget;
+begin
+   var e := TCaseIntegerExpr(expr);
+
+   var nbCC := e.CaseConditions.Count;
+
+   // prepare case targets
+
+   SetLength(caseTargets, nbCC);
+   for var i := 0 to nbCC-1 do
+      caseTargets[i] := jit.Fixups.NewHangingTarget(False);
+   var targetElse := jit.Fixups.NewHangingTarget(False);
+   var targetDone := jit.Fixups.NewHangingTarget(False);
+
+   // compile condition checks
+
+   var reg := jit.CompileIntegerToRegister(e.ValueExpr);
+   for var i := 0 to nbCC-1 do begin
+      var cc := TCaseCondition(e.CaseConditions.List[i]);
+      var targetNextCondition : TFixupTarget;
+      if i < nbCC-1 then
+         targetNextCondition := jit.Fixups.NewHangingTarget(False)
+      else targetNextCondition := targetElse;
+      if not jit.CompileIntegerCaseCondition(reg, cc, caseTargets[i], targetNextCondition) then begin
+         jit.OutputFailedOn := expr;
+         Break;
+      end;
+      if targetNextCondition <> targetElse then
+         jit.Fixups.AddFixup(targetNextCondition);
+   end;
+   jit.ReleaseGPReg(reg);
+
+   // compile case statements
+
+   jit.Fixups.AddFixup(targetElse);
+   if e.ElseExpr <> nil then
+      jit.CompileStatement(e.ElseExpr);
+   jit.Fixups.NewJump(targetDone);
+
+   for var i := 0 to nbCC-1 do begin
+      var cc := TCaseCondition(e.CaseConditions.List[i]);
+      jit.Fixups.AddFixup(caseTargets[i]);
+      jit.CompileStatement(cc.TrueExpr);
+      if i < nbCC-1 then
+         jit.Fixups.NewJump(targetDone);
    end;
 
    jit.Fixups.AddFixup(targetDone);
@@ -5512,34 +5618,15 @@ begin
    var e := TIntegerInOpExpr(expr);
 
    var reg := jit.CompileIntegerToRegister(e.Left);
-   jit.ReleaseGPReg(reg);
    for var i := 0 to e.Count-1 do begin
       var cc := e.CaseConditions[i];
-      if cc.ClassType = TCompareCaseCondition then begin
-         var v := TCompareCaseCondition(cc).CompareExpr as TConstIntExpr;
-         x86._cmp_reg_imm(reg, v.Value);
-         jit.Fixups.NewJump(flagsE, targetTrue);
-      end else if cc.ClassType = TRangeCaseCondition then begin
-         var vFrom := TRangeCaseCondition(cc).FromExpr as TConstIntExpr;
-         var vTo := TRangeCaseCondition(cc).ToExpr as TConstIntExpr;
-         var delta : Int64 := vTo.Value - vFrom.Value;
-         if delta >= 0 then begin
-            if vFrom.Value = 0 then
-               x86._cmp_reg_imm(reg, vTo.Value)
-            else begin
-               var deltaReg := jit.AllocGPReg(nil);
-               x86._mov_reg_reg(deltaReg, reg);
-               x86._sub_reg_imm(deltaReg, vFrom.Value);
-               x86._cmp_reg_imm(deltaReg, delta);
-               jit.ReleaseGPReg(deltaReg);
-            end;
-            jit.Fixups.NewJump(flagsNA, targetTrue);
-         end;
-      end else Assert(False);
-
+      if not jit.CompileIntegerCaseCondition(reg, cc, targetTrue, targetFalse) then begin
+         jit.OutputFailedOn := expr;
+         Break;
+      end;
    end;
    jit.Fixups.NewJump(targetFalse);
-
+   jit.ReleaseGPReg(reg);
 end;
 
 // ------------------
