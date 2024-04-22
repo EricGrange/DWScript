@@ -57,6 +57,18 @@ object dwsEncodingLib: TdwsEncodingLib
             Attributes = [maVirtual, maOverride]
             Kind = mkClassFunction
             OnEval = dwsEncodingClassesUTF8EncoderMethodsDecodeEval
+          end
+          item
+            Name = 'IsValidUTF8'
+            Parameters = <
+              item
+                Name = 'data'
+                DataType = 'String'
+              end>
+            ResultType = 'Boolean'
+            Attributes = [maStatic]
+            Kind = mkClassFunction
+            OnFastEvalBoolean = dwsEncodingClassesUTF8EncoderMethodsIsValidUTF8FastEvalBoolean
           end>
       end
       item

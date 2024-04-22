@@ -124,6 +124,8 @@ type
          procedure TryStrToDoubleTest;
 
          procedure StrReplaceCharTest;
+
+         procedure IsValidUTF8Test;
    end;
 
 // ------------------------------------------------------------------
@@ -2243,6 +2245,48 @@ begin
    CheckEquals(',', StrReplaceChar('.', '.', ','), '.');
    CheckEquals('a,', StrReplaceChar('a.', '.', ','), 'a.');
    CheckEquals(',b', StrReplaceChar('.b', '.', ','), '.b');
+end;
+
+// IsValidUTF8Test
+//
+procedure TdwsUtilsTests.IsValidUTF8Test;
+
+   function WrapIsValidUTF8(const s : String) : Boolean;
+   begin
+      Result := IsValidUTF8(ScriptStringToRawByteString(s));
+   end;
+
+begin
+   // Valid UTF-8 strings
+   Check(WrapIsValidUTF8('Hello, World!'), 'Simple ASCII string');
+   Check(IsValidUTF8(UTF8Encode('π€©πΆβ¨')), 'String with multi-byte characters');
+   Check(IsValidUTF8(nil, 0), 'Empty string 1');
+   Check(WrapIsValidUTF8(''), 'Empty string 2');
+
+   // Malformed UTF-8 strings
+   CheckFalse(WrapIsValidUTF8('Hello' + #$00C0#$0020'World'), 'Malformed sequence in the middle');
+   CheckFalse(WrapIsValidUTF8(#$0080'abc'), 'Malformed sequence at the start');
+   CheckFalse(WrapIsValidUTF8('abc'#$80), 'Malformed sequence at the end');
+   CheckFalse(WrapIsValidUTF8(#$F8#$88#$80#$80#$80), 'Malformed sequence with overlong encoding');
+   CheckFalse(WrapIsValidUTF8(#$C0#$C0), 'Two malformed sequences');
+   CheckFalse(WrapIsValidUTF8(#$00E0#$0080), 'Malformed sequence with missing continuation bytes 1a');
+   CheckFalse(WrapIsValidUTF8(#$00E0#$0080'b'), 'Malformed sequence with missing continuation bytes 1b');
+   CheckFalse(WrapIsValidUTF8(#$00E0'cd'), 'Malformed sequence with missing continuation bytes 1c');
+   CheckFalse(WrapIsValidUTF8(#$00F0#$0080#$0080), 'Malformed sequence with missing continuation bytes 2a');
+   CheckFalse(WrapIsValidUTF8(#$00F0#$0080#$0080'b'), 'Malformed sequence with missing continuation bytes 2b');
+   CheckFalse(WrapIsValidUTF8(#$00F0#$0080'cd'), 'Malformed sequence with missing continuation bytes 2c');
+   CheckFalse(WrapIsValidUTF8(#$00F0'def'), 'Malformed sequence with missing continuation bytes 2d');
+   CheckFalse(WrapIsValidUTF8(#$00C0#$0080#$0080), 'Malformed sequence with overlong encoding 1');
+   CheckFalse(WrapIsValidUTF8(#$00E0#$0080#$0080#$0080), 'Malformed sequence with overlong encoding 2');
+   CheckFalse(WrapIsValidUTF8(#$00F0#$0080#$0080#$0080#$0080), 'Malformed sequence with overlong encoding 3');
+   CheckFalse(WrapIsValidUTF8(#$00F8#$0088#$0080#$0080#$0080#$00AF), 'Malformed sequence with overlong encoding 4');
+   CheckFalse(WrapIsValidUTF8(#$00FC#$0084#$0080#$0080#$0080#$0080#$00AF), 'Malformed sequence with overlong encoding 5');
+
+   // Edge cases
+   Check(WrapIsValidUTF8(#$007F), 'Single byte character (ASCII)');
+   Check(WrapIsValidUTF8(#$00DF#$00BF), 'Two byte character');
+   Check(WrapIsValidUTF8(#$00EF#$00BF#$00BD), 'Three byte character');
+   Check(WrapIsValidUTF8(#$00F4#$008F#$00BF#$00BF), 'Four byte character');
 end;
 
 // ------------------------------------------------------------------

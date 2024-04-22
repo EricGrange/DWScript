@@ -79,6 +79,8 @@ type
       Info: TProgramInfo; ExtObject: TObject);
     procedure dwsEncodingClassesMIMEEncodedWordEncoderMethodsEncodeEval(
       Info: TProgramInfo; ExtObject: TObject);
+    function dwsEncodingClassesUTF8EncoderMethodsIsValidUTF8FastEvalBoolean(
+      baseExpr: TTypedExpr; const args: TExprBaseListExec): Boolean;
   private
     { Private declarations }
   public
@@ -265,6 +267,12 @@ procedure TdwsEncodingLib.dwsEncodingClassesUTF8EncoderMethodsEncodeEval(
   Info: TProgramInfo; ExtObject: TObject);
 begin
    Info.ResultAsDataString := UTF8Encode(Info.ParamAsString[0]);
+end;
+
+function TdwsEncodingLib.dwsEncodingClassesUTF8EncoderMethodsIsValidUTF8FastEvalBoolean(
+  baseExpr: TTypedExpr; const args: TExprBaseListExec): Boolean;
+begin
+   Result := IsValidUTF8(args.AsDataString[0]);
 end;
 
 procedure TdwsEncodingLib.dwsEncodingClassesXMLTextEncoderMethodsEncodeEval(
