@@ -935,6 +935,7 @@ begin
    RegisterJITter(TVarParamExpr,                FInterpretedJITter.IncRefCount);// Tx86VarParam.Create(Self));
    RegisterJITter(TConstParamExpr,              FInterpretedJITter.IncRefCount);
    RegisterJITter(TLazyParamExpr,               FInterpretedJITter.IncRefCount);
+   RegisterJITter(TByRefParamExpr,              FInterpretedJITter.IncRefCount);
    RegisterJITter(TVarParentExpr,               FInterpretedJITter.IncRefCount);
    RegisterJITter(TVarParamParentExpr,          FInterpretedJITter.IncRefCount);
 
@@ -1027,6 +1028,8 @@ begin
    RegisterJITter(TMultAssignExpr,              FInterpretedJITter.IncRefCount);
 
    RegisterJITter(TStringLengthExpr,            FInterpretedJITter.IncRefCount);
+   RegisterJITter(TAddStrExpr,                  FInterpretedJITter.IncRefCount);
+   RegisterJITter(TAddStrManyExpr,              FInterpretedJITter.IncRefCount);
    RegisterJITter(TAppendStringVarExpr,         FInterpretedJITter.IncRefCount);
    RegisterJITter(TAppendStringVarParamExpr,    FInterpretedJITter.IncRefCount);
    RegisterJITter(TAppendConstStringVarExpr,    FInterpretedJITter.IncRefCount);
@@ -1084,6 +1087,15 @@ begin
    RegisterJITter(TIntAndExpr,                  Tx86IntegerBinOpExpr.Create(Self, gpOp_and));
    RegisterJITter(TIntXorExpr,                  Tx86IntegerBinOpExpr.Create(Self, gpOp_xor));
    RegisterJITter(TIntOrExpr,                   Tx86IntegerBinOpExpr.Create(Self, gpOp_or));
+
+   RegisterJITter(TNegVariantExpr,              FInterpretedJITter.IncRefCount);
+   RegisterJITter(TNotVariantExpr,              FInterpretedJITter.IncRefCount);
+   RegisterJITter(TAddVariantExpr,              FInterpretedJITter.IncRefCount);
+   RegisterJITter(TSubVariantExpr,              FInterpretedJITter.IncRefCount);
+   RegisterJITter(TMultVariantExpr,             FInterpretedJITter.IncRefCount);
+   RegisterJITter(TVariantAndExpr,              FInterpretedJITter.IncRefCount);
+   RegisterJITter(TVariantOrExpr,               FInterpretedJITter.IncRefCount);
+   RegisterJITter(TVariantXorExpr,              FInterpretedJITter.IncRefCount);
 
    RegisterJITter(TShrExpr,                     Tx86Shift.Create(Self, gpShr));
    RegisterJITter(TShlExpr,                     Tx86Shift.Create(Self, gpShl));
