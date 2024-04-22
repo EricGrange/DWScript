@@ -147,6 +147,16 @@ type
       jvtBoolean
    );
 
+   // TdwsJSONParserLocation
+   //
+   // Used to store internal location state for TdwsJSONParserState
+   // Note that it is not used in that class to avoid an indirection overhead
+   TdwsJSONParserLocation = record
+      Ptr, ColStart : PWideChar;
+      Line : Integer;
+      TrailCharacter : WideChar;
+   end;
+
    // TdwsJSONParserState
    //
    // Internal utility parser for TdwsJSON, a "light" tokenizer
@@ -169,6 +179,9 @@ type
          property TrailCharacter : WideChar read FTrailCharacter write FTrailCharacter;
          function NeedChar : WideChar; inline;
          function SkipBlanks(currentChar : WideChar) : WideChar; inline;
+
+         function SaveLocation : TdwsJSONParserLocation;
+         procedure LoadLocation(const aLocation : TdwsJSONParserLocation);
 
          procedure ParseJSONUnicodeString(initialChar : WideChar; var result : UnicodeString);
          procedure ParseHugeJSONNumber(
@@ -664,6 +677,26 @@ begin
       end;
       Result:=NeedChar();
    until False;
+end;
+
+// SaveLocation
+//
+function TdwsJSONParserState.SaveLocation : TdwsJSONParserLocation;
+begin
+   Result.Ptr := Ptr;
+   Result.ColStart := ColStart;
+   Result.Line := Line;
+   Result.TrailCharacter := TrailCharacter;
+end;
+
+// LoadLocation
+//
+procedure TdwsJSONParserState.LoadLocation(const aLocation : TdwsJSONParserLocation);
+begin
+   Ptr := aLocation.Ptr;
+   ColStart := aLocation.ColStart;
+   Line := aLocation.Line;
+   FTrailCharacter := aLocation.TrailCharacter;
 end;
 
 // ParseEscapedCharacter
