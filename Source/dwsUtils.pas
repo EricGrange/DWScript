@@ -1508,7 +1508,7 @@ begin
             Inc(p);
             if (p^ and %1100_0000) <> %1000_0000 then
                Exit(False);
-         end else Assert(False);
+         end else Exit(False);
       end;
       Inc(p);
       Dec(n);
