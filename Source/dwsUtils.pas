@@ -1089,6 +1089,8 @@ procedure StringWordsToBytes(var buf : UnicodeString; swap : Boolean);
 
 procedure UTF8DecodeToUnicodeString(pUTF8 : PAnsiChar; utf8Length : Integer; var decoded : String);
 
+function IsValidUTF8(p : PByte; byteSize : Integer) : Boolean;
+
 type
    EHexEncodingException = class (Exception)
    end;
@@ -1467,6 +1469,51 @@ begin
       if nb <> utf8Length then
          SetLength(decoded, nb);
    end;
+end;
+
+// IsValidUTF8
+//
+function IsValidUTF8(p : PByte; byteSize : Integer) : Boolean;
+begin
+   var n := byteSize;
+   while n > 0 do begin
+      if p^ >= $80 then begin
+         if (p^ and %1110_0000) = %1100_0000 then begin
+            // 2 bytes encoding
+            if n <= 2 then Exit(False);
+            Dec(n);
+            Inc(p);
+            if (p^ and %1100_0000) <> %1000_0000 then
+               Exit(False);
+         end else if (p^ and %1111_0000) = %1110_0000 then begin
+            // 3 bytes encoding
+            if n <= 3 then Exit(False);
+            Dec(n, 2);
+            Inc(p);
+            if (p^ and %1100_0000) <> %1000_0000 then
+               Exit(False);
+            Inc(p);
+            if (p^ and %1100_0000) <> %1000_0000 then
+               Exit(False);
+         end else if (p^ and %1111_1000) = %1111_0000 then begin
+            // 4 bytes encoding
+            if n <= 4 then Exit(False);
+            Dec(n, 3);
+            Inc(p);
+            if (p^ and %1100_0000) <> %1000_0000 then
+               Exit(False);
+            Inc(p);
+            if (p^ and %1100_0000) <> %1000_0000 then
+               Exit(False);
+            Inc(p);
+            if (p^ and %1100_0000) <> %1000_0000 then
+               Exit(False);
+         end else Assert(False);
+      end;
+      Inc(p);
+      Dec(n);
+   end;
+   Result := True;
 end;
 
 // BinToHex
