@@ -174,7 +174,7 @@ uses dwsJSON, dwsXPlatform, SynZip;
 {$R dwsJSRTL.res}
 
 const
-   cJSRTLDependencies : array [1..325{$ifdef JS_BIGINTEGER} + 16{$endif}] of TJSRTLDependency = (
+   cJSRTLDependencies : array [1..326{$ifdef JS_BIGINTEGER} + 16{$endif}] of TJSRTLDependency = (
       // codegen utility functions
       (Name : '$CheckStep';
        Code : 'function $CheckStep(s,z) { if (s>0) return s; throw Exception.Create($New(Exception),"FOR loop STEP should be strictly positive: "+s.toString()+z) }';
@@ -1312,6 +1312,12 @@ const
                + #9'var r = parseInt(v || 0, 10);'#10
                + #9'if (isNaN(r)) throw Exception.Create($New(Exception),"Not a valid integer: "+v+z);'#10
                + #9'return r'#10
+               + '}';
+       Dependency : 'Exception' ),
+      (Name : 'VarToIntDef';
+       Code : 'function VarToIntDef(v,d) {'#10
+               + #9'let r = parseInt(v || 0, 10);'#10
+               + #9'return isNaN(r) ? d : n'#10
                + '}';
        Dependency : 'Exception' ),
       (Name : 'VarToFloatDef';
