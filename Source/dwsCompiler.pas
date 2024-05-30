@@ -5406,6 +5406,12 @@ function TdwsCompiler.ReadPropertyExpr(var expr : TTypedExpr; propertySym : TPro
 begin
    if propertySym.IsDeprecated then
       WarnDeprecatedSymbol(FTok.HotPos, propertySym, propertySym.DeprecatedMessage);
+   if propertySym.IsReintroduce and FTok.TestDelete(ttBLEFT) then begin
+      FMsgs.AddCompilerHintFmt(FTok.HotPos, CPH_ReintroducedPropertyBrackets, [ propertySym.Name ]);
+      if not FTok.TestDelete(ttBRIGHT) then
+         FMsgs.AddCompilerError(FTok.HotPos, CPE_BrackRightExpected);
+   end;
+
    if isWrite then
       Result:=ReadPropertyWriteExpr(expr, propertySym)
    else Result:=ReadPropertyReadExpr(expr, propertySym);
@@ -9839,6 +9845,10 @@ begin
       end else begin
          FMsgs.AddCompilerError(FTok.HotPos, CPE_StringExpected);
       end;
+   end;
+
+   if FTok.TestDelete(ttREINTRODUCE) then begin
+      propSym.IsReintroduce := True;
    end;
 
    ReadSemiColon;

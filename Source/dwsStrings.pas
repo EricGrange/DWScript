@@ -401,6 +401,8 @@ const
 
   CPH_CallConventionIsNotSupportedAndIgnored = 'Call convention "%s" is not supported and ignored';
 
+  CPH_ReintroducedPropertyBrackets = 'Property "%s" reintroduced a method, you should remove empty brackets ()';
+
   CPH_UnnamedEnumerationElement = 'Enumeration element is unnamed or out of range';
 
   CPH_EmptyThenBlock = 'Empty THEN block';

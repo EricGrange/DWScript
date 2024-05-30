@@ -609,8 +609,9 @@ begin
          .AddMatchTokenType(ttREAD)
          .AddSubRule(expression)
          , [ rifOptional ]
-      ).AddSubRule(property_write_decl, [ rifOptional ]
-      ).AddMatchTokenTypePair(ttSEMI, ttDEFAULT, [ rifOptional ])
+      ).AddSubRule(property_write_decl, [ rifOptional ])
+      .AddMatchTokenType(ttREINTRODUCE, [ rifOptional ])
+      .AddMatchTokenTypePair(ttSEMI, ttDEFAULT, [ rifOptional ])
    ;
 
    var class_var_decl := Result.NewRuleNode('class_var_decl', TdwsCodeDOMClassVar)

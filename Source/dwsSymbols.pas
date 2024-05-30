@@ -1719,6 +1719,7 @@ type
          FVisibility : TdwsVisibility;
          FDeprecatedMessage : String;
          FUserDescription : String;
+         FIsReintroduce : Boolean;
 
       protected
          function GetCaption : String; override;
@@ -1754,6 +1755,7 @@ type
          property DeprecatedMessage : String read FDeprecatedMessage write FDeprecatedMessage;
          property IsDeprecated : Boolean read GetIsDeprecated;
          property UserDescription : String read FUserDescription write FUserDescription;
+         property IsReintroduce : Boolean read FIsReintroduce write FIsReintroduce;
    end;
 
    // class operator X (params) uses method;

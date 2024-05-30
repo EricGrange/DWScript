@@ -667,6 +667,7 @@ type
          FIsDefault: Boolean;
          FIndexType: TDataType;
          FVisibility : TdwsVisibility;
+         FIsReintroduce : Boolean;
 
          procedure SetReadAccess(const Value: String);
          procedure SetWriteAccess(const Value: String);
@@ -695,6 +696,7 @@ type
          property WriteAccess: String read FWriteAccess write SetWriteAccess;
          property Parameters: TdwsParameters read FParameters write SetParameters stored StoreParameters;
          property IsDefault: Boolean read GetIsDefault write SetIsDefault default False;
+         property IsReintroduce : Boolean read FIsReintroduce write FIsReintroduce default False;
          property IndexType: TDataType read FIndexType write FIndexType;
          property IndexValue: Variant read FIndexValue write FIndexValue;
    end;
@@ -4747,6 +4749,9 @@ begin
 
    if IsDefault then
       parent.DefaultProperty := propSym;
+
+   if IsReintroduce then
+      propSym.IsReintroduce := True;
 
    propSym.DeprecatedMessage := Deprecated;
 end;

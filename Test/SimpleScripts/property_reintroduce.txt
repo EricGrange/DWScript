@@ -1,0 +1,4 @@
+Errors >>>>
+Hint: Property "Prop" reintroduced a method, you should remove empty brackets () [line: 9, column: 15]
+Result >>>>
+123
