@@ -1342,9 +1342,10 @@ begin
 
    for var i := 0 to n-1 do begin
       var c := Ord(p[i]);
-      if c > 127  then
-         allASCII := False
-      else if c in [Ord('A')..Ord('Z')] then
+      if c > 127  then begin
+         allASCII := False;
+         buf[i] := WideChar(c);
+      end else if c in [Ord('A')..Ord('Z')] then
          buf[i] := WideChar(Ord(c) + (Ord('a') - Ord('A')))
       else buf[i] := WideChar(c);
    end;
