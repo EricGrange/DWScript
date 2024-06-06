@@ -39,7 +39,6 @@ type
          procedure ParseDateTimeMonkey;
          procedure ParseDateNames;
          procedure ParseDateLitterals;
-
    end;
 
 // ------------------------------------------------------------------
@@ -189,6 +188,11 @@ begin
       CheckTrue(fmt.TryStrToDateTime('dd mmm yy', '12 jan 99', dt, tzUTC), 'two digits year wrap');
       CheckEquals('12.1.1999', fmt.FormatDateTime('dd.m.yyyy', dt, tzUTC), 'format four digits wrap');
       CheckEquals('12.1.99', fmt.FormatDateTime('dd.m.yy', dt, tzUTC), 'format two digits wrap');
+
+      CheckTrue(fmt.TryStrToDateTime('yymmdd', '240605', dt, tzLocal), 'parse yymmdd 240605');
+      CheckEquals('05.06.24', fmt.FormatDateTime('dd.mm.yy', dt, tzLocal), 'value 230605');
+      CheckFalse(fmt.TryStrToDateTime('yymmdd', '241305', dt, tzUTC), 'parse yymmdd 241305');
+      CheckFalse(fmt.TryStrToDateTime('yymmdd', '240631', dt, tzUTC), 'parse yymmdd 240631');
    finally
       fmt.Free;
    end;
