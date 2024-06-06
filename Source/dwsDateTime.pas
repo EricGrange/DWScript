@@ -700,7 +700,6 @@ begin
             end;
          2 : if c = 'y' then begin
                // if the next fmt specifier is not a field, tolerate extension to 4 digits
-               var nc : Char := #0;
                if (i > fmtLength) or not CharInSet(fmt[i], ['d', 'm', 'h','n', 's', 'z', '0'..'9']) then
                   if GrabDigits(2) then
                      tokLen := 4;
