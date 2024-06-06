@@ -1071,7 +1071,7 @@ function SimpleStringHash(p : PAnsiChar; sizeInChars : Integer) : Cardinal; over
 function SimpleStringHash(const s : UnicodeString) : Cardinal; overload; inline;
 function SimpleStringHash(const s : RawByteString) : Cardinal; overload; inline;
 function SimpleStringHash(p : PWideChar; sizeInChars : Integer) : Cardinal; overload; inline;
-function SimpleStringLowerCaseHash(const s : UnicodeString; var allASCII : Boolean) : Cardinal;
+function SimpleStringLowerCaseHash(const s : UnicodeString) : Cardinal;
 
 function SimpleByteHash(p : PByte; n : Integer) : Cardinal;
 
@@ -1326,33 +1326,38 @@ end;
 
 // SimpleStringLowerCaseHash
 //
-function SimpleStringLowerCaseHash(const s : UnicodeString; var allASCII : Boolean) : Cardinal;
+function SimpleStringLowerCaseHash(const s : UnicodeString) : Cardinal;
+
+   function Fallback(const s : UnicodeString) : Cardinal;
+   var
+      lc : String;
+   begin
+      UnicodeLowerCase(s, lc);
+      Result := SimpleStringHash(lc);
+   end;
+
 var
    localBuffer : array [0..63] of WideChar;
-   buf : PWideChar;
 begin
-   allASCII := True;
-   if s = '' then Exit(xxHash32.Full(nil, 0));
+   if s = '' then
+      Exit(xxHash32.Full(Pointer(nil), 0));
 
    var n := Length(s);
-   if n < Length(localBuffer) then
-      buf := @localBuffer
-   else buf := PWideChar(GetMemory(n * SizeOf(WideChar)));
+   if n > Length(localBuffer) then
+      Exit(Fallback(s));
+
+   var buf := PWideChar(@localBuffer);
    var p := PWideChar(Pointer(s));
 
    for var i := 0 to n-1 do begin
       var c := Ord(p[i]);
-      if c > 127  then begin
-         allASCII := False;
-         buf[i] := WideChar(c);
-      end else if c in [Ord('A')..Ord('Z')] then
+      if c > 127  then
+         Exit(Fallback(s));
+      if c in [ Ord('A')..Ord('Z') ] then
          buf[i] := WideChar(Ord(c) + (Ord('a') - Ord('A')))
       else buf[i] := WideChar(c);
    end;
    Result := xxHash32.Full(buf, n*SizeOf(WideChar));
-
-   if buf <> @localBuffer then
-      FreeMemory(buf);
 end;
 
 // SimpleStringHash
@@ -7726,20 +7731,8 @@ end;
 // GetItemHashCode
 //
 function TSimpleStringHash.GetItemHashCode(const item1 : String) : Cardinal;
-
-   function FallBack(const item1 : String) : Cardinal;
-   var
-      lc : String;
-   begin
-      UnicodeLowerCase(item1, lc);
-      Result := SimpleStringHash(lc);
-   end;
-
 begin
-   var allASCII := True;
-   Result := SimpleStringLowerCaseHash(item1, allASCII);
-   if not allASCII then
-      Result := FallBack(item1);
+   Result := SimpleStringLowerCaseHash(item1);
 end;
 
 // ------------------

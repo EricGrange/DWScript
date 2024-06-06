@@ -99,6 +99,7 @@ type
          procedure NameObjectHashTest;
          procedure NameObjectHashStressTest;
          procedure SimpleHashTest;
+         procedure StringLowerCaseHashTest;
 
          procedure ObjectListTest;
 
@@ -1498,6 +1499,17 @@ begin
    RunSieve(TSimpleIntegerHash.Create);
    RunSieve(TSimpleIntegerHash2.Create);
    RunSieve(TSimpleIntegerHash3.Create);
+end;
+
+// StringLowerCaseHashTest
+//
+procedure TdwsUtilsTests.StringLowerCaseHashTest;
+begin
+   CheckEquals(SimpleStringHash(''), SimpleStringLowerCaseHash(''), 'Empty');
+   CheckEquals(SimpleStringHash('hello'), SimpleStringLowerCaseHash('hello'), 'hello');
+   CheckEquals(SimpleStringHash('hello'), SimpleStringLowerCaseHash('Hello'), 'Hello');
+   CheckEquals(SimpleStringHash('noël'), SimpleStringLowerCaseHash('noël'), 'noël');
+   CheckEquals(SimpleStringHash('noël'), SimpleStringLowerCaseHash('NoëL'), 'NoëL');
 end;
 
 // ObjectListTest
