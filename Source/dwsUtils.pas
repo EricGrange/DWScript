@@ -1353,7 +1353,10 @@ begin
       var c := Ord(p[i]);
       if c > 127  then
          Exit(Fallback(s));
-      if c in [ Ord('A')..Ord('Z') ] then
+      // code below is
+      //    if c in [ Ord('A')..Ord('Z') ] then
+      // but in a form more "friendly" to D64 compiler
+      if Cardinal(c - Ord('A')) <= Cardinal(Ord('Z')- Ord('A')) then
          buf[i] := WideChar(Ord(c) + (Ord('a') - Ord('A')))
       else buf[i] := WideChar(c);
    end;

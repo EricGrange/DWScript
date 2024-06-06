@@ -1510,6 +1510,7 @@ begin
    CheckEquals(SimpleStringHash('hello'), SimpleStringLowerCaseHash('Hello'), 'Hello');
    CheckEquals(SimpleStringHash('noël'), SimpleStringLowerCaseHash('noël'), 'noël');
    CheckEquals(SimpleStringHash('noël'), SimpleStringLowerCaseHash('NoëL'), 'NoëL');
+   CheckEquals(SimpleStringHash('@az['), SimpleStringLowerCaseHash('@AZ['), '@AZ[');
 end;
 
 // ObjectListTest
