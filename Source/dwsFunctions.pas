@@ -322,6 +322,7 @@ type
    TRegisteredInternalFunction = record
       InternalFunctionClass : TInternalFunctionClass;
       FuncName, HelperName : String;
+      HelperHashCode : Cardinal;
       FuncParams : TParamArray;
       FuncType : String;
       DeprecatedMsg : String;
@@ -350,7 +351,13 @@ begin
    rif.FuncParams:=ConvertFuncParams(funcParams);
    rif.FuncType:=funcType;
    rif.DeprecatedMsg := deprecatedMsg;
-   UnifyAssignString(helperName, rif.HelperName);
+   if helperName <> '' then begin
+      UnifyAssignString(helperName, rif.HelperName);
+      rif.HelperHashCode := SimpleStringLowerCaseHash(helperName);
+   end else begin
+      rif.HelperName := '';
+      rif.HelperHashCode := 0;
+   end;
 
    dwsInternalUnit.AddInternalFunction(rif);
 end;
@@ -816,7 +823,7 @@ begin
    for i:=0 to FRegisteredInternalFunctions.Count-1 do begin
       p:=PRegisteredInternalFunction(FRegisteredInternalFunctions[i]);
       if p.HelperName<>'' then
-         hash.Add(p.HelperName);
+         hash.AddHashed(p.HelperName, p.HelperHashCode);
    end;
 end;
 

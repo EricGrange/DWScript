@@ -531,6 +531,7 @@ type
 
       public
          function Add(const anItem : T) : Boolean; // true if added
+         function AddHashed(const anItem : T; const hashCode : Cardinal) : Boolean; // true if added
          function Replace(const anItem : T) : Boolean; // true if added
          function Contains(const anItem : T) : Boolean;
          function Match(var anItem : T) : Boolean;
@@ -1338,11 +1339,11 @@ function SimpleStringLowerCaseHash(const s : UnicodeString) : Cardinal;
 
 var
    localBuffer : array [0..63] of WideChar;
+   c : Integer;
 begin
-   if s = '' then
-      Exit(xxHash32.Full(Pointer(nil), 0));
-
    var n := Length(s);
+   if n = 0 then
+      Exit(xxHash32.Full(Pointer(nil), 0));
    if n > Length(localBuffer) then
       Exit(Fallback(s));
 
@@ -1350,13 +1351,13 @@ begin
    var p := PWideChar(Pointer(s));
 
    for var i := 0 to n-1 do begin
-      var c := Ord(p[i]);
+      c := Ord(p[i]);
       if c > 127  then
          Exit(Fallback(s));
       // code below is
       //    if c in [ Ord('A')..Ord('Z') ] then
       // but in a form more "friendly" to D64 compiler
-      if Cardinal(c - Ord('A')) <= Cardinal(Ord('Z')- Ord('A')) then
+      if Cardinal(c - Ord('A')) <= Cardinal(Ord('Z') - Ord('A')) then
          buf[i] := WideChar(Ord(c) + (Ord('a') - Ord('A')))
       else buf[i] := WideChar(c);
    end;
@@ -3773,28 +3774,30 @@ function UnicodeCompareLen(p1, p2 : PWideChar; n : Integer) : Integer;
 var
    c1, c2 : Integer;
 begin
-   for n:=n downto 1 do begin
-      c1:=Ord(p1^);
-      c2:=Ord(p2^);
-      if (c1<>c2) then begin
-         if (c1<=127) and (c2<=127) then begin
-            if c1 in [Ord('a')..Ord('z')] then
-               c1:=c1+(Ord('A')-Ord('a'));
-            if c2 in [Ord('a')..Ord('z')] then
-               c2:=c2+(Ord('A')-Ord('a'));
-            if c1<>c2 then begin
-               Result:=c1-c2;
+   for n := n downto 1 do begin
+      c1 := Ord(p1^);
+      c2 := Ord(p2^);
+      if c1 <> c2 then begin
+         if (c1 <= 127) and (c2 <= 127) then begin
+            //if c1 in [Ord('a')..Ord('z')] then
+            if Cardinal(c1 -  Ord('a')) <= Cardinal(Ord('z') - Ord('a')) then
+               c1 := c1 + (Ord('A')-Ord('a'));
+            // if c2 in [Ord('a')..Ord('z')] then
+            if Cardinal(c2 -  Ord('a')) <= Cardinal(Ord('z') - Ord('a')) then
+               c2 := c2 + (Ord('A')-Ord('a'));
+            if c1 <> c2 then begin
+               Result := c1 - c2;
                Exit;
             end;
          end else begin
-            Result:=UnicodeCompareP(p1, p2, n);
+            Result := UnicodeCompareP(p1, p2, n);
             Exit;
          end;
       end;
       Inc(p1);
       Inc(p2);
    end;
-   Result:=0;
+   Result := 0;
 end;
 
 // UnicodeCompareText
@@ -3804,31 +3807,31 @@ var
    n1, n2 : Integer;
    ps1, ps2 : PWideChar;
 begin
-   ps1:=PWideChar(Pointer(s1));
-   ps2:=PWideChar(Pointer(s2));
+   ps1 := PWideChar(Pointer(s1));
+   ps2 := PWideChar(Pointer(s2));
    if ps1 = ps2 then Exit(0);
-   if ps1<>nil then begin
-      if ps2<>nil then begin
-         {$ifdef WIN32_ASM}
-         n1:=PInteger(NativeUInt(ps1)-4)^;
-         n2:=PInteger(NativeUInt(ps2)-4)^;
+   if ps1 <> nil then begin
+      if ps2 <> nil then begin
+         {$if Defined(WIN64_ASM) or Defined(WIN32_ASM)}
+         n1 := PInteger(NativeUInt(ps1)-4)^;
+         n2 := PInteger(NativeUInt(ps2)-4)^;
          {$else}
          n1:=Length(s1);
          n2:=Length(s2);
          {$endif}
-         if n1<n2 then begin
-            Result:=UnicodeCompareLen(ps1, ps2, n1);
-            if Result=0 then
-               Result:=-1;
+         if n1 < n2 then begin
+            Result := UnicodeCompareLen(ps1, ps2, n1);
+            if Result = 0 then
+               Result := -1;
          end else begin
-            Result:=UnicodeCompareLen(ps1, ps2, n2);
-            if (Result=0) and (n1>n2) then
-               Result:=1;
+            Result := UnicodeCompareLen(ps1, ps2, n2);
+            if (Result = 0) and (n1 > n2) then
+               Result := 1;
          end;
-      end else Result:=1;
-   end else if ps2<>nil then
-      Result:=-1
-   else Result:=0;
+      end else Result := 1;
+   end else if ps2 <> nil then
+      Result := -1
+   else Result := 0;
 end;
 
 // UnicodeSameText
@@ -6187,14 +6190,18 @@ end;
 // Add
 //
 function TSimpleHash<T>.Add(const anItem : T) : Boolean;
+begin
+   Result := AddHashed(anItem, GetItemHashCode(anItem));
+end;
+
+// AddHashed
+//
+function TSimpleHash<T>.AddHashed(const anItem : T; const hashCode : Cardinal) : Boolean;
 var
    i : Integer;
-   hashCode : Integer;
 begin
    if FCount>=FGrowth then Grow(False);
-
-   hashCode:=GetItemHashCode(anItem);
-   i:=(hashCode and (FCapacity-1));
+   i := (hashCode and (FCapacity-1));
    if LinearFind(anItem, i) then Exit(False);
    FBuckets[i].HashCode:=hashCode;
    FBuckets[i].Value:=anItem;
