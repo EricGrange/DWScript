@@ -525,6 +525,137 @@ asm
 
    pop   ebx
 end;
+{$else}{$ifdef WIN64_ASM}
+class function xxHash32.Full(data : Pointer; dataSize : Cardinal; aSeed : Cardinal = 0) : Cardinal;
+// incoming  rcx = data, edx = dataSize, r8d = seed
+// swizzle   rax = data, edx = dataSize, ecx = seed
+asm
+   push  rbx
+
+   mov rax, rcx
+   mov ecx, r8d
+
+   test  edx, edx
+   jz    @@NoData
+   cmp   edx, 16
+   jb    @@SizeBelow16
+
+   // Init & compute kernel
+
+   push  rbp
+   push  rdx
+   push  rdi
+   push  rsi
+
+   lea   edi, [ecx + cPRIME32_1 + cPRIME32_2]
+   lea   esi, [ecx + cPRIME32_2]
+   lea   ebx, [ecx + Cardinal(0-cPRIME32_1)]
+
+   lea   rbp, [rax + rdx-16]
+
+@@Loop16:
+   mov   edx, [rax]
+   imul  edx, cPRIME32_2
+   lea   edi, [edi+edx]
+   rol   edi, 13
+   imul  edi, cPRIME32_1
+
+   mov   edx, [rax+4]
+   imul  edx, cPRIME32_2
+   lea   esi, [esi+edx]
+   rol   esi, 13
+   imul  esi, cPRIME32_1
+
+   mov   edx, [rax+8]
+   imul  edx, cPRIME32_2
+   lea   ecx, [ecx+edx]
+   rol   ecx, 13
+   imul  ecx, cPRIME32_1
+
+   mov   edx, [rax+12]
+   lea   rax, [rax+16];
+   imul  edx, cPRIME32_2
+   lea   ebx, [ebx+edx]
+   rol   ebx, 13
+   imul  ebx, cPRIME32_1
+
+   cmp   rax, rbp
+   jng   @@Loop16
+
+   // mix kernel
+   rol   edi, 1
+   rol   esi, 7
+   lea   edi, [edi+esi]
+   rol   ecx, 12
+   rol   ebx, 18
+   lea   ebx, [ebx+ecx]
+   lea   ecx, [ebx+edi]
+
+   pop   rsi
+   pop   rdi
+   pop   rdx
+   pop   rbp
+
+   lea   ecx, [ecx + edx]
+   and   edx, 15
+
+   jmp @@DigestTail
+
+@@NoData:
+   test  ecx, ecx
+   jnz   @@SizeBelow16
+   mov   eax, $02cc5d05    // hash value for no data and seed = 0
+   pop   rbx
+   ret
+
+@@SizeBelow16:
+   lea   ecx, [edx + ecx + cPRIME32_5]
+
+@@DigestTail:
+   // rax = data, edx = dataSize, ecx = result
+   cmp   edx, 4
+   jb    @@SizeBelow4
+
+@@SizeAbove4:
+   mov   ebx, [rax]
+   lea   rax, [rax + 4]
+   imul  ebx, cPRIME32_3
+   lea   ecx, [ecx + ebx]
+   rol   ecx, 17
+   lea   edx, [edx - 4]
+   imul  ecx, cPRIME32_4
+   cmp   edx, 4
+   jge   @@SizeAbove4
+
+@@SizeBelow4:
+   test  edx, edx
+   jz    @@wrapup
+
+@@sizeabove0:
+   movzx ebx, [rax]
+   lea   rax, [rax + 1]
+   imul  ebx, cPRIME32_5
+   lea   ecx, [ecx + ebx]
+   rol   ecx, 11
+   imul  ecx, cPRIME32_1
+   dec   edx
+   jnz   @@sizeabove0
+
+@@wrapup:
+   mov   edx, ecx
+   shr   ecx, 15
+   xor   edx, ecx
+   imul  ecx, edx, cPRIME32_2
+   mov   edx, ecx
+   shr   ecx, 13
+   xor   edx, ecx
+   imul  ecx, edx, cPRIME32_3
+   mov   eax, ecx
+   shr   ecx, 16
+   xor   eax, ecx
+
+   pop   rbx
+end;
 {$else}
 class function xxHash32.Full(data : Pointer; dataSize : Cardinal; aSeed : Cardinal = 0) : Cardinal;
 var
@@ -536,7 +667,7 @@ begin
    Result := h.Digest;
    if Result = 0 then Result := 1;
 end;
-{$endif}
+{$endif}{$endif}
 
 
 end.
