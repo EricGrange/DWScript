@@ -312,6 +312,63 @@ asm
    xor   eax, ecx
 
    pop   ebx
+{$else}{$ifdef WIN64_ASM}
+asm
+   // rcx = data, rdx = dataSize, r8 = partial, rbx = result
+   push  rbx
+
+   mov   ebx, r8d
+
+   cmp   edx, 4
+   jb    @@sizebelow4
+
+@@sizeabove4:
+   // Result := Result + {%H-}PCardinal(ptrData)^ * cPRIME32_3;
+   mov   eax, [rcx]
+   imul  eax, cPRIME32_3
+   lea   ebx, [ebx + eax]
+   // Result := RotateLeft32(Result, 17) * cPRIME32_4;
+   rol   ebx, 17
+   imul  ebx, cPRIME32_4
+
+   lea   rcx, [rcx + 4]
+   lea   edx, [edx - 4]
+   cmp   edx, 4
+   jge   @@sizeabove4
+
+@@sizebelow4:
+   test  edx, edx
+   jz    @@wrapup
+
+@@sizeabove0:
+   // Result := Result + {%H-}PByte(ptrData)^ * cPRIME32_5;
+   movzx eax, [rcx]
+   imul  eax, cPRIME32_5
+   lea   ebx, [ebx + eax]
+   // Result := RotateLeft32(Result, 11) * cPRIME32_1;
+   rol   ebx, 11
+   imul  ebx, cPRIME32_1
+   lea   rcx, [rcx + 1]
+   dec   edx
+   jnz   @@sizeabove0
+
+@@wrapup:
+   // Result := (Result xor (Result shr 15)) * cPRIME32_2;
+   mov   eax, ebx
+   shr   ebx, 15
+   xor   eax, ebx
+   imul  eax, cPRIME32_2
+   // Result := (Result xor (Result shr 13)) * cPRIME32_3;
+   mov   ebx, eax
+   shr   ebx, 13
+   xor   eax, ebx
+   imul  eax, cPRIME32_3
+   // Result := (Result xor (Result shr 16));
+   mov   ebx, eax
+   shr   ebx, 16
+   xor   eax, ebx
+
+   pop   rbx
 {$else}
 var
    i : Integer;
@@ -336,7 +393,7 @@ begin
    Result := (Result xor (Result shr 15)) * cPRIME32_2;
    Result := (Result xor (Result shr 13)) * cPRIME32_3;
    Result := (Result xor (Result shr 16));
-{$endif}
+{$endif}{$endif}
 end;
 
 // Full
