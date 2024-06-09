@@ -353,7 +353,7 @@ begin
    rif.DeprecatedMsg := deprecatedMsg;
    if helperName <> '' then begin
       UnifyAssignString(helperName, rif.HelperName);
-      rif.HelperHashCode := SimpleStringLowerCaseHash(helperName);
+      rif.HelperHashCode := SimpleStringCaseInsensitiveHash(helperName);
    end else begin
       rif.HelperName := '';
       rif.HelperHashCode := 0;

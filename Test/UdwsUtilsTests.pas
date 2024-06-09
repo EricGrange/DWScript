@@ -99,7 +99,7 @@ type
          procedure NameObjectHashTest;
          procedure NameObjectHashStressTest;
          procedure SimpleHashTest;
-         procedure StringLowerCaseHashTest;
+         procedure SimpleStringCaseInsensitiveHashTest;
 
          procedure ObjectListTest;
 
@@ -1501,16 +1501,16 @@ begin
    RunSieve(TSimpleIntegerHash3.Create);
 end;
 
-// StringLowerCaseHashTest
+// SimpleStringCaseInsensitiveHashTest
 //
-procedure TdwsUtilsTests.StringLowerCaseHashTest;
+procedure TdwsUtilsTests.SimpleStringCaseInsensitiveHashTest;
 begin
-   CheckEquals(SimpleStringHash(''), SimpleStringLowerCaseHash(''), 'Empty');
-   CheckEquals(SimpleStringHash('hello'), SimpleStringLowerCaseHash('hello'), 'hello');
-   CheckEquals(SimpleStringHash('hello'), SimpleStringLowerCaseHash('Hello'), 'Hello');
-   CheckEquals(SimpleStringHash('noël'), SimpleStringLowerCaseHash('noël'), 'noël');
-   CheckEquals(SimpleStringHash('noël'), SimpleStringLowerCaseHash('NoëL'), 'NoëL');
-   CheckEquals(SimpleStringHash('@az['), SimpleStringLowerCaseHash('@AZ['), '@AZ[');
+   CheckEquals(SimpleStringHash(''), SimpleStringCaseInsensitiveHash(''), 'Empty');
+   CheckEquals(SimpleStringCaseInsensitiveHash('hello'), SimpleStringCaseInsensitiveHash('Hello'), 'hello');
+   CheckEquals(SimpleStringCaseInsensitiveHash('hello'), SimpleStringCaseInsensitiveHash('hellO'), 'Hello');
+   CheckEquals(SimpleStringCaseInsensitiveHash('noël'), SimpleStringCaseInsensitiveHash('noëL'), 'noël');
+   CheckEquals(SimpleStringCaseInsensitiveHash('noël'), SimpleStringCaseInsensitiveHash('NoëL'), 'NoëL');
+   CheckEquals(SimpleStringCaseInsensitiveHash('@az['), SimpleStringCaseInsensitiveHash('@AZ['), '@AZ[');
 end;
 
 // ObjectListTest

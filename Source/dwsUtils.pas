@@ -1072,7 +1072,7 @@ function SimpleStringHash(p : PAnsiChar; sizeInChars : Integer) : Cardinal; over
 function SimpleStringHash(const s : UnicodeString) : Cardinal; overload; inline;
 function SimpleStringHash(const s : RawByteString) : Cardinal; overload; inline;
 function SimpleStringHash(p : PWideChar; sizeInChars : Integer) : Cardinal; overload; inline;
-function SimpleStringLowerCaseHash(const s : UnicodeString) : Cardinal;
+function SimpleStringCaseInsensitiveHash(const s : UnicodeString) : Cardinal;
 
 function SimpleByteHash(p : PByte; n : Integer) : Cardinal;
 
@@ -1325,9 +1325,9 @@ begin
    Result := xxHash32.Full(Pointer(s), Length(s)*SizeOf(WideChar));
 end;
 
-// SimpleStringLowerCaseHash
+// SimpleStringCaseInsensitiveHash
 //
-function SimpleStringLowerCaseHash(const s : UnicodeString) : Cardinal;
+function SimpleStringCaseInsensitiveHash(const s : UnicodeString) : Cardinal;
 
    function Fallback(const s : UnicodeString) : Cardinal;
    var
@@ -1339,29 +1339,32 @@ function SimpleStringLowerCaseHash(const s : UnicodeString) : Cardinal;
 
 var
    localBuffer : array [0..63] of WideChar;
-   c : Integer;
+   c : Cardinal;
 begin
    var n := Length(s);
-   if n = 0 then
-      Exit(xxHash32.Full(Pointer(nil), 0));
    if n > Length(localBuffer) then
       Exit(Fallback(s));
 
    var buf := PWideChar(@localBuffer);
    var p := PWideChar(Pointer(s));
 
-   for var i := 0 to n-1 do begin
-      c := Ord(p[i]);
-      if c > 127  then
+   var i := n;
+   while i >= 2 do begin
+      c := PCardinal(p)^;
+      if (c and $FF80FF80) <> 0 then
          Exit(Fallback(s));
-      // code below is
-      //    if c in [ Ord('A')..Ord('Z') ] then
-      // but in a form more "friendly" to D64 compiler
-      if Cardinal(c - Ord('A')) <= Cardinal(Ord('Z') - Ord('A')) then
-         buf[i] := WideChar(Ord(c) + (Ord('a') - Ord('A')))
-      else buf[i] := WideChar(c);
+      PInteger(buf)^ := c or $00200020;
+      Inc(buf, 2);
+      Inc(p, 2);
+      Dec(i, 2);
    end;
-   Result := xxHash32.Full(buf, n*SizeOf(WideChar));
+   if i <> 0 then begin
+      c := Ord(p^);
+      if c > 127 then
+         Exit(Fallback(s));
+      buf^ := WideChar(c or $0020);
+   end;
+   Result := xxHash32.Full(@localBuffer, n*SizeOf(WideChar));
 end;
 
 // SimpleStringHash
@@ -7742,7 +7745,7 @@ end;
 //
 function TSimpleStringHash.GetItemHashCode(const item1 : String) : Cardinal;
 begin
-   Result := SimpleStringLowerCaseHash(item1);
+   Result := SimpleStringCaseInsensitiveHash(item1);
 end;
 
 // ------------------
