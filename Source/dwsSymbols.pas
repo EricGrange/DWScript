@@ -7044,14 +7044,17 @@ end;
 //
 function TSymbolTable.EnumerateLocalSymbolsOfName(
       const aName : String; const callback : TSymbolEnumerationCallback) : Boolean;
-var
-   i : Integer;
-   sym : TSymbol;
 begin
    // TODO: optimize to take advantage of sorting
-   for i:=0 to Count-1 do begin
-      sym:=Symbols[i];
-      if UnicodeSameText(sym.Name, aName) then begin
+   var list := FSymbols.List;
+   var nameLen := Length(aName);
+   for var i := 0 to Count-1 do begin
+      var sym := TSymbol(list[i]);
+      if     (Length(sym.Name) = nameLen)
+         and (
+                  (nameLen = 0)
+              or  (UnicodeCompareLen(Pointer(sym.Name), Pointer(aName), nameLen) = 0)
+              ) then begin
          if callback(sym) then Exit(True);
       end;
    end;
