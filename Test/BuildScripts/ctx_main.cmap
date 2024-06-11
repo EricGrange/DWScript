@@ -13,9 +13,13 @@
 							"Class" : "TClassSymbol",
 							"Name" : "TTest"
 						},
-						"SubContexts" : [ ]
+						"SubContexts" : [ ],
+						"Start" : " [line: 1, column: 6, file: ctx_sub1.pas]",
+						"End" : " [line: 6, column: 1, file: ctx_sub1.pas]"
 					}
-				]
+				],
+				"Start" : " [line: 1, column: 1, file: ctx_sub1.pas]",
+				"End" : " [line: 6, column: 1, file: ctx_sub1.pas]"
 			},
 			{
 				"Token" : "ttSWITCH",
@@ -38,13 +42,21 @@
 									{
 										"Token" : "ttBEGIN",
 										"Symbol" : null,
-										"SubContexts" : [ ]
+										"SubContexts" : [ ],
+										"Start" : " [line: 2, column: 6, file: ctx_sub2.pas]",
+										"End" : " [line: 3, column: 4, file: ctx_sub2.pas]"
 									}
-								]
+								],
+								"Start" : " [line: 2, column: 6, file: ctx_sub2.pas]",
+								"End" : " [line: 3, column: 4, file: ctx_sub2.pas]"
 							}
-						]
+						],
+						"Start" : " [line: 1, column: 1, file: ctx_sub2.pas]",
+						"End" : " [line: 3, column: 4, file: ctx_sub2.pas]"
 					}
-				]
+				],
+				"Start" : " [line: 1, column: 1, file: ctx_sub2.pas]",
+				"End" : " [line: 6, column: 1, file: ctx_sub2.pas]"
 			},
 			{
 				"Token" : "ttCONSTRUCTOR",
@@ -63,11 +75,17 @@
 							{
 								"Token" : "ttBEGIN",
 								"Symbol" : null,
-								"SubContexts" : [ ]
+								"SubContexts" : [ ],
+								"Start" : " [line: 5, column: 6]",
+								"End" : " [line: 6, column: 4]"
 							}
-						]
+						],
+						"Start" : " [line: 4, column: 27]",
+						"End" : " [line: 6, column: 4]"
 					}
-				]
+				],
+				"Start" : " [line: 4, column: 1]",
+				"End" : " [line: 6, column: 4]"
 			},
 			{
 				"Token" : "ttFUNCTION",
@@ -86,12 +104,20 @@
 							{
 								"Token" : "ttBEGIN",
 								"Symbol" : null,
-								"SubContexts" : [ ]
+								"SubContexts" : [ ],
+								"Start" : " [line: 9, column: 6]",
+								"End" : " [line: 11, column: 4]"
 							}
-						]
+						],
+						"Start" : " [line: 9, column: 6]",
+						"End" : " [line: 11, column: 4]"
 					}
-				]
+				],
+				"Start" : " [line: 8, column: 1]",
+				"End" : " [line: 11, column: 4]"
 			}
-		]
+		],
+		"Start" : " [line: 1, column: 1]",
+		"End" : ""
 	}
 ]

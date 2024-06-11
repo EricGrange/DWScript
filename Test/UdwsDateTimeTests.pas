@@ -19,7 +19,7 @@ interface
 
 uses
    Winapi.Windows,
-   SysUtils, DateUtils,
+   System.SysUtils, System.DateUtils,
    dwsXPlatformTests, dwsXPlatform, dwsWebUtils, dwsDateTime;
 
 type

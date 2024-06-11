@@ -6,9 +6,13 @@
 			{
 				"Token" : "ttUSES",
 				"Symbol" : null,
-				"SubContexts" : [ ]
+				"SubContexts" : [ ],
+				"Start" : " [line: 1, column: 1]",
+				"End" : " [line: 1, column: 14]"
 			}
-		]
+		],
+		"Start" : " [line: 1, column: 1]",
+		"End" : " [line: 3, column: 1]"
 	},
 	{
 		"Token" : "ttUNIT",
@@ -30,12 +34,16 @@
 							"Class" : "TClassSymbol",
 							"Name" : "THello"
 						},
-						"SubContexts" : [ ]
+						"SubContexts" : [ ],
+						"Start" : " [line: 5, column: 6, file: Sections]",
+						"End" : " [line: 9, column: 8, file: Sections]"
 					},
 					{
 						"Token" : "ttBEGIN",
 						"Symbol" : null,
-						"SubContexts" : [ ]
+						"SubContexts" : [ ],
+						"Start" : " [line: 11, column: 6, file: Sections]",
+						"End" : " [line: 13, column: 1, file: Sections]"
 					},
 					{
 						"Token" : "ttPROCEDURE",
@@ -43,7 +51,9 @@
 							"Class" : "TSourceFuncSymbol",
 							"Name" : "Stuff"
 						},
-						"SubContexts" : [ ]
+						"SubContexts" : [ ],
+						"Start" : " [line: 15, column: 1, file: Sections]",
+						"End" : " [line: 17, column: 1, file: Sections]"
 					},
 					{
 						"Token" : "ttPROCEDURE",
@@ -51,9 +61,13 @@
 							"Class" : "TSourceFuncSymbol",
 							"Name" : "Dummy"
 						},
-						"SubContexts" : [ ]
+						"SubContexts" : [ ],
+						"Start" : " [line: 17, column: 1, file: Sections]",
+						"End" : " [line: 19, column: 1, file: Sections]"
 					}
-				]
+				],
+				"Start" : " [line: 3, column: 1, file: Sections]",
+				"End" : " [line: 19, column: 1, file: Sections]"
 			},
 			{
 				"Token" : "ttIMPLEMENTATION",
@@ -79,16 +93,24 @@
 									{
 										"Token" : "ttBEGIN",
 										"Symbol" : null,
-										"SubContexts" : [ ]
+										"SubContexts" : [ ],
+										"Start" : " [line: 22, column: 6, file: Sections]",
+										"End" : " [line: 23, column: 4, file: Sections]"
 									}
-								]
+								],
+								"Start" : " [line: 21, column: 21, file: Sections]",
+								"End" : " [line: 23, column: 4, file: Sections]"
 							}
-						]
+						],
+						"Start" : " [line: 21, column: 1, file: Sections]",
+						"End" : " [line: 23, column: 4, file: Sections]"
 					},
 					{
 						"Token" : "ttBEGIN",
 						"Symbol" : null,
-						"SubContexts" : [ ]
+						"SubContexts" : [ ],
+						"Start" : " [line: 27, column: 6, file: Sections]",
+						"End" : " [line: 29, column: 1, file: Sections]"
 					},
 					{
 						"Token" : "ttPROCEDURE",
@@ -107,14 +129,24 @@
 									{
 										"Token" : "ttBEGIN",
 										"Symbol" : null,
-										"SubContexts" : [ ]
+										"SubContexts" : [ ],
+										"Start" : " [line: 32, column: 6, file: Sections]",
+										"End" : " [line: 33, column: 4, file: Sections]"
 									}
-								]
+								],
+								"Start" : " [line: 32, column: 6, file: Sections]",
+								"End" : " [line: 33, column: 4, file: Sections]"
 							}
-						]
+						],
+						"Start" : " [line: 31, column: 1, file: Sections]",
+						"End" : " [line: 33, column: 4, file: Sections]"
 					}
-				]
+				],
+				"Start" : " [line: 19, column: 1, file: Sections]",
+				"End" : " [line: 37, column: 5, file: Sections]"
 			}
-		]
+		],
+		"Start" : " [line: 1, column: 1, file: Sections]",
+		"End" : " [line: 37, column: 5, file: Sections]"
 	}
 ]

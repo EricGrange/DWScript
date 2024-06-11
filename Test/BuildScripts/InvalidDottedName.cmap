@@ -2,6 +2,8 @@
 	{
 		"Token" : "ttUNIT",
 		"Symbol" : null,
-		"SubContexts" : [ ]
+		"SubContexts" : [ ],
+		"Start" : " [line: 1, column: 1]",
+		"End" : ""
 	}
 ]
