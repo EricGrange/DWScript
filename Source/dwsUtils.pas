@@ -77,7 +77,9 @@ type
    // Uses Monitor hidden field to store refcount, so not compatible with monitor use
    // (but Monitor is buggy, so no great loss)
    {$ifndef FPC}
-      {$define USE_MONITOR_FOR_REFCOUNT}
+      {$ifdef WIN32}
+         {$define USE_MONITOR_FOR_REFCOUNT}
+      {$endif}
    {$endif}
    TRefCountedObject = class
       private
@@ -3814,9 +3816,9 @@ begin
    ps2 := PWideChar(Pointer(s2));
    if ps1 = ps2 then Exit(0);
    if ps1 <> nil then begin
+      n1 := PInteger(NativeUInt(ps1)-4)^;
       if ps2 <> nil then begin
          {$if Defined(WIN64_ASM) or Defined(WIN32_ASM)}
-         n1 := PInteger(NativeUInt(ps1)-4)^;
          n2 := PInteger(NativeUInt(ps2)-4)^;
          {$else}
          n1:=Length(s1);
@@ -7079,33 +7081,41 @@ end;
 // IncRefCount
 //
 function TRefCountedObject.IncRefCount : Integer;
-var
-   p : PInteger;
 begin
-   {$ifdef FPC}
-   p:=@FRefCount;
-   {$else}
-   p:=PInteger(NativeInt(Self)+InstanceSize-hfFieldSize+hfMonitorOffset);
-   {$endif}
+   {$ifdef USE_MONITOR_FOR_REFCOUNT}
+   var p := PInteger(NativeInt(Self)+InstanceSize-hfFieldSize+hfMonitorOffset);
    Result := AtomicIncrement(p^);
+   {$else}
+   Result := AtomicIncrement(FRefCount);
+   {$endif}
 end;
 
 // DecRefCount
 //
-function TRefCountedObject.DecRefCount : Integer;
-var
-   p : PInteger;
+procedure CallDestroy(obj : TObject);
 begin
-   {$ifdef FPC}
-   p:=@FRefCount;
-   {$else}
-   p:=PInteger(NativeInt(Self)+InstanceSize-hfFieldSize+hfMonitorOffset);
-   {$endif}
+   obj.Destroy;
+end;
+function TRefCountedObject.DecRefCount : Integer;
+
+{$ifdef USE_MONITOR_FOR_REFCOUNT}
+begin
+   var p := PInteger(NativeInt(Self)+InstanceSize-hfFieldSize+hfMonitorOffset);
    if p^=0 then begin
       Destroy;
       Result:=0;
    end else Result := AtomicDecrement(p^);
 end;
+{$else}
+begin
+   if FRefCount = 0 then begin
+      Destroy;
+      Result := 0;
+   end else begin
+      Result := AtomicDecrement(FRefCount);
+   end;
+end;
+{$endif}
 
 // GetRefCount
 //
