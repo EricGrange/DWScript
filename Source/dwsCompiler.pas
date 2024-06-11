@@ -1259,7 +1259,6 @@ end;
 
 function TdwsCompiler.ResolveUnitReferences(scriptType : TScriptSourceType) : TIdwsUnitList;
 var
-   i, j, k : Integer;
    expectedUnitCount : Integer;
    deps : TStringList;
    refCount : array of Integer;
@@ -1277,20 +1276,20 @@ begin
    SetLength(refCount, expectedUnitCount);
 
    // Calculate number of outgoing references
-   for i:=0 to FCompilerContext.UnitList.Count-1 do begin
+   for var i := 0 to FCompilerContext.UnitList.Count-1 do begin
       curUnit := FCompilerContext.UnitList[i];
       if    (ufImplicitUse in curUnit.GetUnitFlags)
          or (  (scriptType<>stUnit)
              and not (coExplicitUnitUses in FOptions)) then begin
          deps := curUnit.GetDependencies;
-         for j:=0 to deps.Count-1 do begin
+         for var j := 0 to deps.Count-1 do begin
             if FCompilerContext.UnitList.IndexOfName(deps[j])<0 then
                FMsgs.AddCompilerStopFmt(cNullPos, CPE_UnitNotFound,
                                         [deps[j], curUnit.GetUnitName]);
          end;
-         refCount[i]:=deps.Count;
+         refCount[i] := deps.Count;
       end else begin
-         refCount[i]:=-1;
+         refCount[i] := -1;
          Dec(expectedUnitCount);
       end;
    end;
@@ -1300,7 +1299,7 @@ begin
    // Resolve references
    repeat
       changed:=False;
-      for i:=0 to FCompilerContext.UnitList.Count-1 do begin
+      for var i := 0 to FCompilerContext.UnitList.Count-1 do begin
          // Find unit that is not referencing other units
          if refCount[i]=0 then begin
             curUnit := FCompilerContext.UnitList[i];
@@ -1308,9 +1307,9 @@ begin
 
             // Remove the references to this unit from all other units
             unitName:=curUnit.GetUnitName;
-            for j:=0 to FCompilerContext.UnitList.Count-1 do begin
+            for var j := 0 to FCompilerContext.UnitList.Count-1 do begin
                deps := FCompilerContext.UnitList[j].GetDependencies;
-               for k:=0 to deps.Count-1 do begin
+               for var k := 0 to deps.Count-1 do begin
                   if UnicodeSameText(deps[k], unitName) then
                      Dec(refCount[j]);
                end;
