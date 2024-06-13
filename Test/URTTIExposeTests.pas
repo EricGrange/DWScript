@@ -50,6 +50,8 @@ type
          procedure IndexedProperties;
          procedure IndexedPropertiesDefault;
          procedure IndexedPropertiesCustom;
+
+         procedure PropertyEnumeration;
    end;
 
 type
@@ -82,6 +84,14 @@ type
    end;
 
    TSimpleEnumeration = (seZero, seOne, seTwo);
+
+   TClassWithEnumeration = class
+      private
+         FTest : TSimpleEnumeration;
+      published
+         property EnumField : TSimpleEnumeration read FTest write FTest;
+         function TestFunc(arg : TSimpleEnumeration) : Boolean;
+   end;
 
    TTestInstance = class
       private
@@ -250,6 +260,13 @@ end;
 procedure TSimpleClass.DecValue;
 begin
    Dec(FValue);
+end;
+
+// TestFunc
+//
+function TClassWithEnumeration.TestFunc(arg : TSimpleEnumeration) : Boolean;
+begin
+   Result := arg = FTest;
 end;
 
 // Stuff
@@ -627,6 +644,34 @@ begin
   finally
     obj.Free;
   end;
+end;
+
+// PropertyEnumeration
+//
+procedure TRTTIExposeTests.PropertyEnumeration;
+const
+   cTestCode =
+       'var c := new TClassWithEnumeration;'#13#10
+      +'c.EnumField := seOne;'#13#10
+      +'Print(c.TestFunc(seOne));'#13#10
+      +'Print(c.TestFunc(seTwo));'#13#10
+      ;
+
+var
+   prog : IdwsProgram;
+   exec : IdwsProgramExecution;
+begin
+   FUnit.ExposeRTTI(TypeInfo(TSimpleEnumeration));
+   FUnit.ExposeRTTI(TypeInfo(TClassWithEnumeration));
+
+   prog := FCompiler.Compile(cTestCode);
+
+   CheckEquals('', prog.Msgs.AsInfo, 'Compile');
+
+   exec:=prog.Execute;
+
+   CheckEquals('', prog.Msgs.AsInfo, 'Exec Msgs');
+   CheckEquals('TrueFalse', exec.Result.ToString, 'Exec Result');
 end;
 
 // SimpleClass
