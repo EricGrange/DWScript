@@ -3785,10 +3785,10 @@ begin
       if c1 <> c2 then begin
          if (c1 <= 127) and (c2 <= 127) then begin
             //if c1 in [Ord('a')..Ord('z')] then
-            if Cardinal(c1 -  Ord('a')) <= Cardinal(Ord('z') - Ord('a')) then
+            if Cardinal(c1 - Ord('a')) <= Cardinal(Ord('z') - Ord('a')) then
                c1 := c1 + (Ord('A')-Ord('a'));
             // if c2 in [Ord('a')..Ord('z')] then
-            if Cardinal(c2 -  Ord('a')) <= Cardinal(Ord('z') - Ord('a')) then
+            if Cardinal(c2 - Ord('a')) <= Cardinal(Ord('z') - Ord('a')) then
                c2 := c2 + (Ord('A')-Ord('a'));
             if c1 <> c2 then begin
                Result := c1 - c2;

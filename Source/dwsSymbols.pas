@@ -1185,7 +1185,7 @@ type
          function SpecializeType(const context : ISpecializationContext) : TTypeSymbol; override;
    end;
 
-   TBaseIntegerSymbol = class (TBaseSymbol)
+   TBaseIntegerSymbol = class sealed (TBaseSymbol)
       public
          constructor Create;
 
@@ -1193,14 +1193,14 @@ type
          function IsCompatible(typSym : TTypeSymbol) : Boolean; override;
    end;
 
-   TBaseFloatSymbol = class (TBaseSymbol)
+   TBaseFloatSymbol = class sealed (TBaseSymbol)
       public
          constructor Create;
 
          procedure InitDataContext(const data : IDataContext; offset : NativeInt); override;
    end;
 
-   TBaseStringSymbol = class (TBaseSymbol)
+   TBaseStringSymbol = class sealed (TBaseSymbol)
       private
          FLengthPseudoSymbol : TPseudoMethodSymbol;
          FHighPseudoSymbol : TPseudoMethodSymbol;
@@ -1220,7 +1220,7 @@ type
          function LowPseudoSymbol(baseSymbols : TdwsBaseSymbolsContext) : TPseudoMethodSymbol; inline;
    end;
 
-   TBaseBooleanSymbol = class (TBaseSymbol)
+   TBaseBooleanSymbol = class sealed (TBaseSymbol)
       public
          constructor Create;
 
@@ -6917,7 +6917,9 @@ begin
    ptrList := FSymbols.List;
    while lo <= hi do begin
       mid := (lo + hi) shr 1;
+      {$IFOPT R+}{$DEFINE RANGEON}{$R-}{$ELSE}{$UNDEF RANGEON}{$ENDIF}
       Result := TSymbol(ptrList[mid]);
+      {$IFDEF RANGEON}{$R+}{$UNDEF RANGEON}{$ENDIF}
       cmpResult := UnicodeCompareText(Result.Name, aName);
       if cmpResult < 0 then
          lo := mid+1
@@ -7049,7 +7051,9 @@ begin
    var list := FSymbols.List;
    var nameLen := Length(aName);
    for var i := 0 to Count-1 do begin
+      {$IFOPT R+}{$DEFINE RANGEON}{$R-}{$ELSE}{$UNDEF RANGEON}{$ENDIF}
       var sym := TSymbol(list[i]);
+      {$IFDEF RANGEON}{$R+}{$UNDEF RANGEON}{$ENDIF}
       if     (Length(sym.Name) = nameLen)
          and (
                   (nameLen = 0)
@@ -7095,15 +7099,15 @@ end;
 //
 function TSymbolTable.EnumerateLocalHelpers(helpedType : TTypeSymbol; const callback : THelperSymbolEnumerationCallback) : Boolean;
 var
-   i : Integer;
-   sym : TSymbol;
    list : PObjectTightList;
 begin
    if stfHasHelpers in FFlags then begin
       list := FSymbols.List;
-      for i:=0 to FSymbols.Count-1 do begin
-         sym:=TSymbol(list[i]);
-         if sym.ClassType=THelperSymbol then
+      for var i := 0 to FSymbols.Count-1 do begin
+         {$IFOPT R+}{$DEFINE RANGEON}{$R-}{$ELSE}{$UNDEF RANGEON}{$ENDIF}
+         var sym := TSymbol(list[i]);
+         {$IFDEF RANGEON}{$R+}{$UNDEF RANGEON}{$ENDIF}
+         if sym.ClassType = THelperSymbol then
             if THelperSymbol(sym).HelpsType(helpedType) then begin
                if callback(THelperSymbol(sym)) then Exit(True);
          end;

@@ -24,8 +24,8 @@ unit dwsTokenizer;
 interface
 
 uses
-  SysUtils, Classes, TypInfo,
-  dwsTokenTypes, dwsScriptSource, dwsErrors, dwsStrings, dwsXPlatform, dwsUtils, dwsXXHash
+  System.SysUtils, System.Classes, System.TypInfo,
+  dwsTokenTypes, dwsScriptSource, dwsErrors, dwsUtils
   {$ifdef FPC},lazutf8{$endif};
 
 type
@@ -200,13 +200,13 @@ type
    end;
 
    TTokenizerSourceInfo = record
+      FHotPos : TScriptPos;
+      FCurPos : TScriptPos;
+      FPosPtr : PChar;
       FPathName : TFileName;
       FLocation : TFileName;
       FText : String;
       FDefaultPos : TScriptPos;
-      FHotPos : TScriptPos;
-      FCurPos : TScriptPos;
-      FPosPtr : PChar;
    end;
    PTokenizerSourceInfo = ^TTokenizerSourceInfo;
 
@@ -222,22 +222,26 @@ type
    TTokenizer = class
       private
          FTokenBuf : TTokenBuffer;
-         FNextToken : TToken;
-         FRules : TTokenizerRules;
+         FOnBeforeAction : TTokenizerActionEvent;
          FStartState : TState;
-         FToken : TToken;
          FSource : TTokenizerSourceInfo;
+
+         FOnEndSourceFile : TTokenizerEndSourceFileEvent;
+
+         FToken : TToken;
+         FNextToken : TToken;
+
+         FRules : TTokenizerRules;
+         FTokenPool : TToken;
+
          FSwitchHandler : TSwitchHandler;
          FSwitchProcessor : TSwitchHandler;
+
+         FSourceStack : array of TTokenizerSourceInfo;
+
          FMsgs : TdwsCompileMessageList;
          FConditionalDefines : IAutoStrings;
          FConditionalDepth : TSimpleStack<TTokenizerConditionalInfo>;
-
-         FTokenPool : TToken;
-
-         FSourceStack : array of TTokenizerSourceInfo;
-         FOnEndSourceFile : TTokenizerEndSourceFileEvent;
-         FOnBeforeAction : TTokenizerActionEvent;
 
          procedure AllocateToken;
          procedure ReleaseToken;
@@ -315,6 +319,8 @@ implementation
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
 
+uses dwsXPlatform, dwsStrings;
+
 const
    cFormatSettings : TFormatSettings = ( DecimalSeparator : {%H-}'.' );
 
@@ -327,12 +333,14 @@ end;
 
 // AppendChar
 //
+{$IFOPT R+}{$DEFINE RANGEON}{$R-}{$ELSE}{$UNDEF RANGEON}{$ENDIF}
 procedure TTokenBuffer.AppendChar(c : Char);
 begin
-   if Len>=Capacity then Grow;
-   Buffer[Len]:=c;
+   if Len >= Capacity then Grow;
+   Buffer[Len] := c;
    Inc(Len);
 end;
+{$IFDEF RANGEON}{$R+}{$UNDEF RANGEON}{$ENDIF}
 
 // Grow
 //
@@ -927,45 +935,42 @@ end;
 // UpperMatchLen
 //
 function TTokenBuffer.UpperMatchLen(const str : String) : Boolean;
-var
-   i : Integer;
-   p : PChar;
-   ch : Char;
 begin
-   p:=PChar(Pointer(str));
-   for i:=1 to Len-1 do begin
-      ch:=Buffer[i];
+   var p := PChar(Pointer(str));
+   for var i := 1 to Len-1 do begin
+      var ch := Buffer[i];
       case ch of
-         'a'..'z' : if Char(Word(ch) xor $0020)<>p[i] then Exit(False);
+         'a'..'z' : if Char(Word(ch) xor $0020) <> p[i] then Exit(False);
       else
-         if ch<>p[i] then Exit(False);
+         if ch <> p[i] then Exit(False);
       end;
    end;
-   Result:=True;
+   Result := True;
 end;
 
 // ToAlphaType
 //
+{$IFOPT R+}{$DEFINE RANGEON}{$R-}{$ELSE}{$UNDEF RANGEON}{$ENDIF}
 function TTokenBuffer.ToAlphaType : TTokenType;
 var
-   ch : Char;
-   i : Integer;
-   lookups : PTokenAlphaLookups;
+   lookups : Pointer;
 begin
    if (Len<2) or (Len>14) then Exit(ttNAME);
-   ch:=Buffer[0];
+   var ch := Buffer[0];
    case ch of
-      'a'..'x' : lookups:=@vAlphaToTokenType[Len][Char(Word(ch) xor $0020)];
-      'A'..'X' : lookups:=@vAlphaToTokenType[Len][ch];
+      'a'..'x' : lookups := @vAlphaToTokenType[Len][Char(Word(ch) xor $0020)];
+      'A'..'X' : lookups := @vAlphaToTokenType[Len][ch];
    else
       Exit(ttNAME);
    end;
-   for i:=0 to High(lookups^) do begin
-      if UpperMatchLen(lookups^[i].Alpha) then
-         Exit(lookups^[i].Token);
+   lookups := PPointer(lookups)^;
+   for var i := 0 to High(TTokenAlphaLookups(lookups)) do begin
+      if UpperMatchLen(TTokenAlphaLookups(lookups)[i].Alpha) then
+         Exit(TTokenAlphaLookups(lookups)[i].Token);
    end;
-   Result:=ttNAME;
+   Result := ttNAME;
 end;
+{$IFDEF RANGEON}{$R+}{$UNDEF RANGEON}{$ENDIF}
 
 // MatchLen
 //

@@ -1104,32 +1104,36 @@ function TStandardSymbolFactory.ReadInitExpr(expecting : TTypeSymbol = nil) : TT
    end;
 
 begin
-   if expecting<>nil then begin
+   if expecting <> nil then begin
       case FCompiler.Tokenizer.TestAny([ttBLEFT, ttALEFT]) of
-         ttBLEFT :
-            if expecting.ClassType=TRecordSymbol then begin
+         ttBLEFT : begin
+            var expectingClassType := expecting.ClassType;
+            if expectingClassType = TRecordSymbol then begin
                Result := ReadConstRecordInitExpr(TRecordSymbol(expecting));
                Exit;
-            end else if expecting is TArraySymbol then begin
+            end else if expectingClassType.InheritsFrom(TArraySymbol) then begin
                FCompiler.Tokenizer.KillToken;
                Result := ReadArrayConstantExpr(ttBRIGHT, expecting);
                Exit;
             end;
-         ttALEFT :
-            if expecting is TArraySymbol then begin
+         end;
+         ttALEFT :begin
+            var expectingClassType := expecting.ClassType;
+            if expectingClassType.InheritsFrom(TArraySymbol) then begin
                FCompiler.Tokenizer.KillToken;
                Result := ReadArrayConstantExpr(ttARIGHT, expecting);
                Exit;
-            end else if expecting is TSetOfSymbol then begin
+            end else if expectingClassType = TSetOfSymbol then begin
                FCompiler.Tokenizer.KillToken;
                Result := ReadArrayConstantExpr(ttARIGHT, expecting);
                Result := TConvExpr.WrapWithConvCast(FCompiler.FCompilerContext, FCompiler.Tokenizer.HotPos,
                                                     expecting, Result, CPE_IncompatibleTypes);
                Exit;
             end;
+         end;
       end;
    end;
-   Result:=ReadExpr(expecting)
+   Result := ReadExpr(expecting)
 end;
 
 // ------------------
