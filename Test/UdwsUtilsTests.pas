@@ -1863,10 +1863,16 @@ end;
 //
 procedure TdwsUtilsTests.SwapPrimitives;
 begin
+   var a32, b32 : UInt32;
+   a32 := $01020304;
+   b32 := 0;
+   SwapBytesInt32(@a32, @b32);
+   CheckEquals($04030201, b32, 'SwapInt32');
+
    var a64, b64 : Int64;
    a64 := $0102030405060708;
    b64 := a64 shl 1;
-   SwapInt64(@a64, @b64);
+   SwapBytesInt64(@a64, @b64);
    CheckEquals($0807060504030201, b64, 'SwapInt64');
 end;
 

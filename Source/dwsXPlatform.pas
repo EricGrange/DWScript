@@ -409,7 +409,8 @@ function DirectSetMXCSR(newValue : Word) : Word; register;
 
 function SwapBytes(v : Cardinal) : Cardinal;
 procedure SwapBytesBlock(src, dest : PByte; nb : Integer);
-procedure SwapInt64(src, dest : PInt64);
+procedure SwapBytesInt32(src, dest : PUInt32);
+procedure SwapBytesInt64(src, dest : PInt64);
 
 function RDTSC : UInt64;
 
@@ -2552,6 +2553,12 @@ function SwapBytes(v : Cardinal) : Cardinal;
 {$ifdef WIN32_ASM}
 asm
    bswap eax
+end;
+{$else}{$ifdef WIN64_ASM}
+asm
+   bswap ecx
+   mov   eax, ecx
+end;
 {$else}
 type
    TCardinalBytes = array [0..3] of Byte;
@@ -2560,8 +2567,8 @@ begin
    TCardinalBytes(Result)[1] := TCardinalBytes(v)[2];
    TCardinalBytes(Result)[2] := TCardinalBytes(v)[1];
    TCardinalBytes(Result)[3] := TCardinalBytes(v)[0];
-{$endif}
 end;
+{$endif}{$endif}
 
 // SwapBytesBlock
 //
@@ -2576,9 +2583,33 @@ begin
    end;
 end;
 
-// SwapInt64
+// SwapBytesInt32
 //
-procedure SwapInt64(src, dest : PInt64);
+procedure SwapBytesInt32(src, dest : PUInt32);
+{$ifdef WIN64_ASM}
+asm
+   mov   eax, [rcx]
+   bswap eax
+   mov   [rdx], eax
+end;
+{$else}{$ifdef WIN32_ASM}
+asm
+   mov   ecx, [eax]
+   bswap ecx
+   mov   [edx], ecx
+end;
+{$else}
+begin
+   PByteArray(dest)[0] := PByteArray(src)[3];
+   PByteArray(dest)[1] := PByteArray(src)[2];
+   PByteArray(dest)[2] := PByteArray(src)[1];
+   PByteArray(dest)[3] := PByteArray(src)[0];
+end;
+{$endif}{$endif}
+
+// SwapBytesInt64
+//
+procedure SwapBytesInt64(src, dest : PInt64);
 {$ifdef WIN64_ASM}
 asm
    mov   rax, [rcx]
