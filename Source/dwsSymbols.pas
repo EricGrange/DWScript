@@ -6900,11 +6900,8 @@ end;
 // FindLocal
 //
 function TSymbolTable.FindLocal(const aName : String) : TSymbol;
-var
-   lo, hi, mid, cmpResult : Integer;
-   ptrList : PObjectTightList;
 begin
-   hi := FSymbols.Count-1;
+   var hi := FSymbols.Count-1;
    if hi < 0 then Exit(nil);
 
    if not (stfSorted in FFlags) then begin
@@ -6913,14 +6910,14 @@ begin
       Include(FFlags, stfSorted);
    end;
 
-   lo := 0;
-   ptrList := FSymbols.List;
+   var ptrList : PObjectTightList := FSymbols.List;
+   var lo := 0;
    while lo <= hi do begin
-      mid := (lo + hi) shr 1;
+      var mid := (lo + hi) shr 1;
       {$IFOPT R+}{$DEFINE RANGEON}{$R-}{$ELSE}{$UNDEF RANGEON}{$ENDIF}
       Result := TSymbol(ptrList[mid]);
       {$IFDEF RANGEON}{$R+}{$UNDEF RANGEON}{$ENDIF}
-      cmpResult := UnicodeCompareText(Result.Name, aName);
+      var cmpResult := UnicodeCompareText(Result.Name, aName);
       if cmpResult < 0 then
          lo := mid+1
       else begin
@@ -7335,15 +7332,13 @@ end;
 // AddSymbol
 //
 function TSymbolTable.AddSymbol(sym : TSymbol) : Integer;
-var
-   ct : TClass;
 begin
    Result := AddSymbolDirect(sym);
    if sym.IsDataSymbol then begin
       if FAddrGenerator <> nil then
          TDataSymbol(sym).AllocateStackAddr(FAddrGenerator);
    end else begin
-      ct := sym.ClassType;
+      var ct := sym.ClassType;
       if ct = TOperatorSymbol then
          FFlags := FFlags + [ stfHasOperators, stfHasLocalOperators ]
       else if ct = TClassSymbol then
@@ -7358,21 +7353,30 @@ end;
 // AddSymbolDirect
 //
 function TSymbolTable.AddSymbolDirect(sym : TSymbol) : Integer;
-var
-   n : Integer;
-   ptrList : PObjectTightList;
 begin
    if stfSorted in FFlags then begin
-      Result:=0;
-      n:=FSymbols.Count;
-      ptrList:=FSymbols.List;
-      while Result<n do begin
-         if UnicodeCompareText(TSymbol(ptrList[Result]).Name, Sym.Name)>=0 then
-            Break;
-         Inc(Result);
+
+      var ptrList : PObjectTightList := FSymbols.List;
+      Result := 0;
+      var hi := FSymbols.Count-1;
+      while Result <= hi do begin
+         var mid := (Result + hi) shr 1;
+         {$IFOPT R+}{$DEFINE RANGEON}{$R-}{$ELSE}{$UNDEF RANGEON}{$ENDIF}
+         var ptrMid := TSymbol(ptrList[mid]);
+         {$IFDEF RANGEON}{$R+}{$UNDEF RANGEON}{$ENDIF}
+         var cmpResult := UnicodeCompareText(ptrMid.Name, sym.Name);
+         if cmpResult < 0 then
+            Result := mid+1
+         else begin
+            if cmpResult = 0 then begin
+               Result := mid;
+               break;
+            end else hi := mid-1;
+         end;
       end;
       FSymbols.Insert(Result, sym);
-   end else Result:=FSymbols.Add(sym);
+
+   end else Result := FSymbols.Add(sym);
 end;
 
 // Remove

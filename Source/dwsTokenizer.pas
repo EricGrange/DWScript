@@ -1720,7 +1720,6 @@ procedure TTokenizer.ConsumeToken;
 
 var
    state : TState;
-   trns : TTransition;
    pch : PChar;
    ch : Char;
 begin
@@ -1742,7 +1741,9 @@ begin
             ch := #32
          else ch := #127
       end;
-      trns := state.FTransitions[ch];
+      {$IFOPT R+}{$DEFINE RANGEON}{$R-}{$ELSE}{$UNDEF RANGEON}{$ENDIF}
+      var trns := state.FTransitions[ch];
+      {$IFDEF RANGEON}{$R+}{$UNDEF RANGEON}{$ENDIF}
 
       // Handle Errors
       if trns.IsError then begin

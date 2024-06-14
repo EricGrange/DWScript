@@ -26,7 +26,7 @@ interface
 uses
    System.Classes, System.SysUtils, System.Types, System.SyncObjs,
    dwsSymbols, dwsErrors, dwsUtils, dwsDataContext, dwsExprList,
-   dwsStrings, dwsStack, dwsFileSystem, dwsTokenTypes, dwsUnitSymbols,
+   dwsStack, dwsFileSystem, dwsTokenTypes, dwsUnitSymbols,
    dwsXPlatform, dwsInfo, dwsScriptSource, dwsCustomData, dwsSymbolDictionary,
    dwsContextMap, dwsCompilerContext;
 
@@ -1680,7 +1680,8 @@ uses
    System.Variants, System.TypInfo,
    dwsFunctions, dwsCoreExprs, dwsMagicExprs, dwsMethodExprs, dwsUnifiedConstants,
    dwsInfoClasses, dwsCompilerUtils, dwsConstExprs, dwsResultFunctions,
-   dwsSpecializationContext, dwsDynamicArrays, dwsArrayExprs, dwsAssociativeArrays;
+   dwsSpecializationContext, dwsDynamicArrays, dwsArrayExprs, dwsAssociativeArrays,
+   dwsStrings;
 
 // TScriptDynamicArray_InitData
 //
