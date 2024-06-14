@@ -223,7 +223,7 @@ begin
             end else begin
                params.Types[i] := INT8OID;
                SetLength(params.Values[i], 8);
-               SwapInt64(@p.VInt64, Pointer(params.Values[i]));
+               SwapBytesInt64(@p.VInt64, Pointer(params.Values[i]));
                params.Lengths[i] := 8;
                params.Formats[i] := 1;
             end;
@@ -231,7 +231,7 @@ begin
          varDouble : begin
             params.Types[i] := FLOAT8OID;
             SetLength(params.Values[i], SizeOf(Double));
-            SwapInt64(Pointer(@p.VDouble), Pointer(params.Values[i]));
+            SwapBytesInt64(Pointer(@p.VDouble), Pointer(params.Values[i]));
             params.Lengths[i] := SizeOf(Double);
             params.Formats[i] := 1;
          end;
@@ -274,7 +274,7 @@ begin
             // this leaves only 2 for microseconds, so a precision of 10 microseconds
             dt := Round(p.VDate*86400e5)*10 - Round(cPostgresEpochDeltaDays * 86400e6);
             SetLength(params.Values[i], SizeOf(Int64));
-            SwapInt64(@dt, Pointer(params.Values[i]));
+            SwapBytesInt64(@dt, Pointer(params.Values[i]));
             params.Lengths[i] := SizeOf(Int64);
             params.Formats[i] := 1;
          end;
@@ -929,7 +929,7 @@ begin
          Result := Integer(SwapBytes(PCardinal(p)^));
       end;
       INT8OID :
-         SwapInt64(p, @Result);
+         SwapBytesInt64(p, @Result);
       BOOLOID :
          Result := Ord(PByte(p)^ <> 0);
    else
@@ -957,13 +957,13 @@ begin
          Result := s;
       end;
       FLOAT8OID : begin
-         SwapInt64(p, @Result);
+         SwapBytesInt64(p, @Result);
       end;
       NUMERICOID : begin
          Result := PostgreSQLNumericToFloat(p);
       end;
       TIMESTAMPOID : begin
-         SwapInt64(p, @dt);
+         SwapBytesInt64(p, @dt);
          Result := dt / 86400e6 + cPostgresEpochDeltaDays;
       end;
    else

@@ -19,7 +19,7 @@ unit dwsLibpq;
 interface
 
 uses
-   Windows, Classes, SysUtils;
+   Winapi.Windows, System.Classes, System.SysUtils;
 
 type
 
