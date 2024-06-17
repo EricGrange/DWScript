@@ -1883,15 +1883,12 @@ end;
 // PrepareStates
 //
 procedure TTokenizerRules.PrepareStates;
-var
-   i : Integer;
-   state : TState;
 begin
-   FReservedTokens:=FSymbolTokens+FReservedNames;
+   FReservedTokens := FSymbolTokens+FReservedNames;
 
-   FEOFTransition:=TErrorTransition.Create('');
-   for i:=0 to FStates.Count-1 do begin
-      state:=FStates[i];
+   FEOFTransition := TErrorTransition.Create('');
+   for var i := 0 to FStates.Count-1 do begin
+      var state := FStates[i];
       if (state.FTransitions[#0]=nil) or not (state.FTransitions[#0] is TErrorTransition) then
          state.FTransitions[#0]:=FEOFTransition;
    end;

@@ -2109,26 +2109,28 @@ type
    // TdwsExecution
    //
    TdwsExecution = class abstract (TInterfacedSelfObject, IdwsExecution)
-      protected
+      protected // fields here are ordered to reduce their offset
          FStack : TStackMixIn;
          FStatus : TExecutionStatusResult;
-         FCallStack : TTightStack; // expr + prog duples
          FSelfScriptObject : PIScriptObj;
-         FSelfScriptClassSymbol : TClassSymbol;
 
-         FDebugger : IDebugger;
          FIsDebugging : Boolean;
-         FDebugSuspended : Integer;
-
-         FSleepTime : Integer;
-         FSleeping : Boolean;
 
          FInternalExecution : Integer;
 
+         FProgramState : TProgramState;
+
+         FCallStack : TTightStack; // expr + prog duples
+
+         FDebugger : IDebugger;
+         FDebugSuspended : Integer;
+
          FEnvironment : IdwsEnvironment;
 
-      protected
-         FProgramState : TProgramState;  // here to reduce its offset
+         FSelfScriptClassSymbol : TClassSymbol;
+
+         FSleepTime : Integer;
+         FSleeping : Boolean;
 
          function GetEnvironment : IdwsEnvironment;
          procedure SetEnvironment(const val : IdwsEnvironment);
@@ -2144,6 +2146,7 @@ type
          FRandSeed : UInt64;
 
          FFormatSettings : TdwsFormatSettings;
+
 
       protected
          function  GetDebugger : IDebugger;
@@ -2166,6 +2169,8 @@ type
          function GetSleeping : Boolean;
 
          function GetFormatSettings : TdwsFormatSettings;
+
+         class procedure DoDebug(exec : TdwsExecution; expr : TExprBase); static;
 
       public
          constructor Create(const stackParams : TStackParameters);
@@ -2439,21 +2444,17 @@ end;
 // CallStackToString
 //
 class function TExprBase.CallStackToString(const callStack : TdwsExprLocationArray) : String;
-var
-   i : Integer;
-   buffer : TWriteOnlyBlockStream;
-   expr : TExprBase;
 begin
-   buffer:=TWriteOnlyBlockStream.Create;
+   var buffer := TWriteOnlyBlockStream.Create;
    try
-      for i:=0 to High(callStack) do begin
-         if i>0 then
+      for var i := 0 to High(callStack) do begin
+         if i > 0 then
             buffer.WriteString(#13#10);
-         expr := callStack[i].Expr;
+         var expr := callStack[i].Expr;
          if expr <> nil then
             buffer.WriteString(expr.ScriptLocation(callStack[i].Prog));
       end;
-      Result:=buffer.ToString;
+      Result := buffer.ToString;
    finally
       buffer.Free;
    end;
@@ -2463,7 +2464,6 @@ end;
 //
 function TExprBase.RecursiveEnumerateSubExprs(const callback : TExprBaseEnumeratorProc) : Boolean;
 var
-   i : Integer;
    abort : Boolean;
    base, expr : TExprBase;
    stack : TSimpleStack<TExprBase>;
@@ -2476,7 +2476,7 @@ begin
       repeat
          base:=stack.Peek;
          stack.Pop;
-         for i:=0 to base.SubExprCount-1 do begin
+         for var i := 0 to base.SubExprCount-1 do begin
             expr:=base.SubExpr[i];
             if expr<>nil then begin
                stack.Push(expr);
@@ -2494,12 +2494,9 @@ end;
 // ReferencesVariable
 //
 function TExprBase.ReferencesVariable(varSymbol : TDataSymbol) : Boolean;
-var
-   i : Integer;
-   sub : TExprBase;
 begin
-   for i:=0 to SubExprCount-1 do begin
-      sub:=SubExpr[i];
+   for var i := 0 to SubExprCount-1 do begin
+      var sub := SubExpr[i];
       if (sub<>nil) and sub.ReferencesVariable(varSymbol) then
          Exit(True)
    end;
@@ -7551,11 +7548,10 @@ end;
 function TMembersSymbolTable.Visibilities : TdwsVisibilities;
 var
    sym : TSymbol;
-   symClass : TClass;
 begin
    Result:=[];
    for sym in Self do begin
-      symClass:=sym.ClassType;
+      var symClass := sym.ClassType;
       if symClass=TFieldSymbol then
          Include(Result, TFieldSymbol(sym).Visibility)
       else if symClass.InheritsFrom(TPropertySymbol) then
@@ -8944,17 +8940,18 @@ begin
    inherited;
 end;
 
+// DoDebug
+//
+class procedure TdwsExecution.DoDebug(exec : TdwsExecution; expr : TExprBase);
+begin
+   exec.Debugger.DoDebug(exec, expr);
+   if exec.ProgramState = psRunningStopped then
+      EScriptStopped.DoRaise(exec, expr);
+end;
+
 // DoStep
 //
 procedure TdwsExecution.DoStep(expr : TExprBase);
-
-   procedure DoDebug(exec : TdwsExecution; expr : TExprBase);
-   begin
-      exec.Debugger.DoDebug(exec, expr);
-      if exec.ProgramState=psRunningStopped then
-         EScriptStopped.DoRaise(exec, expr);
-   end;
-
 begin
    if ProgramState=psRunningStopped then
       EScriptStopped.DoRaise(Self, expr)
@@ -9422,11 +9419,9 @@ end;
 // GetCaption
 //
 function TOperatorSymbol.GetCaption : String;
-var
-   i : Integer;
 begin
    Result:='operator '+cTokenStrings[Token]+' (';
-   for i:=0 to High(Params) do begin
+   for var i := 0 to High(Params) do begin
       if i>0 then
          Result:=Result+', ';
       Result:=Result+Params[i].Typ.Caption;
@@ -9513,10 +9508,8 @@ end;
 // ComputeIndexes
 //
 procedure TResourceStringSymbolList.ComputeIndexes;
-var
-   i : Integer;
 begin
-   for i:=0 to Count-1 do
+   for var i := 0 to Count-1 do
       Items[i].Index:=i;
 end;
 
@@ -9527,22 +9520,18 @@ end;
 // ContainsChildMethodOf
 //
 function TFuncSymbolList.ContainsChildMethodOf(methSym : TMethodSymbol) : Boolean;
-var
-   i : Integer;
-   funcSym : TFuncSymbol;
-   meth : TMethodSymbol;
 begin
-   for i:=0 to Count-1 do begin
-      funcSym:=Items[i];
+   for var i := 0 to Count-1 do begin
+      var funcSym := Items[i];
       if funcSym is TMethodSymbol then begin
-         meth:=TMethodSymbol(funcSym);
+         var meth := TMethodSymbol(funcSym);
          repeat
-            if meth=methSym then Exit(True);
-            meth:=meth.ParentMeth;
-         until meth=nil;
+            if meth = methSym then Exit(True);
+            meth := meth.ParentMeth;
+         until meth = nil;
       end;
    end;
-   Result:=False;
+   Result := False;
 end;
 
 // ------------------
@@ -9585,12 +9574,10 @@ end;
 // CreateSelfParameter
 //
 function THelperSymbol.CreateSelfParameter(methSym : TMethodSymbol) : TDataSymbol;
-var
-   meta : TStructuredTypeMetaSymbol;
 begin
    if methSym.IsClassMethod then begin
       if ForType is TStructuredTypeSymbol then begin
-         meta:=TStructuredTypeSymbol(ForType).MetaSymbol;
+         var meta :=TStructuredTypeSymbol(ForType).MetaSymbol;
          if meta<>nil then
             Result:=TParamSymbol.Create(SYS_SELF, meta)
          else Result:=nil;

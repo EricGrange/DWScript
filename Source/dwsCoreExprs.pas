@@ -25,11 +25,8 @@ interface
 
 uses
    System.Classes, System.SysUtils, System.Variants,
-   dwsUtils, dwsXPlatform, dwsUnicode,
-   dwsDataContext, dwsCompilerContext, dwsExprList,
-   dwsSymbols, dwsErrors, dwsStrings, dwsConvExprs,
-   dwsStack, dwsExprs, dwsScriptSource,
-   dwsConstExprs, dwsTokenTypes, dwsUnitSymbols;
+   dwsUtils,  dwsUnicode, dwsDataContext, dwsCompilerContext, dwsExprList,
+   dwsSymbols, dwsStack, dwsExprs, dwsScriptSource, dwsTokenTypes;
 
 type
 
@@ -1844,8 +1841,9 @@ implementation
 // ------------------------------------------------------------------
 
 uses
+   dwsXPlatform, dwsStrings, dwsErrors, dwsConvExprs, dwsConstExprs,
    dwsStringFunctions, dwsExternalSymbols, dwsSpecializationContext,
-   dwsCompilerUtils, dwsDynamicArrays;
+   dwsCompilerUtils, dwsDynamicArrays, dwsUnitSymbols;
 
 // ------------------
 // ------------------ TVarExpr ------------------
@@ -3448,10 +3446,7 @@ function TInOpExpr.Optimize(context : TdwsCompilerContext) : TProgramExpr;
    end;
 
 var
-   i : Integer;
    mask : UInt64;
-   cc : TCaseCondition;
-   iioe : TIntegerInOpExpr;
 begin
    Result := Self;
 
@@ -3460,8 +3455,8 @@ begin
       // all case conditions are constanst and in the 0..31 range (31 is limit for JS)
       // then it can be optimized to a bitwise test
       mask := 0;
-      for i := 0 to FCaseConditions.Count-1 do begin
-         cc := TCaseCondition(FCaseConditions.List[i]);
+      for var i := 0 to FCaseConditions.Count-1 do begin
+         var cc := TCaseCondition(FCaseConditions.List[i]);
          if not cc.ApplyToConstantMask(mask) then begin
             mask := 0;
             Break;
@@ -3476,7 +3471,7 @@ begin
       end;
 
       if TCaseConditionsHelper.CanOptimizeToTyped(FCaseConditions, TConstIntExpr) then begin
-         iioe := TIntegerInOpExpr.Create(context, Left);
+         var iioe := TIntegerInOpExpr.Create(context, Left);
          TransferFieldsAndOrphan(iioe);
          Exit(iioe);
       end;
@@ -6204,7 +6199,8 @@ end;
 constructor TBlockExpr.Create(context : TdwsCompilerContext; const aScriptPos: TScriptPos);
 begin
    inherited Create(aScriptPos);
-   FTable:=TSymbolTable.Create(context.Table, context.Table.AddrGenerator);
+   var contextTable := context.Table;
+   FTable := TSymbolTable.Create(contextTable, contextTable.AddrGenerator);
 end;
 
 // Destroy
@@ -6228,15 +6224,14 @@ end;
 //
 procedure TBlockExpr.EvalNoResult(exec : TdwsExecution);
 var
-   i : Integer;
    expr : PProgramExpr;
 begin
-   expr:=@FStatements[0];
+   expr := @FStatements[0];
    try
-      for i:=1 to FCount do begin
+      for var i := FCount downto 1 do begin
          exec.DoStep(expr^);
          expr.EvalNoResult(exec);
-         if exec.Status<>esrNone then Break;
+         if exec.Status <> esrNone then Break;
          Inc(expr);
       end;
    except
@@ -6248,13 +6243,11 @@ end;
 // Optimize
 //
 function TBlockExpr.Optimize(context : TdwsCompilerContext) : TProgramExpr;
-var
-   i : Integer;
 begin
    if FTable.HasChildTables then
       Exit(Self);
 
-   for i:=FCount-1 downto 0 do begin
+   for var i := FCount-1 downto 0 do begin
       if FStatements[i].ClassType=TNullExpr then begin
          FStatements[i].Free;
          if i+1<FCount then

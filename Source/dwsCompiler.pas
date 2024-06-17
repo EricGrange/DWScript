@@ -1411,8 +1411,6 @@ end;
 // MarkLoopExitable
 //
 procedure TdwsCompiler.MarkLoopExitable(level : TLoopExitable);
-var
-   i : Integer;
 begin
    if FLoopExprs.Count=0 then Exit;
    case level of
@@ -1421,7 +1419,7 @@ begin
             FLoopExitable.Peek:=level;
       end;
       leExit : begin
-         for i:=0 to FLoopExitable.Count-1 do begin
+         for var i := 0 to FLoopExitable.Count-1 do begin
             if FLoopExitable.Items[i]=level then Break;
             FLoopExitable.Items[i]:=level;
          end;
@@ -1812,7 +1810,6 @@ end;
 //
 function TdwsCompiler.HandleExplicitDependency(const scriptPos : TScriptPos; const unitName : String) : TUnitSymbol;
 var
-   i : Integer;
    unitResolved : IdwsUnit;
    unitTable : TUnitSymbolTable;
    unitMain : TUnitMainSymbol;
@@ -1822,7 +1819,7 @@ var
    srcUnit : TSourceUnit;
    oldContext : TdwsSourceContext;
 begin
-   for i:=0 to FUnitsFromStack.Count-1 do
+   for var i := 0 to FUnitsFromStack.Count-1 do
       if UnicodeSameText(FUnitsFromStack.Items[i], unitName) then
          FMsgs.AddCompilerStop(scriptPos, CPE_UnitCircularReference);
 
@@ -1832,8 +1829,8 @@ begin
       Exit;
    end;
 
-   i := FCompilerContext.UnitList.IndexOfName(unitName);
-   if i < 0 then begin
+   var k := FCompilerContext.UnitList.IndexOfName(unitName);
+   if k < 0 then begin
       if Assigned(FOnNeedUnit) then begin
          unitResolved := FOnNeedUnit(unitName, unitSource, unitLocation);
          if (unitResolved = nil) and (unitLocation <> '') then begin
@@ -1867,11 +1864,11 @@ begin
                                         [ unitName, FUnitsFromStack.Peek ]);
          Exit;
       end;
-   end else unitResolved := FCompilerContext.UnitList[i];
+   end else unitResolved := FCompilerContext.UnitList[k];
    resolvedUnitName := unitResolved.GetUnitName;
 
    dependencies := unitResolved.GetDependencies;
-   for i:=0 to dependencies.Count-1 do begin
+   for var i := 0 to dependencies.Count-1 do begin
       FUnitsFromStack.Push(unitName);
       try
          HandleExplicitDependency(scriptPos, dependencies[i]);
@@ -1970,16 +1967,15 @@ var
    end;
 
 var
-   i, k : Integer;
-   ums : TUnitMainSymbol;
+   k : Integer;
    unitInitExpr : TBlockExprBase;
 begin
    // collect and rank all units with an initialization or finalization sections
    // NOTE: UnitMains order may change arbitrarily in the future, hence the need to reorder
    SetLength(rankedUnits, CurrentProg.UnitMains.Count);
    k:=0;
-   for i:=0 to CurrentProg.UnitMains.Count-1 do begin
-      ums:=CurrentProg.UnitMains[i];
+   for var i := 0 to CurrentProg.UnitMains.Count-1 do begin
+      var ums := CurrentProg.UnitMains[i];
       if (ums.InitializationExpr<>nil) or (ums.FinalizationExpr<>nil) then begin
          rankedUnits[k]:=ums;
          Inc(k);
@@ -1994,8 +1990,8 @@ begin
    SortRankedUnits;
 
    // append initializations to InitExpr of the main prog
-   for i:=High(rankedUnits) downto 0 do begin
-      ums:=rankedUnits[i];
+   for var i := High(rankedUnits) downto 0 do begin
+      var ums := rankedUnits[i];
       if (ums<>nil) and (ums.InitializationExpr<>nil) then begin
          unitInitExpr:=ums.InitializationExpr as TBlockExprBase;
          if coOptimize in Options then begin
@@ -2006,8 +2002,8 @@ begin
       end;
    end;
    // append initializations to FinalExpr of the main prog in reverse order
-   for i:=0 to High(rankedUnits) do begin
-      ums:=rankedUnits[i];
+   for var i := 0 to High(rankedUnits) do begin
+      var ums := rankedUnits[i];
       if (ums<>nil) and (ums.FinalizationExpr<>nil) then begin
          FMainProg.AddFinalExpr(ums.FinalizationExpr as TBlockExprBase);
          ums.FinalizationExpr.IncRefCount;
@@ -2376,8 +2372,6 @@ var
    unitBlock : TBlockExpr;
    readingMain : Boolean;
    contextFix : TdwsSourceContext;
-   i : Integer;
-   unitSymbol : TUnitSymbol;
 begin
    oldTok:=FTok;
    oldSection:=FUnitSection;
@@ -2474,9 +2468,9 @@ begin
                if coContextMap in Options then
                   FSourceContextMap.CloseAllContexts(FTok.CurrentPos);
             end;
-            for i:=0 to CurrentUnitSymbol.Table.Count-1 do begin
+            for var i := 0 to CurrentUnitSymbol.Table.Count-1 do begin
                if CurrentUnitSymbol.Table[i] is TUnitSymbol then begin
-                  unitSymbol:=TUnitSymbol(CurrentUnitSymbol.Table[i]);
+                  var unitSymbol := TUnitSymbol(CurrentUnitSymbol.Table[i]);
                   if unitSymbol.Main<>nil then
                      CurrentSourceUnit.GetDependencies.Add(unitSymbol.Name);
                end;
@@ -3512,26 +3506,24 @@ end;
 procedure TdwsCompiler.AdaptParametersSymPos(guess, actual : TFuncSymbol; const useTypes : TSymbolUsages;
                                              var posArray : TScriptPosArray);
 var
-   i, d : Integer;
-   guessSymPosList : TSymbolPositionList;
+   d : Integer;
    guessParam : TSymbol;
-   symPos : TSymbolPosition;
 begin
    if not (coSymbolDictionary in Options) then Exit;
 
    d:=actual.Params.Count-Length(posArray);
    // params can have been mislocated in guess and must be reassigned to actual
-   for i:=0 to actual.Params.Count-1 do begin
+   for var i := 0 to actual.Params.Count-1 do begin
       // note: d can be negative in case of syntax errors
       // f.i. when more parameters were specified than were declared
       // so we can't use d as lower bound for the loop
       if i<d then continue;
       RecordSymbolUse(actual.Params[i], posArray[i-d], useTypes);
       guessParam:=guess.Params.FindLocal(actual.Params[i].Name);
-      if guessParam<>nil then begin
-         guessSymPosList:=SymbolDictionary.FindSymbolPosList(guessParam);
+      if guessParam <> nil then begin
+         var guessSymPosList := SymbolDictionary.FindSymbolPosList(guessParam);
          if guessSymPosList<>nil then begin
-            symPos:=guessSymPosList.Items[guessSymPosList.Count-1];
+            var symPos := guessSymPosList.Items[guessSymPosList.Count-1];
             if symPos.ScriptPos.SamePosAs(posArray[i-d]) then
                guessSymPosList.Delete(guessSymPosList.Count-1);
          end;
@@ -3540,12 +3532,12 @@ begin
    d:=guess.Params.Count;
    if d>Length(posArray) then
       d:=Length(posArray);
-   for i:=actual.Params.Count to d-1 do begin
+   for var i := actual.Params.Count to d-1 do begin
       guessParam:=guess.Params.FindLocal(guess.Params[i].Name);
-      if guessParam<>nil then begin
-         guessSymPosList:=SymbolDictionary.FindSymbolPosList(guessParam);
-         if guessSymPosList<>nil then begin
-            symPos:=guessSymPosList.Items[guessSymPosList.Count-1];
+      if guessParam <> nil then begin
+         var guessSymPosList := SymbolDictionary.FindSymbolPosList(guessParam);
+         if guessSymPosList <> nil then begin
+            var symPos := guessSymPosList.Items[guessSymPosList.Count-1];
             if symPos.ScriptPos.SamePosAs(posArray[i]) then
                guessSymPosList.Delete(guessSymPosList.Count-1);
          end;
@@ -3632,12 +3624,11 @@ function TdwsCompiler.ReadMethodDecl(
 
    function OverrideParamsCheck(newMeth, oldMeth : TMethodSymbol) : Boolean;
    var
-      i : Integer;
       oldParam, newParam : TSymbol;
    begin
       if newMeth.Params.Count<>oldMeth.Params.Count then
          Exit(False);
-      for i:=0 to newMeth.Params.Count-1 do begin
+      for var i := 0 to newMeth.Params.Count-1 do begin
          newParam:=newMeth.Params[i];
          oldParam:=oldMeth.Params[i];
          if    (not newParam.Typ.IsOfType(oldParam.Typ))
@@ -5610,7 +5601,6 @@ end;
 function TdwsCompiler.ReadPropertyArrayAccessor(var expr : TTypedExpr; propertySym : TPropertySymbol;
       typedExprList : TTypedExprList; const scriptPos : TScriptPos; isWrite : Boolean) : TFuncExprBase;
 var
-   i : Integer;
    sym : TMethodSymbol;
 begin
    if isWrite then
@@ -5630,7 +5620,7 @@ begin
    expr:=nil;
    try
       // Add array indices (if any)
-      for i:=0 to typedExprList.Count-1 do
+      for var i := 0 to typedExprList.Count-1 do
          Result.AddArg(typedExprList.Expr[i]);
       typedExprList.Clear;
 
@@ -6760,13 +6750,12 @@ end;
 //
 procedure TdwsCompiler.WarnForVarUsage(varExpr : TVarExpr; const scriptPos : TScriptPos);
 var
-   i : Integer;
    loopExpr : TProgramExpr;
    currVarExpr : TVarExpr;
    varSymbol : TDataSymbol;
 begin
    varSymbol:=varExpr.DataSym;
-   for i:=0 to FLoopExprs.Count-1 do begin
+   for var i := 0 to FLoopExprs.Count-1 do begin
       loopExpr:=FLoopExprs.Items[i];
       if loopExpr.InheritsFrom(TForExpr) then begin
          currVarExpr:=TForExpr(loopExpr).VarExpr;
@@ -7289,15 +7278,13 @@ function TdwsCompiler.ReadStaticMethOverloaded(methSym : TMethodSymbol; metaExpr
                                                const scriptPos : TScriptPos;
                                                expecting : TTypeSymbol = nil) : TTypedExpr;
 var
-   i : Integer;
    overloads : TFuncSymbolList;
-   meth : TMethodSymbol;
 begin
    overloads := CompilerContext.AllocateFuncSymbolList;
    try
       CollectMethodOverloads(methSym, overloads);
-      for i := overloads.Count-1 downto 0 do begin
-         meth := (overloads[i] as TMethodSymbol);
+      for var i := overloads.Count-1 downto 0 do begin
+         var meth := (overloads[i] as TMethodSymbol);
          case meth.Kind of
             fkFunction, fkProcedure, fkMethod:
                if not meth.IsClassMethod then
@@ -7322,14 +7309,12 @@ function TdwsCompiler.ResolveOverload(var funcExpr : TFuncExprBase; overloads : 
                                       expecting : TFuncSymbol;
                                       cfOptions : TCreateFunctionOptions) : Boolean;
 var
-   i, delta : Integer;
-   j : Integer;
+   delta : Integer;
    funcExprArgCount : Integer;
    match, bestMatch : TFuncSymbol;
    struct : TCompositeTypeSymbol;
    matchDistance, bestMatchDistance, bestCount : Integer;
    matchParamType, funcExprParamType : TTypeSymbol;
-   wasVarParam, nowVarParam : Boolean;
    funcExprArg : TExprBase;
 begin
    bestMatch:=nil;
@@ -7338,11 +7323,11 @@ begin
    if expecting<>nil then
       funcExprArgCount:=expecting.Params.Count
    else funcExprArgCount:=funcExpr.Args.Count;
-   for i := 0 to overloads.Count-1 do begin
+   for var i := 0 to overloads.Count-1 do begin
       match := overloads[i];
       if funcExprArgCount > match.Params.Count then continue;
       matchDistance:=0;
-      for j:=0 to funcExprArgCount-1 do begin
+      for var j := 0 to funcExprArgCount-1 do begin
          matchParamType := match.GetParamType(j);
          if expecting <> nil then
             funcExprParamType := expecting.Params[j].Typ
@@ -7443,7 +7428,7 @@ begin
          end;
       end;
       if match=nil then continue;
-      for j:=funcExprArgCount to match.Params.Count-1 do begin
+      for var j := funcExprArgCount to match.Params.Count-1 do begin
          if match.Params[j].ClassType<>TParamSymbolWithDefaultValue then begin
             match:=nil;
             Break;
@@ -7489,11 +7474,11 @@ begin
          RecordSymbolUseReference(bestMatch, funcExpr.ScriptPos, False);
          delta:=funcExpr.Args.Count-funcExpr.FuncSym.Params.Count;
          if delta>=0 then begin
-            for i:=0 to Min(bestMatch.Params.Count, funcExpr.Args.Count-delta)-1 do begin
-               nowVarParam:=(bestMatch.Params[i].ClassType=TVarParamSymbol);
+            for var i := 0 to Min(bestMatch.Params.Count, funcExpr.Args.Count-delta)-1 do begin
+               var nowVarParam := (bestMatch.Params[i].ClassType=TVarParamSymbol);
                funcExprArg:=funcExpr.Args[i+delta];
-               wasVarParam:=(funcExprArg is TByRefParamExpr) and TByRefParamExpr(funcExprArg).IsWritable;
-               if wasVarParam<>nowVarParam then begin
+               var wasVarParam := (funcExprArg is TByRefParamExpr) and TByRefParamExpr(funcExprArg).IsWritable;
+               if wasVarParam <> nowVarParam then begin
                   if wasVarParam then
                      FSymbolDictionary.ChangeUsageAt(argPosArray[i], [], [suWrite])
                   else FSymbolDictionary.ChangeUsageAt(argPosArray[i], [suWrite], []);
@@ -10697,19 +10682,17 @@ end;
 //
 procedure TdwsCompiler.CheckGenericParameters(genericType : TGenericSymbol);
 var
-   i : Integer;
    name : String;
    namePos : TScriptPos;
-   p : TGenericTypeParameterSymbol;
 begin
    if not FTok.TestDelete(ttLESS) then
       Msgs.AddCompilerError(FTok.HotPos, CPE_LesserExpected);
-   for i := 0 to genericType.Parameters.Count-1 do begin
+   for var i := 0 to genericType.Parameters.Count-1 do begin
       if not FTok.TestDeleteNamePos(name, namePos) then begin
          Msgs.AddCompilerError(FTok.HotPos, CPE_NameExpected);
          Break;
       end;
-      p := genericType.Parameters[i];
+      var p := genericType.Parameters[i];
       if not SameText(p.Name, name) then begin
          Msgs.AddCompilerErrorFmt(namePos, CPE_X_ExpectedBut_Y_Found,
                                   [p.Name, name]);
@@ -11642,27 +11625,22 @@ function TdwsCompiler.ReadTerm(isWrite : Boolean = False; expecting : TTypeSymbo
    procedure CheckForClosure(funcSym : TFuncSymbol);
 
       procedure CheckSubExprs(expr : TExprBase);
-      var
-         i : Integer;
-         funcSym : TFuncSymbol;
       begin
          if expr = nil then Exit;
          if (expr is TVarParentExpr) or (expr is TVarParamParentExpr) then
             FMsgs.AddCompilerErrorFmt(expr.ScriptPos, CPE_SymbolCannotBeCaptured,
                                       [(expr as TVarExpr).DataSym.Name])
          else if expr is TFuncExprBase then begin
-            funcSym := TFuncExprBase(expr).FuncSym;
+            var funcSym := TFuncExprBase(expr).FuncSym;
             if Assigned(funcSym) and (funcSym.Level <> 1) then
                FMsgs.AddCompilerError(expr.ScriptPos, CPE_LocalFunctionAsDelegate);
          end;
-         for i := 0 to expr.SubExprCount-1 do
+         for var i := 0 to expr.SubExprCount-1 do
             CheckSubExprs(expr.SubExpr[i]);
       end;
 
-   var
-      i : Integer;
    begin
-      for i := 0 to funcSym.Executable.SubExprCount-1 do
+      for var i := 0 to funcSym.Executable.SubExprCount-1 do
          CheckSubExprs(funcSym.Executable.SubExpr(i));
    end;
 
@@ -12239,7 +12217,6 @@ end;
 //
 procedure TdwsCompiler.ReadArrayParams(ArrayIndices: TSymbolTable);
 var
-   i : Integer;
    names : TSimpleStringList;
    typSym : TTypeSymbol;
    isVarParam, isConstParam : Boolean;
@@ -12265,7 +12242,7 @@ begin
             FMsgs.AddCompilerStop(FTok.HotPos, CPE_ColonExpected)
          else begin
             typSym:=ReadType('', tcParameter);
-            for i:=0 to names.Count-1 do begin
+            for var i := 0 to names.Count-1 do begin
                if isVarParam then
                   ArrayIndices.AddSymbol(TVarParamSymbol.Create(names[i], typSym, []))
                else if isConstParam then
@@ -12358,7 +12335,7 @@ procedure TdwsCompiler.ReadParams(const hasParamMeth : THasParamSymbolMethod;
    end;
 
 var
-   i, paramIdx : Integer;
+   paramIdx : Integer;
    names : TSimpleStringList;
    typ : TTypeSymbol;
    onlyDefaultParamsNow : Boolean;
@@ -12394,7 +12371,7 @@ begin
                   if (expectedLambdaParams<>nil) and (paramIdx+names.Count-1<expectedLambdaParams.Count) then begin
 
                      defaultExpr:=nil;
-                     for i:=0 to names.Count-1 do begin
+                     for var i := 0 to names.Count-1 do begin
                         expectedParam := expectedLambdaParams[paramIdx+i];
                         paramSemantics := expectedParam.Semantics;
                         GenerateParam(names[i], localPosArray[i], paramSemantics, expectedParam.Typ, cNullPos, defaultExpr, []);
@@ -12454,7 +12431,7 @@ begin
                      if (defaultExpr<>nil) and not (defaultExpr is TConstExpr) then
                         defaultExpr:=defaultExpr.OptimizeToTypedExpr(FCompilerContext, exprPos);
 
-                     for i:=0 to names.Count-1 do
+                     for var i := 0 to names.Count-1 do
                         GenerateParam(names[i], localPosArray[i], paramSemantics, typ, typScriptPos, defaultExpr, paramOptions);
 
                   finally
@@ -12479,7 +12456,7 @@ begin
 
       // implicit anonmous lambda params
       defaultExpr:=nil;
-      for i:=0 to expectedLambdaParams.Count-1 do begin
+      for var i := 0 to expectedLambdaParams.Count-1 do begin
          expectedParam := expectedLambdaParams[i];
          paramSemantics := expectedParam.Semantics;
          GenerateParam('_implicit_'+expectedParam.Name, cNullPos,
