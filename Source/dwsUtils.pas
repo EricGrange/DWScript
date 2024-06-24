@@ -1030,7 +1030,8 @@ function AsciiCompareLen(p1, p2 : PAnsiChar; n : Integer) : Integer; overload;
 
 function PosA(const sub, main : RawByteString) : Integer; inline;
 
-function StrIsASCII(const s : String) : Boolean;
+function StrIsASCII(const s : String) : Boolean; overload;
+function StrIsASCII(const s : RawByteString) : Boolean; overload;
 
 function StrNonNilLength(const aString : String) : Integer; inline;
 
@@ -3922,6 +3923,30 @@ begin
    var mask := UInt64($FF80FF80FF80FF80);
    while n >= 4 do begin
       if (PUInt64(p)^ and mask) <> 0 then
+         Exit(False);
+      Dec(n, 4);
+      Inc(p, 4);
+   end;
+   {$endif}
+   while n > 0 do begin
+      if Ord(p^) > 127  then
+         Exit(False);
+      Inc(p);
+      Dec(n);
+   end;
+   Result := True;
+end;
+
+// StrIsASCII
+//
+function StrIsASCII(const s : RawByteString) : Boolean;
+begin
+   var n := Length(s);
+   var p : PAnsiChar := Pointer(s);
+   {$ifndef FPC}
+   var mask := UInt32($80808080);
+   while n >= 4 do begin
+      if (PUInt32(p)^ and mask) <> 0 then
          Exit(False);
       Dec(n, 4);
       Inc(p, 4);
