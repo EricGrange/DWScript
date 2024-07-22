@@ -26,8 +26,8 @@ interface
 
 uses
    System.SysUtils,
-   dwsUtils, dwsDataContext, dwsExprs, dwsExprList, dwsSymbols, dwsScriptSource,
-   dwsCompilerContext;
+   dwsUtils, dwsDataContext, dwsExprList, dwsSymbols, dwsScriptSource,
+   dwsCompilerContext, dwsExprs;
 
 type
 
@@ -91,6 +91,8 @@ type
          function EvalAsInteger(exec : TdwsExecution) : Int64; override;
          function EvalAsBoolean(exec : TdwsExecution) : Boolean; override;
 
+         procedure EvalAsVariant(exec : TdwsExecution; var result : Variant); override;
+
          property Value : Boolean read FValue;
    end;
 
@@ -105,6 +107,9 @@ type
 
          function EvalAsInteger(exec : TdwsExecution) : Int64; override;
          function EvalAsFloat(exec : TdwsExecution) : Double; override;
+
+         procedure EvalAsVariant(exec : TdwsExecution; var result : Variant); override;
+
          property Value : Int64 read FValue write FValue;
 
          function ValueIsInt32 : Boolean; inline;
@@ -120,6 +125,9 @@ type
          constructor Create(const scriptPos : TScriptPos; typ : TTypeSymbol; const aValue : Double);
 
          function EvalAsFloat(exec : TdwsExecution) : Double; override;
+
+         procedure EvalAsVariant(exec : TdwsExecution; var result : Variant); override;
+
          property Value : Double read FValue;
    end;
 
@@ -135,6 +143,8 @@ type
          constructor Create(const scriptPos : TScriptPos; typ : TTypeSymbol; const aValue : String);
 
          procedure EvalAsString(exec : TdwsExecution; var result : String); override;
+         procedure EvalAsVariant(exec : TdwsExecution; var result : Variant); override;
+
          property Value : String read FValue write SetValue;
    end;
 
@@ -378,7 +388,7 @@ end;
 //
 procedure TConstNilExpr.EvalAsVariant(exec : TdwsExecution; var result : Variant);
 begin
-   FDataContext.EvalAsVariant(0, result);
+   VarCopySafe(result, IUnknown(nil));
 end;
 
 // EvalAsScriptObj
@@ -422,6 +432,13 @@ begin
    Result := FValue;
 end;
 
+// EvalAsVariant
+//
+procedure TConstBooleanExpr.EvalAsVariant(exec : TdwsExecution; var result : Variant);
+begin
+   VarCopySafe(result, FValue);
+end;
+
 // ------------------
 // ------------------ TConstIntExpr ------------------
 // ------------------
@@ -461,6 +478,13 @@ begin
 {$ifend}
 end;
 
+// EvalAsVariant
+//
+procedure TConstIntExpr.EvalAsVariant(exec : TdwsExecution; var result : Variant);
+begin
+   VarCopySafe(result, FValue);
+end;
+
 // ValueIsInt32
 //
 function TConstIntExpr.ValueIsInt32 : Boolean;
@@ -494,6 +518,13 @@ begin
 {$ifend}
 end;
 
+// EvalAsVariant
+//
+procedure TConstFloatExpr.EvalAsVariant(exec : TdwsExecution; var result : Variant);
+begin
+   VarCopySafe(result, FValue);
+end;
+
 // ------------------
 // ------------------ TConstStringExpr ------------------
 // ------------------
@@ -520,6 +551,13 @@ asm
    mov   eax, ecx
    call  System.@UStrAsg;
 {$endif}
+end;
+
+// EvalAsVariant
+//
+procedure TConstStringExpr.EvalAsVariant(exec : TdwsExecution; var result : Variant);
+begin
+   VarCopySafe(result, FValue);
 end;
 
 // SetValue
