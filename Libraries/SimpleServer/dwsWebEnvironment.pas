@@ -143,7 +143,7 @@ type
          FContentEncoding : RawByteString;
          FHeaders : TStrings;
          FCookies : TWebResponseCookies;  // lazy initialization
-         FProcessingTime : Integer;
+         FProcessingTime : Int64;
          FHints : TWebResponseHints;
 
       protected
@@ -182,7 +182,7 @@ type
          property Hints : TWebResponseHints read FHints write FHints;
 
          // optional, informative, time it took to process the response in microseconds
-         property ProcessingTime : Integer read FProcessingTime write FProcessingTime;
+         property ProcessingTime : Int64 read FProcessingTime write FProcessingTime;
    end;
 
    IWebEnvironment = interface
