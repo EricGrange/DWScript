@@ -128,7 +128,7 @@ const
    cToHex : String = '0123456789ABCDEF';
 
    // based on http://www.w3.org/TR/html5/entities.json
-   cAllNamedEntities =
+   cAllNamedEntities : RawByteString =
        'Aacute=C1,aacute=E1,Abreve=102,abreve=103,ac=223E,acd=223F,acE=223E,Acirc=C2,acirc=E2,acute=B4,Acy=410,acy=430,AElig=C6,aelig=E6,'
       +'af=2061,Afr=1D504,afr=1D51E,Agrave=C0,agrave=E0,alefsym=2135,aleph=2135,Alpha=391,alpha=3B1,Amacr=100,amacr=101,amalg=2A3F,'
       +'AMP=26,amp=26,And=2A53,and=2227,andand=2A55,andd=2A5C,andslope=2A58,andv=2A5A,ang=2220,ange=29A4,angle=2220,angmsd=2221,angmsdaa=29A8,'
@@ -371,7 +371,7 @@ begin
    vAllNamedEntities := TNamedEntities.Create;
    vAllNamedEntities.PreallocateCapacity(4096);
 
-   s := cAllNamedEntities;
+   RawByteStringToScriptString(cAllNamedEntities, s);
    i := 1;
    repeat
       p := Pos(',', s, i);
@@ -431,7 +431,7 @@ var
    pSrc, pDest : PAnsiChar;
    c : AnsiChar;
 begin
-   if count = 0 then Exit;
+   if count <= 0 then Exit;
    SetLength(raw, count);
    pSrc:=@src[start];
    pDest:=PAnsiChar(Pointer(raw));
@@ -657,14 +657,13 @@ end;
 //
 class function WebUtils.HasFieldName(const list : TStrings; const name : String) : Boolean;
 var
-   i, n : Integer;
    elem : String;
 begin
-   for i:=0 to list.Count-1 do begin
-      elem:=list[i];
+   for var i := 0 to list.Count-1 do begin
+      elem := list[i];
       if StrBeginsWith(elem, name) then begin
-         n:=Length(name);
-         if (Length(elem)=n) or (elem[n+1]='=') then
+         var n := Length(name);
+         if (Length(elem) = n) or (elem[n+1] = '=') then
             Exit(True);
       end;
    end;
@@ -1384,11 +1383,10 @@ end;
 class function WebUtils.IsValidCookieValue(const s : String) : Boolean;
 var
    p : PChar;
-   i : Integer;
 begin
    // check for RFC 6265 set
    p := PChar(s);
-   for i := 0 to Length(s)-1 do begin
+   for var i := 0 to Length(s)-1 do begin
       case Ord(p[i]) of
          $21, $23..$2B, $2D..$3A, $3C..$5B, $5D..$7E : ;
       else
@@ -1436,15 +1434,14 @@ end;
 //
 procedure TMIMEBodyPart.PrepareHeaders;
 var
-   i, p : Integer;
    buf : String;
 begin
    Assert(FHeaders = nil);
    FHeaders := TFastCompareTextList.Create;
    FHeaders.Text := RawByteStringToScriptString(RawHeaders);
-   for i := 0 to FHeaders.Count-1 do begin
+   for var i := 0 to FHeaders.Count-1 do begin
       buf := FHeaders[i];
-      p := Pos(':', buf);
+      var p := Pos(':', buf);
       if p > 0 then begin
          FHeaders[i] := TrimRight(Copy(buf, 1, p-1)) + '=' + TrimLeft(Copy(buf, p+1));
       end;
