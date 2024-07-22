@@ -1,5 +1,4 @@
 object dwsSymbolsLib: TdwsSymbolsLib
-  OldCreateOrder = False
   Height = 164
   Width = 177
   object dwsUnit: TdwsUnit
@@ -257,7 +256,7 @@ object dwsSymbolsLib: TdwsSymbolsLib
           end>
       end>
     UnitName = 'SystemSymbols'
-    StaticSymbols = False
+    StaticSymbols = True
     Left = 52
     Top = 24
   end

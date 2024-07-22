@@ -1,5 +1,4 @@
 object dwsClassesLib: TdwsClassesLib
-  OldCreateOrder = False
   Height = 135
   Width = 258
   object dwsUnit: TdwsUnit
@@ -1065,7 +1064,7 @@ object dwsClassesLib: TdwsClassesLib
         Value = 2
       end>
     UnitName = 'Classes'
-    StaticSymbols = False
+    StaticSymbols = True
     Left = 44
     Top = 24
   end

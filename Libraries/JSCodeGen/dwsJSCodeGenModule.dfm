@@ -1,5 +1,4 @@
 object DMJSCodeGenModule: TDMJSCodeGenModule
-  OldCreateOrder = False
   Height = 150
   Width = 215
   object CodeGenLibModule: TdwsUnit
@@ -22,8 +21,8 @@ object DMJSCodeGenModule: TDMJSCodeGenModule
                 DataType = 'String'
               end>
             Attributes = [maStatic]
-            OnEval = CodeGenLibModuleClassesCodeGenMethodsDependencyEval
             Kind = mkClassProcedure
+            OnEval = CodeGenLibModuleClassesCodeGenMethodsDependencyEval
           end
           item
             Name = 'NewUniqueGlobalVar'
@@ -34,8 +33,8 @@ object DMJSCodeGenModule: TDMJSCodeGenModule
               end>
             ResultType = 'String'
             Attributes = [maStatic]
-            OnEval = CodeGenLibModuleClassesCodeGenMethodsNewUniqueGlobalVarEval
             Kind = mkClassFunction
+            OnEval = CodeGenLibModuleClassesCodeGenMethodsNewUniqueGlobalVarEval
           end
           item
             Name = 'CustomDependency'
@@ -45,8 +44,8 @@ object DMJSCodeGenModule: TDMJSCodeGenModule
                 DataType = 'String'
               end>
             Attributes = [maStatic]
-            OnEval = CodeGenLibModuleClassesCodeGenMethodsCustomDependencyEval
             Kind = mkClassProcedure
+            OnEval = CodeGenLibModuleClassesCodeGenMethodsCustomDependencyEval
           end>
       end>
     Functions = <
@@ -86,7 +85,7 @@ object DMJSCodeGenModule: TDMJSCodeGenModule
         ResultType = 'String'
       end>
     UnitName = 'JSCodeGen'
-    StaticSymbols = False
+    StaticSymbols = True
     Left = 56
     Top = 32
   end
