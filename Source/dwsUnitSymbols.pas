@@ -37,6 +37,7 @@ type
       procedure BeforeAdditionTo(dwscript : TObject);
       function  GetSelf : TObject;
       function  GetUnitName : String;
+      function  SameUnitName(const aName : String) : Boolean;
       function  GetDependencies : TStringList;
       function  GetUnitFlags : TIdwsUnitFlags;
       function  GetDeprecatedMessage : String;
@@ -353,33 +354,38 @@ uses dwsStrings, dwsExprs, dwsCoreExprs, dwsXPlatform, dwsXXHash;
 //
 function TIdwsUnitList.IndexOfName(const unitName : String) : Integer;
 begin
-   for Result:=0 to Count-1 do
-      if UnicodeSameText(Items[Result].GetUnitName, unitName) then
+   for Result := 0 to Count-1 do begin
+      var p := ItemPtr(Result);
+      if p^.SameUnitName(unitName) then
          Exit;
+   end;
    Result:=-1;
 end;
 
 // AddUnits
 //
 procedure TIdwsUnitList.AddUnits(list : TIdwsUnitList);
-var
-   i : Integer;
 begin
-   for i:=0 to list.Count-1 do
-      Add(list[i]);
+   for var i := 0 to list.Count-1 do
+      Add(list.ItemPtr(i)^);
 end;
 
 // FindDuplicateUnitName
 //
 function TIdwsUnitList.FindDuplicateUnitName : String;
 var
-   i : Integer;
+   a : array of String;
 begin
-   // Check for duplicate unit names
-   for i:=0 to Count-1 do begin
-      Result:=Items[i].GetUnitName;
-      if IndexOfName(Result)<>i then
-         Exit;
+   SetLength(a, Count);
+   for var i := 0 to Count-1 do
+      UnicodeLowerCase(ItemPtr(i)^.GetUnitName, a[i]);
+   QuickSortString(PStringArray(a), 0, Count-1);
+   for var i := 1 to Count-1 do begin
+      if a[i] = a[i-1] then begin
+         // return unit name in non-lowercased form
+         var k := IndexOfName(a[i]);
+         Exit(ItemPtr(i)^.GetUnitName);
+      end;
    end;
    Result:='';
 end;
@@ -388,10 +394,10 @@ end;
 //
 function TIdwsUnitList.IndexOf(const aUnit : IdwsUnit) : Integer;
 begin
-   for Result:=0 to Count-1 do
-      if Items[Result]=aUnit then
+   for Result := 0 to Count-1 do
+      if ItemPtr(Result)^ = aUnit then
          Exit;
-   Result:=-1;
+   Result := -1;
 end;
 
 // ------------------
@@ -697,29 +703,28 @@ end;
 function TUnitMainSymbol.ReferenceInSymbolTable(aTable : TSymbolTable; implicit : Boolean) : TUnitSymbol;
 var
    p : Integer;
-   nameSpace : TUnitSymbol;
    part : String;
 begin
-   p:=Pos('.', Name);
-   if p>0 then
-      part:=Copy(Name, 1, p-1)
-   else part:=Name;
+   p := Pos('.', Name);
+   if p > 0 then
+      part := Copy(Name, 1, p-1)
+   else part := Name;
 
-   nameSpace := TUnitSymbol(aTable.FindLocalOfClass(part, TUnitSymbol));
-   if nameSpace=nil then begin
-      nameSpace:=TUnitSymbol.Create(nil, part);
+   var nameSpace := TUnitSymbol(aTable.FindLocalOfClass(part, TUnitSymbol));
+   if nameSpace = nil then begin
+      nameSpace := TUnitSymbol.Create(nil, part);
       nameSpace.Implicit:=implicit;
       aTable.AddSymbol(nameSpace);
    end;
 
-   if p>0 then begin
-      Result:=TUnitSymbol.Create(Self, Name);
+   if p > 0 then begin
+      Result := TUnitSymbol.Create(Self, Name);
       aTable.AddSymbol(Result);
       nameSpace.RegisterNameSpaceUnit(Result);
    end else begin
-      Result:=nameSpace;
+      Result := nameSpace;
       Assert((nameSpace.Main=nil) or (nameSpace.Main=Self));
-      nameSpace.Main:=Self;
+      nameSpace.Main := Self;
    end;
 
    aTable.InsertParent(0, Table);

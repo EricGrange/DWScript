@@ -64,6 +64,7 @@ type
       private
          procedure BeforeAdditionTo(dwscript : TObject);
          function GetUnitName: String;
+         function SameUnitName(const aName : String) : Boolean;
          function GetDependencies : TStringList;
          function GetUnitTable(systemTable : TSystemSymbolTable;
                                unitSyms : TUnitMainSymbols;
@@ -74,7 +75,7 @@ type
 
       protected
          FUnitName : String;
-         FDependencies : TStringList;
+         FDependencies : TFastCompareTextList;
          procedure AddUnitSymbols(SymbolTable: TSymbolTable); virtual; abstract;
 
          function  GetSelf : TObject;
@@ -203,9 +204,9 @@ type
    //
    TdwsAbstractUnit = class(TComponent, IUnknown, IdwsUnit, IdwsUnitTableFactory)
       private
-         FDependencies : TStringList;
-         FScript : TDelphiWebScript;
          FUnitName : String;
+         FDependencies : TFastCompareTextList;
+         FScript : TDelphiWebScript;
          FDeprecatedMessage : String;
          FImplicitUse : Boolean;
 
@@ -219,6 +220,7 @@ type
          procedure BeforeAdditionTo(dwscript : TObject);
          function GetSelf : TObject;
          function GetUnitName: String;
+         function SameUnitName(const aName : String) : Boolean;
          function GetUnitTable(systemTable : TSystemSymbolTable; unitSyms : TUnitMainSymbols;
                                operators : TOperators; rootTable : TSymbolTable) : TUnitSymbolTable; virtual; abstract;
          function GetUnitFlags : TIdwsUnitFlags;
@@ -5266,7 +5268,7 @@ end;
 constructor TdwsAbstractUnit.Create(AOwner: TComponent);
 begin
   inherited Create(AOwner);
-  FDependencies := TStringList.Create;
+  FDependencies := TFastCompareTextList.Create;
 end;
 
 destructor TdwsAbstractUnit.Destroy;
@@ -5284,6 +5286,13 @@ end;
 function TdwsAbstractUnit.GetUnitName: String;
 begin
   Result := FUnitName;
+end;
+
+// SameUnitName
+//
+function TdwsAbstractUnit.SameUnitName(const aName : String) : Boolean;
+begin
+   Result := UnicodeSameText(FUnitName, aName);
 end;
 
 // Notification
@@ -5365,7 +5374,7 @@ end;
 constructor TdwsEmptyUnit.Create(AOwner: TComponent);
 begin
   inherited;
-  FDependencies := TStringList.Create;
+  FDependencies := TFastCompareTextList.Create;
 end;
 
 destructor TdwsEmptyUnit.Destroy;
@@ -5382,6 +5391,13 @@ end;
 function TdwsEmptyUnit.GetUnitName: String;
 begin
   Result := FUnitName;
+end;
+
+// SameUnitName
+//
+function TdwsEmptyUnit.SameUnitName(const aName : String) : Boolean;
+begin
+   Result := UnicodeSameText(FUnitName, aName);
 end;
 
 function TdwsEmptyUnit.GetUnitTable(systemTable : TSystemSymbolTable; unitSyms : TUnitMainSymbols;

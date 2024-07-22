@@ -135,7 +135,7 @@ type
 
    TInternalUnit = class(TObject, IdwsUnit, IdwsUnitTableFactory)
       private
-         FDependencies : TStringList;
+         FDependencies : TFastCompareTextList;
          FSymbolsRegistrationProcs : array of TSymbolsRegistrationProc;
          FOperatorsRegistrationProcs : array of TOperatorsRegistrationProc;
          FRegisteredInternalFunctions : TList;
@@ -153,6 +153,7 @@ type
          procedure BeforeAdditionTo(dwscript : TObject);
          function GetSelf : TObject;
          function GetUnitName : String;
+         function SameUnitName(const aName : String) : Boolean;
          function GetDeprecatedMessage : String;
 
          procedure InitUnitTable(systemTable : TSystemSymbolTable; unitSyms : TUnitMainSymbols;
@@ -184,7 +185,7 @@ type
 
    TSourceUnit = class(TInterfacedObject, IdwsUnit, IdwsUnitTableFactory)
       private
-         FDependencies : TStringList;
+         FDependencies : TFastCompareTextList;
          FSymbol : TUnitMainSymbol;
 
       protected
@@ -197,6 +198,7 @@ type
 
          procedure BeforeAdditionTo(dwscript : TObject);
          function GetUnitName : String;
+         function  SameUnitName(const aName : String) : Boolean;
          function GetUnitTable(systemTable : TSystemSymbolTable; unitSyms : TUnitMainSymbols;
                                operators : TOperators; rootTable : TSymbolTable) : TUnitSymbolTable;
          function GetDependencies : TStringList;
@@ -679,7 +681,7 @@ end;
 //
 constructor TInternalUnit.Create;
 begin
-   FDependencies := TStringList.Create;
+   FDependencies := TFastCompareTextList.Create;
    FRegisteredInternalFunctions:=TList.Create;
    FStaticSymbols:=True;
    FCriticalSection:=TdwsCriticalSection.Create;
@@ -779,6 +781,13 @@ end;
 function TInternalUnit.GetUnitName : String;
 begin
    Result:=SYS_INTERNAL;
+end;
+
+// SameUnitName
+//
+function TInternalUnit.SameUnitName(const aName : String) : Boolean;
+begin
+   Result := UnicodeSameText(SYS_INTERNAL, aName);
 end;
 
 // GetDeprecatedMessage
@@ -920,12 +929,12 @@ constructor TSourceUnit.Create(const unitName : String; rootTable : TSymbolTable
                                unitSyms : TUnitMainSymbols);
 var
    ums : TUnitMainSymbol;
-   ust : TUnitSymbolTable;
 begin
    inherited Create;
 
-   FDependencies := TStringList.Create;
-   ust:=TUnitSymbolTable.Create(nil, rootTable.AddrGenerator);
+   FDependencies := TFastCompareTextList.Create;
+
+   var ust := TUnitSymbolTable.Create(nil, rootTable.AddrGenerator);
    FSymbol:=TUnitMainSymbol.Create(unitName, ust, unitSyms);
    ust.UnitMainSymbol:=FSymbol;
 
@@ -959,6 +968,13 @@ end;
 function TSourceUnit.GetUnitName : String;
 begin
    Result:=Symbol.Name;
+end;
+
+// SameUnitName
+//
+function TSourceUnit.SameUnitName(const aName : String) : Boolean;
+begin
+   Result := UnicodeSameText(Symbol.Name, aName);
 end;
 
 // GetUnitTable

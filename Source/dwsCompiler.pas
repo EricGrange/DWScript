@@ -1264,30 +1264,30 @@ end;
 function TdwsCompiler.ResolveUnitReferences(scriptType : TScriptSourceType) : TIdwsUnitList;
 var
    expectedUnitCount : Integer;
-   deps : TStringList;
    refCount : array of Integer;
    changed : Boolean;
    unitName : String;
    curUnit : IdwsUnit;
 begin
+   var unitList := FCompilerContext.UnitList;
    // Check for duplicate unit names
-   unitName := FCompilerContext.UnitList.FindDuplicateUnitName;
+   unitName := unitList.FindDuplicateUnitName;
    if unitName<>'' then
       FMsgs.AddCompilerStopFmt(cNullPos, CPH_UnitAlreadyReferred, [unitName]);
 
    // initialize reference count vector
-   expectedUnitCount := FCompilerContext.UnitList.Count;
+   expectedUnitCount := unitList.Count;
    SetLength(refCount, expectedUnitCount);
 
    // Calculate number of outgoing references
-   for var i := 0 to FCompilerContext.UnitList.Count-1 do begin
-      curUnit := FCompilerContext.UnitList[i];
+   for var i := 0 to unitList.Count-1 do begin
+      curUnit := unitList.ItemPtr(i)^;
       if    (ufImplicitUse in curUnit.GetUnitFlags)
          or (  (scriptType<>stUnit)
              and not (coExplicitUnitUses in FOptions)) then begin
-         deps := curUnit.GetDependencies;
+         var deps := curUnit.GetDependencies;
          for var j := 0 to deps.Count-1 do begin
-            if FCompilerContext.UnitList.IndexOfName(deps[j])<0 then
+            if unitList.IndexOfName(deps[j]) < 0 then
                FMsgs.AddCompilerStopFmt(cNullPos, CPE_UnitNotFound,
                                         [deps[j], curUnit.GetUnitName]);
          end;
@@ -1302,32 +1302,41 @@ begin
 
    // Resolve references
    repeat
-      changed:=False;
-      for var i := 0 to FCompilerContext.UnitList.Count-1 do begin
+      changed := False;
+      for var i := 0 to unitList.Count-1 do begin
          // Find unit that is not referencing other units
-         if refCount[i]=0 then begin
-            curUnit := FCompilerContext.UnitList[i];
+         if refCount[i] = 0 then begin
+            curUnit := unitList.ItemPtr(i)^;
             Result.Add(curUnit);
 
             // Remove the references to this unit from all other units
-            unitName:=curUnit.GetUnitName;
-            for var j := 0 to FCompilerContext.UnitList.Count-1 do begin
-               deps := FCompilerContext.UnitList[j].GetDependencies;
-               for var k := 0 to deps.Count-1 do begin
-                  if UnicodeSameText(deps[k], unitName) then
-                     Dec(refCount[j]);
+            unitName := curUnit.GetUnitName;
+            for var j := 0 to unitList.Count-1 do begin
+               var deps := unitList.ItemPtr(j)^.GetDependencies;
+               if deps.Count = 0 then continue;
+
+               if deps.ClassType = TFastCompareTextList then begin
+                  for var k := 0 to deps.Count-1 do begin
+                     if TFastCompareTextList(deps).SameText(k, unitName) then
+                        Dec(refCount[j]);
+                  end;
+               end else begin
+                  for var k := 0 to deps.Count-1 do begin
+                     if UnicodeSameText(deps[k], unitName) then
+                        Dec(refCount[j]);
+                  end;
                end;
             end;
 
-            refCount[i]:=-1;
-            changed:=True;
+            refCount[i] := -1;
+            changed := True;
          end;
       end;
    until not changed;
 
    if Result.Count<>expectedUnitCount then begin
       Result.Free;
-      Result:=nil;
+      Result := nil;
       FMsgs.AddCompilerStop(cNullPos, CPE_UnitCircularReference);
    end;
 end;

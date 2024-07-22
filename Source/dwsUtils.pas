@@ -927,6 +927,8 @@ type
       function IndexOfName(const name : String): Integer; override;
       {$endif}
       procedure Reverse;
+
+      function SameText(idx : Integer; const value : String) : Boolean;
    end;
 
    TClassCloneConstructor<T: class, constructor> = record
@@ -4460,6 +4462,13 @@ begin
       Inc(i);
       Dec(j);
    end;
+end;
+
+// SameText
+//
+function TFastCompareTextList.SameText(idx : Integer; const value : String) : Boolean;
+begin
+   Result := UnicodeSameText(TStringListCracker(Self).FList[idx].FString, value);
 end;
 
 // ------------------

@@ -379,8 +379,9 @@ begin
    FSystemTable := val;
    SetBaseTypes(FSystemTable.BaseSymbolTypes);
 
-   FTypDefaultConstructor := TypTObject.Members.FindSymbol(SYS_TOBJECT_CREATE, cvPublic) as TMethodSymbol;
-   FTypDefaultDestructor := TypTObject.Members.FindSymbol(SYS_TOBJECT_DESTROY, cvPublic) as TMethodSymbol;
+   var members := TypTObject.Members;
+   FTypDefaultConstructor := members.FindSymbol(SYS_TOBJECT_CREATE, cvPublic) as TMethodSymbol;
+   FTypDefaultDestructor := members.FindSymbol(SYS_TOBJECT_DESTROY, cvPublic) as TMethodSymbol;
 end;
 
 // SetProg
