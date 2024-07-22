@@ -98,7 +98,7 @@ type
    {$else}
    TdwsCriticalSection = class
       private
-         FDummy : array [0..95-SizeOf(TRTLCRiticalSection)-2*SizeOf(Pointer)] of Byte;
+         FDummy : array [0..63-SizeOf(TRTLCRiticalSection)-2*SizeOf(Pointer)] of Byte;
          FCS : TRTLCriticalSection;
 
       public
