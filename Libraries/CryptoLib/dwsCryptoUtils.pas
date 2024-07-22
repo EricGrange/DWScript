@@ -18,15 +18,12 @@ unit dwsCryptoUtils;
 
 interface
 
-uses
-   SysUtils, SynCrypto, SynZip,
-   dwsRipeMD160, dwsCryptProtect, dwsSHA3, dwsUtils, dwsXPlatform,
-   dwsSHA512;
-
 type
    THashFunction = function (const data : RawByteString) : RawByteString;
 
 function HMAC(const key, msg : RawByteString; h : THashFunction; blockSize : Integer) : String;
+
+function ConstantTimeCompareMem(p1, p2 : PByte; nbBytes : Integer) : Boolean;
 
 function HashSHA3_256(const data : RawByteString) : RawByteString;
 function HashSHA256(const data : RawByteString) : RawByteString;
@@ -56,6 +53,13 @@ implementation
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
 
+uses
+   System.SysUtils, System.ZLib,
+   SynCrypto,
+   dwsUtils, dwsXPlatform, dwsSHA3, dwsRipeMD160, dwsSHA512;
+
+// HMAC
+//
 function HMAC(const key, msg : RawByteString; h : THashFunction; blockSize : Integer) : String;
 var
    n : Integer;
@@ -83,6 +87,24 @@ begin
    end;
 
    Result := BinToHex(h(oPad+h(iPad+msg)));
+end;
+
+// ConstantTimeCompareMem
+//
+function ConstantTimeCompareMem(p1, p2 : PByte; nbBytes : Integer) : Boolean;
+begin
+   var r : UInt32 := 0;
+   while nbBytes > 4 do begin
+      r := r or (PUInt32(p1)^ xor PUInt32(p2)^);
+      Inc(p1, 4);
+      Inc(p2, 4);
+   end;
+   while nbBytes > 0 do begin
+      r := r or (p1^ xor p2^);
+      Inc(p1);
+      Inc(p2);
+   end;
+   Result := (r = 0);
 end;
 
 // HashSHA256_P
@@ -181,7 +203,9 @@ end;
 function HashCRC32(const data : RawByteString) : RawByteString;
 begin
    SetLength(Result, 4);
-   PCardinal(Result)^:=CRC32string(data);
+   if data <> '' then
+      PUInt32(Result)^ := System.ZLib.crc32(0, Pointer(data), Length(data))
+   else PUInt32(Result)^ := 0;
 end;
 
 function AES_SHA3_CTR(const data, key : RawByteString; encrypt : Boolean) : RawByteString;
@@ -207,7 +231,7 @@ begin
       dataBuf := Copy(data, 1, n);
       dataHash := HashSHA3_256_Digest(key + dataBuf);
 
-      if not CompareMem(@dataHash, @PByte(data)[n], SizeOf(dataHash)) then Exit;
+      if not ConstantTimeCompareMem(@dataHash, @PByte(data)[n], SizeOf(dataHash)) then Exit;
 
    end;
 
