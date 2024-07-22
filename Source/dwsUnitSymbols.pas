@@ -384,7 +384,7 @@ begin
       if a[i] = a[i-1] then begin
          // return unit name in non-lowercased form
          var k := IndexOfName(a[i]);
-         Exit(ItemPtr(i)^.GetUnitName);
+         Exit(ItemPtr(k)^.GetUnitName);
       end;
    end;
    Result:='';
