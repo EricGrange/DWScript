@@ -93,16 +93,18 @@ end;
 //
 function ConstantTimeCompareMem(p1, p2 : PByte; nbBytes : Integer) : Boolean;
 begin
-   var r : UInt32 := 0;
-   while nbBytes > 4 do begin
-      r := r or (PUInt32(p1)^ xor PUInt32(p2)^);
-      Inc(p1, 4);
-      Inc(p2, 4);
+   var r : UInt64 := 0;
+   while nbBytes >= 8 do begin
+      r := r or (PUInt64(p1)^ xor PUInt64(p2)^);
+      Inc(p1, 8);
+      Inc(p2, 8);
+      Dec(nbBytes, 8);
    end;
    while nbBytes > 0 do begin
       r := r or (p1^ xor p2^);
       Inc(p1);
       Inc(p2);
+      Dec(nbBytes);
    end;
    Result := (r = 0);
 end;
