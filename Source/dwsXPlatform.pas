@@ -48,7 +48,7 @@ interface
 uses
    System.Classes, System.SysUtils, System.Types,
    {$ifdef DELPHI_XE3_PLUS}
-   DateUtils,
+   System.DateUtils,
    {$endif}
    {$IFDEF FPC}
       {$IFDEF WINDOWS}

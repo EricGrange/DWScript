@@ -21,8 +21,8 @@ unit dwsWebUtils;
 interface
 
 uses
-   System.Classes, System.SysUtils, System.StrUtils,
-   dwsUtils, dwsXPlatform, dwsXXHash;
+   System.Classes, System.SysUtils,
+   dwsUtils, dwsXPlatform;
 
 type
    TMIMEBodyPart = class;
@@ -123,6 +123,8 @@ implementation
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
+
+uses dwsXXHash;
 
 const
    cToHex : String = '0123456789ABCDEF';
