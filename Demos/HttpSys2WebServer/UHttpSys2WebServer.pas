@@ -38,7 +38,6 @@ interface
 
 uses
   Winapi.Windows, System.SysUtils, System.Classes, System.Types,
-  SynZip,
   dwsHTTPSysServer, dwsHTTPSysAPI, dwsHTTPSysServerEvents, dwsXXHash,
   dwsUtils, dwsWebEnvironment, dwsWebEnvironmentTypes, dwsFileSystem,
   dwsJSON, dwsXPlatform, dwsURLRewriter,

@@ -16,6 +16,8 @@
 {**********************************************************************}
 unit dwsCryptoUtils;
 
+{$I dws.inc}
+
 interface
 
 type
@@ -38,6 +40,7 @@ function HashSHA1(const data : RawByteString) : RawByteString;
 
 function HashMD5(const data : RawByteString) : RawByteString;
 function HashCRC32(const data : RawByteString) : RawByteString;
+function HashCRC32Num(const data : RawByteString) : UInt32;
 
 // authenticated encryption, key hashing, PKCS7 padding
 function AES_SHA3_CTR(const data, key : RawByteString; encrypt : Boolean) : RawByteString;
@@ -54,7 +57,7 @@ implementation
 // ------------------------------------------------------------------
 
 uses
-   System.SysUtils, System.ZLib,
+   System.SysUtils, System.ZLib, System.Hash,
    SynCrypto,
    dwsUtils, dwsXPlatform, dwsSHA3, dwsRipeMD160, dwsSHA512;
 
@@ -146,7 +149,7 @@ function HashMD5(const data : RawByteString) : RawByteString;
 var
    digest : TMD5Digest;
 begin
-   digest:=MD5Buf(Pointer(data)^, Length(data));
+   digest := MD5Buf(Pointer(data)^, Length(data));
    SetLength(Result, SizeOf(digest));
    System.Move(digest, Result[1], SizeOf(digest));
 end;
@@ -206,8 +209,15 @@ function HashCRC32(const data : RawByteString) : RawByteString;
 begin
    SetLength(Result, 4);
    if data <> '' then
-      PUInt32(Result)^ := System.ZLib.crc32(0, Pointer(data), Length(data))
+      PUInt32(Result)^ := HashCRC32Num(data)
    else PUInt32(Result)^ := 0;
+end;
+
+// HashCRC32Num
+//
+function HashCRC32Num(const data : RawByteString) : UInt32;
+begin
+   Result := System.ZLib.crc32(0, Pointer(data), Length(data));
 end;
 
 function AES_SHA3_CTR(const data, key : RawByteString; encrypt : Boolean) : RawByteString;

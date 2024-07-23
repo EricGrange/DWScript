@@ -1,5 +1,4 @@
 object dwsCryptoLib: TdwsCryptoLib
-  OldCreateOrder = False
   OnCreate = DataModuleCreate
   OnDestroy = DataModuleDestroy
   Height = 215

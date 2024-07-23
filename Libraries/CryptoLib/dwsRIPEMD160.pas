@@ -18,7 +18,7 @@ unit dwsRipeMD160;
 
 interface
 
-uses SysUtils;
+uses System.SysUtils;
 
 type
    TRipe160Digest = array [0..4] of LongWord;

@@ -16,12 +16,13 @@
 {**********************************************************************}
 unit dwsCryptoLibModule;
 
+{$I dws.inc}
+
 interface
 
 uses
-   Winapi.Windows, System.SysUtils, System.Classes, System.Types, System.Variants,
-   dwsComp, dwsExprs, dwsUtils, dwsXPlatform, dwsTokenStore, dwsCryptoXPlatform,
-   dwsXXHash, dwsExprList, dwsSymbols;
+   System.SysUtils, System.Classes, System.Types, System.Variants,
+   dwsComp, dwsExprs, dwsUtils, dwsTokenStore, dwsExprList, dwsSymbols;
 
 type
   TdwsCryptoLib = class(TDataModule)
@@ -145,8 +146,9 @@ implementation
 {$R *.dfm}
 
 uses
-   dwsCryptoUtils, SynCrypto, dwsCryptProtect, SynZip, SynEcc,
-   dwsInfo, dwsCompilerContext, dwsRSAKey, dwsBCryptCNG;
+   SynCrypto,  SynEcc,
+   dwsCryptoUtils, dwsCryptProtect, dwsInfo, dwsCompilerContext,
+   dwsXXHash, dwsRSAKey, dwsBCryptCNG, dwsCryptoXPlatform, dwsXPlatform;
 
 procedure PerformHashData(Info: TProgramInfo; h : THashFunction);
 var
@@ -246,10 +248,8 @@ end;
 
 procedure TdwsCryptoLib.dwsCryptoClassesHashCRC32MethodsHashDataEval(
   Info: TProgramInfo; ExtObject: TObject);
-var
-   crc : Cardinal;
 begin
-   crc := SwapBytes(CRC32string(Info.ParamAsDataString[0]));
+   var crc := SwapBytes(HashCRC32Num(Info.ParamAsDataString[0]));
    Info.ResultAsString := BinToHex(crc, 4);
 end;
 
