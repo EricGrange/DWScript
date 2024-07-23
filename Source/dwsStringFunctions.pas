@@ -24,11 +24,8 @@ unit dwsStringFunctions;
 interface
 
 uses
-   System.Classes, System.SysUtils, System.StrUtils,
-   System.Math, System.Masks, System.Character,
-   dwsXPlatform, dwsUtils, dwsStrings,
-   dwsFunctions, dwsSymbols, dwsExprs, dwsCoreExprs, dwsExprList,
-   dwsConstExprs, dwsMagicExprs, dwsDataContext, dwsWebUtils, dwsJSON;
+   System.Classes, System.SysUtils,
+   dwsXPlatform, dwsUtils, dwsFunctions, dwsExprs, dwsExprList, dwsMagicExprs;
 
 type
 
@@ -361,29 +358,33 @@ implementation
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
 
-uses dwsDynamicArrays, dwsArrayExprs, dwsStack;
+uses
+   System.Math, System.StrUtils,
+   dwsDynamicArrays, dwsArrayExprs, dwsStack, dwsWebUtils, dwsStrings,
+   dwsConstExprs, dwsCoreExprs, dwsDataContext, dwsJSON, dwsSymbols;
 
 // StrRevFind
 //
-function StrRevFind(const stringSearched, stringToFind : String; startPos : Integer = 0) : Integer;
-var
-   i : Integer;
+function StrRevFind(const haystack, needle : String; startPos : Integer = 0) : Integer;
 begin
-   if (stringToFind='') or (stringSearched='') then begin
+   if (needle='') or (haystack='') then begin
       Result:=0;
       Exit;
    end;
-   if startPos<=0 then
-      startPos:=Length(stringSearched);
-   for i:=startPos-Length(stringToFind)+1 downto 1 do begin
-      if stringSearched[i]=stringToFind[1] then begin
-         if CompareMem(@stringSearched[i], @stringToFind[1], Length(stringToFind)*SizeOf(WideChar)) then begin
-            Result:=i;
-            Exit;
-         end;
+   if startPos <= 0 then
+      startPos := Length(haystack);
+
+   var needleByteLength := Length(needle)*SizeOf(WideChar);
+   var needlePtr : PChar := Pointer(needle);
+   var haystackPtr : PChar := Pointer(haystack);
+   var needleFirstChar :=  needlePtr[0];
+   for var i := startPos-Length(needle) downto 0 do begin
+      if haystackPtr[i] = needleFirstChar then begin
+         if CompareMem(@haystackPtr[i], needlePtr, needleByteLength) then
+            Exit(i+1);
       end;
    end;
-   Result:=0;
+   Result := 0;
 end;
 
 // ByteSizeToString
@@ -638,10 +639,8 @@ end;
 { TStrToJSONFunc }
 
 procedure TStrToJSONFunc.DoEvalAsString(const args : TExprBaseListExec; var Result : String);
-var
-   wobs : TWriteOnlyBlockStream;
 begin
-   wobs := TWriteOnlyBlockStream.AllocFromPool;
+   var wobs := TWriteOnlyBlockStream.AllocFromPool;
    try
       WriteJavaScriptString(wobs, args.AsString[0]);
       Result := wobs.ToString;
