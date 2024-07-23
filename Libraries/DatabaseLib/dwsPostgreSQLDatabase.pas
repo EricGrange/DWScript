@@ -242,7 +242,7 @@ begin
                params.Values[i] := vBooleanFalse;
                params.Lengths[i] := 0;
             end else begin
-               params.Values[i] := UTF8Encode(String(p.VUString));
+               params.Values[i] := StringToUTF8(String(p.VUString));
                params.Lengths[i] := Length(params.Values[i]);
             end;
             params.Formats[i] := 1;
@@ -321,7 +321,7 @@ begin
    try
       if Length(parameters) = 0 then
          raise EDWSDataBase.Create('Missing PostgreSQL connection info');
-      FConn := vLibpq.PQconnectdb(PAnsiChar(UTF8Encode(parameters[0])));
+      FConn := vLibpq.PQconnectdb(PAnsiChar(StringToUTF8(parameters[0])));
    except
       RefCount := 0;
       raise;
@@ -477,7 +477,7 @@ var
 var
    res : PGresult;
 begin
-   query := UTF8Encode(sql);
+   query := StringToUTF8(sql);
 
    if parameters <> nil then
       res := PQExecParams
@@ -580,7 +580,7 @@ begin
    inherited Create(db);
 
    try
-      FSQL := UTF8Encode(sql);
+      FSQL := StringToUTF8(sql);
 
       if (aMode = dsmForceCursor) or (FDB.InTransaction and (aMode = dsmAutomatic)) then begin
          // within transactions, we use cursors by default for selects

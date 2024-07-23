@@ -27,7 +27,7 @@ implementation
 
 uses
    Winapi.Windows, System.SysUtils, Winapi.WinSock,
-   dwsXPlatform, dwsRandom;
+   dwsXPlatform, dwsRandom, dwsUtils;
 
 type
    PIO_APC_ROUTINE = Pointer;
@@ -123,7 +123,7 @@ begin
    if timeoutMs <= 0 then
       raise Exception.Create('Timeout should be greater than zero');
 
-   hostNameA := UTF8Encode(hostName);
+   hostNameA := StringToUTF8(hostName);
    e := gethostbyname(PAnsiChar(hostNameA));
    if e = nil then
       RaiseLastOSError;

@@ -991,6 +991,8 @@ implementation
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
 
+uses dwsUtils;
+
 class procedure THttpAPI.InitializeAPI;
 var
    api : THttpAPIs;
@@ -1223,7 +1225,7 @@ begin
    SetStatus(code, outStatus);
    if dataChunkForErrorContent<>nil then
       SetContent(dataChunkForErrorContent^,
-                 '<h1>'+outStatus+'</h1>'+UTF8Encode(errorMsg),
+                 '<h1>'+outStatus+'</h1>'+StringToUTF8(errorMsg),
                  'text/html; charset=utf-8');
 end;
 

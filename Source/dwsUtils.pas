@@ -1097,6 +1097,9 @@ procedure StringWordsToBytes(var buf : UnicodeString; swap : Boolean);
 
 procedure UTF8DecodeToUnicodeString(pUTF8 : PAnsiChar; utf8Length : Integer; var decoded : String);
 
+function StringToUTF8(const unicodeString : String) : RawByteString;
+function UTF8ToString(const utf8String : RawByteString) : String;
+
 function IsValidUTF8(const buf : RawByteString) : Boolean; inline; overload;
 function IsValidUTF8(p : PByte; byteSize : Integer) : Boolean; overload;
 
@@ -1256,7 +1259,7 @@ implementation
 
 uses
    System.Math, System.Masks,
-   dwsStrings, dwsXXHash;
+   dwsStrings, dwsXXHash, dwsUTF8;
 
 // CoalesceableIsFalsey
 //
@@ -1520,6 +1523,20 @@ begin
       if nb <> utf8Length then
          SetLength(decoded, nb);
    end;
+end;
+
+// StringToUTF8
+//
+function StringToUTF8(const unicodeString : String) : RawByteString;
+begin
+   Result := dwsUTF8.StringToUTF8(unicodeString);
+end;
+
+// UTF8ToString
+//
+function UTF8ToString(const utf8String : RawByteString) : String;
+begin
+   Result := dwsUTF8.UTF8ToString(utf8String);
 end;
 
 // IsValidUTF8

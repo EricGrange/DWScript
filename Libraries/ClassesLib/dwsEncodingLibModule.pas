@@ -266,7 +266,7 @@ end;
 procedure TdwsEncodingLib.dwsEncodingClassesUTF8EncoderMethodsEncodeEval(
   Info: TProgramInfo; ExtObject: TObject);
 begin
-   Info.ResultAsDataString := UTF8Encode(Info.ParamAsString[0]);
+   Info.ResultAsDataString := StringToUTF8(Info.ParamAsString[0]);
 end;
 
 function TdwsEncodingLib.dwsEncodingClassesUTF8EncoderMethodsIsValidUTF8FastEvalBoolean(

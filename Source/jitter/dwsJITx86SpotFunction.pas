@@ -89,7 +89,7 @@ begin
    inherited;
    if Assigned(FPtr) then begin
       {$ifdef DECLARE_TO_SAMPLING_PROFILER}
-      var undeclare := UTF8Encode('SAMPLING UNDECLARE ' + IntToHex(IntPtr(FPtr), 8));
+      var undeclare := StringToUTF8('SAMPLING UNDECLARE ' + IntToHex(IntPtr(FPtr), 8));
       OutputDebugStringA(PAnsiChar(undeclare));
       {$endif}
 
@@ -141,7 +141,7 @@ begin
    FreeAndNil(FBuffer);
 
    {$ifdef DECLARE_TO_SAMPLING_PROFILER}
-   var declare := UTF8Encode('SAMPLING DECLARE ' + IntToHex(IntPtr(FPtr), 8) + ' ' + IntToHex(FSize, 8) + ' ' + FName);
+   var declare := StringToUTF8('SAMPLING DECLARE ' + IntToHex(IntPtr(FPtr), 8) + ' ' + IntToHex(FSize, 8) + ' ' + FName);
    OutputDebugStringA(PAnsiChar(declare));
    {$endif}
 end;

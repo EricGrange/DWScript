@@ -517,7 +517,7 @@ var
    hash : TSHA256Digest;
 begin
    PBKDF2_HMAC_SHA256(
-      UTF8Encode(args.AsString[0]), UTF8Encode(args.AsString[1]),
+      StringToUTF8(args.AsString[0]), StringToUTF8(args.AsString[1]),
       args.AsInteger[2], hash
    );
    VarCopySafe(Result, BinToHex(@hash, SizeOf(hash)));

@@ -3434,7 +3434,7 @@ end;
 //
 function TdwsResult.ToUTF8String : UTF8String;
 begin
-   Result:=UTF8Encode(ToString);
+   Result := StringToUTF8(ToString);
 end;
 
 // AddCRLF

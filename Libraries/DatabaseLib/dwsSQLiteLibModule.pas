@@ -75,9 +75,9 @@ var
    rc : Integer;
 begin
    destObj := info.ParamAsScriptObj[0];
-   destName := UTF8Encode(info.ParamAsString[1]);
+   destName := StringToUTF8(info.ParamAsString[1]);
    sourceObj := info.ParamAsScriptObj[2];
-   sourceName := UTF8Encode(info.ParamAsString[3]);
+   sourceName := StringToUTF8(info.ParamAsString[3]);
 
    destDB := SQLiteDBFromScriptObj(destObj, 'Destination');
    sourceDB := SQLiteDBFromScriptObj(sourceObj, 'Source');

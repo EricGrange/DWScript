@@ -303,7 +303,7 @@ begin
       raise EdwsFileSystemException.Create('SaveTextFile cannot open stream');
    try
       if strData <> '' then begin
-         utf8 := UTF8Encode(strData);
+         utf8 := StringToUTF8(strData);
          case fmt of
             fstfUTF8_with_BOM :
                stream.Write(cUTF8BOM[0], 3);

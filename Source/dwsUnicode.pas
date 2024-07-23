@@ -21,8 +21,7 @@ unit dwsUnicode;
 interface
 
 uses
-   System.Classes, System.SysUtils,
-   dwsUtils, dwsXPlatform;
+   System.Classes, System.SysUtils;
 
 type
 
@@ -89,6 +88,8 @@ implementation
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
+
+uses dwsUtils;
 
 // ------------------
 // ------------------ TUnicodeStringList ------------------

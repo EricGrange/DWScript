@@ -199,7 +199,7 @@ begin
    end;
    if FWinHttp = nil then begin
       FWinHttp := TdwsWinHTTP.Create(uri.Server, uri.Port, uri.Https,
-                                     UTF8Encode(proxyName), '',
+                                     StringToUTF8(proxyName), '',
                                      connectTimeout, sendTimeout, receiveTimeout);
       FProxyName := proxyName;
       FPort := uri.Port;

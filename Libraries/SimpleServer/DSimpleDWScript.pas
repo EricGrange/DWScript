@@ -431,7 +431,7 @@ procedure TSimpleDWScript.HandleDWS(const fileName : String; typ : TFileAccessTy
       if fileName <> '' then begin
          if contentType <> '' then
             fileName := fileName + #0 + contentType;
-         response.ContentData := UTF8Encode(fileName);
+         response.ContentData := StringToUTF8(fileName);
       end else begin
          response.StatusCode := 501;
          response.ContentData := 'Unsupported server-side request';
@@ -609,7 +609,7 @@ begin
       Handle500(response, prog.Msgs);
    end else begin
       if js <> '' then begin
-         response.ContentData := '(function(){'#10 + UTF8Encode(js) + '})();'#10;
+         response.ContentData := '(function(){'#10 + StringToUTF8(js) + '})();'#10;
          response.ContentType := 'text/javascript; charset=UTF-8';
       end else begin
          response.ContentData := '';
@@ -946,7 +946,7 @@ var
 begin
    buf := FormatDateTime('yyyy-mm-dd hh:nn:ss.zzz', Now)
          +' '+msg+#13#10;
-   AppendTextToUTF8File(ErrorLogDirectory+'error.log', UTF8Encode(buf));
+   AppendTextToUTF8File(ErrorLogDirectory+'error.log', StringToUTF8(buf));
 end;
 
 // LogException
@@ -958,7 +958,7 @@ begin
    bufDate := FormatDateTime('yyyy-mm-dd', Now);
    buf := bufDate + FormatDateTime(' hh:nn:ss.zzz', Now)
         + ' ' + msgs.AsInfo + #10;
-   AppendTextToUTF8File(ExceptionLogDirectory + 'exception.' + bufDate + '.log', UTF8Encode(buf));
+   AppendTextToUTF8File(ExceptionLogDirectory + 'exception.' + bufDate + '.log', StringToUTF8(buf));
 end;
 
 // SetCompileFileSystem

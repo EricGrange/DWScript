@@ -496,7 +496,7 @@ implementation
 // ------------------------------------------------------------------
 
 uses
-   System.Masks, System.Variants, System.StrUtils;
+   System.Masks, System.Variants, System.StrUtils, dwsUTF8;
 
 // FileMemoryMapReadOnly
 //
@@ -2168,7 +2168,7 @@ end;
 //
 procedure SaveTextToUTF8File(const fileName : TFileName; const text : String);
 begin
-   SaveRawBytesToFile(fileName, UTF8Encode(text));
+   SaveRawBytesToFile(fileName, StringToUTF8(text));
 end;
 
 // AppendTextToUTF8File

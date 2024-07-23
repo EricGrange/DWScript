@@ -819,7 +819,7 @@ end;
 //
 procedure THttpApi2Server.SetServerName(const val : String);
 begin
-   FServerName := UTF8Encode(val);
+   FServerName := StringToUTF8(val);
    FLogFieldsData.ServerNameLength := Length(FServerName);
    FLogFieldsData.ServerName := Pointer(FServerName);
 end;
@@ -914,7 +914,7 @@ end;
 procedure THttpApi2Server.SetServiceName(const val : String);
 begin
    FServiceNameW := val;
-   FServiceNameA := UTF8Encode(val);
+   FServiceNameA := StringToUTF8(val);
    FLogFieldsData.ServerNameLength := Length(FServiceNameA);
    FLogFieldsData.ServerName := Pointer(FServiceNameA);
 end;

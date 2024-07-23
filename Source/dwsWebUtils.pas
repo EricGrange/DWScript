@@ -469,7 +469,7 @@ var
 begin
    if src='' then Exit('');
 
-   raw := UTF8Encode(src);
+   raw := StringToUTF8(src);
    SetLength(Result, Length(raw)*3); // worst-case all special chars
 
    pSrc := Pointer(raw);
@@ -691,7 +691,7 @@ begin
    Result:='';
    p:=0;
    n:=0;
-   for c in UTF8Encode(s) do begin
+   for c in StringToUTF8(s) do begin
       case Ord(c) of
          Ord(' ') : begin
             line[p]:='_';

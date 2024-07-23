@@ -1826,7 +1826,7 @@ var
    bufUTF8 : RawByteString;
 begin
    JSONScript.StringifyArgs(args, Result);
-   bufUTF8 := UTF8Encode(Result);
+   bufUTF8 := StringToUTF8(Result);
    RawByteStringToScriptString(bufUTF8, Result);
 end;
 

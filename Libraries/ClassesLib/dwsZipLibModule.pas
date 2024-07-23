@@ -314,7 +314,7 @@ begin
    fileHeader.fileInfo.neededVersion := $14;
    Result := ZipStream.Position;
    fileHeader.localHeadOff := Result - AppendOffset;
-   entry.Name := UTF8Encode(zipName);
+   entry.Name := StringToUTF8(zipName);
    fileHeader.fileInfo.SetUTF8FileName;
    fileHeader.fileInfo.nameLen := Length(entry.Name);
    fileHeader.fileInfo.extraLen := 0; // source may have something here

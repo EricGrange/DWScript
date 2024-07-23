@@ -20,10 +20,8 @@ interface
 
 
 uses
-   System.Classes, System.SysUtils, System.StrUtils, System.DateUtils,
-   SynCrtSock, SynCommons,
-   dwsExprs, dwsUtils, dwsWebUtils, dwsWebServerUtils, dwsWebServerHelpers,
-   dwsSymbols, dwsExprList, dwsXPlatform, dwsWebEnvironmentTypes;
+   System.Classes, System.SysUtils,
+   dwsExprs, dwsUtils, dwsSymbols, dwsExprList, dwsXPlatform, dwsWebEnvironmentTypes;
 
 type
    TWebServerEventData = array of RawByteString;
@@ -282,6 +280,8 @@ implementation
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
 
+uses System.DateUtils, dwsWebServerHelpers, dwsWebServerUtils, dwsWebUtils;
+
 // ------------------
 // ------------------ TWebEnvironmentHelper ------------------
 // ------------------
@@ -411,8 +411,8 @@ begin
    cookieField:=Header('Cookie');
    base:=1;
    while True do begin
-      p := System.StrUtils.PosEx('=', cookieField, base);
-      next := System.StrUtils.PosEx(';', cookieField, p);
+      p := Pos('=', cookieField, base);
+      next := Pos(';', cookieField, p);
       if (p>base) and (next>p) then begin
          AddCookie(System.SysUtils.Trim(Copy(cookieField, base, p-base)), Copy(cookieField, p+1, pred(next-p)));
          base:=next+1;

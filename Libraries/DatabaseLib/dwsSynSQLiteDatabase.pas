@@ -435,7 +435,7 @@ begin
          FExecRequest.Close;
    end;
    if FExecRequest.Request=0 then begin
-      FExecRequest.Prepare(FDB.DB, UTF8Encode(sql));
+      FExecRequest.Prepare(FDB.DB, StringToUTF8(sql));
       FExecSQL:=sql;
    end;
    try
@@ -542,7 +542,7 @@ begin
    inherited Create(db);
 
    try
-      FRequest.Prepare(db.FDB.DB, UTF8Encode(sql));
+      FRequest.Prepare(db.FDB.DB, StringToUTF8(sql));
       try
          Assert(FRequest.Request<>0);
          SQLAssignParameters(FRequest, parameters);

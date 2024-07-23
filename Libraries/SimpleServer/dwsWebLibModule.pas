@@ -250,17 +250,17 @@ var
 begin
    obj.EvalAsString(obj.FieldAddress('ID'), buf);
    if buf <> '' then
-      Result := 'id: ' + UTF8Encode(buf) + #10;
+      Result := 'id: ' + StringToUTF8(buf) + #10;
    obj.EvalAsString(obj.FieldAddress('Name'), buf);
    if buf <> '' then
-      Result := Result + 'event: ' + UTF8Encode(buf) + #10;
+      Result := Result + 'event: ' + StringToUTF8(buf) + #10;
    i := obj.AsInteger[obj.FieldAddress('Retry')];
    if i > 0 then
       Result := Result + 'retry: ' + ScriptStringToRawByteString(IntToStr(i)) + #10;
    dyn := (obj.AsInterface[obj.FieldAddress('Data')] as IScriptDynArray);
    for i := 0 to dyn.ArrayLength-1 do begin
       dyn.EvalAsString(i, buf);
-      Result := Result + 'data: ' + UTF8Encode(buf) + #10;
+      Result := Result + 'data: ' + StringToUTF8(buf) + #10;
    end;
    Result := Result + #10;
 end;
@@ -835,7 +835,7 @@ begin
       args.EvalAsString(1, contentType);
       if contentType <> '' then
          fileName := fileName + #0 + contentType;
-      wr.ContentData := UTF8Encode(fileName);
+      wr.ContentData := StringToUTF8(fileName);
       wr.ContentType := HTTP_RESP_STATICFILE;
    end;
 end;
