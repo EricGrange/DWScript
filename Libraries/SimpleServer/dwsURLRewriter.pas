@@ -18,7 +18,7 @@ unit dwsURLRewriter;
 
 interface
 
-uses SysUtils, StrUtils, dwsUtils, dwsXPlatform, dwsJSON;
+uses System.SysUtils, dwsUtils, dwsXPlatform, dwsJSON;
 
 const
    cMAX_REWRITTEN_URL_SIZE = 8096;
@@ -181,7 +181,6 @@ end;
 //
 procedure TdwsURLRewriter.Clear;
 var
-   i : Integer;
    oldRules : TdwsURLRewriteRules;
 begin
    FLock.BeginWrite;
@@ -192,26 +191,22 @@ begin
    finally
       FLock.EndWrite;
    end;
-   for i := 0 to High(oldRules) do
+   for var i := 0 to High(oldRules) do
       oldRules[i].Free;
 end;
 
 // Apply
 //
 function TdwsURLRewriter.Apply(const originURL : String; var rewrittenURL : String) : Boolean;
-var
-   i : Integer;
-   strHead : Integer;
-   rule : TdwsURLRewriteRule;
 begin
    if originURL = '' then Exit(False);
 
-   strHead := StringHead2Chars(originURL);
+   var strHead := StringHead2Chars(originURL);
 
    FLock.BeginRead;
    try
-      for i := 0 to High(FRules) do begin
-         rule := FRules[i];
+      for var i := 0 to High(FRules) do begin
+         var rule := FRules[i];
          if (rule.Head = 0) or (rule.Head = strHead) then
             if rule.Apply(originURL, rewrittenURL) then Exit(True);
       end;
@@ -224,13 +219,11 @@ end;
 // WriteToJSON
 //
 procedure TdwsURLRewriter.WriteToJSON(wr : TdwsJSONWriter; withHitCount : Boolean);
-var
-   i : Integer;
 begin
    wr.BeginArray;
    FLock.BeginRead;
    try
-      for i := 0 to High(FRules) do
+      for var i := 0 to High(FRules) do
          FRules[i].WriteToJSON(wr, withHitCount)
    finally
       FLock.EndRead;
@@ -241,20 +234,17 @@ end;
 // ReadFromJSON
 //
 procedure TdwsURLRewriter.ReadFromJSON(jv : TdwsJSONValue);
-var
-   i : Integer;
-   ruleJV : TdwsJSONValue;
 begin
    try
       FLock.BeginWrite;
       try
-         for i := 0 to High(FRules) do
+         for var i := 0 to High(FRules) do
             FRules[i].Free;
          FRules := nil;
          FCount := jv.ElementCount;
          SetLength(FRules, FCount);
-         for i := 0 to jv.ElementCount-1 do begin
-            ruleJV := jv.Elements[i];
+         for var i := 0 to jv.ElementCount-1 do begin
+            var ruleJV := jv.Elements[i];
             FRules[i] := CreateRule(ruleJV.Items['pattern'].AsString, ruleJV.Items['rewrite'].AsString);
          end;
       finally
@@ -269,10 +259,8 @@ end;
 // GetAsJSON
 //
 function TdwsURLRewriter.GetAsJSON : String;
-var
-   wr : TdwsJSONWriter;
 begin
-   wr := TdwsJSONWriter.Create;
+   var wr := TdwsJSONWriter.Create;
    try
       WriteToJSON(wr, True);
       Result := wr.ToString;
@@ -284,13 +272,11 @@ end;
 // SetAsJSON
 //
 procedure TdwsURLRewriter.SetAsJSON(const js : String);
-var
-   jv : TdwsJSONValue;
 begin
    if js = '' then
       Clear
    else begin
-      jv := TdwsJSONValue.ParseString(js);
+      var jv := TdwsJSONValue.ParseString(js);
       try
          ReadFromJSON(jv);
       finally
@@ -432,7 +418,7 @@ var
    end;
 
 var
-   i, n, k, prev : Integer;
+   n, prev : Integer;
    lenOrigin : Integer;
    snippetStart, snippetLength : array [1..9] of Integer;
    pOrigin : PChar;
@@ -445,7 +431,7 @@ begin
    end;
 
    lenOrigin := Length(originURL);
-   for i := 1 to High(FPatternChunks) do begin
+   for var i := 1 to High(FPatternChunks) do begin
       if FPatternChunks[i] = '' then begin
          Assert(n < 9);
          Inc(n);
@@ -454,7 +440,7 @@ begin
          prev := lenOrigin+1;
          Break;
       end else begin
-         k := PosEx(FPatternChunks[i], originURL, prev);
+         var k := Pos(FPatternChunks[i], originURL, prev);
          if k <= 0 then Exit(False);
          Assert(n < 9);
          Inc(n);
@@ -467,9 +453,9 @@ begin
 
    bufferIndex := 0;
    pOrigin := Pointer(originURL);
-   for i := 0 to High(FRewriteChunks) do begin
+   for var i := 0 to High(FRewriteChunks) do begin
       if FRewriteChunks[i][1] = '$' then begin
-         k := Ord(FRewriteChunks[i][2]) - Ord('0');
+         var k := Ord(FRewriteChunks[i][2]) - Ord('0');
          Assert(k in [1..9]);
          if snippetLength[k] > 0 then begin
             Append(@pOrigin[snippetStart[k]-1], snippetLength[k]);
