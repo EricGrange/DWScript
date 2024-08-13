@@ -359,7 +359,7 @@ implementation
 // ------------------------------------------------------------------
 
 uses
-   System.Math, System.StrUtils,
+   System.Math,
    dwsDynamicArrays, dwsArrayExprs, dwsStack, dwsWebUtils, dwsStrings,
    dwsConstExprs, dwsCoreExprs, dwsDataContext, dwsJSON, dwsSymbols;
 
@@ -842,7 +842,7 @@ end;
 
 function TPosExFunc.DoEvalAsInteger(const args : TExprBaseListExec) : Int64;
 begin
-   Result:=PosEx(args.AsString[0], args.AsString[1], args.AsInteger[2]);
+   Result := Pos(args.AsString[0], args.AsString[1], args.AsInteger[2]);
 end;
 
 { TRevPosFunc }
@@ -1093,7 +1093,7 @@ end;
 
 function TStrFindFunc.DoEvalAsInteger(const args : TExprBaseListExec) : Int64;
 begin
-   Result:=PosEx(args.AsString[1], args.AsString[0], args.AsInteger[2]);
+   Result := Pos(args.AsString[1], args.AsString[0], args.AsInteger[2]);
 end;
 
 { TStrAfterFunc }
@@ -1169,7 +1169,7 @@ begin
    if p > 0 then begin
       p := p + Length(delimiter);
       args.EvalAsString(2, delimiter);
-      p2 := PosEx(delimiter, str, p);
+      p2 := Pos(delimiter, str, p);
       if p2 > 0 then
          Result := Copy(str, p, p2-p)
       else Result := Copy(str, p, Length(str));
@@ -1180,7 +1180,21 @@ end;
 
 procedure TReverseStringFunc.DoEvalAsString(const args : TExprBaseListExec; var Result : String);
 begin
-   Result:=ReverseString(args.AsString[0]);
+   args.EvalAsString(0, Result);
+   var n := Length(Result);
+   if n <= 1 then Exit;
+
+   UniqueString(Result);
+
+   var pHead := PChar(Pointer(Result));
+   var pTail := PChar(@pHead[n-1]);
+   while pHead < pTail do begin
+      var buf := pHead^;
+      pHead^ := pTail^;
+      pTail^ := buf;
+      Inc(pHead);
+      Dec(pTail);
+   end;
 end;
 
 { TNormalizeStringFunc }
@@ -1279,7 +1293,7 @@ procedure TStrSplitFunc.DoEvalAsVariant(const args : TExprBaseListExec; var resu
       p:=1;
       k:=0;
       while True do begin
-         pn := PosEx(delim, str, p);
+         pn := Pos(delim, str, p);
          if pn > 0 then begin
             dyn.Insert(k);
             dyn.AsString[k] := Copy(str, p, pn-p);
