@@ -92,7 +92,7 @@ implementation
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
 
-uses dwsUtils, System.StrUtils;
+uses dwsUtils;
 
 const
    cConnectionExpirationMSec = 30*1000;
@@ -449,7 +449,7 @@ begin
 
       p := 1;
       while True do begin
-         pn := System.StrUtils.PosEx(#13#10, h, p);
+         pn := Pos(#13#10, h, p);
          if pn > 0 then begin
             AddHeader(Copy(h, p, pn-p));
             p := pn + 2;

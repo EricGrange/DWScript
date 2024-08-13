@@ -3,11 +3,11 @@ unit UJSFilterTests;
 interface
 
 uses
-  Forms, Classes, SysUtils, TestFrameWork, dwsComp, dwsCompiler, dwsExprs,
+  Forms, Classes, SysUtils, StrUtils, TestFrameWork, dwsComp, dwsCompiler, dwsExprs,
   UJSTestChromium,
   dwsJSFilter, dwsHtmlFilter, dwsXPlatform, dwsUtils,
   dwsJSLibModule,
-  StrUtils, dwsFunctions, dwsCodeGen, dwsUnitSymbols, dwsCompilerContext, dwsErrors;
+  dwsFunctions, dwsCodeGen, dwsUnitSymbols, dwsCompilerContext, dwsErrors;
 
 type
 

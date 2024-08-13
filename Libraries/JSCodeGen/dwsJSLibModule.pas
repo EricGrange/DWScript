@@ -24,7 +24,7 @@ uses
    System.Classes, System.SysUtils, System.Variants,
    dwsLanguageExtension, dwsComp, dwsCompiler, dwsDataContext, dwsConnectorSymbols,
    dwsExprs, dwsTokenTypes, dwsTokenizer, dwsSymbols, dwsErrors, dwsCoreExprs,
-   dwsStrings, dwsXPlatform, StrUtils, dwsUtils, dwsOperators, dwsUnitSymbols,
+   dwsStrings, dwsXPlatform, dwsUtils, dwsOperators, dwsUnitSymbols,
    dwsFunctions, dwsMagicExprs, dwsPascalTokenizer, dwsScriptSource,
    dwsCompilerContext;
 

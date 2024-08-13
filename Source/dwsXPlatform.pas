@@ -496,7 +496,7 @@ implementation
 // ------------------------------------------------------------------
 
 uses
-   System.Masks, System.Variants, System.StrUtils, dwsUTF8;
+   System.Masks, System.Variants, dwsUTF8;
 
 // FileMemoryMapReadOnly
 //
@@ -1466,7 +1466,7 @@ begin
    if fileMask <> '' then begin
       p := 1;
       repeat
-         pNext := PosEx(';', fileMask, p);
+         pNext := Pos(';', fileMask, p);
          if pNext < p then begin
             SetLength(masks, Length(masks)+1);
             masks[High(masks)] := TMask.Create(Copy(fileMask, p));
@@ -2726,16 +2726,18 @@ end;
 // SetAsString
 //
 procedure TModuleVersion.SetAsString(const s : String);
-var
-   parts : TStringDynArray;
 begin
    Self := Default(TModuleVersion);
-   parts := SplitString(s, '.');
-   var len := Length(parts);
-   if len > 0 then major := StrToIntDef(parts[0], 0);
-   if len > 1 then minor := StrToIntDef(parts[1], 0);
-   if len > 2 then release := StrToIntDef(parts[2], 0);
-   if len > 3 then build := StrToIntDef(parts[3], 0);
+   var parts := TStringList.Create('"', '.');
+   try
+      parts.DelimitedText := s;
+      if parts.Count > 0 then major := StrToIntDef(parts[0], 0);
+      if parts.Count > 1 then minor := StrToIntDef(parts[1], 0);
+      if parts.Count > 2 then release := StrToIntDef(parts[2], 0);
+      if parts.Count > 3 then build := StrToIntDef(parts[3], 0);
+   finally
+      parts.Free;
+   end;
 end;
 
 {$ifdef WINDOWS}

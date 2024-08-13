@@ -29,7 +29,7 @@ interface
 
 uses
    Winapi.Windows,
-   System.SysUtils, System.Classes, System.StrUtils, System.Masks, System.Types,
+   System.SysUtils, System.Classes, System.Masks, System.Types,
    dwsFileSystem, dwsGlobalVarsFunctions, dwsExprList,
    dwsCompiler, dwsHtmlFilter, dwsComp, dwsExprs, dwsUtils, dwsXPlatform,
    dwsJSONConnector, dwsJSON, dwsErrors, dwsUnitSymbols, dwsSymbols,

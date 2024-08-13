@@ -19,8 +19,8 @@ unit dwsWebLibModule;
 interface
 
 uses
-   Winapi.Windows, Winapi.WinInet, Winapi.WinHTTP, System.Variants,
-   System.SysUtils, System.Classes, System.StrUtils, System.Types,
+   Winapi.Windows, Winapi.WinInet, Winapi.WinHTTP,
+   System.Variants,  System.SysUtils, System.Classes, System.Types,
    SynZip, SynCrtSock, SynWinSock,
    dwsUtils, dwsComp, dwsExprs, dwsWebEnvironmentTypes, dwsWebEnvironment, dwsExprList, dwsSymbols,
    dwsJSONConnector, dwsCryptoXPlatform, dwsHTTPSysServerEvents, dwsWebServerInfo,
