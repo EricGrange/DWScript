@@ -847,13 +847,18 @@ type
          function Read(var {%H-}Buffer; {%H-}Count: Longint): Longint; override;
          function Write(const buffer; count: Longint): Longint; override;
 
-         procedure WriteByte(b : Byte); inline;
          procedure WriteBytes(const b : array of Byte); overload;
          procedure WriteBytes(const buffer : RawByteString); overload;
+
+         procedure WriteByte(b : Byte); inline;
+         procedure WriteShortInt(s : ShortInt); inline;
+         procedure WriteWord(w : Word); inline;
+         procedure WriteSmallInt(s : SmallInt); inline;
          procedure WriteInt32(const i : Integer); inline;
          procedure WriteInt64(const i : Int64); inline;
          procedure WriteDWord(const dw : DWORD); inline;
          procedure WriteQWord(const qw : UInt64); inline;
+         procedure WriteSingle(const s : Single); inline;
          procedure WriteDouble(const d : Double); inline;
 
          procedure WriteP(p : PWideChar; nbWideChars : Integer); inline;
@@ -5514,6 +5519,27 @@ begin
    WriteBuf(@b, 1);
 end;
 
+// WriteShortInt
+//
+procedure TWriteOnlyBlockStream.WriteShortInt(s : ShortInt);
+begin
+   WriteBuf(@s, 1);
+end;
+
+// WriteWord
+//
+procedure TWriteOnlyBlockStream.WriteWord(w : Word);
+begin
+   WriteBuf(@w, 2);
+end;
+
+// WriteSmallInt
+//
+procedure TWriteOnlyBlockStream.WriteSmallInt(s : SmallInt);
+begin
+   WriteBuf(@s, 2);
+end;
+
 // WriteBytes
 //
 procedure TWriteOnlyBlockStream.WriteBytes(const b : array of Byte);
@@ -5562,6 +5588,13 @@ end;
 procedure TWriteOnlyBlockStream.WriteQWord(const qw : UInt64);
 begin
    WriteBuf(@qw, 8);
+end;
+
+// WriteSingle
+//
+procedure TWriteOnlyBlockStream.WriteSingle(const s : Single);
+begin
+   WriteBuf(@s, 4);
 end;
 
 // WriteDouble
