@@ -40,11 +40,17 @@ type
          function Current : Char; inline;
          function EOF : Boolean; inline;
          procedure Next; inline;
+
          procedure SkipWhiteSpace;
+         procedure SkipUntilEOL;
+
+         function Peek(const aMatchString : String) : Boolean;
 
          function CollectQuotedString : String;
          function CollectAlphaNumeric : String;
+         function CollectAlphaNumericUnderscore : String;
          function CollectInteger : Int64;
+         function CollectFloat(var value : Double) : Boolean;
 
          property Str : String read FStr;
          property Length : Integer read FLength write FLength;
@@ -59,6 +65,8 @@ implementation
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
+
+uses dwsUtils;
 
 // ------------------
 // ------------------ TStringIterator ------------------
@@ -105,6 +113,26 @@ begin
       Inc(FPosition);
 end;
 
+// SkipUntilEOL
+//
+procedure TStringIterator.SkipUntilEOL;
+begin
+   while (FPosition<FLength) and not (Ord(FPStr[FPosition]) in [ 10, 13 ]) do
+      Inc(FPosition);
+end;
+
+// Peek
+//
+function TStringIterator.Peek(const aMatchString : String) : Boolean;
+begin
+   var n := System.Length(aMatchString);
+   if n = 0 then Exit(True);
+
+   if FPosition + n >= FLength then Exit(False);
+
+   Result := CompareMem(Pointer(aMatchString), @FPstr[FPosition], n * SizeOf(Char));
+end;
+
 // CollectQuotedString
 //
 function TStringIterator.CollectQuotedString : String;
@@ -129,18 +157,31 @@ end;
 // CollectAlphaNumeric
 //
 function TStringIterator.CollectAlphaNumeric : String;
-var
-   start : Integer;
 begin
-   start:=FPosition;
-   while FPosition<FLength do begin
+   var start := FPosition;
+   while FPosition < FLength do begin
       case FPstr[FPosition] of
          '0'..'9', 'a'..'z', 'A'..'Z' : Inc(FPosition);
       else
          break;
       end;
    end;
-   Result:=Copy(FStr, start+1, FPosition-start);
+   Result := Copy(FStr, start+1, FPosition-start);
+end;
+
+// CollectAlphaNumericUnderscore
+//
+function TStringIterator.CollectAlphaNumericUnderscore : String;
+begin
+   var start := FPosition;
+   while FPosition < FLength do begin
+      case FPstr[FPosition] of
+         '0'..'9', 'a'..'z', 'A'..'Z', '_' : Inc(FPosition);
+      else
+         break;
+      end;
+   end;
+   Result := Copy(FStr, start+1, FPosition-start);
 end;
 
 // CollectInteger
@@ -168,6 +209,23 @@ begin
    end;
    if neg then
       Result:=-Result;
+end;
+
+// CollectFloat
+//
+function TStringIterator.CollectFloat(var value : Double) : Boolean;
+begin
+   var start := FPosition;
+   while FPosition < FLength do begin
+      case FPstr[FPosition] of
+         '0'..'9', '.', 'e', '+', '-' : Inc(FPosition);
+      else
+         Break;
+      end;
+   end;
+   if start = FPosition then Exit(False);
+
+   Result := TryStrToDouble(@FPStr[start], value);
 end;
 
 end.
