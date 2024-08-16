@@ -2595,9 +2595,9 @@ asm
 end;
 {$else}{$ifdef WIN32_ASM}
 asm
-   movzx  eax, word ptr [rcx]
-   rol    ax, 8
-   movzx  word ptr [rdx], ax
+   mov   ax, word ptr [eax]
+   rol   ax, 8
+   mov   [ecx], ax
 end;
 {$else}
 begin
