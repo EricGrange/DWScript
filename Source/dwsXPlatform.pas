@@ -409,6 +409,7 @@ function DirectSetMXCSR(newValue : Word) : Word; register;
 
 function SwapBytes(v : Cardinal) : Cardinal;
 procedure SwapBytesBlock(src, dest : PByte; nb : Integer);
+procedure SwapBytesInt16(src, dest : PWORD);
 procedure SwapBytesInt32(src, dest : PUInt32);
 procedure SwapBytesInt64(src, dest : PInt64);
 
@@ -2583,6 +2584,30 @@ begin
    end;
 end;
 
+// SwapBytesInt16
+//
+procedure SwapBytesInt16(src, dest : PWORD);
+{$ifdef WIN64_ASM}
+asm
+   mov   ax, [rcx]
+   rol   ax, 8
+   mov   [rdx], ax
+end;
+{$else}{$ifdef WIN32_ASM}
+asm
+   movzx  eax, word ptr [rcx]
+   rol    ax, 8
+   movzx  word ptr [rdx], ax
+end;
+{$else}
+begin
+   var b0 := PByteArray(src)[0];
+   var b1 := PByteArray(src)[1];
+   PByteArray(dest)[0] := b1;
+   PByteArray(dest)[1] := b0;
+end;
+{$endif}{$endif}
+
 // SwapBytesInt32
 //
 procedure SwapBytesInt32(src, dest : PUInt32);
@@ -2600,10 +2625,14 @@ asm
 end;
 {$else}
 begin
-   PByteArray(dest)[0] := PByteArray(src)[3];
-   PByteArray(dest)[1] := PByteArray(src)[2];
-   PByteArray(dest)[2] := PByteArray(src)[1];
-   PByteArray(dest)[3] := PByteArray(src)[0];
+   var b0 := PByteArray(src)[0];
+   var b1 := PByteArray(src)[1];
+   var b2 := PByteArray(src)[2];
+   var b3 := PByteArray(src)[3];
+   PByteArray(dest)[0] := b3;
+   PByteArray(dest)[1] := b2;
+   PByteArray(dest)[2] := b1;
+   PByteArray(dest)[3] := b0;
 end;
 {$endif}{$endif}
 
@@ -2627,14 +2656,22 @@ asm
 end;
 {$else}
 begin
-   PByteArray(dest)[0] := PByteArray(src)[7];
-   PByteArray(dest)[1] := PByteArray(src)[6];
-   PByteArray(dest)[2] := PByteArray(src)[5];
-   PByteArray(dest)[3] := PByteArray(src)[4];
-   PByteArray(dest)[4] := PByteArray(src)[3];
-   PByteArray(dest)[5] := PByteArray(src)[2];
-   PByteArray(dest)[6] := PByteArray(src)[1];
-   PByteArray(dest)[7] := PByteArray(src)[0];
+   var b0 := PByteArray(src)[0];
+   var b1 := PByteArray(src)[1];
+   var b2 := PByteArray(src)[2];
+   var b3 := PByteArray(src)[3];
+   var b4 := PByteArray(src)[4];
+   var b5 := PByteArray(src)[5];
+   var b6 := PByteArray(src)[6];
+   var b7 := PByteArray(src)[7];
+   PByteArray(dest)[0] := b7;
+   PByteArray(dest)[1] := b6;
+   PByteArray(dest)[2] := b5;
+   PByteArray(dest)[3] := b4;
+   PByteArray(dest)[4] := b3;
+   PByteArray(dest)[5] := b2;
+   PByteArray(dest)[6] := b1;
+   PByteArray(dest)[7] := b0;
 end;
 {$endif}{$endif}
 
