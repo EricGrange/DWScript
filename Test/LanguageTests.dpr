@@ -8,7 +8,7 @@ program LanguageTests;
 {$ENDIF}
 
 uses
-  FastMM4Debug,
+  FastMM4,
   Classes,
   Forms,
   Windows,
@@ -85,7 +85,8 @@ uses
   dwsCodeDOMNodes in '..\Source\SourceUtils\dwsCodeDOMNodes.pas',
   dwsCodeDOMParser in '..\Source\SourceUtils\dwsCodeDOMParser.pas',
   dwsCodeDOMPascalParser in '..\Source\SourceUtils\dwsCodeDOMPascalParser.pas',
-  UCodeDOMTests in 'UCodeDOMTests.pas';
+  UCodeDOMTests in 'UCodeDOMTests.pas',
+  UModel3DTests in 'UModel3DTests.pas';
 
 {$R *.res}
 
