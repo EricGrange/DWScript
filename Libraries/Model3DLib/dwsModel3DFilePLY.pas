@@ -289,7 +289,7 @@ begin
 
       while True do begin
          attribute := FIter.CollectAlphaNumericUnderscore;
-         if attribute = 'comment' then begin
+         if (attribute = 'comment') or (attribute = 'obj_info') then begin
             // ignore comments for now
             FIter.SkipUntilEOL;
             FIter.SkipWhiteSpace;
