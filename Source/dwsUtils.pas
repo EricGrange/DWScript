@@ -4137,10 +4137,8 @@ end;
 // StrIndexOfCharA
 //
 function StrIndexOfCharA(const aStr : RawByteString; aChar : AnsiChar) : Integer;
-var
-   i : Integer;
 begin
-   for i:=1 to Length(aStr) do
+   for var i := 1 to Length(aStr) do
       if aStr[i] = aChar then Exit(i);
    Result := 0;
 end;
@@ -4148,10 +4146,8 @@ end;
 // StrLastIndexOfCharA
 //
 function StrLastIndexOfCharA(const aStr : RawByteString; aChar : AnsiChar) : Integer;
-var
-   i : Integer;
 begin
-   for i := Length(aStr) downto 1 do
+   for var i := Length(aStr) downto 1 do
       if aStr[i] = aChar then Exit(i);
    Result := 0;
 end;
@@ -4159,22 +4155,18 @@ end;
 // LowerCaseA
 //
 function LowerCaseA(const aStr : RawByteString) : RawByteString;
-var
-   i, n : Integer;
-   dst, src : PByte;
-   c : Byte;
 begin
-   n:=Length(aStr);
+   var n := Length(aStr);
    SetLength(Result, n);
-   if n<=0 then Exit;
+   if n <= 0 then Exit;
 
-   dst:=Pointer(Result);
-   src:=Pointer(aStr);
-   for i:=1 to n do begin
-      c:=src^;
+   var dst := PByte(Pointer(Result));
+   var src := PByte(Pointer(aStr));
+   for var i := 1 to n do begin
+      var c := src^;
       if c in [Ord('A')..Ord('Z')] then
-         c:=c or $20;
-      dst^:=c;
+         c := c or $20;
+      dst^ := c;
       Inc(src);
       Inc(dst);
    end;
@@ -4183,12 +4175,10 @@ end;
 // StrMatches
 //
 function StrMatches(const aStr, aMask : String) : Boolean;
-var
-   mask : TMask;
 begin
-   mask:=TMask.Create(aMask);
+   var mask := TMask.Create(aMask);
    try
-      Result:=mask.Matches(aStr);
+      Result := mask.Matches(aStr);
    finally
       mask.Free;
    end;
@@ -4211,25 +4201,21 @@ end;
 // StrAfterChar
 //
 function StrAfterChar(const aStr : String; aChar : Char) : String;
-var
-   p : Integer;
 begin
-   p:=StrIndexOfChar(aStr, aChar);
-   if p>0 then
-      Result:=Copy(aStr, p+1)
-   else Result:='';
+   var p := StrIndexOfChar(aStr, aChar);
+   if p > 0 then
+      Result := Copy(aStr, p+1)
+   else Result := '';
 end;
 
 // StrBeforeChar
 //
 function StrBeforeChar(const aStr : String; aChar : Char) : String;
-var
-   p : Integer;
 begin
-   p:=StrIndexOfChar(aStr, aChar);
-   if p>0 then
-      Result:=Copy(aStr, 1, p-1)
-   else Result:=aStr;
+   var p := StrIndexOfChar(aStr, aChar);
+   if p > 0 then
+      Result := Copy(aStr, 1, p-1)
+   else Result := aStr;
 end;
 
 // StrReplaceChar
@@ -4320,24 +4306,20 @@ end;
 // StrCountChar
 //
 function StrCountChar(const aStr : String; c : Char) : Integer;
-var
-   i : Integer;
 begin
-   Result:=0;
-   for i:=1 to Length(aStr) do
-      if aStr[i]=c then
+   Result := 0;
+   for var i := 1 to Length(aStr) do
+      if aStr[i] = c then
          Inc(Result);
 end;
 
 // StrCountStartChar
 //
 function StrCountStartChar(const aStr : String; c : Char) : Integer;
-var
-   i : Integer;
 begin
-   Result:=0;
-   for i:=1 to Length(aStr) do
-      if aStr[i]=c then
+   Result := 0;
+   for var i := 1 to Length(aStr) do
+      if aStr[i] = c then
          Inc(Result)
       else Break;
 end;

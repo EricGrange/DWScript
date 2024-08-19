@@ -127,6 +127,8 @@ type
          procedure StrReplaceCharTest;
 
          procedure IsValidUTF8Test;
+
+         procedure StrCountCharTest;
    end;
 
 // ------------------------------------------------------------------
@@ -2306,6 +2308,15 @@ begin
    Check(WrapIsValidUTF8(#$00DF#$00BF), 'Two byte character');
    Check(WrapIsValidUTF8(#$00EF#$00BF#$00BD), 'Three byte character');
    Check(WrapIsValidUTF8(#$00F4#$008F#$00BF#$00BF), 'Four byte character');
+end;
+
+// StrCountCharTest
+//
+procedure TdwsUtilsTests.StrCountCharTest;
+begin
+   CheckEquals(0, StrCountChar('', 'a'), 'empty');
+   CheckEquals(0, StrCountChar('hello', 'a'), 'hello');
+   CheckEquals(2, StrCountChar('ahelloa', 'a'), 'ahelloa');
 end;
 
 // ------------------------------------------------------------------
