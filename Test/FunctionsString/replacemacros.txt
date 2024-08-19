@@ -12,3 +12,6 @@ abcdef
 a+fg
 abcdefg
 a<bc<d
+*BB
+TOTOBBAA*TITI
+*TOTOBBAA*TITI

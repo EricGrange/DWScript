@@ -17,3 +17,8 @@ PrintLn(StrReplaceMacros('abcdefg', ['cd', '+'], 'b', 'e'));
 PrintLn(StrReplaceMacros('abcdefg', ['cd', '+'], 'b', ''));
 
 PrintLn(StrReplaceMacros('a<bc<d', ['', '+'], '<'));
+
+var a := ['AA', 'BB'];
+PrintLn(StrReplaceMacros('**AA*', a, '*'));
+PrintLn(StrReplaceMacros('TOTO*AA*AA*TITI', a, '*'));
+PrintLn(StrReplaceMacros('*TOTO*AA*AA*TITI', a, '*'));
