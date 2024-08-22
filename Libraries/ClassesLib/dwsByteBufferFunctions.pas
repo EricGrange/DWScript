@@ -35,10 +35,12 @@ const
 type
 
    TBaseByteBufferSymbol = class (TTypeSymbol)
+      protected
+         function DoIsCompatible(typSym : TTypeSymbol) : Boolean; override;
+
       public
          constructor Create(const aName : String);
          function DynamicInitialization : Boolean; override;
-         function IsCompatible(typSym : TTypeSymbol) : Boolean; override;
          procedure InitDataContext(const data : IDataContext; offset : NativeInt); override;
    end;
 
@@ -277,9 +279,9 @@ begin
    Result := True;
 end;
 
-// IsCompatible
+// DoIsCompatible
 //
-function TBaseByteBufferSymbol.IsCompatible(typSym : TTypeSymbol) : Boolean;
+function TBaseByteBufferSymbol.DoIsCompatible(typSym : TTypeSymbol) : Boolean;
 begin
    Result := typSym.UnAliasedTypeIs(TBaseByteBufferSymbol);
 end;

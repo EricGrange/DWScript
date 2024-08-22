@@ -34,10 +34,12 @@ const
 type
 
    TBaseBigIntegerSymbol = class (TBaseSymbol)
+      protected
+         function DoIsCompatible(typSym : TTypeSymbol) : Boolean; override;
+
       public
          constructor Create;
 
-         function IsCompatible(typSym : TTypeSymbol) : Boolean; override;
          procedure InitDataContext(const data : IDataContext; offset : NativeInt); override;
    end;
 
@@ -506,11 +508,11 @@ begin
    inherited Create(SYS_BIGINTEGER);
 end;
 
-// IsCompatible
+// DoIsCompatible
 //
-function TBaseBigIntegerSymbol.IsCompatible(typSym : TTypeSymbol) : Boolean;
+function TBaseBigIntegerSymbol.DoIsCompatible(typSym : TTypeSymbol) : Boolean;
 begin
-   Result:=(typSym<>nil) and (typSym.UnAliasedType.ClassType=TBaseBigIntegerSymbol);
+   Result := (typSym<>nil) and (typSym.UnAliasedType.ClassType=TBaseBigIntegerSymbol);
 end;
 
 // InitDataContext

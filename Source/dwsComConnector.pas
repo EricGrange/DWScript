@@ -448,10 +448,12 @@ type
    end;
 
    TComVariantArraySymbol = class(TConnectorSymbol)
+      protected
+         function DoIsCompatible(typSym : TTypeSymbol) : Boolean; override;
+
       public
          constructor Create(const name : UnicodeString; const connectorType: IConnectorType; Typ: TTypeSymbol);
 
-         function IsCompatible(typSym : TTypeSymbol) : Boolean; override;
          procedure InitDataContext(const data : IDataContext; offset : NativeInt); override;
    end;
 
@@ -1368,9 +1370,11 @@ end;
 
 // ------------------
 // ------------------ TComVariantArraySymbol ------------------
-// ------------------                                                          fedituser
+// ------------------
 
-function TComVariantArraySymbol.IsCompatible(typSym : TTypeSymbol) : Boolean;
+// DoIsCompatible
+//
+function TComVariantArraySymbol.DoIsCompatible(typSym : TTypeSymbol) : Boolean;
 begin
   // only accept comvariantarray or std-arrays or variants
   Result :=    (Self = TypSym)

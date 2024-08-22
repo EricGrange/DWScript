@@ -743,6 +743,7 @@ type
 
       protected
          function DoIsOfType(typSym : TTypeSymbol) : Boolean; virtual;
+         function DoIsCompatible(typSym : TTypeSymbol) : Boolean; virtual;
          function GetUnAliasedType : TTypeSymbol; virtual;
 
          function GetIsDeprecated : Boolean; inline;
@@ -757,7 +758,7 @@ type
          function UnAliasedType : TTypeSymbol; inline;
          function UnAliasedTypeIs(const typeSymbolClass : TTypeSymbolClass) : Boolean; inline;
          function IsOfType(typSym : TTypeSymbol) : Boolean;
-         function IsCompatible(typSym : TTypeSymbol) : Boolean; virtual;
+         function IsCompatible(typSym : TTypeSymbol) : Boolean;
          function CanExpectAnyFuncSymbol : Boolean; virtual;
          function IsCompatibleWithAnyFuncSymbol : Boolean; virtual;
 
@@ -779,8 +780,8 @@ type
    end;
 
    TAnyTypeSymbol = class sealed (TTypeSymbol)
-      public
-         function  IsCompatible(typSym : TTypeSymbol) : Boolean; override;
+      protected
+         function DoIsCompatible(typSym : TTypeSymbol) : Boolean; override;
    end;
 
    TFuncKind = (fkFunction, fkProcedure,
@@ -904,7 +905,8 @@ type
          function GetSourceSubExpr(i : Integer) : TExprBase;
          function GetSourceSubExprCount : Integer;
 
-         function  DoIsOfType(typSym : TTypeSymbol) : Boolean; override;
+         function DoIsOfType(typSym : TTypeSymbol) : Boolean; override;
+         function DoIsCompatible(typSym : TTypeSymbol) : Boolean; override;
 
          procedure InternalSpecialize(destination : TFuncSymbol; const context : ISpecializationContext);
 
@@ -914,7 +916,6 @@ type
 
          constructor Generate(table : TSymbolTable; const funcName : String;
                               const funcParams : TParamArray; const funcType : String);
-         function  IsCompatible(typSym : TTypeSymbol) : Boolean; override;
          function  IsType : Boolean; override;
          procedure SetIsType;
          function  GetAsFuncSymbol : TFuncSymbol; override;
@@ -974,8 +975,10 @@ type
    end;
 
    TAnyFuncSymbol = class(TFuncSymbol)
+      protected
+         function DoIsCompatible(typSym : TTypeSymbol) : Boolean; override;
+
       public
-         function IsCompatible(typSym : TTypeSymbol) : Boolean; override;
          function IsCompatibleWithAnyFuncSymbol : Boolean; override;
 
          procedure Initialize(const msgs : TdwsCompileMessageList); override;
@@ -1160,6 +1163,7 @@ type
    TAliasSymbol = class sealed (TTypeSymbol)
       protected
          function DoIsOfType(typSym : TTypeSymbol) : Boolean; override;
+         function DoIsCompatible(typSym : TTypeSymbol) : Boolean; override;
          function GetUnAliasedType : TTypeSymbol; override;
          function GetAsFuncSymbol : TFuncSymbol; override;
          function GetDescription : String; override;
@@ -1168,7 +1172,6 @@ type
       public
          function BaseType : TTypeSymbol; override;
          procedure InitDataContext(const data : IDataContext; offset : NativeInt); override;
-         function IsCompatible(typSym : TTypeSymbol) : Boolean; override;
          function IsPointerType : Boolean; override;
 
          function Taxonomy : TdwsSymbolTaxonomy; override;
@@ -1176,21 +1179,25 @@ type
 
    // integer/String/float/boolean/variant
    TBaseSymbol = class(TTypeSymbol)
+      protected
+         function DoIsCompatible(typSym : TTypeSymbol) : Boolean; override;
+
       public
          constructor Create(const name : String);
 
-         function IsCompatible(typSym : TTypeSymbol) : Boolean; override;
          class function IsBaseType : Boolean; override; final;
 
          function SpecializeType(const context : ISpecializationContext) : TTypeSymbol; override;
    end;
 
    TBaseIntegerSymbol = class sealed (TBaseSymbol)
+      protected
+         function DoIsCompatible(typSym : TTypeSymbol) : Boolean; override;
+
       public
          constructor Create;
 
          procedure InitDataContext(const data : IDataContext; offset : NativeInt); override;
-         function IsCompatible(typSym : TTypeSymbol) : Boolean; override;
    end;
 
    TBaseFloatSymbol = class sealed (TBaseSymbol)
@@ -1228,10 +1235,12 @@ type
    end;
 
    TBaseVariantSymbol = class (TBaseSymbol)
+      protected
+         function DoIsCompatible(typSym : TTypeSymbol) : Boolean; override;
+
       public
          constructor Create(const name : String = '');
 
-         function IsCompatible(typSym : TTypeSymbol) : Boolean; override;
          procedure InitDataContext(const data : IDataContext; offset : NativeInt); override;
          function SupportsEmptyParam : Boolean; virtual;
    end;
@@ -1278,11 +1287,12 @@ type
 
          function InitializePseudoMethodSymbol(methodKind : TArrayMethodKind; baseSymbols : TdwsBaseSymbolsContext) : TPseudoMethodSymbol; override;
 
+         function DoIsCompatible(typSym : TTypeSymbol) : Boolean; override;
+
       public
          constructor Create(const name : String; indexType : TTypeSymbol;
                             aMin, aMax : Integer);
 
-         function IsCompatible(typSym : TTypeSymbol) : Boolean; override;
          function SameType(typSym : TTypeSymbol) : Boolean; override;
 
          procedure InitDataContext(const data : IDataContext; offset : NativeInt); override;
@@ -1338,14 +1348,13 @@ type
          function GetCaption : String; override;
          function GetDescription : String; override;
          function DoIsOfType(typSym : TTypeSymbol) : Boolean; override;
+         function DoIsCompatible(typSym : TTypeSymbol) : Boolean; override;
 
-      protected
          function InitializePseudoMethodSymbol(methodKind : TArrayMethodKind; baseSymbols : TdwsBaseSymbolsContext) : TPseudoMethodSymbol; override;
 
       public
          constructor Create(const name : String; elementType, indexType : TTypeSymbol);
          procedure InitDataContext(const data : IDataContext; offset : NativeInt); override;
-         function IsCompatible(typSym : TTypeSymbol) : Boolean; override;
          function IsPointerType : Boolean; override;
          function SameType(typSym : TTypeSymbol) : Boolean; override;
          function SpecializeType(const context : ISpecializationContext) : TTypeSymbol; override;
@@ -1363,13 +1372,13 @@ type
       protected
          function GetCaption : String; override;
          function DoIsOfType(typSym : TTypeSymbol) : Boolean; override;
+         function DoIsCompatible(typSym : TTypeSymbol) : Boolean; override;
 
       public
          constructor Create(const name : String; elementType, indexType : TTypeSymbol;
                             lowBound, highBound : Integer);
 
          procedure InitDataContext(const data : IDataContext; offset : NativeInt); override;
-         function IsCompatible(typSym : TTypeSymbol) : Boolean; override;
          function SameType(typSym : TTypeSymbol) : Boolean; override;
          procedure AddElement;
          function IsEmptyArray : Boolean;
@@ -1383,10 +1392,10 @@ type
    TOpenArraySymbol = class sealed (TStaticArraySymbol)
       protected
          function GetCaption : String; override;
+         function DoIsCompatible(typSym : TTypeSymbol) : Boolean; override;
 
       public
          constructor Create(const name : String; elementType, indexType : TTypeSymbol);
-         function IsCompatible(typSym : TTypeSymbol) : Boolean; override;
    end;
 
    // associative array aka dictionary
@@ -1398,6 +1407,7 @@ type
       protected
          function GetCaption : String; override;
          function DoIsOfType(typSym : TTypeSymbol) : Boolean; override;
+         function DoIsCompatible(typSym : TTypeSymbol) : Boolean; override;
 
          function InitializePseudoMethodSymbol(methodKind : TArrayMethodKind; baseSymbols : TdwsBaseSymbolsContext) : TPseudoMethodSymbol; override;
 
@@ -1408,7 +1418,6 @@ type
          procedure InitDataContext(const data : IDataContext; offset : NativeInt); override;
          function DynamicInitialization : Boolean; override;
 
-         function IsCompatible(typSym : TTypeSymbol) : Boolean; override;
          function IsPointerType : Boolean; override;
          function SameType(typSym : TTypeSymbol) : Boolean; override;
 
@@ -1580,11 +1589,13 @@ type
 
    // class of, record of
    TStructuredTypeMetaSymbol = class (TTypeSymbol)
+      protected
+         function DoIsCompatible(typSym : TTypeSymbol) : Boolean; override;
+
       public
          constructor Create(const name : String; typ : TStructuredTypeSymbol);
 
          procedure InitDataContext(const data : IDataContext; offset : NativeInt); override;
-         function IsCompatible(typSym : TTypeSymbol) : Boolean; override;
 
          function StructSymbol : TStructuredTypeSymbol; inline;
 
@@ -1647,6 +1658,8 @@ type
          procedure SetIsFullyDefined(const val : Boolean);
          function GetIsExternal : Boolean; override;
 
+         function DoIsCompatible(typSym : TTypeSymbol) : Boolean; override;
+
       public
          constructor Create(const name : String; aUnit : TSymbol);
 
@@ -1662,7 +1675,6 @@ type
 
          procedure InitDataContext(const data : IDataContext; offset : NativeInt); override;
          function DynamicInitialization : Boolean; override;
-         function IsCompatible(typSym : TTypeSymbol) : Boolean; override;
          function AssignsAsDataExpr : Boolean; override;
 
          function SpecializeType(const context : ISpecializationContext) : TTypeSymbol; override;
@@ -1683,6 +1695,7 @@ type
          function GetCaption : String; override;
          function GetDescription : String; override;
          function  DoIsOfType(typSym : TTypeSymbol) : Boolean; override;
+         function DoIsCompatible(typSym : TTypeSymbol) : Boolean; override;
 
       public
          constructor Create(const name : String; aUnit : TSymbol);
@@ -1693,7 +1706,6 @@ type
 
          procedure InitDataContext(const data : IDataContext; offset : NativeInt); override;
          procedure Initialize(const msgs : TdwsCompileMessageList); override;
-         function  IsCompatible(typSym : TTypeSymbol) : Boolean; override;
          function  IsPointerType : Boolean; override;
 
          function  SpecializeType(const context : ISpecializationContext) : TTypeSymbol; override;
@@ -1784,11 +1796,11 @@ type
          function GetCaption : String; override;
          function GetDescription : String; override;
          function DoIsOfType(typSym : TTypeSymbol) : Boolean; override;
+         function DoIsCompatible(typSym : TTypeSymbol) : Boolean; override;
 
       public
          constructor Create(const name : String; typ : TClassSymbol);
 
-         function IsCompatible(typSym : TTypeSymbol) : Boolean; override;
          function SameType(typSym : TTypeSymbol) : Boolean; override;
          function TypClassSymbol : TClassSymbol; inline;
    end;
@@ -1858,6 +1870,7 @@ type
          function GetIsClassSymbol : Boolean; override; final;
 
          function DoIsOfType(typSym : TTypeSymbol) : Boolean; override;
+         function DoIsCompatible(typSym : TTypeSymbol) : Boolean; override;
 
          function  ProcessOverriddenInterfaceCallback(const item : TResolvedInterface) : TSimpleHashAction;
          procedure ProcessOverriddenInterfaces;
@@ -1883,7 +1896,6 @@ type
          procedure InheritFrom(ancestorClassSym : TClassSymbol);
          procedure InitDataContext(const data : IDataContext; offset : NativeInt); override;
          procedure Initialize(const msgs : TdwsCompileMessageList); override;
-         function  IsCompatible(typSym : TTypeSymbol) : Boolean; override;
          function  IsPointerType : Boolean; override;
          function  HasMetaSymbol : Boolean; override;
          function  Taxonomy : TdwsSymbolTaxonomy; override;
@@ -1943,12 +1955,12 @@ type
 
       protected
          function GetMetaSymbol : TStructuredTypeMetaSymbol; override;
+         function DoIsCompatible(typSym : TTypeSymbol) : Boolean; override;
 
       public
          constructor Create(const name : String; aUnit : TSymbol;
                             aForType : TTypeSymbol; priority : Integer);
 
-         function IsCompatible(typSym : TTypeSymbol) : Boolean; override;
          function IsType : Boolean; override;
          function AllowDefaultProperty : Boolean; override;
          function CreateSelfParameter(methSym : TMethodSymbol) : TDataSymbol; override;
@@ -1973,11 +1985,11 @@ type
    TNilSymbol = class sealed (TTypeSymbol)
       protected
          function GetCaption : String; override;
+         function DoIsCompatible(typSym : TTypeSymbol) : Boolean; override;
 
       public
          constructor Create;
 
-         function IsCompatible(typSym : TTypeSymbol) : Boolean; override;
          function IsCompatibleWithAnyFuncSymbol : Boolean; override;
 
          procedure InitDataContext(const data : IDataContext; offset : NativeInt); override;
@@ -2021,6 +2033,7 @@ type
          function GetCaption : String; override;
          function GetDescription : String; override;
          function DoIsOfType(typSym : TTypeSymbol) : Boolean; override;
+         function DoIsCompatible(typSym : TTypeSymbol) : Boolean; override;
 
          function InitializePseudoMethodSymbol(methodKind : TArrayMethodKind; baseSymbols : TdwsBaseSymbolsContext) : TPseudoMethodSymbol; override;
 
@@ -2032,7 +2045,6 @@ type
          function DefaultValue : Int64;
          procedure InitDataContext(const data : IDataContext; offset : NativeInt); override;
          function BaseType : TTypeSymbol; override;
-         function IsCompatible(typSym : TTypeSymbol) : Boolean; override;
 
          procedure AddElement(element : TElementSymbol);
          function ElementByValue(const value : Int64) : TElementSymbol;
@@ -3352,9 +3364,9 @@ begin
    data.SetZeroInt64(offset);
 end;
 
-// IsCompatible
+// DoIsCompatible
 //
-function TStructuredTypeMetaSymbol.IsCompatible(typSym : TTypeSymbol) : Boolean;
+function TStructuredTypeMetaSymbol.DoIsCompatible(typSym : TTypeSymbol) : Boolean;
 begin
    Result:=(typSym is TStructuredTypeMetaSymbol) and (Typ.BaseType=typSym.Typ.BaseType);
 end;
@@ -3470,9 +3482,9 @@ begin
    Result := rsfDynamicInitialization in FFlags;
 end;
 
-// IsCompatible
+// DoIsCompatible
 //
-function TRecordSymbol.IsCompatible(typSym : TTypeSymbol) : Boolean;
+function TRecordSymbol.DoIsCompatible(typSym : TTypeSymbol) : Boolean;
 begin
    if typSym=nil then Exit(False);
    typSym:=typSym.UnAliasedType.BaseType;
@@ -3662,9 +3674,9 @@ begin
       msgs.AddCompilerErrorFmt(FForwardPosition^, CPE_InterfaceNotCompletelyDefined, [Name]);
 end;
 
-// IsCompatible
+// DoIsCompatible
 //
-function TInterfaceSymbol.IsCompatible(typSym : TTypeSymbol) : Boolean;
+function TInterfaceSymbol.DoIsCompatible(typSym : TTypeSymbol) : Boolean;
 begin
    typSym:=typSym.UnAliasedType;
    if typSym is TNilSymbol then
@@ -4307,9 +4319,9 @@ begin
    else Result:=0;
 end;
 
-// IsCompatible
+// DoIsCompatible
 //
-function TFuncSymbol.IsCompatible(typSym : TTypeSymbol) : Boolean;
+function TFuncSymbol.DoIsCompatible(typSym : TTypeSymbol) : Boolean;
 const
    cCompatibleKinds : array [TFuncKind, TFuncKind] of Boolean =
       //  fkFunction, fkProcedure, fkConstructor, fkDestructor, fkMethod, fkLambda
@@ -5705,9 +5717,9 @@ begin
       SetNoOverloads;
 end;
 
-// IsCompatible
+// DoIsCompatible
 //
-function TClassSymbol.IsCompatible(typSym : TTypeSymbol) : Boolean;
+function TClassSymbol.DoIsCompatible(typSym : TTypeSymbol) : Boolean;
 begin
    if typSym=nil then
       Result:=False
@@ -6049,7 +6061,9 @@ begin
   Result := 'nil';
 end;
 
-function TNilSymbol.IsCompatible(typSym : TTypeSymbol) : Boolean;
+// DoIsCompatible
+//
+function TNilSymbol.DoIsCompatible(typSym : TTypeSymbol) : Boolean;
 begin
   typSym := typSym.BaseType;
   Result := typSym.IsClassSymbol or (typSym is TNilSymbol);
@@ -6101,7 +6115,9 @@ begin
    else Result := 'class of ???';
 end;
 
-function TClassOfSymbol.IsCompatible(typSym : TTypeSymbol) : Boolean;
+// DoIsCompatible
+//
+function TClassOfSymbol.DoIsCompatible(typSym : TTypeSymbol) : Boolean;
 begin
   typSym := typSym.BaseType;
   Result :=    (typSym is TNilSymbol)
@@ -6145,9 +6161,9 @@ begin
    FSize:=1;
 end;
 
-// IsCompatible
+// DoIsCompatible
 //
-function TBaseSymbol.IsCompatible(typSym : TTypeSymbol) : Boolean;
+function TBaseSymbol.DoIsCompatible(typSym : TTypeSymbol) : Boolean;
 begin
    Result:=    (typSym<>nil)
            and (UnAliasedType=typSym.UnAliasedType);
@@ -6185,9 +6201,9 @@ begin
    data.SetZeroInt64(offset);
 end;
 
-// IsCompatible
+// DoIsCompatible
 //
-function TBaseIntegerSymbol.IsCompatible(typSym : TTypeSymbol) : Boolean;
+function TBaseIntegerSymbol.DoIsCompatible(typSym : TTypeSymbol) : Boolean;
 begin
    if typSym<>nil then begin
       Result:=   (UnAliasedType=typSym.UnAliasedType)
@@ -6318,9 +6334,9 @@ begin
    else inherited Create(name);
 end;
 
-// IsCompatible
+// DoIsCompatible
 //
-function TBaseVariantSymbol.IsCompatible(typSym : TTypeSymbol) : Boolean;
+function TBaseVariantSymbol.DoIsCompatible(typSym : TTypeSymbol) : Boolean;
 var
    ct : TClass;
 begin
@@ -7665,9 +7681,9 @@ begin
    FSize:=1+(FCountValue shr 6);
 end;
 
-// IsCompatible
+// DoIsCompatible
 //
-function TSetOfSymbol.IsCompatible(typSym : TTypeSymbol) : Boolean;
+function TSetOfSymbol.DoIsCompatible(typSym : TTypeSymbol) : Boolean;
 begin
    typSym := typSym.UnAliasedType;
    if typSym.ClassType = TSetOfSymbol then begin
@@ -8097,9 +8113,9 @@ begin
    else Result := inherited InitializePseudoMethodSymbol(methodKind, baseSymbols);
 end;
 
-// IsCompatible
+// DoIsCompatible
 //
-function TDynamicArraySymbol.IsCompatible(typSym : TTypeSymbol) : Boolean;
+function TDynamicArraySymbol.DoIsCompatible(typSym : TTypeSymbol) : Boolean;
 begin
   Result :=    (    (typSym is TDynamicArraySymbol)
                 and (Typ.IsCompatible(typSym.Typ) or (typSym.Typ is TNilSymbol))
@@ -8167,9 +8183,9 @@ begin
    end;
 end;
 
-// IsCompatible
+// DoIsCompatible
 //
-function TStaticArraySymbol.IsCompatible(typSym : TTypeSymbol) : Boolean;
+function TStaticArraySymbol.DoIsCompatible(typSym : TTypeSymbol) : Boolean;
 begin
    typSym := typSym.UnAliasedType;
    Result :=     (typSym is TStaticArraySymbol)
@@ -8239,9 +8255,9 @@ begin
    FSize:=1;
 end;
 
-// IsCompatible
+// DoIsCompatible
 //
-function TOpenArraySymbol.IsCompatible(typSym : TTypeSymbol) : Boolean;
+function TOpenArraySymbol.DoIsCompatible(typSym : TTypeSymbol) : Boolean;
 begin
    if typSym = nil then Exit(False);
    typSym := typSym.BaseType;
@@ -8301,9 +8317,9 @@ begin
    Result := True;
 end;
 
-// IsCompatible
+// DoIsCompatible
 //
-function TAssociativeArraySymbol.IsCompatible(typSym : TTypeSymbol) : Boolean;
+function TAssociativeArraySymbol.DoIsCompatible(typSym : TTypeSymbol) : Boolean;
 begin
   Result :=     (typSym is TAssociativeArraySymbol)
             and Typ.IsCompatible(typSym.Typ)
@@ -8482,9 +8498,9 @@ begin
    Result:=Typ;
 end;
 
-// IsCompatible
+// DoIsCompatible
 //
-function TEnumerationSymbol.IsCompatible(typSym : TTypeSymbol) : Boolean;
+function TEnumerationSymbol.DoIsCompatible(typSym : TTypeSymbol) : Boolean;
 begin
    Result:=(typSym.UnAliasedType=Self);
 end;
@@ -8618,9 +8634,9 @@ begin
    Typ.InitDataContext(data, offset);
 end;
 
-// IsCompatible
+// DoIsCompatible
 //
-function TAliasSymbol.IsCompatible(typSym : TTypeSymbol) : Boolean;
+function TAliasSymbol.DoIsCompatible(typSym : TTypeSymbol) : Boolean;
 begin
    Result:=Typ.IsCompatible(typSym);
 end;
@@ -8719,18 +8735,27 @@ begin
    Result:=(Self=typSym.UnAliasedType);
 end;
 
-// GetIsDeprecated
+// DoIsCompatible
 //
-function TTypeSymbol.GetIsDeprecated : Boolean;
+function TTypeSymbol.DoIsCompatible(typSym : TTypeSymbol) : Boolean;
 begin
-   Result:=(FDeprecatedMessage<>'');
+   Result:=BaseType.IsCompatible(typSym.BaseType);
 end;
 
 // IsCompatible
 //
 function TTypeSymbol.IsCompatible(typSym : TTypeSymbol) : Boolean;
 begin
-   Result:=BaseType.IsCompatible(typSym.BaseType);
+   if Self = nil then
+      Result := (typSym=nil)
+   else Result := DoIsCompatible(typSym);
+end;
+
+// GetIsDeprecated
+//
+function TTypeSymbol.GetIsDeprecated : Boolean;
+begin
+   Result:=(FDeprecatedMessage<>'');
 end;
 
 // CanExpectAnyFuncSymbol
@@ -8847,9 +8872,9 @@ end;
 // ------------------ TAnyTypeSymbol ------------------
 // ------------------
 
-// IsCompatible
+// DoIsCompatible
 //
-function TAnyTypeSymbol.IsCompatible(typSym : TTypeSymbol) : Boolean;
+function TAnyTypeSymbol.DoIsCompatible(typSym : TTypeSymbol) : Boolean;
 begin
    Result:=(typSym<>nil);
 end;
@@ -9451,9 +9476,9 @@ end;
 // ------------------ TAnyFuncSymbol ------------------
 // ------------------
 
-// IsCompatible
+// DoIsCompatible
 //
-function TAnyFuncSymbol.IsCompatible(typSym : TTypeSymbol) : Boolean;
+function TAnyFuncSymbol.DoIsCompatible(typSym : TTypeSymbol) : Boolean;
 begin
    Result := (typSym.AsFuncSymbol<>nil);
 end;
@@ -9550,9 +9575,9 @@ begin
       FMetaForType:=TStructuredTypeSymbol(FUnAliasedForType).MetaSymbol;
 end;
 
-// IsCompatible
+// DoIsCompatible
 //
-function THelperSymbol.IsCompatible(typSym : TTypeSymbol) : Boolean;
+function THelperSymbol.DoIsCompatible(typSym : TTypeSymbol) : Boolean;
 begin
    Result:=(typSym=Self);
 end;

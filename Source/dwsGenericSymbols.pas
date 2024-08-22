@@ -41,12 +41,11 @@ type
          FGenericSymbol : TGenericSymbol;
 
          function GetIsGeneric : Boolean; override;
+         function DoIsOfType(typSym : TTypeSymbol) : Boolean; override;
+         function DoIsCompatible(typSym : TTypeSymbol) : Boolean; override;
 
       public
          procedure InitDataContext(const data : IDataContext; offset : NativeInt); override;
-
-         function DoIsOfType(typSym : TTypeSymbol) : Boolean; override;
-         function IsCompatible(typSym : TTypeSymbol) : Boolean; override;
 
          property GenericSymbol : TGenericSymbol read FGenericSymbol;
    end;
@@ -524,9 +523,9 @@ begin
    Result := (typSym = Self); // TODO check vs constraints
 end;
 
-// IsCompatible
+// DoIsCompatible
 //
-function TGenericTypeSymbol.IsCompatible(typSym : TTypeSymbol) : Boolean;
+function TGenericTypeSymbol.DoIsCompatible(typSym : TTypeSymbol) : Boolean;
 begin
    Result := (typSym = Self); // TODO check vs constraints
 end;

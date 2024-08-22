@@ -84,10 +84,12 @@ type
    end;
 
    TBaseFileSymbol = class (TBaseSymbol)
+      protected
+         function DoIsCompatible(typSym : TTypeSymbol) : Boolean; override;
+
       public
          constructor Create;
 
-         function IsCompatible(typSym : TTypeSymbol) : Boolean; override;
          procedure InitDataContext(const data : IDataContext; offset : NativeInt); override;
    end;
 
@@ -479,11 +481,11 @@ begin
    inherited Create(SYS_FILE);
 end;
 
-// IsCompatible
+// DoIsCompatible
 //
-function TBaseFileSymbol.IsCompatible(typSym : TTypeSymbol) : Boolean;
+function TBaseFileSymbol.DoIsCompatible(typSym : TTypeSymbol) : Boolean;
 begin
-   Result:=(typSym<>nil) and (typSym.UnAliasedType is TBaseFileSymbol);
+   Result := (typSym<>nil) and (typSym.UnAliasedType is TBaseFileSymbol);
 end;
 
 // InitDataContext

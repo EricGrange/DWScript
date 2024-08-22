@@ -168,8 +168,10 @@ type
    end;
 
    TJSConnectorSymbol = class(TConnectorSymbol)
+      protected
+         function DoIsCompatible(typSym : TTypeSymbol) : Boolean; override;
+
       public
-         function IsCompatible(typSym : TTypeSymbol) : Boolean; override;
          function IsCompatibleWithAnyFuncSymbol : Boolean; override;
 
          function SupportsEmptyParam : Boolean; override;
@@ -635,11 +637,11 @@ end;
 // ------------------ TJSConnectorSymbol ------------------
 // ------------------
 
-// IsCompatible
+// DoIsCompatible
 //
-function TJSConnectorSymbol.IsCompatible(typSym : TTypeSymbol) : Boolean;
+function TJSConnectorSymbol.DoIsCompatible(typSym : TTypeSymbol) : Boolean;
 begin
-   Result:=   inherited IsCompatible(typSym)
+   Result:=   inherited DoIsCompatible(typSym)
            or (typSym.AsFuncSymbol<>nil)
            or (typSym is TRecordSymbol)
            or (typSym is TArraySymbol);

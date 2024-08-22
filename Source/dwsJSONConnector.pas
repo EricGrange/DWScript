@@ -236,8 +236,10 @@ type
    // TJSONConnectorSymbol
    //
    TJSONConnectorSymbol = class(TConnectorSymbol)
+      protected
+         function DoIsCompatible(typSym : TTypeSymbol) : Boolean; override;
+
       public
-         function IsCompatible(typSym : TTypeSymbol) : Boolean; override;
          function CreateAssignExpr(context : TdwsCompilerContext; const aScriptPos: TScriptPos;
                                    left : TDataExpr; right : TTypedExpr) : TProgramExpr; override;
          function CreateConvExpr(context : TdwsCompilerContext; const aScriptPos: TScriptPos;
@@ -1580,11 +1582,11 @@ end;
 // ------------------ TJSONConnectorSymbol ------------------
 // ------------------
 
-// IsCompatible
+// DoIsCompatible
 //
-function TJSONConnectorSymbol.IsCompatible(typSym : TTypeSymbol) : Boolean;
+function TJSONConnectorSymbol.DoIsCompatible(typSym : TTypeSymbol) : Boolean;
 begin
-   Result:=   inherited IsCompatible(typSym)
+   Result:=   inherited DoIsCompatible(typSym)
            or (typSym.AsFuncSymbol<>nil)
            or (typSym is TRecordSymbol);
 end;

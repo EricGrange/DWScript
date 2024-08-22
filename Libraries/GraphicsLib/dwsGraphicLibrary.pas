@@ -51,8 +51,8 @@ const
 type
 
    TBasePixmapSymbol = class (TBaseByteBufferSymbol)
-      public
-         function IsCompatible(typSym : TTypeSymbol) : Boolean; override;
+      protected
+         function DoIsCompatible(typSym : TTypeSymbol) : Boolean; override;
    end;
 
    EdwsPixmap = class (Exception);
@@ -223,9 +223,9 @@ end;
 // ------------------ TBasePixmapSymbol ------------------
 // ------------------
 
-// IsCompatible
+// DoIsCompatible
 //
-function TBasePixmapSymbol.IsCompatible(typSym : TTypeSymbol) : Boolean;
+function TBasePixmapSymbol.DoIsCompatible(typSym : TTypeSymbol) : Boolean;
 begin
    Result := (typSym<>nil) and (typSym.UnAliasedType.ClassType = TBasePixmapSymbol);
 end;

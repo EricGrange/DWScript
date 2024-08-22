@@ -67,8 +67,10 @@ type
    end;
 
    TRTTIConnectorSymbol = class (TConnectorSymbol)
+      protected
+         function DoIsCompatible(typSym : TTypeSymbol) : Boolean; override;
+
       public
-         function IsCompatible(typSym : TTypeSymbol) : Boolean; override;
          function SpecializeConnector(table : TSymbolTable; const qualifier : String) : TConnectorSymbol; override;
    end;
 
@@ -424,7 +426,8 @@ end;
 begin
   { TODO : Check unix implementation }
   raise Exception.Create('not implemented');
-end;{$endif}
+end;
+{$endif}
 
 // ------------------
 // ------------------ TCreateComponentFunc ------------------
@@ -836,14 +839,14 @@ begin
    end;
 end;
 
-// IsCompatible
+// DoIsCompatible
 //
-function TRTTIConnectorSymbol.IsCompatible(typSym : TTypeSymbol) : Boolean;
+function TRTTIConnectorSymbol.DoIsCompatible(typSym : TTypeSymbol) : Boolean;
 var
    st, tt : TRttiType;
 begin
    if Self=typSym then Exit(True);
-   Result:=inherited IsCompatible(typSym);
+   Result := inherited DoIsCompatible(typSym);
    if not Result then Exit;
 
    if typSym is TRTTIConnectorSymbol then begin
