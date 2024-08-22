@@ -427,8 +427,8 @@ begin
    sugg:=TdwsSuggestions.Create(prog, scriptPos, [soNoReservedWords]);
 
    var expected := [
-      'Add', 'Clear', 'Contains', 'Copy', 'Count', 'Delete', 'Filter', 'High',
-      'IndexOf', 'Insert', 'Length', 'Low', 'Map', 'Move',
+      'Add', 'Clear', 'Contains', 'Copy', 'Count', 'Delete', 'Filter', 'ForEach',
+      'High', 'IndexOf', 'Insert', 'Length', 'Low', 'Map', 'Move',
       'Peek', 'Pop', 'Push', 'Remove', 'Reverse',
       'SetLength', 'Sort', 'Swap'
    ];

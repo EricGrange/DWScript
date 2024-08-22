@@ -590,7 +590,7 @@ begin
          amkMove, amkSwap, amkReverse,
          amkSetLength, amkClear,
          amkCopy,
-         amkSort, amkMap, amkFilter
+         amkSort, amkMap, amkFilter, amkForEach
       ] do begin
       list.Add(dyn.PseudoMethodSymbol(amk, p));
    end;
