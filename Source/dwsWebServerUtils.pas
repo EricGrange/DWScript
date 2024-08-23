@@ -22,7 +22,7 @@ interface
 
 uses
    System.Classes, System.SysUtils,
-   SynCommons, SynCrypto;
+   SynCrypto;
 
 type
 
@@ -44,7 +44,7 @@ implementation
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
 
-uses dwsUtils, dwsXPlatform;
+uses dwsUtils, dwsXPlatform, dwsEncoding;
 
 // ETag
 //
@@ -53,12 +53,11 @@ class function WebServerUtils.ETag(
    const validation : ETagValidation = ETagValidation.Weak
    ) : UnicodeString;
 var
-   i : Integer;
    hash : TSHA256;
    digest : TSHA256Digest;
 begin
    hash.Init;
-   for i:=0 to High(data) do begin
+   for var i := 0 to High(data) do begin
       case data[i].VType of
          vtInteger       : hash.Update(@data[i].VInteger, SizeOf(Integer));
          vtInt64         : hash.Update(@data[i].VInt64, SizeOf(Int64));
@@ -73,8 +72,8 @@ begin
    end;
    hash.Final(digest);
    if validation = ETagValidation.Weak then
-      Result := 'W/"' + RawByteStringToScriptString(BinToBase64URI(@digest, SizeOf(digest) div 4)) + '"'
-   else Result := '"' + RawByteStringToScriptString(BinToBase64URI(@digest, SizeOf(digest) div 2)) + '"';
+      Result := 'W/"' + Base64EncodeURI(@digest, SizeOf(digest) div 4) + '"'
+   else Result := '"' + Base64EncodeURI(@digest, SizeOf(digest) div 2) + '"';
 end;
 
 end.
