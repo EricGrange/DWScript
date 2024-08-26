@@ -318,6 +318,8 @@ type
          procedure MoveItem(source, destination : NativeInt);
          procedure Swap(index1, index2 : NativeInt);
 
+         procedure Pack;
+
          function IndexOfValue(const item : Variant; fromIndex : NativeInt) : NativeInt;
          function IndexOfInteger(item : Int64; fromIndex : NativeInt) : NativeInt;
          function IndexOfFloat(item : Double; fromIndex : NativeInt) : NativeInt;
@@ -2107,6 +2109,31 @@ end;
 procedure TScriptDynamicNativeStringArray.Swap(index1, index2 : NativeInt);
 begin
    SwapPointers(PPointer(@FData[index1])^, PPointer(@FData[index2])^);
+end;
+
+// Pack
+//
+procedure TScriptDynamicNativeStringArray.Pack;
+begin
+   var k := 0;
+   var pDest := PPointer(FData);
+   var pSrc := PPointer(FData);
+   for var i := 0 to FArrayLength-1 do begin
+      var p := pSrc^;
+      if p <> nil then begin
+         if k <> i then begin
+            pDest^ := p;
+            pSrc^ := nil;
+         end;
+         Inc(k);
+         Inc(pDest);
+      end;
+      Inc(pSrc);
+   end;
+   if k <> FArrayLength then begin
+      System.SetLength(FData, k);
+      FArrayLength := k;
+   end;
 end;
 
 // IndexOfValue

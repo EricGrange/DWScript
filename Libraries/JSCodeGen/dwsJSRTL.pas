@@ -174,7 +174,7 @@ uses dwsJSON, dwsXPlatform, SynZip;
 {$R dwsJSRTL.res}
 
 const
-   cJSRTLDependencies : array [1..326{$ifdef JS_BIGINTEGER} + 16{$endif}] of TJSRTLDependency = (
+   cJSRTLDependencies : array [1..327{$ifdef JS_BIGINTEGER} + 16{$endif}] of TJSRTLDependency = (
       // codegen utility functions
       (Name : '$CheckStep';
        Code : 'function $CheckStep(s,z) { if (s>0) return s; throw Exception.Create($New(Exception),"FOR loop STEP should be strictly positive: "+s.toString()+z) }';
@@ -1159,6 +1159,8 @@ const
        Dependency : 'StrRegExp'),
       (Name : 'StrSplit';
        Code : 'function StrSplit(s,d) { return s.split(d) }'),
+      (Name : 'StrArrayPack';
+       Code : 'function StrArrayPack(s) { for (var i=0,j=0; i<s.length; i++) { if (s[i]!=='') s[j++]=s[i]} s.length=j; return s }'),
       (Name : 'StrToBool';
        Code : 'function StrToBool(s) { return (/^(t|y|1|true|yes|0*[1-9][0-9]*)$/i).test(s) }'),
       (Name : 'StrToCSSText';

@@ -326,6 +326,10 @@ type
        procedure DoEvalAsString(const args : TExprBaseListExec; var Result : String); override;
   end;
 
+  TStrArrayPackFunc = class(TInternalMagicVariantFunction)
+    procedure DoEvalAsVariant(const args : TExprBaseListExec; var result : Variant); override;
+  end;
+
   TReverseStringFunc = class(TInternalMagicStringFunction)
     procedure DoEvalAsString(const args : TExprBaseListExec; var Result : String); override;
   end;
@@ -1408,6 +1412,17 @@ begin
    end;
 end;
 
+{ TStrArrayPackFunc }
+
+procedure TStrArrayPackFunc.DoEvalAsVariant(const args : TExprBaseListExec; var result : Variant);
+var
+   dynIntf : IScriptDynArray;
+begin
+   args.ExprBase[0].EvalAsScriptDynArray(args.Exec, dynIntf);
+   VarCopySafe(Result, dynIntf);
+   (dynIntf.GetSelf as TScriptDynamicNativeStringArray).Pack;
+end;
+
 { TGetTextFunc }
 
 procedure TGetTextFunc.DoEvalAsString(const args : TExprBaseListExec; var Result : String);
@@ -1550,6 +1565,8 @@ initialization
    RegisterInternalStringFunction(TStrBetweenFunc, 'StrBetween', ['str', SYS_STRING, 'start', SYS_STRING, 'stop', SYS_STRING], [iffStateLess], 'Between');
    RegisterInternalFunction(TStrSplitFunc, 'StrSplit', ['str', SYS_STRING, 'delimiter', SYS_STRING], SYS_ARRAY_OF_STRING, [], 'Split');
    RegisterInternalStringFunction(TStrJoinFunc, 'StrJoin', ['strs', SYS_ARRAY_OF_STRING, 'delimiter', SYS_STRING], [], 'Join');
+
+   RegisterInternalFunction(TStrArrayPackFunc, 'StrArrayPack', ['strs', SYS_ARRAY_OF_STRING], SYS_ARRAY_OF_STRING, [], 'Pack');
 
    RegisterInternalStringFunction(TReverseStringFunc, 'ReverseString', ['str', SYS_STRING], [iffStateLess], 'Reverse');
 
