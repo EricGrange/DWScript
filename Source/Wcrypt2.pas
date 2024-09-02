@@ -52,7 +52,7 @@ unit wcrypt2;
 interface
 
 uses
-  Windows
+  Winapi.Windows
   {$IFDEF VER90}
   ,Ole2
   {$ENDIF};

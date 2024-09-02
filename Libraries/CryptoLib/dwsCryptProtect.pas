@@ -20,7 +20,7 @@ unit dwsCryptProtect;
 
 interface
 
-uses SysUtils, Types;
+uses System.SysUtils, System.Types;
 
 type
    CRYPT_INTEGER_BLOB = record

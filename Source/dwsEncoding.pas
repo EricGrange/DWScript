@@ -22,7 +22,7 @@ unit dwsEncoding;
 
 interface
 
-uses SysUtils;
+uses System.SysUtils;
 
 type
    TBase64Alphabet = array [0..63] of Char;

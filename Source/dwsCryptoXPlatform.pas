@@ -51,7 +51,7 @@ implementation
 
 uses
    dwsXPlatform,
-   Windows, wcrypt2;
+   Winapi.Windows, wcrypt2;
 
 const
    cCryptographicTokenDefaultBitStrength = 120;
