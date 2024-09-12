@@ -648,11 +648,11 @@ begin
       r.Paths.Add('c:\www');
       r.Paths.Add('d:\foo\bar\');
       fs := r.AllocateFileSystem;
-      CheckEquals('', fs.ValidateFileName('hello'), 'hello');
+      CheckNotEquals('', fs.ValidateFileName('hello'), 'hello');
       CheckNotEquals('', fs.ValidateFileName('c:\www\hello'), 'c:\www\hello');
-      CheckNotEquals('', fs.ValidateFileName('c:\www1'), 'c:\www1');
+      CheckEquals('', fs.ValidateFileName('c:\www1'), 'c:\www1');
       CheckNotEquals('', fs.ValidateFileName('c:\www\'), 'c:\www\');
-      CheckNotEquals('', fs.ValidateFileName('c:\www'), 'c:\www');
+      CheckEquals('', fs.ValidateFileName('c:\www'), 'c:\www');
       CheckNotEquals('', fs.ValidateFileName('C:\wWw\world.txt'), 'C:\wWw\world.txt');
       CheckNotEquals('', fs.ValidateFileName('c:\www\abc\xyz\ghi.txt'), 'ghi.txt 1');
       CheckEquals('', fs.ValidateFileName('d:\foo\abc'), 'd:\foo\abc');

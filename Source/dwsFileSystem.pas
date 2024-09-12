@@ -580,42 +580,43 @@ procedure TdwsRestrictedOSFileSystem.PreparePaths;
 const
    cDummyFileName = 'dummy.file';
 var
-   i : Integer;
    buf : TFileName;
 begin
    if FPathsPrepared then Exit;
-   for i:=FPaths.Count-1 downto 0 do begin
+   for var i := FPaths.Count-1 downto 0 do begin
       buf:=Trim(FPaths[i]);
       if buf='' then
          FPaths.Delete(i)
       else begin
          buf:=ExpandFileName(IncludeTrailingPathDelimiter(buf)+cDummyFileName);
-         FPaths[i]:=Copy(buf, 1, Length(buf)-Length(cDummyFileName));
+         FPaths[i] := Copy(buf, 1, Length(buf)-Length(cDummyFileName));
       end;
    end;
-   FPathsPrepared:=True;
+   FPathsPrepared := True;
 end;
 
 // ValidateFileName
 //
 function TdwsRestrictedOSFileSystem.ValidateFileName(const aFilename : TFilename) : TFilename;
 var
-   i : Integer;
    fileName, path : TFileName;
 begin
+   if not FPathsPrepared then
+      PreparePaths;
+
    fileName := ApplyStringVariables(aFileName, FVariables, '%');
    if (DriveDelim <> '') and StrContains(fileName, DriveDelim) then begin
       // validate an absolute path
       Result := ExpandFileName(fileName);
-      for i := 0 to FPaths.Count-1 do begin
+      for var i := 0 to FPaths.Count-1 do begin
          if StrIBeginsWith(Result, FPaths[i]) then Exit;
       end;
    end else begin
       // search for match in paths
-      for i:=0 to FPaths.Count-1 do begin
+      for var i := 0 to FPaths.Count-1 do begin
          path := FPaths[i];
          Result := ExpandFileName(path + fileName);
-         if StrIBeginsWith(Result, path) and System.SysUtils.FileExists(Result) then Exit;
+         if StrIBeginsWith(Result, path) then Exit;
       end;
    end;
    Result:='';
