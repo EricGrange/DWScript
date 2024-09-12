@@ -203,6 +203,8 @@ implementation
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
 
+uses SynZip;
+
 const
    cFileCacheExpiryMilliseconds = 1000;
    cFileCacheCountFlush = 200;

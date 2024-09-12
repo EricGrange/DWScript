@@ -36,8 +36,8 @@ interface
 
 uses
   Winapi.Windows, System.SysUtils, System.Classes,
-  dwsHTTPSysServer, dwsHTTPSysAPI,
-  dwsUtils, dwsWebEnvironment, dwsSynopseWebEnv, dwsFileSystem,
+  dwsHTTPSysServer, dwsHTTPSysAPI, dwsHTTPSysWebEnv,
+  dwsUtils, dwsWebEnvironment, dwsFileSystem,
   dwsDirectoryNotifier, dwsJSON, dwsXPlatform, dwsWebServerHelpers,
   DSimpleDWScript;
 
