@@ -2003,35 +2003,29 @@ end;
 // DoGetItem
 //
 function TdwsJSONObject.DoGetItem(const name : UnicodeString) : TdwsJSONValue;
-var
-   i : Integer;
 begin
-   i:=IndexOfName(name);
-   if i>=0 then
-      Result:=FItems^[i].Value
-   else Result:=nil;
+   var i := IndexOfName(name);
+   if i >= 0 then
+      Result := FItems^[i].Value
+   else Result := nil;
 end;
 
 // DoGetHashedItem
 //
 function TdwsJSONObject.DoGetHashedItem(hash : Cardinal; const name : UnicodeString) : TdwsJSONValue;
-var
-   i : Integer;
 begin
-   i:=IndexOfHashedName(hash, name);
-   if i>=0 then
-      Result:=FItems^[i].Value
-   else Result:=nil;
+   var i := IndexOfHashedName(hash, name);
+   if i >= 0 then
+      Result := FItems^[i].Value
+   else Result := nil;
 end;
 
 // DoSetItem
 //
 procedure TdwsJSONObject.DoSetItem(const name : UnicodeString; const value : TdwsJSONValue);
-var
-   i : Integer;
 begin
-   i:=IndexOfName(name);
-   if i>=0 then
+   var i := IndexOfName(name);
+   if i >= 0 then
       DoSetElement(i, value)
    else Add(name, value);
 end;
@@ -2039,11 +2033,9 @@ end;
 // DoSetHashedItem
 //
 procedure TdwsJSONObject.DoSetHashedItem(hash : Cardinal; const name : UnicodeString; const value : TdwsJSONValue);
-var
-   i : Integer;
 begin
-   i:=IndexOfHashedName(hash, name);
-   if i>=0 then
+   var i := IndexOfHashedName(hash, name);
+   if i >= 0 then
       DoSetElement(i, value)
    else Add(name, value);
 end;
