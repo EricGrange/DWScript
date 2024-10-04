@@ -1319,7 +1319,7 @@ const
       (Name : 'VarToIntDef';
        Code : 'function VarToIntDef(v,d) {'#10
                + #9'let r = parseInt(v || 0, 10);'#10
-               + #9'return isNaN(r) ? d : n'#10
+               + #9'return isNaN(r) ? d : r'#10
                + '}';
        Dependency : 'Exception' ),
       (Name : 'VarToFloatDef';

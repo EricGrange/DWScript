@@ -1102,8 +1102,8 @@ procedure StringWordsToBytes(var buf : UnicodeString; swap : Boolean);
 
 procedure UTF8DecodeToUnicodeString(pUTF8 : PAnsiChar; utf8Length : Integer; var decoded : String);
 
-function StringToUTF8(const unicodeString : String) : RawByteString;
-function UTF8ToString(const utf8String : RawByteString) : String;
+function StringToUTF8(const unicodeString : String) : RawByteString; inline;
+function UTF8ToString(const utf8String : RawByteString) : String; inline;
 
 function IsValidUTF8(const buf : RawByteString) : Boolean; inline; overload;
 function IsValidUTF8(p : PByte; byteSize : Integer) : Boolean; overload;

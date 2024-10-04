@@ -235,6 +235,8 @@ implementation
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
 
+uses dwsUTF8;
+
 type
    TFileHandleStream = class (THandleStream)
       destructor Destroy; override;

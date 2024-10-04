@@ -116,6 +116,8 @@ implementation
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
 
+uses dwsUTF8;
+
 // StringToSQLiteErrString
 //
 function StringToSQLiteErrString(const s : String) : PUTF8Char;
