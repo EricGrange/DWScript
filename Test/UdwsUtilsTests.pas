@@ -128,6 +128,9 @@ type
 
          procedure IsValidUTF8Test;
 
+         procedure UTF8toUTF16;
+         procedure UTF16toUTF8;
+
          procedure StrCountCharTest;
    end;
 
@@ -141,7 +144,7 @@ implementation
 
 uses
    System.Math,
-   dwsRandom;
+   dwsRandom, dwsUTF8;
 
 var
    vGlobals : TGlobalVars;
@@ -2274,14 +2277,14 @@ procedure TdwsUtilsTests.IsValidUTF8Test;
 
    function WrapIsValidUTF8(const s : String) : Boolean;
    begin
-      Result := IsValidUTF8(ScriptStringToRawByteString(s));
+      Result := dwsUTF8.IsValidUTF8(ScriptStringToRawByteString(s));
    end;
 
 begin
    // Valid UTF-8 strings
    Check(WrapIsValidUTF8('Hello, World!'), 'Simple ASCII string');
-   Check(IsValidUTF8(UTF8Encode('π€©πΆβ¨')), 'String with multi-byte characters');
-   Check(IsValidUTF8(nil, 0), 'Empty string 1');
+   Check(dwsUTF8.IsValidUTF8(UTF8Encode('π€©πΆβ¨')), 'String with multi-byte characters');
+   Check(dwsUTF8.IsValidUTF8(nil, 0), 'Empty string 1');
    Check(WrapIsValidUTF8(''), 'Empty string 2');
 
    // Malformed UTF-8 strings
@@ -2308,6 +2311,50 @@ begin
    Check(WrapIsValidUTF8(#$00DF#$00BF), 'Two byte character');
    Check(WrapIsValidUTF8(#$00EF#$00BF#$00BD), 'Three byte character');
    Check(WrapIsValidUTF8(#$00F4#$008F#$00BF#$00BF), 'Four byte character');
+end;
+
+// UTF8toUTF16
+//
+procedure TdwsUtilsTests.UTF8toUTF16;
+var
+   utf8 : RawByteString;
+   utf16 : String;
+begin
+   for var i := 0 to 255 do begin
+      utf16 := WideChar(i);
+      utf8 := System.UTF8Encode(utf16);
+      CheckEquals(utf16, dwsUTF8.UTF8ToString(utf8), 'Char ' + IntToStr(i));
+   end;
+
+   utf16 := 'le père noël rend visite le 25 décemebre';
+   utf8 := System.UTF8Encode(utf16);
+   CheckEquals(utf16, dwsUTF8.UTF8ToString(utf8), 'pere noel');
+
+   utf16 := '😄';
+   utf8 := System.UTF8Encode(utf16);
+   CheckEquals(utf16, dwsUTF8.UTF8ToString(utf8), 'smiling');
+end;
+
+// UTF16toUTF8
+//
+procedure TdwsUtilsTests.UTF16toUTF8;
+var
+   utf8 : RawByteString;
+   utf16 : String;
+begin
+   for var i := 0 to 255 do begin
+      utf16 := WideChar(i);
+      utf8 := dwsUTF8.StringToUTF8(utf16);
+      CheckEquals(System.UTF8Encode(utf16), utf8, 'Char ' + IntToStr(i));
+   end;
+
+   utf16 := 'le père noël rend visite le 25 décemebre';
+   utf8 := dwsUTF8.StringToUTF8(utf16);
+   CheckEquals(System.UTF8Encode(utf16), utf8, 'pere noel');
+
+   utf16 := '😄';
+   utf8 := dwsUTF8.StringToUTF8(utf16);
+   CheckEquals(System.UTF8Encode(utf16), utf8, 'smiling');
 end;
 
 // StrCountCharTest

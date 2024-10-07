@@ -26,6 +26,9 @@ interface
 function StringToUTF8(const unicodeString : String) : RawByteString;
 function UTF8ToString(const utf8String : RawByteString) : String;
 
+function IsValidUTF8(const buf : RawByteString) : Boolean; overload; inline;
+function IsValidUTF8(p : PByte; byteSize : Integer) : Boolean; overload;
+
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
@@ -33,8 +36,6 @@ implementation
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
-
-uses SynCommons;
 
 {$R-}
 
@@ -67,7 +68,7 @@ begin
       if srcLen = 0 then Break;
 
       // isolated ASCII char ?
-      if pSrc^ < $7f then begin
+      if pSrc^ < $80 then begin
          pDest^ := pSrc^;
          Inc(pSrc);
          Inc(pDest);
@@ -89,7 +90,8 @@ begin
          end;
          ucs4 := (pSrc^ - $d800) * $400;
          Inc(pSrc);
-         ucs4 := ucs4 + (pSrc^ - $dc00) + $10000;
+         var surrogateLow := pSrc^ - $dc00;
+         ucs4 := ucs4 + Cardinal(surrogateLow) + $10000;
          Inc(pSrc);
          Dec(srcLen, 2);
 
@@ -134,7 +136,157 @@ end;
 //
 function UTF8ToString(const utf8String : RawByteString) : String;
 begin
-   Result := SynCommons.UTF8ToString(utf8String);
+   if utf8String = '' then Exit('');
+
+   var srcLen := Length(utf8String);
+   SetLength(Result, srcLen);
+
+   var pSrc := PByte(utf8String);
+   var pDest := PWord(Result);
+
+   repeat
+
+      // quick scan over four bytes at once to ASCII chars
+      while (srcLen >= 4) and ((PCardinal(pSrc)^ and $80808080) = 0) do begin
+         var quad := PCardinal(pSrc)^;
+         Inc(pSrc, 4);
+
+         PCardinal(pDest)^ := (quad shl 8 or (quad and $FF)) and $00ff00ff;
+         quad := quad shr 16;
+         Inc(pDest, 2);
+         PCardinal(pDest)^ := (quad shl 8 or quad) and $00ff00ff;
+         Inc(pDest, 2);
+
+         Dec(srcLen, 4);
+      end;
+
+      if srcLen = 0 then Break;
+
+      // isolated ASCII char ?
+      if pSrc^ < $80 then begin
+         pDest^ := pSrc^;
+         Inc(pDest);
+         Inc(pSrc);
+         Dec(srcLen);
+         continue;
+      end;
+
+      if (pSrc^ and %1110_0000) = %1100_0000 then begin
+         // two bytes
+         if srcLen < 2 then begin
+            // EOF, use replacement character & break
+            pDest^ := $FFFD;
+            Inc(pDest);
+            Break;
+         end;
+         pDest^ := ((pSrc[0] and  %1_1111) shl 6)
+                 +  (pSrc[1] and %11_1111);
+         Inc(pDest);
+         Inc(pSrc, 2);
+         Dec(srcLen, 2);
+      end else begin
+         var ucs4 : Cardinal;
+         if (pSrc^ and %1111_0000) = %1110_0000 then begin
+            // three bytes
+            if srcLen < 3 then begin
+               // EOF, use replacement character & break
+               pDest^ := $fffd;
+               Inc(pDest);
+               Break;
+            end;
+            ucs4 := ((pSrc[0] and    %1111) shl 12)
+                  + ((pSrc[1] and %11_1111) shl 6)
+                  +  (pSrc[2] and %11_1111);
+            Inc(pSrc, 3);
+            Dec(srcLen, 3);
+         end else begin
+            // four bytes
+            if srcLen < 4 then begin
+               // EOF, use replacement character & break
+               pDest^ := $fffd;
+               Inc(pDest);
+               Break;
+            end;
+            ucs4 := ((pSrc[0] and     %111) shl 18)
+                  + ((pSrc[1] and %11_1111) shl 12)
+                  + ((pSrc[2] and %11_1111) shl 6)
+                  +  (pSrc[3] and %11_1111);
+            Inc(pSrc, 4);
+            Dec(srcLen, 4);
+         end;
+
+         if ucs4 <= $ffff then begin
+            pDest^ := ucs4;
+            Inc(pDest);
+         end else begin
+            Dec(ucs4, $10000);
+            pDest^ := (ucs4 shr 10) + $d800;
+            Inc(pDest);
+            pDest^ := (ucs4 and $3ff) + $dc00;
+            Inc(pDest);
+         end;
+      end;
+   until srcLen <= 0;
+
+   SetLength(Result, (UIntPtr(pDest) - UIntPtr(Pointer(Result))) div 2);
+end;
+
+// IsValidUTF8
+//
+function IsValidUTF8(const buf : RawByteString) : Boolean; overload;
+begin
+   Result := IsValidUTF8(Pointer(buf), Length(buf));
+end;
+
+// IsValidUTF8
+//
+function IsValidUTF8(p : PByte; byteSize : Integer) : Boolean;
+begin
+   var n := byteSize;
+   while n > 0 do begin
+      // gallop over ASCII
+      while (n > 4) and ((PUInt32(p)^ and $80808080) = 0) do begin
+         Inc(p, 4);
+         Dec(n, 4);
+      end;
+      // non-ASCII
+      if p^ >= $80 then begin
+         if (p^ and %1110_0000) = %1100_0000 then begin
+            // 2 bytes encoding
+            if n < 2 then Exit(False);
+            Dec(n);
+            Inc(p);
+            if (p^ and %1100_0000) <> %1000_0000 then
+               Exit(False);
+         end else if (p^ and %1111_0000) = %1110_0000 then begin
+            // 3 bytes encoding
+            if n < 3 then Exit(False);
+            Dec(n, 2);
+            Inc(p);
+            if (p^ and %1100_0000) <> %1000_0000 then
+               Exit(False);
+            Inc(p);
+            if (p^ and %1100_0000) <> %1000_0000 then
+               Exit(False);
+         end else if (p^ and %1111_1000) = %1111_0000 then begin
+            // 4 bytes encoding
+            if n < 4 then Exit(False);
+            Dec(n, 3);
+            Inc(p);
+            if (p^ and %1100_0000) <> %1000_0000 then
+               Exit(False);
+            Inc(p);
+            if (p^ and %1100_0000) <> %1000_0000 then
+               Exit(False);
+            Inc(p);
+            if (p^ and %1100_0000) <> %1000_0000 then
+               Exit(False);
+         end else Exit(False);
+      end;
+      Inc(p);
+      Dec(n);
+   end;
+   Result := True;
 end;
 
 end.

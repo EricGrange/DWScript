@@ -1548,58 +1548,14 @@ end;
 //
 function IsValidUTF8(const buf : RawByteString) : Boolean;
 begin
-   Result := IsValidUTF8(Pointer(buf), Length(buf));
+   Result := dwsUTF8.IsValidUTF8(Pointer(buf), Length(buf));
 end;
 
 // IsValidUTF8
 //
 function IsValidUTF8(p : PByte; byteSize : Integer) : Boolean;
 begin
-   var n := byteSize;
-   while n > 0 do begin
-      // gallop over ASCII
-      while (n > 4) and ((PUInt32(p)^ and $80808080) = 0) do begin
-         Inc(p, 4);
-         Dec(n, 4);
-      end;
-      // non-ASCII
-      if p^ >= $80 then begin
-         if (p^ and %1110_0000) = %1100_0000 then begin
-            // 2 bytes encoding
-            if n < 2 then Exit(False);
-            Dec(n);
-            Inc(p);
-            if (p^ and %1100_0000) <> %1000_0000 then
-               Exit(False);
-         end else if (p^ and %1111_0000) = %1110_0000 then begin
-            // 3 bytes encoding
-            if n < 3 then Exit(False);
-            Dec(n, 2);
-            Inc(p);
-            if (p^ and %1100_0000) <> %1000_0000 then
-               Exit(False);
-            Inc(p);
-            if (p^ and %1100_0000) <> %1000_0000 then
-               Exit(False);
-         end else if (p^ and %1111_1000) = %1111_0000 then begin
-            // 4 bytes encoding
-            if n < 4 then Exit(False);
-            Dec(n, 3);
-            Inc(p);
-            if (p^ and %1100_0000) <> %1000_0000 then
-               Exit(False);
-            Inc(p);
-            if (p^ and %1100_0000) <> %1000_0000 then
-               Exit(False);
-            Inc(p);
-            if (p^ and %1100_0000) <> %1000_0000 then
-               Exit(False);
-         end else Exit(False);
-      end;
-      Inc(p);
-      Dec(n);
-   end;
-   Result := True;
+   Result := dwsUTF8.IsValidUTF8(p, byteSize);
 end;
 
 // BinToHex
