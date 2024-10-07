@@ -147,7 +147,7 @@ implementation
 
 uses
    SynCrypto,  SynEcc,
-   dwsCryptoUtils, dwsCryptProtect, dwsInfo, dwsCompilerContext,
+   dwsCryptoUtils, dwsCryptProtect, dwsInfo, dwsCompilerContext, dwsUTF8,
    dwsXXHash, dwsRSAKey, dwsBCryptCNG, dwsCryptoXPlatform, dwsXPlatform;
 
 procedure PerformHashData(Info: TProgramInfo; h : THashFunction);

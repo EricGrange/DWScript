@@ -1681,7 +1681,7 @@ uses
    dwsFunctions, dwsCoreExprs, dwsMagicExprs, dwsMethodExprs, dwsUnifiedConstants,
    dwsInfoClasses, dwsCompilerUtils, dwsConstExprs, dwsResultFunctions,
    dwsSpecializationContext, dwsDynamicArrays, dwsArrayExprs, dwsAssociativeArrays,
-   dwsStrings;
+   dwsStrings, dwsUTF8;
 
 // TScriptDynamicArray_InitData
 //

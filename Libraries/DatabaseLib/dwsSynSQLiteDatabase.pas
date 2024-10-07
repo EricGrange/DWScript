@@ -143,7 +143,7 @@ implementation
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
 
-uses dwsSynSQLiteFunctions;
+uses dwsSynSQLiteFunctions, dwsUTF8;
 
 var
    vSQLite3DynamicMRSW : TMultiReadSingleWrite;

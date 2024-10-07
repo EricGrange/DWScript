@@ -280,7 +280,9 @@ implementation
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
 
-uses System.DateUtils, dwsWebServerHelpers, dwsWebServerUtils, dwsWebUtils;
+uses
+   System.DateUtils,
+   dwsWebServerHelpers, dwsWebServerUtils, dwsWebUtils, dwsUTF8;
 
 // ------------------
 // ------------------ TWebEnvironmentHelper ------------------
@@ -390,10 +392,8 @@ end;
 function TWebRequest.PrepareCookies : TStrings;
 
    procedure AddCookie(const name, value : String);
-   var
-      i : Integer;
    begin
-      i := Result.IndexOfName(name);
+      var i := Result.IndexOfName(name);
       if i >= 0 then begin
          if value <> '' then
             Result[i] := name + '=' + value;
@@ -442,7 +442,6 @@ var
       boundary : RawByteString;
       parts : TIMIMEBodyParts;
       part : TMIMEBodyPart;
-      i : Integer;
       name, partContentType : String;
    begin
       ctFields := TFastCompareStringList.Create;
@@ -451,7 +450,7 @@ var
          ScriptStringToRawByteString(ctFields.Values['boundary'], boundary);
          if boundary <> '' then
             WebUtils.ParseMultiPartFormData(ContentData, '--' + boundary, parts);
-         for i := 0 to High(parts) do begin
+         for var i := 0 to High(parts) do begin
             part := parts[i].GetSelf;
             name := part.Name;
             Result.Add(name + '=' + part.FileName);
@@ -659,22 +658,20 @@ end;
 //
 function TWebResponse.CompiledHeaders : RawByteString;
 var
-   i, p : Integer;
-   wobs : TWriteOnlyBlockStream;
    buf : String;
 begin
-   wobs:=TWriteOnlyBlockStream.AllocFromPool;
+   var wobs := TWriteOnlyBlockStream.AllocFromPool;
    try
-      for i:=0 to Headers.Count-1 do begin
+      for var i := 0 to Headers.Count-1 do begin
          buf:=FHeaders[i];
-         p:=Pos('=', buf);
+         var p := Pos('=', buf);
          wobs.WriteSubString(buf, 1, p-1);
          wobs.WriteString(': ');
          wobs.WriteSubString(buf, p+1);
          wobs.WriteCRLF;
       end;
       if HasCookies then
-         for i:=0 to Cookies.Count-1 do
+         for var i := 0 to Cookies.Count-1 do
             FCookies[i].WriteStringLn(wobs);
       Result:=wobs.ToUTF8String;
    finally

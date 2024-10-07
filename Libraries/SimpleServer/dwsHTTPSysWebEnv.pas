@@ -113,6 +113,8 @@ implementation
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
 
+uses dwsUTF8;
+
 procedure GetDomainUserFromToken(hToken : THandle; var result: String);
 var
    err : Boolean;

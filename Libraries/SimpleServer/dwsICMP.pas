@@ -27,7 +27,7 @@ implementation
 
 uses
    Winapi.Windows, System.SysUtils, Winapi.WinSock,
-   dwsXPlatform, dwsRandom, dwsUtils;
+   dwsXPlatform, dwsRandom, dwsUtils, dwsUTF8;
 
 type
    PIO_APC_ROUTINE = Pointer;

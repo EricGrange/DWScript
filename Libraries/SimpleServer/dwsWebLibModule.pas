@@ -231,7 +231,7 @@ implementation
 {$R *.dfm}
 
 uses dwsHttpRequest, dwsWinHTTP, dwsDynamicArrays, dwsICMP,
-   dwsInfo, dwsStrings, dwsWebUtils;
+   dwsInfo, dwsStrings, dwsWebUtils, dwsUTF8;
 
 function TdwsWebLib.GetServerEvents : IdwsHTTPServerEvents;
 begin

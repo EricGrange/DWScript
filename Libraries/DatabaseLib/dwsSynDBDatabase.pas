@@ -105,13 +105,14 @@ implementation
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
 
+uses dwsUTF8;
+
 procedure AssignParameters(var stmt : TSQLDBStatement; const params : IScriptDynArray);
 var
-   i : Integer;
    p : PVarData;
    v : Variant;
 begin
-   for i:=1 to params.ArrayLength do begin
+   for var i := 1 to params.ArrayLength do begin
       params.EvalAsVariant(i-1, v);
       p := PVarData(@v);
       case p.VType of

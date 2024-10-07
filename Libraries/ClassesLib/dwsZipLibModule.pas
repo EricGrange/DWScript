@@ -90,7 +90,7 @@ implementation
 
 uses
    Winapi.Windows,
-   SynZip, dwsUtils;
+   SynZip, dwsUtils, dwsUTF8;
 
 {$R *.dfm}
 

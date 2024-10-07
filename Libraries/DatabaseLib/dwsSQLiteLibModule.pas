@@ -43,7 +43,7 @@ implementation
 // ------------------------------------------------------------------
 
 uses
-   dwsDatabaseLibModule, dwsSynSQLiteDataBase, dwsUtils, dwsDatabase,
+   dwsDatabaseLibModule, dwsSynSQLiteDataBase, dwsUtils, dwsDatabase, dwsUTF8,
    SynSQLite3;
 
 {$R *.dfm}

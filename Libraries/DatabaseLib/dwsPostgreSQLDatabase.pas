@@ -149,7 +149,7 @@ implementation
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
 
-uses dwsRandom, dwsXXHash, dwsXPlatform;
+uses dwsRandom, dwsXXHash, dwsXPlatform, dwsUTF8;
 
 const
    cInitialFetch = 'FETCH 2 in ';

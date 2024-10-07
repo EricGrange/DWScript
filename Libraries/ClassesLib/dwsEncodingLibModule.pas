@@ -95,7 +95,7 @@ implementation
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
 
-uses dwsUtils, dwsEncoding, dwsWebUtils, dwsSymbols;
+uses dwsUtils, dwsEncoding, dwsWebUtils, dwsSymbols, dwsUTF8;
 
 {$R *.dfm}
 
@@ -272,7 +272,7 @@ end;
 function TdwsEncodingLib.dwsEncodingClassesUTF8EncoderMethodsIsValidUTF8FastEvalBoolean(
   baseExpr: TTypedExpr; const args: TExprBaseListExec): Boolean;
 begin
-   Result := IsValidUTF8(args.AsDataString[0]);
+   Result := dwsUTF8.IsValidUTF8(args.AsDataString[0]);
 end;
 
 procedure TdwsEncodingLib.dwsEncodingClassesXMLTextEncoderMethodsEncodeEval(

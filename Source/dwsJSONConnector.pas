@@ -343,7 +343,7 @@ implementation
 uses
    System.Variants,
    dwsConstExprs, dwsJSONScript, dwsDynamicArrays, dwsErrors, dwsUnicode,
-   dwsStrings, dwsXXHash, dwsXPlatform;
+   dwsStrings, dwsXXHash, dwsXPlatform, dwsUTF8;
 
 const
    SYS_JSON = 'JSON';

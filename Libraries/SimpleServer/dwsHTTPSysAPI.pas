@@ -991,7 +991,7 @@ implementation
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
 
-uses dwsUtils;
+uses dwsUtils, dwsUTF8;
 
 class procedure THttpAPI.InitializeAPI;
 var
