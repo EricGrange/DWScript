@@ -17,7 +17,9 @@ unit UdwsXPlatformTests;
 
 interface
 
-uses Classes, SysUtils, Math, Types, dwsXPlatformTests, dwsUtils, dwsXPlatform;
+uses
+   System.Classes, System.SysUtils, System.Math, System.Types, System.DateUtils,
+   dwsXPlatformTests, dwsUtils, dwsXPlatform;
 
 type
 
@@ -37,6 +39,7 @@ type
          procedure SwapBytesTest;
          procedure MRSWTest;
          procedure VersionsTest;
+         procedure FileDateTimeTest;
    end;
 
 // ------------------------------------------------------------------
@@ -198,6 +201,33 @@ begin
    v := ApplicationVersion;
    CheckTrue(StrMatches(v, '*.*.*.*'), v);
    CheckEquals(v, ApplicationVersion, 'recheck');
+end;
+
+// FileDateTimeTest
+//
+procedure TdwsXPlatformTests.FileDateTimeTest;
+var
+   fileName : String;
+begin
+   var dtWinter := TdwsDateTime.FromLocalDateTime(EncodeDateTime(2024, 1, 2, 3, 4, 5, 6));
+   var dtSummer := TdwsDateTime.FromLocalDateTime(EncodeDateTime(2024, 7, 8, 9, 10, 11, 12));
+
+   fileName := TPath.GetTempFileName;
+   try
+      var f := FileCreate(fileName);
+      FileSetDateTime(f, dtWinter);
+      FileClose(f);
+
+      CheckEquals(dtWinter.AsJavaScriptTime, FileDateTime(fileName).AsJavaScriptTime, 'Winter dt');
+
+      f := FileOpen(fileName, fmOpenReadWrite);
+      FileSetDateTime(f, dtSummer);
+      FileClose(f);
+
+      CheckEquals(dtSummer.AsJavaScriptTime, FileDateTime(fileName).AsJavaScriptTime, 'Summer dt');
+   finally
+      DeleteFile(fileName);
+   end;
 end;
 
 // UnicodeLowerAndUpperCaseTest
