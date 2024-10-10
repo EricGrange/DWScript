@@ -239,6 +239,7 @@ type
       public
          class function Now : TdwsDateTime; static;
          class function FromLocalDateTime(const dt : TDateTime) : TdwsDateTime; static;
+         class function FromUTCDateTime(const dt : TDateTime) : TdwsDateTime; static;
 
          procedure Clear; inline;
          function IsZero : Boolean; inline;
@@ -3321,6 +3322,13 @@ end;
 class function TdwsDateTime.FromLocalDateTime(const dt : TDateTime) : TdwsDateTime;
 begin
    Result.AsLocalDateTime := dt;
+end;
+
+// FromUTCDateTime
+//
+class function TdwsDateTime.FromUTCDateTime(const dt : TDateTime) : TdwsDateTime;
+begin
+   Result.AsUTCDateTime := dt;
 end;
 
 // Clear
