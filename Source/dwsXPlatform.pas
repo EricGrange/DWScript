@@ -243,6 +243,7 @@ type
 
          procedure Clear; inline;
          function IsZero : Boolean; inline;
+         function IsNotZero : Boolean; inline;
 
          class operator Equal(const a, b : TdwsDateTime) : Boolean; static; inline;
          class operator NotEqual(const a, b : TdwsDateTime) : Boolean; static; inline;
@@ -348,7 +349,11 @@ procedure WordsToBytes(src : PWordArray; dest : PByteArray; nbWords : Integer);
 procedure BytesToWords(src : PByteArray; dest : PWordArray; nbBytes : Integer);
 procedure BytesToWordsInPlace(p : Pointer; n : NativeInt);
 
-function LoadDataFromFile(const fileName : TFileName) : TBytes;
+type
+   TOpenFileOption = ( ofoNoRaiseError );
+   TOpenFileOptions = set of TOpenFileOption;
+
+function LoadDataFromFile(const fileName : TFileName; const options : TOpenFileOptions = [ ]) : TBytes;
 procedure SaveDataToFile(const fileName : TFileName; const data : TBytes);
 
 function LoadRawBytesFromFile(const fileName : TFileName) : RawByteString;
@@ -359,13 +364,9 @@ procedure LoadRawBytesAsScriptStringFromFile(const fileName : TFileName; var res
 function LoadTextFromBuffer(const buf : TBytes) : UnicodeString;
 function LoadTextFromRawBytes(const buf : RawByteString) : UnicodeString;
 function LoadTextFromStream(aStream : TStream) : UnicodeString;
-function LoadTextFromFile(const fileName : TFileName) : UnicodeString;
+function LoadTextFromFile(const fileName : TFileName; const options : TOpenFileOptions = [ ]) : UnicodeString;
 procedure SaveTextToUTF8File(const fileName : TFileName; const text : String);
 procedure AppendTextToUTF8File(const fileName : TFileName; const text : UTF8String);
-
-type
-   TOpenFileOption = ( ofoNoRaiseError );
-   TOpenFileOptions = set of TOpenFileOption;
 
 function OpenFileForSequentialReadOnly(
    const fileName : TFileName;
@@ -377,6 +378,7 @@ function OpenFileForSequentialWriteOnly(
    ) : THandle;
 
 function CloseFileHandle(hFile : THandle) : Boolean;
+function FileClose(hFile : THandle) : Boolean; inline;
 function FileWrite(hFile : THandle; buffer : Pointer; byteCount : Int64) : Int64;
 function FileRead(hFile : THandle; buffer : Pointer; byteCount : Int64) : Int64;
 function FileFlushBuffers(hFile : THandle) : Boolean;
@@ -389,7 +391,9 @@ function FileSize(const name : TFileName) : Int64;
 function FileCreationTime(const name : TFileName) : TdwsDateTime; overload;
 function FileDateTime(const name : TFileName; lastAccess : Boolean = False) : TdwsDateTime; overload;
 function FileDateTime(hFile : THandle; lastAccess : Boolean = False) : TdwsDateTime; overload;
-procedure FileSetDateTime(hFile : THandle; const aDateTime : TdwsDateTime);
+procedure FileSetDateTime(hFile : THandle; const aDateTime : TdwsDateTime); overload;
+procedure FileSetDateTime(const name : TFileName; const aDateTime : TdwsDateTime); overload;
+
 function DeleteDirectory(const path : String; recursive : Boolean = True) : Boolean;
 
 type
@@ -1885,11 +1889,11 @@ end;
 
 // LoadTextFromFile
 //
-function LoadTextFromFile(const fileName : TFileName) : UnicodeString;
+function LoadTextFromFile(const fileName : TFileName; const options : TOpenFileOptions = [ ]) : UnicodeString;
 var
    buf : TBytes;
 begin
-   buf := LoadDataFromFile(fileName);
+   buf := LoadDataFromFile(fileName, options);
    Result := LoadTextFromBuffer(buf);
 end;
 
@@ -1925,7 +1929,7 @@ end;
 
 // LoadDataFromFile
 //
-function LoadDataFromFile(const fileName : TFileName) : TBytes;
+function LoadDataFromFile(const fileName : TFileName; const options : TOpenFileOptions = [ ]) : TBytes;
 {$ifdef WINDOWS}
 const
    INVALID_FILE_SIZE = DWORD($FFFFFFFF);
@@ -1934,7 +1938,7 @@ var
    n, nRead : Cardinal;
 begin
    if fileName='' then Exit(nil);
-   hFile:=OpenFileForSequentialReadOnly(fileName);
+   hFile:=OpenFileForSequentialReadOnly(fileName, options);
    if hFile=INVALID_HANDLE_VALUE then Exit(nil);
    try
       n:=GetFileSize(hFile, nil);
@@ -2247,11 +2251,18 @@ end;
 function CloseFileHandle(hFile : THandle) : Boolean;
 begin
    {$IFDEF WINDOWS}
-   Result := CloseHandle(hFile);
+   Result := Winapi.Windows.CloseHandle(hFile);
    {$else}
    System.SysUtils.FileClose(hFile);
    Result := True; // assume success, as RTL does not say
    {$endif}
+end;
+
+// FileClose
+//
+function FileClose(hFile : THandle) : Boolean;
+begin
+   Result := CloseFileHandle(hFile);
 end;
 
 // FileWrite
@@ -2496,6 +2507,20 @@ begin
   raise Exception.Create('not implemented');
 end;
 {$ENDIF}
+
+// FileSetDateTime
+//
+procedure FileSetDateTime(const name : TFileName; const aDateTime : TdwsDateTime);
+var
+   hFile : THandle;
+begin
+   hFile := FileOpen(name, fmOpenReadWrite);
+   try
+      FileSetDateTime(hFile, aDateTime);
+   finally
+      FileClose(hFile);
+   end;
+end;
 
 // DeleteDirectory
 //
@@ -3343,6 +3368,13 @@ end;
 function TdwsDateTime.IsZero : Boolean;
 begin
    Result := FValue = 0;
+end;
+
+// IsNotZero
+//
+function TdwsDateTime.IsNotZero : Boolean;
+begin
+   Result := FValue <> 0;
 end;
 
 // Equal
