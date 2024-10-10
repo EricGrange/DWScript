@@ -220,9 +220,7 @@ begin
 
       CheckEquals(dtWinter.AsJavaScriptTime, FileDateTime(fileName).AsJavaScriptTime, 'Winter dt');
 
-      f := FileOpen(fileName, fmOpenReadWrite);
-      FileSetDateTime(f, dtSummer);
-      FileClose(f);
+      FileSetDateTime(fileName, dtSummer);
 
       CheckEquals(dtSummer.AsJavaScriptTime, FileDateTime(fileName).AsJavaScriptTime, 'Summer dt');
    finally
