@@ -296,13 +296,20 @@ begin
          TObject(expr) := typedExpr;
          if Optimize then
             TObject(expr) := typedExpr.OptimizeToTypedExpr(Self, scriptPos);
-      end else if     toTyp.UnAliasedTypeIs(TDynamicArraySymbol) and (typedExpr is TArrayConstantExpr)
+      end else if     toTyp.UnAliasedTypeIs(TDynamicArraySymbol)
+                  and ((typedExpr is TArrayConstantExpr) or (typedExpr is TConstArrayExpr))
                   and toTyp.UnAliasedType.Typ.IsCompatible(typedExpr.Typ.UnaliasedType.Typ) then begin
          Result := True;
-         typedExpr := TConvArrayConstantToDynamicExpr.Create(
-            Self, scriptPos,
-            TArrayConstantExpr(typedExpr), TDynamicArraySymbol(toTyp.UnAliasedType)
-         );
+         if typedExpr is TConstArrayExpr then begin
+            typedExpr := TConvStaticArrayToDynamicExpr.Create(
+               Self, scriptPos, typedExpr, TDynamicArraySymbol(toTyp.UnAliasedType)
+            );
+         end else begin
+            typedExpr := TConvArrayConstantToDynamicExpr.Create(
+               Self, scriptPos,
+               TArrayConstantExpr(typedExpr), TDynamicArraySymbol(toTyp.UnAliasedType)
+            );
+         end;
          TObject(expr) := typedExpr;
       end else if (toTyp.UnAliasedType = TypFloat) and (typedExpr.Typ.UnAliasedType = TypInteger) then begin
          Result := True;
