@@ -762,6 +762,7 @@ procedure TSimpleDWScript.LoadDWScriptOptions(options : TdwsJSONValue);
       try
          ApplyPathsVariables(configPaths, libraryPaths);
          dwsCompileSystem.Paths.AddStrings(libraryPaths);
+         dwsCompileSystem.SearchPaths.AddStrings(libraryPaths);
          for i := 0 to libraryPaths.Count-1 do begin
             libPath := IncludeTrailingPathDelimiter(libraryPaths[i]);
             pathsFile := libPath + '.paths';
