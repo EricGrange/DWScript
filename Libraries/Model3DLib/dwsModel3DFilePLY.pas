@@ -183,7 +183,7 @@ begin
    Assert(BytesRemaining >= n);
    case n of
       2 : SwapBytesInt16(Pointer(Ptr), Pointer(Ptr));
-      4 : SwapBytesInt32(PUInt32(Ptr), PUInt32(Ptr));
+      4 : SwapBytesInt32(PInt32(Ptr), PInt32(Ptr));
       8 : SwapBytesInt64(PInt64(Ptr), PInt64(Ptr));
    end;
    Inc(Ptr, n);

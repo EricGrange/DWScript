@@ -188,6 +188,8 @@ type
    PUInt64 = ^UInt64;
    {$ENDIF}
 
+   PInt32 = PInteger;
+
    TdwsLargeInteger = record
       case Integer of
       0: (
@@ -415,7 +417,7 @@ function DirectSetMXCSR(newValue : Word) : Word; register;
 function SwapBytes(v : Cardinal) : Cardinal;
 procedure SwapBytesBlock(src, dest : PByte; nb : Integer);
 procedure SwapBytesInt16(src, dest : PWORD);
-procedure SwapBytesInt32(src, dest : PUInt32);
+procedure SwapBytesInt32(src, dest : PInt32);
 procedure SwapBytesInt64(src, dest : PInt64);
 
 function RDTSC : UInt64;
@@ -2636,7 +2638,7 @@ end;
 
 // SwapBytesInt32
 //
-procedure SwapBytesInt32(src, dest : PUInt32);
+procedure SwapBytesInt32(src, dest : PInt32);
 {$ifdef WIN64_ASM}
 asm
    mov   eax, [rcx]
