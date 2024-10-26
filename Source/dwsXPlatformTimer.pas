@@ -384,7 +384,7 @@ begin
                end;
             end;
         finally
-           if Timer.FClose then
+           if Assigned(Timer) and Timer.FClose then
            begin
               epoll_ctl(_TimerQueuePool.Handle, EPOLL_CTL_DEL, Timer.Handle, @Event); { -1 on error }
              __close(Timer.Handle);
