@@ -76,6 +76,7 @@ type
          procedure PropertiesDescription;
          procedure ConstantsDescription;
          procedure SetOfDescription;
+         procedure StringToPascal;
    end;
 
 // ------------------------------------------------------------------
@@ -86,7 +87,7 @@ implementation
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
 
-uses dwsEncodingLibModule;
+uses dwsEncodingLibModule, dwsPascalUtils;
 
 // ------------------
 // ------------------ TSourceUtilsTests ------------------
@@ -1298,6 +1299,19 @@ begin
    CheckEquals('const s2: TTestSet = [ TTestEnum.Alpha ]', (prog.Table.FindLocal('s2') as TConstSymbol).Description);
    CheckEquals('const s3: TTestSet = [ TTestEnum.Beta, TTestEnum.Gamma ]', (prog.Table.FindLocal('s3') as TConstSymbol).Description);
    CheckEquals('const s4: TTestSet = [ TTestEnum(10) ]', (prog.Table.FindLocal('s4') as TConstSymbol).Description);
+end;
+
+// StringToPascal
+//
+procedure TSourceUtilsTests.StringToPascal;
+begin
+   CheckEquals('""', StringToPascalString('', '"'), 'empty');
+   CheckEquals('''a''', StringToPascalString('a', ''''), 'quoted char');
+   CheckEquals('#9', StringToPascalString(#9, '"'), 'isolated control char');
+   CheckEquals('"ab"#9"bc"', StringToPascalString('ab'#9'bc', '"'), 'control char in middle');
+   CheckEquals('#9#21"a"', StringToPascalString(#9#21'a', '"'), 'leading control chars');
+   CheckEquals('"a"#13#10#0', StringToPascalString('a'#13#10#0, '"'), 'trailing control chars');
+   CheckEquals('"a""b"', StringToPascalString('a"b', '"'), 'quote char doubling');
 end;
 
 // SuggestInBlockWithError

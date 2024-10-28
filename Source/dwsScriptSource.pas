@@ -24,7 +24,7 @@ unit dwsScriptSource;
 interface
 
 uses
-   SysUtils, dwsStrings, dwsUtils, dwsXPlatform;
+   System.SysUtils, dwsStrings, dwsUtils, dwsXPlatform;
 
 type
 
