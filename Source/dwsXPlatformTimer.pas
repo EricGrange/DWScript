@@ -373,7 +373,7 @@ begin
       begin
          try
             Timer := FEvents[I].data.ptr;
-            if not Timer.FClose then
+            if Assigned(Timer) and not Timer.FClose then
             begin
                if (FEvents[I].events AND EPOLLIN) = EPOLLIN then
                begin
