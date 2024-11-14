@@ -90,6 +90,7 @@ type
 
          procedure VariantClearAssignString;
          procedure VarCompareSafeEqualityTests;
+         procedure VariantToStringTests;
 
          procedure TokenStoreData;
          procedure MultiThreadedTokenStore;
@@ -1212,6 +1213,85 @@ begin
    Check(VarCompareSafe('a', 'a') = vrEqual, 'a = a');
    Check(VarCompareSafe('a', 'A') = vrGreaterThan, 'a > A');
    Check(VarCompareSafe('A', 'a') = vrLessThan, 'a < A');
+end;
+
+// VariantToStringTests
+//
+procedure TdwsUtilsTests.VariantToStringTests;
+var
+   v : Variant;
+   s : String;
+  unknownObj : IUnknown;
+  dispatchObj : IDispatch;
+begin
+   // Test varUString
+   v := 'Hello, World!';
+   CheckEquals(varUString, VarType(v), 'not a varUString');
+   VariantToString(v, s);
+   CheckEquals('Hello, World!', s, 'Failed to convert varString (1)');
+   CheckEquals('Hello, World!', VariantToString(v), 'Failed to convert varString (2)');
+
+   // Test varString
+   v := RawByteString('Hello');
+   CheckEquals(varString, VarType(v), 'not a varString');
+   VariantToString(v, s);
+   CheckEquals('Hello', s, 'Failed to convert varString');
+
+   // Test varInt64
+   v := Int64(1234567890123456);
+   VariantToString(v, s);
+   CheckEquals('1234567890123456', s, 'Failed to convert varInt64');
+
+   // Test varDouble
+   v := 3.14159;
+   VariantToString(v, s);
+   CheckEquals('3.14159', s, 'Failed to convert varDouble');
+
+   // Test varBoolean (True)
+   v := True;
+   VariantToString(v, s);
+   CheckEquals('True', s, 'Failed to convert varBoolean (True)');
+
+   // Test varBoolean (False)
+   v := False;
+   VariantToString(v, s);
+   CheckEquals('False', s, 'Failed to convert varBoolean (False)');
+
+   // Test varNull
+   v := Null;
+   VariantToString(v, s);
+   CheckEquals(vValueOfNullVariantAsString, s, 'Failed to convert varNull');
+
+   // Test varUnknown (nil)
+   v := IUnknown(nil);
+   VariantToString(v, s);
+   CheckEquals('nil', s, 'Failed to convert varUnknown (nil)');
+
+   // Test varError
+   TVarData(v).VType := varError;
+   VariantToString(v, s);
+   CheckEquals('[varError]', s, 'Failed to convert varError');
+
+   // Test VariantArray
+   v := VarArrayOf([1, 'two', 3.14]);
+   VariantToString(v, s);
+   CheckEquals('[ 1, two, 3.14 ]', s, 'Failed to convert VariantArray');
+
+   // Test varUnknown (non-nil, but doesn't implement IGetSelf)
+   unknownObj := TInterfacedObject.Create as IUnknown;
+   v := unknownObj;
+   VariantToString(v, s);
+   CheckEquals('[IUnknown]', s, 'Failed to convert varUnknown (non-nil, no IGetSelf)');
+
+   // Test empty variant
+   v := Unassigned;
+   VariantToString(v, s);
+   CheckEquals('', s, 'Failed to convert empty variant');
+
+   // Test variant array with mixed types
+   v := VarArrayOf([1, 'two', 3.14, True, Null]);
+   VariantToString(v, s);
+   CheckEquals('[ 1, two, 3.14, True, ' + vValueOfNullVariantAsString + ' ]', s, 'Failed to convert mixed VariantArray');
 end;
 
 // MultiThreadedTokenStore

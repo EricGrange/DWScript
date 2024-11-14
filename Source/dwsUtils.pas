@@ -2400,11 +2400,6 @@ end;
 //
 procedure VariantToString(const v : Variant; var s : String);
 
-   procedure DispatchAsString(const disp : Pointer; var Result : String);
-   begin
-      Result := Format('IDispatch (%p)', [disp]);
-   end;
-
    procedure UnknownAsString(const unknown : IUnknown; var result : String);
    var
       intf : IGetSelf;
