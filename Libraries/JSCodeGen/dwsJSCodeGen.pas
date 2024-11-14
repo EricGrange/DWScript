@@ -4832,7 +4832,7 @@ var
 begin
    if funcSym is TMethodSymbol then begin
       meth:=TMethodSymbol(funcSym);
-      if meth.IsStatic and meth.StructSymbol.IsClassSymbol then begin
+      if meth.IsStatic and meth.StructSymbol.IsClassSymbol and not meth.IsExternal then begin
          codeGen.WriteSymbolName(meth.StructSymbol);
          codeGen.WriteString('.');
       end;
