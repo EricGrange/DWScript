@@ -104,8 +104,6 @@ type
          function ToStringArray : TStringDynArray;
          function ToInt64Array : TInt64DynArray;
 
-         procedure AddStrings(sl : TStrings);
-
          function HashCode(addr : NativeInt; size : NativeInt) : Cardinal; virtual;
 
          property ElementTyp : TTypeSymbol read FElementTyp;
@@ -193,7 +191,6 @@ type
          function  Compare(index1, index2 : NativeInt) : Integer;
          procedure NaturalSort;
 
-         procedure AddStrings(sl : TStrings);
          procedure AppendString(index : NativeInt; const str : String);
 
          function GetAsFloat(index : NativeInt) : Double;
@@ -266,7 +263,6 @@ type
          function  Compare(index1, index2 : NativeInt) : Integer;
          procedure NaturalSort;
 
-         procedure AddStrings(sl : TStrings);
          procedure AppendString(index : NativeInt; const str : String);
 
          function AsPDouble(var nbElements, stride : NativeInt) : PDouble;
@@ -399,7 +395,6 @@ type
          function  Compare(index1, index2 : NativeInt) : Integer;
          procedure NaturalSort;
 
-         procedure AddStrings(sl : TStrings);
          procedure AppendString(index : NativeInt; const str : String);
 
          function GetAsFloat(index : NativeInt) : Double;
@@ -466,7 +461,6 @@ type
          function  Compare(index1, index2 : NativeInt) : NativeInt;
          procedure NaturalSort;
 
-         procedure AddStrings(sl : TStrings);
          procedure AppendString(index : NativeInt; const str : String);
 
          function GetAsFloat(index : NativeInt) : Double;
@@ -551,7 +545,6 @@ type
          function  Compare(index1, index2 : NativeInt) : NativeInt;
          procedure NaturalSort;
 
-         procedure AddStrings(sl : TStrings);
          procedure AppendString(index : NativeInt; const str : String);
 
          function GetAsFloat(index : NativeInt) : Double;
@@ -584,6 +577,7 @@ type
    end;
 
 procedure CreateNewDynamicArray(elemTyp : TTypeSymbol; var result : IScriptDynArray);
+procedure CreateNewDynamicStringArray(elemTyp : TTypeSymbol; var result : IScriptDynArray; initialData : TStrings);
 
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
@@ -614,18 +608,6 @@ begin
 end;
 *)
 
-// DynamicArrayAddStrings
-//
-procedure DynamicArrayAddStrings(const dyn : IScriptDynArray; sl : TStrings);
-var
-   i, n : Integer;
-begin
-   n := dyn.ArrayLength;
-   dyn.ArrayLength := n + sl.Count;
-   for i := 0 to sl.Count-1 do
-      dyn.AsString[i+n] := sl[i];
-end;
-
 // CreateNewDynamicArray (proc IScriptDynArray)
 //
 procedure CreateNewDynamicArray(elemTyp : TTypeSymbol; var result : IScriptDynArray);
@@ -639,24 +621,34 @@ begin
    if size = 1 then begin
       ct := elemTyp.UnAliasedType.ClassType;
       if ct = TBaseStringSymbol then
-         Result := TScriptDynamicNativeStringArray.Create(elemTyp)
+         result := TScriptDynamicNativeStringArray.Create(elemTyp)
       else if ct = TBaseFloatSymbol then
-         Result := TScriptDynamicNativeFloatArray.Create(elemTyp)
+         result := TScriptDynamicNativeFloatArray.Create(elemTyp)
       else if ct = TBaseIntegerSymbol then
-         Result := TScriptDynamicNativeIntegerArray.Create(elemTyp)
+         result := TScriptDynamicNativeIntegerArray.Create(elemTyp)
       else if ct = TBaseBooleanSymbol then
-         Result := TScriptDynamicNativeBooleanArray.Create(elemTyp)
+         result := TScriptDynamicNativeBooleanArray.Create(elemTyp)
 //      else if ct = TBaseVariantSymbol then
-//         Result := TScriptDynamicNativeVariantArray.Create(elemTyp)
+//         result := TScriptDynamicNativeVariantArray.Create(elemTyp)
       else if ct = TClassSymbol then
-         Result := TScriptDynamicNativeObjectArray.Create(elemTyp)
+         result := TScriptDynamicNativeObjectArray.Create(elemTyp)
       else if ct = TDynamicArraySymbol then
-         Result := TScriptDynamicNativeDynArrayArray.Create(elemTyp)
+         result := TScriptDynamicNativeDynArrayArray.Create(elemTyp)
 //      else if ct = TInterfaceSymbol then
-//         Result := TScriptDynamicNativeInterfaceArray.Create(elemTyp)
-      else Result := TScriptDynamicValueArray.Create(elemTyp)
+//         result := TScriptDynamicNativeInterfaceArray.Create(elemTyp)
+      else result := TScriptDynamicValueArray.Create(elemTyp)
 
-   end else Result := TScriptDynamicDataArray.Create(elemTyp);
+   end else result := TScriptDynamicDataArray.Create(elemTyp);
+end;
+
+// CreateNewDynamicStringArray
+//
+procedure CreateNewDynamicStringArray(elemTyp : TTypeSymbol; var result : IScriptDynArray; initialData : TStrings);
+begin
+   var dynArray := TScriptDynamicNativeStringArray.Create(elemTyp);
+   result := dynArray;
+   if initialData <> nil then
+      dynArray.AddStrings(initialData);
 end;
 
 // ------------------
@@ -820,13 +812,6 @@ procedure TScriptDynamicDataArray.FreeInstance;
 begin
    ClearData;
    FreeMemory(Self);
-end;
-
-// AddStrings
-//
-procedure TScriptDynamicDataArray.AddStrings(sl : TStrings);
-begin
-   DynamicArrayAddStrings(Self, sl);
 end;
 
 // HashCode
@@ -1439,13 +1424,6 @@ begin
 
 end;
 
-// AddStrings
-//
-procedure TScriptDynamicNativeIntegerArray.AddStrings(sl : TStrings);
-begin
-   DynamicArrayAddStrings(Self, sl);
-end;
-
 // AppendString
 //
 procedure TScriptDynamicNativeIntegerArray.AppendString(index : NativeInt; const str : String);
@@ -1853,13 +1831,6 @@ procedure TScriptDynamicNativeFloatArray.NaturalSort;
 begin
    if FArrayLength > 1 then
       QuickSortDoublePrecision(FData, 0, FArrayLength-1);
-end;
-
-// AddStrings
-//
-procedure TScriptDynamicNativeFloatArray.AddStrings(sl : TStrings);
-begin
-   DynamicArrayAddStrings(Self, sl);
 end;
 
 // AppendString
@@ -2670,18 +2641,6 @@ begin
       QuickSortVariant(PVariantArray(FData), 0, FArrayLength-1);
 end;
 
-// AddStrings
-//
-procedure TScriptDynamicNativeVariantArray.AddStrings(sl : TStrings);
-var
-   i, n : NativeInt;
-begin
-   n := FArrayLength;
-   SetArrayLength(n + sl.Count);
-   for i := 0 to sl.Count-1 do
-      VarCopySafe(FData[i+n], sl[i]);
-end;
-
 // AppendString
 //
 procedure TScriptDynamicNativeVariantArray.AppendString(index : NativeInt; const str : String);
@@ -3045,13 +3004,6 @@ end;
 // NaturalSort
 //
 procedure TScriptDynamicNativeBaseInterfaceArray.NaturalSort;
-begin
-   Assert(False);
-end;
-
-// AddStrings
-//
-procedure TScriptDynamicNativeBaseInterfaceArray.AddStrings(sl : TStrings);
 begin
    Assert(False);
 end;
@@ -3569,13 +3521,6 @@ begin
    end;
    for i := j to FArrayLength-1 do
       SetAsBoolean(i, True);
-end;
-
-// AddStrings
-//
-procedure TScriptDynamicNativeBooleanArray.AddStrings(sl : TStrings);
-begin
-   DynamicArrayAddStrings(Self, sl);
 end;
 
 // AppendString

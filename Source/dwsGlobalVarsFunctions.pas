@@ -751,14 +751,16 @@ end;
 procedure TGlobalVarsNamesFunc.DoEvalAsVariant(const args : TExprBaseListExec; var result : Variant);
 var
    newArray : IScriptDynArray;
-   sl : TStringList;
 begin
-   sl := TStringList.Create;
+   var sl := TStringList.Create;
    try
       vGlobalVars.EnumerateNamesToStrings(args.AsString[0], sl);
-      CreateNewDynamicArray((args.Exec as TdwsProgramExecution).CompilerContext.TypString, newArray);
+      CreateNewDynamicStringArray(
+         (args.Exec as TdwsProgramExecution).CompilerContext.TypString,
+         newArray,
+         sl
+      );
       result := newArray;
-      newArray.AddStrings(sl);
    finally
       sl.Free;
    end;
@@ -996,9 +998,8 @@ begin
       enum.FOffset := Length(prefix)+1;
       vPrivateVars.EnumerateNames(prefix + filter, enum.Add);
 
-      CreateNewDynamicArray(typString, dynArray);
+      CreateNewDynamicStringArray(typString, dynArray, enum);
       VarCopySafe(result, dynArray);
-      dynArray.AddStrings(enum);
    finally
       enum.Free;
    end;

@@ -1018,15 +1018,17 @@ end;
 //
 procedure TEnumerateDirFunc.DoEvalAsVariant(const args : TExprBaseListExec; var result : Variant);
 var
-   sl : TStringList;
    base : IScriptDynArray;
 begin
-   sl := TStringList.Create;
+   var sl := TStringList.Create;
    try
       CollectFiles(args.AsFileName[0], args.AsString[1], sl, args.AsBoolean[2]);
-      CreateNewDynamicArray((args.Exec as TdwsProgramExecution).CompilerContext.TypString, base);
+      CreateNewDynamicStringArray(
+         (args.Exec as TdwsProgramExecution).CompilerContext.TypString,
+         base,
+         sl
+      );
       VarCopySafe(result, base);
-      base.AddStrings(sl);
    finally
       sl.Free;
    end;
@@ -1040,15 +1042,17 @@ end;
 //
 procedure TEnumerateSubDirsFunc.DoEvalAsVariant(const args : TExprBaseListExec; var result : Variant);
 var
-   sl : TStringList;
    newArray : IScriptDynArray;
 begin
-   sl := TStringList.Create;
+   var sl := TStringList.Create;
    try
       CollectSubDirs(args.AsFileName[0], sl);
-      CreateNewDynamicArray((args.Exec as TdwsProgramExecution).CompilerContext.TypString, newArray);
+      CreateNewDynamicStringArray(
+         (args.Exec as TdwsProgramExecution).CompilerContext.TypString,
+         newArray,
+         sl
+      );
       VarCopySafe(Result, newArray);
-      newArray.AddStrings(sl);
    finally
       sl.Free;
    end;
