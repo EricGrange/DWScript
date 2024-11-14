@@ -119,6 +119,7 @@ type
          procedure VariantPersist;
 
          procedure xxHashTest;
+         procedure xxHashPartial;
 
          procedure URLRewriter;
 
@@ -2048,6 +2049,26 @@ begin
    for i := 1 to 1000 do
       abc := abc + 'abc';
    CheckFull(abc, $598bfdf6);
+end;
+
+// xxHashPartial
+//
+procedure TdwsUtilsTests.xxHashPartial;
+var
+   hashRec : xxHash32;
+   data : RawByteString;
+begin
+   data := '1234567890abcdefgh';
+
+   hashRec.Init(0);
+   hashRec.Update(@data[1], 10);
+   hashRec.Update(@data[11], 8);
+   CheckEquals($1f03d5e7, hashRec.Digest, 'seed 0');
+
+   hashRec.Init(1234);
+   hashRec.Update(@data[1], 10);
+   hashRec.Update(@data[11], 8);
+   CheckEquals($8e1995a7, hashRec.Digest, 'seed 1234');
 end;
 
 // URLRewriter
