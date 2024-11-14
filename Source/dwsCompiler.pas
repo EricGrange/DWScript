@@ -2309,8 +2309,9 @@ var
    stmt : TProgramExpr;
    action : TdwsStatementAction;
 begin
-   reach:=rsReachable;
-   Result:=TBlockExpr.Create(FCompilerContext, FTok.HotPos);
+   finalToken := ttNone;
+   reach := rsReachable;
+   Result := TBlockExpr.Create(FCompilerContext, FTok.HotPos);
    try
       while FTok.HasTokens do begin
          finalToken:=FTok.TestDeleteAny(endTokens);
