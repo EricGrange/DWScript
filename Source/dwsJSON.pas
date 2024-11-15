@@ -2771,7 +2771,8 @@ begin
       'N' :
          if     (parserState.NeedChar()='a')
             and (parserState.NeedChar()='N') then
-            AsNumber := 0/0;
+            AsNumber := 0/0
+         else RaiseJSONParseError('Invalid immediate value');
       'I' :
          if     (parserState.NeedChar()='n')
             and (parserState.NeedChar()='f')
@@ -2780,7 +2781,8 @@ begin
             and (parserState.NeedChar()='i')
             and (parserState.NeedChar()='t')
             and (parserState.NeedChar()='y') then
-            AsNumber := 1/0;
+            AsNumber := 1/0
+         else RaiseJSONParseError('Invalid immediate value');
    else
       RaiseJSONParseError('Invalid immediate value');
    end;

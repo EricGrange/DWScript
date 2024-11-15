@@ -44,6 +44,7 @@ type
          procedure JSONIntegerArrayBadStart;
          procedure JSONIntegerArrayBadChar;
          procedure JSONIntegerArrayBadComma;
+         procedure JSONIntegerArrayOverflow;
          procedure JSONNumberArrayBadStart;
          procedure JSONNumberArrayBadChar;
          procedure JSONNumberArrayBadComma;
@@ -75,9 +76,11 @@ type
          procedure JSONEmptyArray;
          procedure JSONSpecialChars;
          procedure JSONLongNumber;
+         procedure JSONInvalidNumbers;
          procedure JSONInvalidStuff;
          procedure JSONParseArrayInvalid;
          procedure JSONParseArrayLarge;
+         procedure JSONParseIntegerArray;
          procedure NestedArrays;
          procedure MultipleElementsWithSameName;
          procedure SetItemTest;
@@ -492,6 +495,23 @@ begin
    end;
 end;
 
+// JSONIntegerArrayOverflow
+//
+procedure TdwsJSONTests.JSONIntegerArrayOverflow;
+var
+   state : TdwsJSONParserState;
+   dest : TSimpleInt64List;
+begin
+   state := TdwsJSONParserState.Create('[123456789123456789123456789]');
+   dest := TSimpleInt64List.Create;
+   try
+      state.ParseIntegerArray(dest);
+   finally
+      dest.Free;
+      state.Free;
+   end;
+end;
+
 // JSONNumberArrayBadStart
 //
 procedure TdwsJSONTests.JSONNumberArrayBadStart;
@@ -683,6 +703,13 @@ begin
 
    CheckEquals('{"empty":[],"nested":[[]]}', json.ToUnicodeString, 'roundtrip');
 
+   try
+      (json['empty'] as TdwsJSONArray).Swap(0, 1);
+   except
+      on E: Exception do
+         CheckEquals(E.ClassType, EdwsJSONIndexOutOfRange, 'Empty array swap');
+   end;
+
    json.Free;
 
    CheckException(JSONExtraComma, EdwsJSONParseError, 'extra comma');
@@ -713,11 +740,47 @@ const
 var
    json : TdwsJSONValue;
 begin
-   json:=TdwsJSONValue.ParseString('{"test":1'+StringOfChar('0', 64)+'}');
+   json:=TdwsJSONValue.ParseString(
+        '{'
+      + '"test":1'+StringOfChar('0', 64)
+      + ',"test2":' + StringOfChar('0', 64) + '2e1'
+      + '}'
+   );
 
-   CheckEquals(c1e64, json['test'].Value.AsNumber, 'specials');
+   CheckEquals(c1e64, json['test'].Value.AsNumber, 'specials 1e64');
+   CheckEquals(20, json['test2'].Value.AsNumber, 'specials 000..02e1');
 
-   json.Free;
+   FreeAndNil(json);
+
+   try
+      TdwsJSONValue.ParseString(StringOfChar('0', 64) + 'ee');
+   except
+      on E : Exception do
+         CheckEquals(EdwsJSONParseError, E.ClassType, 'Invalid number');
+   end;
+end;
+
+// JSONInvalidNumbers
+//
+procedure TdwsJSONTests.JSONInvalidNumbers;
+
+   procedure CheckFailure(const s : String);
+   begin
+      try
+         TdwsJSONValue.ParseString(s);
+         Check(False, s + ' should have faled');
+      except
+         on E : Exception do
+            CheckEquals(EdwsJSONParseError, E.ClassType, 'Invalid Exception for ' + s);
+      end;
+   end;
+
+begin
+   CheckFailure('0ee');
+   CheckFailure('Inn');
+   CheckFailure('-Infin');
+   CheckFailure('0...0');
+   CheckFailure('NaZ');
 end;
 
 // JSONInvalidStuff
@@ -746,6 +809,7 @@ begin
    CheckException(JSONIntegerArrayBadStart, EdwsJSONParseError, 'bad start i');
    CheckException(JSONIntegerArrayBadChar, EdwsJSONParseError, 'bad char i');
    CheckException(JSONIntegerArrayBadComma, EdwsJSONParseError, 'bad comma i');
+   CheckException(JSONIntegerArrayOverflow, EdwsJSONParseError, 'overflow i');
 
    CheckException(JSONNumberArrayBadStart, EdwsJSONParseError, 'bad start n');
    CheckException(JSONNumberArrayBadChar, EdwsJSONParseError, 'bad char n');
@@ -779,6 +843,28 @@ begin
       CheckEquals(129, list.Count);
       for i := 0 to list.Count-1 do
          CheckEquals(i, Length(list[i]));
+   finally
+      state.Free;
+      list.Free;
+   end;
+end;
+
+// JSONParseIntegerArray
+//
+procedure TdwsJSONTests.JSONParseIntegerArray;
+var
+   state : TdwsJSONParserState;
+   list : TSimpleInt64List;
+begin
+   list := TSimpleInt64List.Create;
+   state := TdwsJSONParserState.Create('[ -1, 2,3 , -4 ]');
+   try
+      state.ParseIntegerArray(list);
+      CheckEquals(4, list.Count);
+      CheckEquals(-1, list[0]);
+      CheckEquals( 2, list[1]);
+      CheckEquals( 3, list[2]);
+      CheckEquals(-4, list[3]);
    finally
       state.Free;
       list.Free;
