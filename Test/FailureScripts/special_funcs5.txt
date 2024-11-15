@@ -1,0 +1,2 @@
+Syntax Error: String expected [line: 3, column: 14]
+Syntax Error: Constant expression expected [line: 5, column: 15]

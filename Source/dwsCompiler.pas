@@ -11853,7 +11853,7 @@ begin
             Result:=FPendingSetterValueExpr;
             FPendingSetterValueExpr:=nil;
          end else begin
-            FMsgs.AddCompilerError(FTok.HotPos, CPE_ExpressionExpected);
+            FMsgs.AddCompilerStop(FTok.HotPos, CPE_ExpressionExpected);
             Result:=nil;
          end;
          Exit;
@@ -12972,13 +12972,6 @@ begin
    if location = name then Exit;
 
    location := ExtractFileName(locationName);
-   if UnicodeSameText(location, name) then begin
-      if location <> name then
-         FMsgs.AddCompilerHint(namePos, CPH_UnitNameCaseDoesntMatch);
-      exit;
-   end;
-
-   location := StrBeforeChar(location, ' ');
    if UnicodeSameText(location, name) then begin
       if location <> name then
          FMsgs.AddCompilerHint(namePos, CPH_UnitNameCaseDoesntMatch);
@@ -14178,15 +14171,17 @@ begin
       else
          argExpr:=ReadExpr;
       end;
-      if argExpr=nil then
-         argTyp:=nil
-      else begin
+      if argExpr = nil then begin
+         Result := TNullExpr.Create(argPos);
+         Exit;
+         //argTyp := nil
+      end else begin
          argTyp:=argExpr.Typ;
          if argTyp<>nil then
             argTyp:=argTyp.UnAliasedType;
       end;
 
-      if not Assigned(argTyp) then begin
+      if argTyp = nil then begin
          OrphanAndNil(argExpr);
          FMsgs.AddCompilerStop(argPos, CPE_InvalidOperands);
       end;
@@ -14326,12 +14321,7 @@ begin
             argExpr:=nil;
          end;
          skDefault : begin
-            if argTyp <> nil then
-               Result := CreateTypedDefault(argTyp) as TProgramExpr
-            else begin
-               FMsgs.AddCompilerError(argPos, CPE_TypeExpected);
-               Result := TConstExpr.CreateNull(namePos, FCompilerContext.TypVariant);
-            end;
+            Result := CreateTypedDefault(argTyp) as TProgramExpr;
             OrphanAndNil(argExpr);
          end;
          skSizeOf : begin

@@ -1,4 +1,1 @@
 Syntax Error: Expression expected [line: 5, column: 44]
-Syntax Error: Assignment's right-side-argument has no return type [line: 5, column: 31]
-Syntax Error: Expression expected [line: 6, column: 57]
-Syntax Error: Assignment's right-side-argument has no return type [line: 6, column: 32]
