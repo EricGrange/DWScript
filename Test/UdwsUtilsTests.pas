@@ -1221,8 +1221,7 @@ procedure TdwsUtilsTests.VariantToStringTests;
 var
    v : Variant;
    s : String;
-  unknownObj : IUnknown;
-  dispatchObj : IDispatch;
+   unknownObj : IUnknown;
 begin
    // Test varUString
    v := 'Hello, World!';
