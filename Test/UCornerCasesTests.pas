@@ -116,6 +116,9 @@ type
          procedure DiscardEmptyElse;
          procedure AnonymousRecordWithConstArrayField;
 
+         procedure Switch_TIMESTAMP;
+         procedure Switch_EXEVERSION;
+
          procedure UnderscoreNumbers;
 
          procedure DelphiDialectProcedureTypes;
@@ -127,6 +130,8 @@ type
          procedure ConstructorOverload;
 
          procedure EndDot;
+
+         procedure SizeOfSpecial;
    end;
 
    ETestException = class (Exception);
@@ -2308,6 +2313,33 @@ begin
    prog := nil;
 end;
 
+// Switch_TIMESTAMP
+//
+procedure TCornerCasesTests.Switch_TIMESTAMP;
+var
+   prog : IdwsProgram;
+begin
+   var ut1 := UnixTime;
+   prog := FCompiler.Compile('Print({$include %TIMESTAMP%});');
+   var ut2 := StrToIntDef(prog.Execute.Result.ToString, 0);
+   prog := nil;
+
+   var delta := ut2 - ut1;
+
+   Check(delta in [0..1], 'Invalid TIMESTAMP delta ' + IntToStr(delta));
+end;
+
+// Switch_EXEVERSION
+//
+procedure TCornerCasesTests.Switch_EXEVERSION;
+var
+   prog : IdwsProgram;
+begin
+   prog := FCompiler.Compile('Print({$include %EXEVERSION%});');
+   CheckEquals(ApplicationVersion, prog.Execute.Result.ToString, 'Invalid EXEVERSION');
+   prog := nil;
+end;
+
 // UnderscoreNumbers
 //
 procedure TCornerCasesTests.UnderscoreNumbers;
@@ -2481,6 +2513,26 @@ begin
       + 'end'
    );
    CheckEquals('Warning: Dot "." expected [line: 4, column: 1]'#13#10, prog.Msgs.AsInfo);
+end;
+
+// SizeOfSpecial
+//
+procedure TCornerCasesTests.SizeOfSpecial;
+var
+   prog : IdwsProgram;
+   code : String;
+begin
+   // SizeOf() is currently expressed in terms of variant slots
+   // this is not set in stone, this test is more to keep track of that state of things
+
+   code := 'Print(SizeOf(1));'#10
+         + 'Print(SizeOf("hello"));'#10
+         + 'var t : array [0..1] of Integer;'#10
+         + 'Print(SizeOf(t));';
+   prog := FCompiler.Compile(code);
+
+   CheckEquals('112', prog.Execute.Result.ToString, 'SizeOf');
+   prog := nil;
 end;
 
 // ------------------------------------------------------------------
