@@ -704,11 +704,6 @@ type
          procedure EvalAsScriptDynArray(exec : TdwsExecution; var result : IScriptDynArray); override;
          procedure EvalAsScriptAssociativeArray(exec : TdwsExecution; var result : IScriptAssociativeArray); override;
 
-         procedure AssignValue(exec : TdwsExecution; const value : Variant); override;
-         procedure AssignValueAsInteger(exec : TdwsExecution; const value : Int64); override;
-         procedure AssignValueAsBoolean(exec : TdwsExecution; const value : Boolean); override;
-         procedure AssignValueAsFloat(exec : TdwsExecution; const value : Double); override;
-         procedure AssignValueAsString(exec : TdwsExecution; const value: String); override;
          procedure AssignValueAsScriptObj(exec : TdwsExecution; const value : IScriptObj); override;
          procedure AssignValueAsScriptDynArray(exec : TdwsExecution; const value : IScriptDynArray); override;
 
@@ -3854,41 +3849,6 @@ end;
 procedure TProgramExpr.EvalAsScriptAssociativeArray(exec : TdwsExecution; var result : IScriptAssociativeArray);
 begin
    EvalAsInterface(exec, IUnknown(result));
-end;
-
-// AssignValue
-//
-procedure TProgramExpr.AssignValue(exec : TdwsExecution; const value : Variant);
-begin
-   raise EScriptError.CreateFmt('Cannot assign to %s', [ClassName]);
-end;
-
-// AssignValueAsInteger
-//
-procedure TProgramExpr.AssignValueAsInteger(exec : TdwsExecution; const value : Int64);
-begin
-   AssignValue(exec, value);
-end;
-
-// AssignValueAsBoolean
-//
-procedure TProgramExpr.AssignValueAsBoolean(exec : TdwsExecution; const value : Boolean);
-begin
-   AssignValue(exec, value);
-end;
-
-// AssignValueAsFloat
-//
-procedure TProgramExpr.AssignValueAsFloat(exec : TdwsExecution; const value : Double);
-begin
-   AssignValue(exec, value);
-end;
-
-// AssignValueAsString
-//
-procedure TProgramExpr.AssignValueAsString(exec : TdwsExecution; const value: String);
-begin
-   AssignValue(exec, value);
 end;
 
 // AssignValueAsScriptObj

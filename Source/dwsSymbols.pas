@@ -245,11 +245,11 @@ type
 
          procedure EvalAsSafeScriptObj(exec : TdwsExecution; var result : IScriptObj); overload;
 
-         procedure AssignValue(exec : TdwsExecution; const value : Variant); virtual; abstract;
-         procedure AssignValueAsInteger(exec : TdwsExecution; const value : Int64); virtual; abstract;
-         procedure AssignValueAsBoolean(exec : TdwsExecution; const value : Boolean); virtual; abstract;
-         procedure AssignValueAsFloat(exec : TdwsExecution; const value : Double); virtual; abstract;
-         procedure AssignValueAsString(exec : TdwsExecution; const value : String); virtual; abstract;
+         procedure AssignValue(exec : TdwsExecution; const value : Variant); virtual;
+         procedure AssignValueAsInteger(exec : TdwsExecution; const value : Int64); virtual;
+         procedure AssignValueAsBoolean(exec : TdwsExecution; const value : Boolean); virtual;
+         procedure AssignValueAsFloat(exec : TdwsExecution; const value : Double); virtual;
+         procedure AssignValueAsString(exec : TdwsExecution; const value : String); virtual;
          procedure AssignValueAsScriptObj(exec : TdwsExecution; const value : IScriptObj); virtual; abstract;
          procedure AssignValueAsScriptDynArray(exec : TdwsExecution; const value : IScriptDynArray); virtual; abstract;
 
@@ -2652,6 +2652,41 @@ begin
       RaiseObjectNotInstantiated(exec)
    else if result.Destroyed then
       RaiseObjectAlreadyDestroyed(exec);
+end;
+
+// AssignValue
+//
+procedure TExprBase.AssignValue(exec : TdwsExecution; const value : Variant);
+begin
+   raise EScriptError.CreateFmt('Cannot assign to %s', [ClassName]);
+end;
+
+// AssignValueAsInteger
+//
+procedure TExprBase.AssignValueAsInteger(exec : TdwsExecution; const value : Int64);
+begin
+   AssignValue(exec, value);
+end;
+
+// AssignValueAsBoolean
+//
+procedure TExprBase.AssignValueAsBoolean(exec : TdwsExecution; const value : Boolean);
+begin
+   AssignValue(exec, value);
+end;
+
+// AssignValueAsFloat
+//
+procedure TExprBase.AssignValueAsFloat(exec : TdwsExecution; const value : Double);
+begin
+   AssignValue(exec, value);
+end;
+
+// AssignValueAsString
+//
+procedure TExprBase.AssignValueAsString(exec : TdwsExecution; const value : String);
+begin
+   AssignValue(exec, value);
 end;
 
 // EvalAsVariantToDataContext
