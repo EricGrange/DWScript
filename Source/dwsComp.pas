@@ -317,8 +317,9 @@ type
 
       protected
          class function GetSymbolClass : TdwsSymbolClass; virtual; abstract;
+
          function GetSymbols(const Name: String): TdwsSymbol;
-         function GetItem(Index: Integer): TdwsSymbol;
+         function GetItem(Index: Integer): TdwsSymbol; inline;
          procedure SetItem(Index: Integer; Value: TdwsSymbol);
          procedure Reset;
 
@@ -487,6 +488,8 @@ type
 
       public
          constructor Create(collection : TCollection); override;
+
+         procedure Assign(Source: TPersistent); override;
 
          function DoGenerate(systemTable : TSystemSymbolTable; Table: TSymbolTable; ParentSym: TSymbol = nil): TSymbol; override;
 
@@ -1928,35 +1931,38 @@ begin
   Result := FUnit;
 end;
 
+// GetItem
+//
 function TdwsCollection.GetItem(Index: Integer): TdwsSymbol;
 begin
-  Result := TdwsSymbol(inherited Items[Index]);
+   Result := TdwsSymbol(inherited Items[Index]);
 end;
 
+// Reset
+//
 procedure TdwsCollection.Reset;
-var
-  x: Integer;
 begin
-  for x := 0 to Count - 1 do
-    Items[x].Reset;
+   for var x := 0 to Count - 1 do
+      Items[x].Reset;
 end;
 
+// SetItem
+//
 procedure TdwsCollection.SetItem(Index: Integer; Value: TdwsSymbol);
 begin
-  Items[Index].Assign(Value);
+   Items[Index].Assign(Value);
 end;
 
+// GetSymbols
+//
 function TdwsCollection.GetSymbols(const Name: String): TdwsSymbol;
-var
-  x: Integer;
 begin
-  for x := 0 to Count - 1 do
-  begin
-    Result := Items[x];
-    if UnicodeSameText(Result.Name,Name) then
-      Exit;
-  end;
-  Result := nil;
+   for var x := 0 to Count - 1 do begin
+      Result := Items[x];
+      if UnicodeSameText(Result.Name,Name) then
+         Exit;
+   end;
+   Result := nil;
 end;
 
 function TdwsCollection.IndexOf(const Name: String): Integer;
@@ -2811,18 +2817,16 @@ end;
 
 { TdwsVariables }
 
+// GetDisplayName
+//
 function TdwsVariables.GetDisplayName: String;
-var
-  i: Integer;
 begin
-  if Count > 0 then
-  begin
-    Result := Items[0].GetDisplayName;
-    for i := 1 to Count - 1 do
+   if Count <= 0 then
+      Exit('');
+
+   Result := Items[0].GetDisplayName;
+   for var i := 1 to Count - 1 do
       Result := Result + '; ' + Items[i].GetDisplayName;
-  end
-  else
-    Result := '';
 end;
 
 // Add
@@ -3085,17 +3089,19 @@ begin
    Assert(False);  // shouldn't be used anymore
 end;
 
+// GetDisplayName
+//
 function TdwsParameter.GetDisplayName: String;
 begin
-   Result:=inherited GetDisplayName;
+   Result := inherited GetDisplayName;
    if IsVarParam then
       if IsWritable then
-         Result:='var '+Result
-      else Result:='const '+Result
+         Result := 'var ' + Result
+      else Result := 'const ' + Result
    else if IsLazy then
-      Result:='lazy '+Result;
+      Result := 'lazy ' + Result;
    if HasDefaultValue then
-      Result:=Result+Format(' = %s', [ValueToString(DefaultValue)]);
+      Result := Result + Format(' = %s', [ ValueToString(DefaultValue) ]);
 end;
 
 procedure TdwsParameter.SetDefaultValue(const Value: Variant);
@@ -3637,8 +3643,8 @@ begin
    if Source is TdwsFunctionSymbol then begin
       FResultType := TdwsFunctionSymbol(Source).ResultType;
       FParameters.Assign(TdwsFunctionSymbol(Source).Parameters);
-      FDeprecated:=TdwsFunctionSymbol(Source).Deprecated;
-      FOverloaded:=TdwsFunctionSymbol(Source).Overloaded;
+      FDeprecated := TdwsFunctionSymbol(Source).Deprecated;
+      FOverloaded := TdwsFunctionSymbol(Source).Overloaded;
    end;
 end;
 
@@ -3652,6 +3658,17 @@ constructor TdwsFunction.Create;
 begin
    inherited;
    FCallable:=TdwsFunctionCallable.Create(Self);
+end;
+
+// Assign
+//
+procedure TdwsFunction.Assign(Source: TPersistent);
+begin
+   inherited;
+   if Source is TdwsFunction then begin
+      OnEval := TdwsFunction(Source).OnEval;
+      OnFastEval := TdwsFunction(Source).OnFastEval;
+   end;
 end;
 
 // DoGenerate

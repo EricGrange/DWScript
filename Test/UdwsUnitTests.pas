@@ -151,6 +151,7 @@ type
          procedure ClassNameTest;
          procedure VirtCreateFunc;
          procedure CallbackFuncNameTest;
+         procedure DefaultParamValueTest;
 
          procedure ParseNameTests;
 
@@ -385,7 +386,7 @@ begin
    param:=func.Parameters.Add;
    param.Name:='b';
    param.DataType:='Float';
-   param.DefaultValue:='0.5';
+   param.DefaultValue := 0.5;
 
    func:=FUnit.Functions.Add;
    func.Name:='FuncVariant';
@@ -514,6 +515,15 @@ begin
 
    func := FUnit.Functions.Add('FuncInternalClass', 'TInternalClass');
    func.OnEval := FuncInternalClass;
+
+   func:=FUnit.Functions.Add('FuncFastDef', 'Integer');
+   func.Parameters.Add('v', 'String').DefaultValue := 'hello';
+   func.OnFastEval:=FuncFastEval;
+
+   func:=FUnit.Functions.Add;
+   func.Assign(FUnit.Functions.Items[FUnit.Functions.IndexOf('FuncEnum')]);
+   func.Name := 'FuncEnumDef';
+   (func.Parameters.Items[0] as TdwsParameter).DefaultValue := 12;
 end;
 
 // DeclareTestClasses
@@ -2754,6 +2764,36 @@ begin
 
    CheckEquals('', prog.Execute.Msgs.AsInfo, 'exec errs');
    CheckEquals('-Hello-World', prog.Execute.Result.ToString, 'exec result');
+end;
+
+// DefaultParamValueTest
+//
+procedure TdwsUnitTests.DefaultParamValueTest;
+var
+   prog : IdwsProgram;
+begin
+   CheckEquals(
+      'function FuncFastDef(v : String = ''hello'') : Integer;',
+      FUnit.Functions.Symbols['FuncFastDef'].DisplayName
+   );
+   CheckEquals(
+      'function FuncEnumDef(e : TMyEnum = 12) : Integer;',
+      FUnit.Functions.Symbols['FuncEnumDef'].DisplayName
+   );
+   CheckEquals(
+      'function FuncFloat(a : Float; b : Float = 0.5) : Float;',
+      FUnit.Functions.Symbols['FuncFloat'].DisplayName
+   );
+
+   prog := FCompiler.Compile(
+       'Print(FuncFastDef);'#10
+      +'Print(FuncEnumDef);'
+   );
+
+   CheckEquals('', prog.Msgs.AsInfo, 'Compile');
+
+   CheckEquals('', prog.Execute.Msgs.AsInfo, 'exec errs');
+   CheckEquals('512', prog.Execute.Result.ToString, 'exec result');
 end;
 
 // ExplicitUses
