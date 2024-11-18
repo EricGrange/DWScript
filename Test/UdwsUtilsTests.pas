@@ -134,6 +134,13 @@ type
          procedure UTF16toUTF8;
 
          procedure StrCountCharTest;
+
+         procedure StrBeginsWithTests;
+         procedure StrEndsWithTests;
+
+         procedure LowerCaseATest;
+
+         procedure StrBeforeAfter;
    end;
 
 // ------------------------------------------------------------------
@@ -2136,18 +2143,42 @@ procedure TdwsUtilsTests.xxHashPartial;
 var
    hashRec : xxHash32;
    data : RawByteString;
+   full : Cardinal;
 begin
    data := '1234567890abcdefgh';
 
    hashRec.Init(0);
    hashRec.Update(@data[1], 10);
+   CheckEquals($e8412d73, hashRec.Digest, 'seed 0 10');
+
+   hashRec.Init(0);
+   hashRec.Update(@data[1], 10);
    hashRec.Update(@data[11], 8);
-   CheckEquals($1f03d5e7, hashRec.Digest, 'seed 0');
+   CheckEquals($1f03d5e7, hashRec.Digest, 'seed 0 18');
 
    hashRec.Init(1234);
    hashRec.Update(@data[1], 10);
    hashRec.Update(@data[11], 8);
    CheckEquals($8e1995a7, hashRec.Digest, 'seed 1234');
+
+
+   SetLength(data, 1022);
+   for var i := 1 to Length(data) do
+      data[i] := AnsiChar(i and 255);
+
+   full := xxHash32.Full(Pointer(data), Length(data), 123);
+
+   var p := 1;
+   var n := Length(data);
+   hashRec.Init(123);
+   while n > 0 do begin
+      var nStep :=Length(data) div 5;
+      if nStep > n then nStep := n;
+      hashRec.Update(@data[p], nStep);
+      Inc(p, nStep);
+      Dec(n, nStep);
+   end;
+   CheckEquals(full, hashRec.Digest, 'big full vs partial');
 end;
 
 // URLRewriter
@@ -2464,6 +2495,60 @@ begin
    CheckEquals(0, StrCountChar('', 'a'), 'empty');
    CheckEquals(0, StrCountChar('hello', 'a'), 'hello');
    CheckEquals(2, StrCountChar('ahelloa', 'a'), 'ahelloa');
+end;
+
+// StrBeginsWithTests
+//
+procedure TdwsUtilsTests.StrBeginsWithTests;
+begin
+   CheckTrue(StrBeginsWithA('banana', 'b'));
+   CheckFalse(StrBeginsWithA('banana', 'z'));
+   CheckFalse(StrBeginsWithA('ba', 'banana'));
+
+   CheckTrue(StrBeginsWithBytes('banana', [ Ord('b') ]));
+   CheckFalse(StrBeginsWithBytes('banana', [ Ord('z') ]));
+   CheckFalse(StrBeginsWithBytes('ba', [ Ord('b'), Ord('a'), Ord('n') ]));
+end;
+
+// StrEndsWithTests
+//
+procedure TdwsUtilsTests.StrEndsWithTests;
+begin
+   CheckTrue(StrEndsWithA('banana', 'a'));
+   CheckFalse(StrEndsWithA('banana', 'Na'));
+   CheckTrue(StrEndsWithA('banana', 'na'));
+
+   CheckFalse(StrEndsWithA('banana', 'z'));
+   CheckFalse(StrEndsWithA('ba', 'nba'));
+
+   CheckTrue(StrIEndsWithA('banana', 'a'));
+   CheckTrue(StrIEndsWithA('banana', 'Na'));
+   CheckTrue(StrIEndsWithA('banana', 'nA'));
+
+   CheckFalse(StrIEndsWithA('banana', 'z'));
+   CheckFalse(StrIEndsWithA('ba', 'nba'));
+end;
+
+// LowerCaseATest
+//
+procedure TdwsUtilsTests.LowerCaseATest;
+begin
+   CheckEquals('', LowerCaseA(''));
+   CheckEquals('a', LowerCaseA('A'));
+   CheckEquals('b', LowerCaseA('b'));
+
+   CheckEquals('@az[', LowerCaseA('@AZ['));
+end;
+
+// StrBeforeAfter
+//
+procedure TdwsUtilsTests.StrBeforeAfter;
+begin
+   CheckEquals('ba', StrBeforeChar('ban', 'n'));
+   CheckEquals('ban', StrBeforeChar('ban', 'z'));
+
+   CheckEquals('ana', StrAfterChar('banana', 'n'));
+   CheckEquals('', StrAfterChar('banana', 'z'));
 end;
 
 // ------------------------------------------------------------------
