@@ -33,6 +33,7 @@ type
          procedure JSONInvalidTrue;
          procedure JSONInvalidFalse;
          procedure JSONInvalidNull;
+         procedure JSONInvalidNull2;
          procedure JSONInvalidImmediate;
          procedure JSONUnterminatedString;
          procedure JSONInvalidNameValueSeparator;
@@ -81,6 +82,7 @@ type
          procedure JSONParseArrayInvalid;
          procedure JSONParseArrayLarge;
          procedure JSONParseIntegerArray;
+         procedure JSONParseNumberArray;
          procedure NestedArrays;
          procedure MultipleElementsWithSameName;
          procedure SetItemTest;
@@ -97,6 +99,7 @@ type
          procedure EnumerateArray;
          procedure ImmediateCasts;
          procedure DecimalSeparator;
+         procedure ParserStateLocation;
 
          procedure JSONPathBasic;
          procedure JSONPathObjectArray;
@@ -104,6 +107,8 @@ type
 
          procedure JSON5_WriteNaNs;
          procedure JSON5_ReadNaNs;
+
+         procedure WriteVariants;
 
          procedure StoreToStream;
    end;
@@ -115,6 +120,8 @@ implementation
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
+
+uses System.Variants;
 
 const
    cJSONbooks =
@@ -383,6 +390,13 @@ begin
    TdwsJSONValue.ParseString('{"v":nul');
 end;
 
+// JSONInvalidNull2
+//
+procedure TdwsJSONTests.JSONInvalidNull2;
+begin
+   TdwsJSONValue.ParseString('{"v":nulz');
+end;
+
 // JSONInvalidImmediate
 //
 procedure TdwsJSONTests.JSONInvalidImmediate;
@@ -616,6 +630,27 @@ begin
    end;
 end;
 
+// ParserStateLocation
+//
+procedure TdwsJSONTests.ParserStateLocation;
+var
+   state : TdwsJSONParserState;
+begin
+   state := TdwsJSONParserState.Create('[1,'#10#9' "hello"]');
+   try
+      CheckEquals('line 1, col 0', state.Location);
+      CheckEquals('[', state.NeedChar);
+      CheckEquals('line 1, col 1', state.Location);
+      CheckEquals('1', state.NeedChar);
+      CheckEquals(',', state.NeedChar);
+      CheckEquals('line 1, col 3', state.Location);
+      CheckEquals('"', state.SkipBlanks(' '));
+      CheckEquals('line 2, col 4 (offset 7)', state.Location);
+   finally
+      state.Free;
+   end;
+end;
+
 // CompareStringArray
 //
 function TdwsJSONTests.CompareStringArray(v1, v2 : TdwsJSONValue) : Integer;
@@ -729,6 +764,9 @@ begin
    json['test'].Value.AsString:=#25#0'ok';
    CheckEquals('"\u0019\u0000ok"', json['test'].ToUnicodeString, 'very specials');
 
+   json['test'].Value.AsString := '</script>';
+   CheckEquals('"<\/script>"', json['test'].ToUnicodeString, 'xss protection');
+
    json.Free;
 end;
 
@@ -794,6 +832,7 @@ begin
    CheckException(JSONInvalidTrue, EdwsJSONParseError, 'true');
    CheckException(JSONInvalidFalse, EdwsJSONParseError, 'false');
    CheckException(JSONInvalidNull, EdwsJSONParseError, 'null');
+   CheckException(JSONInvalidNull2, EdwsJSONParseError, 'null2');
    CheckException(JSONInvalidImmediate, EdwsJSONParseError, 'immediate');
    CheckException(JSONUnterminatedString, EdwsJSONParseError, 'unterminated');
    CheckException(JSONInvalidNameValueSeparator, EdwsJSONParseError, 'separator');
@@ -865,6 +904,29 @@ begin
       CheckEquals( 2, list[1]);
       CheckEquals( 3, list[2]);
       CheckEquals(-4, list[3]);
+   finally
+      state.Free;
+      list.Free;
+   end;
+end;
+
+// JSONParseNumberArray
+//
+procedure TdwsJSONTests.JSONParseNumberArray;
+var
+   state : TdwsJSONParserState;
+   list : TSimpleDoubleList;
+begin
+   list := TSimpleDoubleList.Create;
+   state := TdwsJSONParserState.Create('[0,0.5,1e1,1234567890123456789,-1e-1]');
+   try
+      state.ParseNumberArray(list);
+      CheckEquals(5, list.Count);
+      CheckEquals(  0, list[0]);
+      CheckEquals(0.5, list[1]);
+      CheckEquals( 10, list[2]);
+      Check(Abs(1234567890123456789 - list[3]) < 100, 'Big num');
+      Check(Abs(list[4] + 0.1) < 1e-12, '-0.1');
    finally
       state.Free;
       list.Free;
@@ -1421,6 +1483,35 @@ begin
       CheckTrue(fsInf = j.Elements[2].AsNumber.SpecialType, 'inf');
    finally
       j.Free;
+   end;
+end;
+
+// WriteVariants
+//
+procedure TdwsJSONTests.WriteVariants;
+var
+   a : Variant;
+begin
+   a := VarArrayCreate([0, 2], varVariant);
+   a[0] := 'hello';
+   a[1] := Int64(MaxInt)+1;
+   a[2] := Currency(0.5);
+   var wr := TdwsJSONWriter.Create;
+   try
+      wr.BeginArray;
+
+      wr.WriteVariant(a);
+      wr.WriteVariant(Double(0.5));
+      wr.WriteVariant(True);
+      wr.WriteVariant(False);
+      wr.WriteVariant(Null);
+      wr.WriteVariant(Unassigned);
+
+      wr.EndArray;
+
+      CheckEquals('[["hello",2147483648,"0.5"],0.5,true,false,null,null]', wr.ToString);
+   finally
+      wr.Free;
    end;
 end;
 
