@@ -43,6 +43,7 @@ type
          procedure HTMLEncoding;
          procedure CSSEncoding;
          procedure XMLEncoding;
+         procedure EncodedWordEncoding;
 
          procedure CookieChecks;
    end;
@@ -265,6 +266,25 @@ begin
 
    CheckEquals('&apos;'#$00A0, WebUtils.XMLTextEncode(''''#$00A0), 'encode NBSP apos');
    CheckEquals(#$00A0'''', WebUtils.XMLTextDecode(#$00A0'&apos;'), 'decode NBSP apos');
+end;
+
+// EncodedWordEncoding
+//
+procedure TdwsWebUtilsTests.EncodedWordEncoding;
+begin
+   CheckEquals('', WebUtils.EncodeEncodedWord(''), 'empty encode');
+   CheckEquals('=?utf-8?Q?hello?=', WebUtils.EncodeEncodedWord('hello'), 'hello');
+   CheckEquals('=?utf-8?Q?a_b?=', WebUtils.EncodeEncodedWord('a b'), 'a b');
+   CheckEquals('=?utf-8?Q?a=3Fb=3D1?=', WebUtils.EncodeEncodedWord('a?b=1'), 'a?b=1');
+
+   // arbitrary line length cutoff
+   CheckEquals(
+        '=?utf-8?Q?' + StringOfChar('a', 50) + StringOfChar('b', 16) + '?='
+      + #13#10#9
+      + '=?utf-8?Q?' + StringOfChar('b', 4) + '?=',
+      WebUtils.EncodeEncodedWord(StringOfChar('a', 50)+StringOfChar('b', 20)),
+      'long'
+   );
 end;
 
 // CookieChecks
