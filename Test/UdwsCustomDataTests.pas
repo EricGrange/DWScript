@@ -18,7 +18,8 @@ unit UdwsCustomDataTests;
 interface
 
 uses
-   dwsXPlatformTests, dwsCustomData, Variants;
+   System.Variants, System.SysUtils,
+   dwsXPlatformTests, dwsCustomData, dwsUtils;
 
 type
 
@@ -26,11 +27,13 @@ type
       private
 
       protected
+         function PurgeCustomState(const item : TdwsCustomState) : TSimpleHashAction;
 
       published
          procedure VariantStates;
          procedure TypedQueries;
          procedure CustomInterfaces;
+         procedure CloneTest;
    end;
 
 // ------------------------------------------------------------------
@@ -173,6 +176,45 @@ begin
    finally
       intfs.Free;
    end;
+end;
+
+// CloneTest
+//
+procedure TdwsCustomDataTests.CloneTest;
+const
+   cVal1 : TGUID = '{EC8DB0C4-AD8D-4008-A45E-7A54CB12B12C}';
+   cVal2 : TGUID = '{44ABDD6B-E6E0-4D67-BFEC-36A441990A56}';
+begin
+   var states1 := TdwsCustomStates.Create;
+   var states2 : TdwsCustomStates := nil;
+   try
+      states1[cVal1] := 123456;
+      states1[cVal2] := 'hello';
+
+      states2 := states1.Clone;
+
+      states1.Enumerate(PurgeCustomState);
+
+      FreeAndNil(states1);
+
+      CheckEquals(2, states2.Count);
+      CheckEquals(123456, states2[cVal1]);
+      CheckEquals('hello', states2[cVal2]);
+
+      states2.Clear(False);
+      CheckEquals(0, states2.Count);
+      CheckTrue(states2.Capacity > 0);
+   finally
+      states1.Free;
+      states2.Free;
+   end;
+end;
+
+// PurgeCustomState
+//
+function TdwsCustomDataTests.PurgeCustomState(const item : TdwsCustomState) : TSimpleHashAction;
+begin
+   Result := shaRemove;
 end;
 
 // ------------------------------------------------------------------
