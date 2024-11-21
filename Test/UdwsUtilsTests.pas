@@ -141,6 +141,10 @@ type
          procedure LowerCaseATest;
 
          procedure StrBeforeAfter;
+
+         procedure RawBytetoScriptTest;
+
+         procedure ApplyStringVariablesTest;
    end;
 
 // ------------------------------------------------------------------
@@ -1169,6 +1173,10 @@ begin
    buf8 := 'a';
    UTF8DecodeToUnicodeString(PAnsiChar(buf8), Length(buf8), buf16);
    CheckEquals('a', buf16, 'a');
+
+   buf8 := UTF8Encode('€');
+   UTF8DecodeToUnicodeString(PAnsiChar(buf8), Length(buf8), buf16);
+   CheckEquals('€', buf16, '€');
 end;
 
 // VariantClearAssignString
@@ -1603,6 +1611,15 @@ begin
    CheckEquals(SimpleStringCaseInsensitiveHash('noël'), SimpleStringCaseInsensitiveHash('noëL'), 'noël');
    CheckEquals(SimpleStringCaseInsensitiveHash('noël'), SimpleStringCaseInsensitiveHash('NoëL'), 'NoëL');
    CheckEquals(SimpleStringCaseInsensitiveHash('@az['), SimpleStringCaseInsensitiveHash('@AZ['), '@AZ[');
+
+   // fallback edge cases
+   CheckEquals(
+      SimpleStringCaseInsensitiveHash(StringOfChar('a', 100)),
+      SimpleStringCaseInsensitiveHash(StringOfChar('A', 100)),
+      '100 A'
+   );
+   CheckEquals(SimpleStringHash(#$00A0), SimpleStringCaseInsensitiveHash(#$00A0), 'nbsp');
+
 end;
 
 // ObjectListTest
@@ -2549,6 +2566,44 @@ begin
 
    CheckEquals('ana', StrAfterChar('banana', 'n'));
    CheckEquals('', StrAfterChar('banana', 'z'));
+end;
+
+// RawBytetoScriptTest
+//
+procedure TdwsUtilsTests.RawBytetoScriptTest;
+var
+   r : RawByteString;
+   s : String;
+   v : Variant;
+begin
+   r := #00#01;
+   RawByteStringToScriptString(r, s);
+   RawByteStringToScriptString(r, v);
+   CheckEquals(varUString, VarType(v), '#00#01 type');
+   CheckTrue(s = v, '#00#01 check');
+
+   v := 1;
+   CheckNotEquals(varUString, VarType(v), 'reset');
+   r := '';
+   RawByteStringToScriptString(r, v);
+   CheckEquals(varUString, VarType(v), 'empty type');
+   CheckTrue(v = '', 'empty check');
+end;
+
+// ApplyStringVariablesTest
+//
+procedure TdwsUtilsTests.ApplyStringVariablesTest;
+begin
+   var v := TStringList.Create;
+   try
+      v.Values['hello'] := 'world';
+
+      CheckEquals('hello', ApplyStringVariables('hello', v, '%'));
+      CheckEquals('world', ApplyStringVariables('%hello%', v, '%'));
+      CheckEquals('_worldworld_', ApplyStringVariables('_%hello%%hello%_', v, '%'));
+   finally
+      v.Free;
+   end;
 end;
 
 // ------------------------------------------------------------------
