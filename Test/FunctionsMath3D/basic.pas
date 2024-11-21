@@ -17,3 +17,8 @@ v := cMyVector - v;
 
 PrintLn(VectorToStr(v));
 
+PrintLn(VectorToStr(2.0 * v));
+
+PrintLn(VectorToStr(v * 3.0));
+
+PrintLn(v * v);
