@@ -135,6 +135,10 @@ type
       var result: IScriptObj);
     procedure dwsDatabaseClassesDataBaseMethodsSetStringifyDateTimeAsUnixTimeEval(
       Info: TProgramInfo; ExtObject: TObject);
+    function dwsDatabaseClassesDataSetMethodsAsBoolean_String_FastEvalBoolean(
+      baseExpr: TTypedExpr; const args: TExprBaseListExec): Boolean;
+    function dwsDatabaseClassesDataSetMethodsAsBoolean_Integer_FastEvalBoolean(
+      baseExpr: TTypedExpr; const args: TExprBaseListExec): Boolean;
   private
     { Private declarations }
     FFileSystem : IdwsFileSystem;
@@ -955,6 +959,27 @@ var
 begin
    baseExpr.EvalAsSafeScriptObj(args.Exec, obj);
    RawByteStringToScriptString((obj.ExternalObject as TScriptDataSet).FieldByName(args).AsBlob, result);
+end;
+
+function TdwsDatabaseLib.dwsDatabaseClassesDataSetMethodsAsBoolean_Integer_FastEvalBoolean(
+  baseExpr: TTypedExpr; const args: TExprBaseListExec): Boolean;
+var
+   obj : IScriptObj;
+begin
+   baseExpr.EvalAsSafeScriptObj(args.Exec, obj);
+   baseExpr.EvalAsSafeScriptObj(args.Exec, obj);
+   Result := (obj.ExternalObject as TScriptDataSet)
+      .Intf
+      .GetBooleanField(args.AsInteger[0]);
+end;
+
+function TdwsDatabaseLib.dwsDatabaseClassesDataSetMethodsAsBoolean_String_FastEvalBoolean(
+  baseExpr: TTypedExpr; const args: TExprBaseListExec): Boolean;
+var
+   obj : IScriptObj;
+begin
+   baseExpr.EvalAsSafeScriptObj(args.Exec, obj);
+   Result := (obj.ExternalObject as TScriptDataSet).FieldByName(args).AsBoolean;
 end;
 
 function TdwsDatabaseLib.dwsDatabaseClassesDataSetMethodsAsFloat_Integer_FastEvalFloat(

@@ -326,6 +326,30 @@ object dwsDatabaseLib: TdwsDatabaseLib
             OnFastEvalFloat = dwsDatabaseClassesDataSetMethodsAsFloat_Integer_FastEvalFloat
           end
           item
+            Name = 'AsBoolean'
+            Parameters = <
+              item
+                Name = 'fieldName'
+                DataType = 'String'
+              end>
+            ResultType = 'Boolean'
+            Overloaded = True
+            Kind = mkFunction
+            OnFastEvalBoolean = dwsDatabaseClassesDataSetMethodsAsBoolean_String_FastEvalBoolean
+          end
+          item
+            Name = 'AsBoolean'
+            Parameters = <
+              item
+                Name = 'index'
+                DataType = 'Integer'
+              end>
+            ResultType = 'Boolean'
+            Overloaded = True
+            Kind = mkFunction
+            OnFastEvalBoolean = dwsDatabaseClassesDataSetMethodsAsBoolean_Integer_FastEvalBoolean
+          end
+          item
             Name = 'AsBlob'
             Parameters = <
               item
