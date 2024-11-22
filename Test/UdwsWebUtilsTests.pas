@@ -116,6 +116,13 @@ begin
       WebUtils.ParseMIMEHeaderValue('form-data; name="a,b"', decoded);
       CheckEquals('form-data,"name=a,b"', decoded.CommaText);
 
+      decoded.Clear;
+      WebUtils.ParseMIMEHeaderValue('t="\"a"', decoded);
+      CheckEquals('"t=""a"', decoded.CommaText);
+
+      decoded.Clear;
+      WebUtils.ParseMIMEHeaderValue('t="\', decoded);
+      CheckEquals('t=', decoded.CommaText);
    finally
       decoded.Free;
    end;
@@ -223,6 +230,10 @@ begin
    CheckEquals('Tue, 01 Feb 2022 07:08:09 GMT', WebUtils.DateTimeToRFC822(dt));
    CheckEquals(dt, WebUtils.RFC822ToDateTime('Tue, 01 Feb 2022 07:08:09 GMT'));
    CheckEquals(Round((dt-1/24)*86400), Round(WebUtils.RFC822ToDateTime('Fri Feb 01 2022 07:08:09 GMT+0100')*86400));
+
+   dt := EncodeDate(2022, 2, 1) + EncodeTime(7, 8, 0, 0);
+   CheckEquals(dt, WebUtils.RFC822ToDateTime('Tue, 01 Feb 2022 07:08 GMT'));
+   CheckEquals(dt, WebUtils.RFC822ToDateTime('Tue, 01 Feb 22 07:08 GMT'));
 end;
 
 // HTMLEncoding
@@ -331,3 +342,4 @@ initialization
    RegisterTest('UtilsTests', TdwsWebUtilsTests);
 
 end.
+
