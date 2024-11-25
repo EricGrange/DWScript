@@ -296,17 +296,6 @@ begin
          end;
       end;
 
-   end else if expr.Typ.UnAliasedTypeIs(TBaseVariantSymbol) then begin
-
-      if toTyp.IsOfType(context.TypInteger) then
-         Result:=TConvVarToIntegerExpr.Create(context, scriptPos, expr)
-      else if toTyp.IsOfType(context.TypFloat) then
-         Result:=TConvVarToFloatExpr.Create(context, scriptPos, expr)
-      else if toTyp.IsOfType(context.TypString) then
-         Result:=TConvVarToStringExpr.Create(context, scriptPos, expr)
-      else if toTyp.IsOfType(context.TypBoolean) then
-         Result:=TConvVarToBoolExpr.Create(context, scriptPos, expr);
-
    end else if     (toTyp is TStructuredTypeMetaSymbol)
                and (expr.Typ.IsOfType(toTyp.Typ)) then begin
 
