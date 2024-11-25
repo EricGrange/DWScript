@@ -60,6 +60,7 @@ type
    end;
 
    IAutoFixSourceBuffer = interface
+      ['{51E52ADE-0D56-47D8-8F9F-BD3BA3B995E6}']
 
       function GetLines(idx : Integer) : String;
       procedure SetLines(idx : Integer; const newLine : String);
