@@ -319,16 +319,6 @@ begin
          );
       end;
 
-   end else begin
-
-      if     toTyp.IsOfType(context.TypFloat)
-         and expr.IsOfType(context.TypInteger) then begin
-         if expr is TConstIntExpr then begin
-            Result := TConstFloatExpr.Create(scriptPos, context.TypFloat, TConstIntExpr(expr).Value);
-            expr.Free;
-         end else Result := TConvIntToFloatExpr.Create(context, scriptPos, expr);
-      end;
-
    end;
    // Look if Types are compatible
    if not toTyp.IsCompatible(Result.Typ) then
