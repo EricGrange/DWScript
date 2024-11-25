@@ -86,7 +86,8 @@ uses
   dwsCodeDOMParser in '..\Source\SourceUtils\dwsCodeDOMParser.pas',
   dwsCodeDOMPascalParser in '..\Source\SourceUtils\dwsCodeDOMPascalParser.pas',
   UCodeDOMTests in 'UCodeDOMTests.pas',
-  UModel3DTests in 'UModel3DTests.pas';
+  UModel3DTests in 'UModel3DTests.pas',
+  UAutoFixTests in 'UAutoFixTests.pas';
 
 {$R *.res}
 
