@@ -34,3 +34,12 @@ PrintLn('Alpha defined');
 PrintLn('Alpha not defined');
 {$endif}
 
+// placing it here as a reminder that Defined() in script isn't the same as Defined in ifdef
+// it refers to variants and undefined state (esp. wrt to JS Codegen)
+var v : Variant;
+Print(Defined(v));
+v := 'a';
+Print(Defined(v));
+VarClear(v);
+PrintLn(Defined(v));
+
