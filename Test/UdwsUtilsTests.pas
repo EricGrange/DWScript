@@ -79,6 +79,8 @@ type
          procedure IntToHexTest;
          procedure Int32ToStr;
 
+         procedure StringToBooleanTest;
+
          procedure QueueTest;
 
          procedure TestDWSHashCode;
@@ -98,6 +100,7 @@ type
          procedure Base32EncoderTest;
 
          procedure NameObjectHashTest;
+         procedure NameObjectHashTestInitialCapacity;
          procedure NameObjectHashStressTest;
          procedure SimpleHashTest;
          procedure SimpleStringCaseInsensitiveHashTest;
@@ -1008,6 +1011,35 @@ begin
    CheckEquals('-2147483648', Int32ToStrU(Low(Int32)));
 end;
 
+// StringToBooleanTest
+//
+procedure TdwsUtilsTests.StringToBooleanTest;
+
+   procedure Check(const expected : Boolean; const s : String);
+   begin
+      CheckEquals(expected, StringToBoolean(s), s);
+   end;
+
+begin
+   Check(False, '');
+
+   Check(True, 'true');
+   Check(True, 'True');
+   Check(True, 'yes');
+   Check(True, 'Yes');
+   Check(False, 'false');
+   Check(False, 'False');
+
+   Check(True, '1');
+   Check(True, 'T');
+   Check(True, 'Y');
+
+   Check(True, '001');
+   Check(False, '000');
+
+   Check(False, '000p');
+end;
+
 // QueueTest
 //
 procedure TdwsUtilsTests.QueueTest;
@@ -1491,6 +1523,33 @@ begin
       CheckTrue(nil=noh.Objects[name2], '6 c');
    finally
       noh.Free;
+   end;
+end;
+
+// NameObjectHashTestInitialCapacity
+//
+procedure TdwsUtilsTests.NameObjectHashTestInitialCapacity;
+begin
+   var noh := TNameObjectHash.Create(3);
+   try
+      CheckEquals(cNameObjectHashMinSize-1, noh.HighIndex, 'Min capacity');
+   finally
+      noh.Free;
+   end;
+
+   var noh2 := TNameObjectHash.Create(cNameObjectHashMinSize + 1);
+   try
+      for var i := 1 to 2*cNameObjectHashMinSize do
+         noh2.AddObject(IntToStr(i), TObject(i));
+
+      noh2.Pack;
+
+      for var i := 1 to 2*cNameObjectHashMinSize do
+         CheckEquals(i, IntPtr(noh2.Objects[IntToStr(i)]), IntToStr(i));
+
+      CheckEquals(0, IntPtr(noh2.Objects['0']), '0');
+   finally
+      noh2.Free;
    end;
 end;
 
