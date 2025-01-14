@@ -50,22 +50,22 @@
    {$ELSE}
       {$DEFINE DELPHI_2010_MINUS}
       {$DEFINE WINDOWS}
-   {$IFEND}
+   {$ENDIF}
    {$IF CompilerVersion>22.0}
       {$DEFINE DELPHI_XE2_PLUS}
-   {$IFEND}
+   {$ENDIF}
    {$IF CompilerVersion>23.0}
       {$DEFINE DELPHI_XE3_PLUS}
-   {$IFEND}
+   {$ENDIF}
    {$IF CompilerVersion>=32.0}
       {$DEFINE DELPHI_TOKYO_PLUS}
-   {$IFEND}
+   {$ENDIF}
    {$IF CompilerVersion>=35.0}
       {$DEFINE DELPHI_ALEXANDRIA_PLUS}
-   {$IFEND}
+   {$ENDIF}
    {$IF CompilerVersion>=36.0}
       {$DEFINE DELPHI_ATHENS_PLUS}
-   {$IFEND}
+   {$ENDIF}
 {$ELSE}
    {$mode delphi}
    {$DEFINE PUREPASCAL}

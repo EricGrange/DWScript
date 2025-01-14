@@ -2135,7 +2135,7 @@ asm
 {$else}
 begin
    Result:=exec.Stack.PointerToFloatValue_BaseRelative(FStackAddr)^;
-{$ifend}
+{$endif}
 end;
 
 // ------------------
@@ -4494,7 +4494,7 @@ asm
 {$else}
 begin
    Result:=Sqr(FExpr.EvalAsFloat(exec));
-{$ifend}
+{$endif}
 end;
 
 // ------------------
@@ -4546,7 +4546,7 @@ function TModFloatExpr.EvalAsFloat(exec : TdwsExecution) : Double;
    begin
       Result := Frac(f / d) * d;
    end;
-{$ifend}
+{$endif}
 
 begin
    Result := fmod(Left.EvalAsFloat(exec), Right.EvalAsFloat(exec));

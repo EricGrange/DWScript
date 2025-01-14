@@ -1,13 +1,19 @@
 program dws;
-{$SetPEFlags $0001}
-{$IFNDEF VER200} // delphi 2009
+
+{$ifdef WINDOWS}
+   {$SetPEFlags IMAGE_FILE_LARGE_ADDRESS_AWARE or IMAGE_FILE_RELOCS_STRIPPED}
+{$endif}
+
 {$WEAKLINKRTTI ON}
 {$RTTI EXPLICIT METHODS([]) PROPERTIES([]) FIELDS([])}
-{$ENDIF}
+
 {$APPTYPE CONSOLE}
+
 {$r *.dres}
 uses
+{$ifdef WINDOWS}
   Winapi.Windows, Winapi.ActiveX,
+{$endif}
   System.Classes,
   System.SysUtils,
   dwsXPlatform,
@@ -45,8 +51,6 @@ uses
   {$ifdef WIN64} dwsJITx86_64, {$endif}
   dwsRunnerProject in 'dwsRunnerProject.pas';
 
-{$SetPEFlags IMAGE_FILE_LARGE_ADDRESS_AWARE or IMAGE_FILE_RELOCS_STRIPPED}
-
 type
    TUnitProvider = class
       function DoNeedUnitEx(const unitName : String; var unitSource, unitLocation : String) : IdwsUnit;
@@ -79,6 +83,8 @@ begin
    Writeln('dws Runner - sample code runner for DWScript');
    Writeln('');
 end;
+
+{$ifdef WINDOWS}
 {$WARN SYMBOL_PLATFORM OFF}
 // MakeExecutable
 //
@@ -163,6 +169,8 @@ begin
    end;
    WriteLn('..."', exeName, '" generated successfully!');
 end;
+{$endif}
+
 // Execute
 //
 procedure Execute(project : TRunnerProject; paramOffset : Integer; embedded, compileOnly : Boolean);
@@ -231,18 +239,22 @@ begin
       Writeln('Run a zip project with (starts from "main.pas" in the zip):');
       Writeln('   dws <zipfile> [param1] [param2] ... [paramN]');
       Writeln('');
+      {$ifdef WINDOWS}
       Writeln('Bundle a zip project into an executable:');
       Writeln('   dws make <zipFile|sourcefile> [exeName]');
       Writeln('');
+      {$endif}
       Writeln('Compile but do not run a script:');
       Writeln('   dws compile <zipFile|sourcefile>');
       Exit(nil);
    end;
    fileName:=ParamStr(1);
+   {$ifdef WINDOWS}
    if fileName='make' then begin
       MakeExecutable;
       Exit(nil);
    end;
+   {$endif}
    if fileName = 'compile' then begin
       compileOnly := True;
       fileName := ParamStr(2);
@@ -262,10 +274,10 @@ end;
 var
    paramOffset : Integer;
    project : TRunnerProject;
-   zr : TZipRead;
    compileOnly, embedded : Boolean;
 begin
-   zr:=TZipRead.Create(HInstance, 'SCRIPT', RT_RCDATA);
+   {$ifdef WINDOWS}
+   var zr := TZipRead.Create(HInstance, 'SCRIPT', RT_RCDATA);
    if zr.Count=0 then begin
       FreeAndNil(zr);
       project:=nil;
@@ -276,11 +288,18 @@ begin
       paramOffset:=1;
       embedded:=True;
    end;
+   {$else}
+   project := nil;
+   embedded := False;
+   paramOffset := 1;
+   {$endif}
    compileOnly := False;
    if project=nil then
       project := RunCommandLine(compileOnly);
    if project <> nil then begin
+      {$ifdef WINDOWS}
       CoInitialize(nil);
+      {$endif}
       Execute(project, paramOffset, embedded, compileOnly);
    end;
 end.

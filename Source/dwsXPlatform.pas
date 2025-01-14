@@ -35,37 +35,42 @@ unit dwsXPlatform;
 {$IFDEF MSWINDOWS}
    {$DEFINE WINDOWS}  // Define Delphi <==> FPC "WINDOWS" Compiler Switch
 {$ENDIF}
+{$IFDEF ANDROID}
+   {$DEFINE UNIX}
+{$ENDIF}
 {$IFDEF LINUX}
    {$DEFINE UNIX}  // Define Delphi <==> FPC "UNIX" Compiler Switch
 {$ENDIF}
 
 {$ifdef UNIX}
-   {$DEFINE POSIXSYSLOG} // If defined Posix Syslog is used in Unix environments
+   {$ifndef ANDROID}
+      {$DEFINE POSIXSYSLOG} // If defined Posix Syslog is used in Unix environments
+   {$endif}
 {$endif}
 
 interface
 
 uses
-   System.Classes, System.SysUtils, System.Types,
+   System.Classes, System.SysUtils, System.Types
    {$ifdef DELPHI_XE3_PLUS}
-   System.DateUtils,
+   , System.DateUtils
    {$endif}
    {$IFDEF FPC}
       {$IFDEF WINDOWS}
-         Windows
+         , Windows
       {$ELSE}
-         LCLIntf
+         , LCLIntf
       {$ENDIF}
    {$ELSE}
-      System.IOUtils,
+      , System.IOUtils
       {$IFDEF WINDOWS}
-      Winapi.Windows, System.Win.Registry
+      , Winapi.Windows, System.Win.Registry
       {$ENDIF}
       {$IFDEF UNIX}
-         {$IFDEF POSIXSYSLOG}Posix.Syslog,{$ENDIF}
-         System.Internal.ICU, System.SyncObjs,
-         Posix.Unistd, Posix.Time, Posix.Pthread, Posix.Base, Posix.Stdlib, Posix.Stdio,
-         dwsXPlatformTimer
+         {$IFDEF POSIXSYSLOG}, Posix.Syslog{$ENDIF}
+         , System.Internal.ICU, System.SyncObjs
+         , Posix.Unistd, Posix.Time, Posix.Pthread, Posix.Base, Posix.Stdlib, Posix.Stdio
+         , dwsXPlatformTimer
       {$ENDIF}
    {$ENDIF}
    ;
@@ -713,17 +718,17 @@ begin
 end;
 {$endif}
 
-{$IFNDEF LINUX}
+{$IFNDEF UNIX}
 type
    TDynamicTimeZoneInformation = record
       Bias : Longint;
-      StandardName : array[0..31] of WCHAR;
+      StandardName : array[0..31] of WideChar;
       StandardDate : TSystemTime;
       StandardBias : Longint;
-      DaylightName : array[0..31] of WCHAR;
+      DaylightName : array[0..31] of WideChar;
       DaylightDate : TSystemTime;
       DaylightBias : Longint;
-      TimeZoneKeyName : array[0..127] of WCHAR;
+      TimeZoneKeyName : array[0..127] of WideChar;
       DynamicDaylightTimeDisabled : Boolean;
    end;
    PDynamicTimeZoneInformation = ^TDynamicTimeZoneInformation;
@@ -1307,8 +1312,12 @@ begin
 end;
 {$else}
 begin
-   {$ifdef POSIXSYSLOG}
-   Posix.Syslog.syslog(LOG_INFO,logCaption + ': ' + logDetails + '(' + logRawData + ')');
+   {$ifdef ANDROID}
+      // TODO LogCat
+   {$else}
+      {$ifdef POSIXSYSLOG}
+      Posix.Syslog.syslog(LOG_INFO,logCaption + ': ' + logDetails + '(' + logRawData + ')');
+      {$endif}
    {$endif}
 end;
 {$endif}

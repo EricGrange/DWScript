@@ -463,7 +463,7 @@ asm
 {$else}
 begin
    Result:=FValue;
-{$ifend}
+{$endif}
 end;
 
 // EvalAsFloat
@@ -475,7 +475,7 @@ asm
 {$else}
 begin
    Result:=FValue;
-{$ifend}
+{$endif}
 end;
 
 // EvalAsVariant
@@ -515,7 +515,7 @@ asm
 {$else}
 begin
    Result := FValue;
-{$ifend}
+{$endif}
 end;
 
 // EvalAsVariant
