@@ -85,8 +85,13 @@ type
 
    end;
 
-
+// ------------------------------------------------------------------
+// ------------------------------------------------------------------
+// ------------------------------------------------------------------
 implementation
+// ------------------------------------------------------------------
+// ------------------------------------------------------------------
+// ------------------------------------------------------------------
 
 // ------------------
 // ------------------ TdwsCoverageDebugger ------------------
@@ -129,9 +134,9 @@ procedure TdwsCoverageDebugger.DoDebug(exec : TdwsExecution; expr : TExprBase);
    var
       loc, lcLoc : String;
    begin
-      loc := sourceFile.Location;
+      loc := sourceFile.Name;
       if loc = '' then
-         loc := sourceFile.Name;
+         loc := sourceFile.Location;
       UnicodeLowerCase(loc, lcLoc);
       Result := FNonCovered.SourceLines[lcLoc];
       FLastSourceFile := sourceFile;
@@ -258,27 +263,22 @@ end;
 function TdwsCoverageDebugger.CreateReport : TdwsCodeCoverageReport;
 
    function CountBits(b : TBits) : Integer;
-   var
-      i : Integer;
    begin
-      Result:=0;
-      for i:=0 to b.Size-1 do
+      Result := 0;
+      for var i := 0 to b.Size-1 do
          if b[i] then Inc(Result);
    end;
 
-var
-   i : Integer;
-   lsAll : TStringList;
 begin
    Result:=TdwsCodeCoverageReport.Create;
    if FAllLines=nil then Exit;
 
-   lsAll:=TStringList.Create;
+   var lsAll := TStringList.Create;
    try
       FAllLines.Enumerate(lsAll);
       lsAll.Sort;
       SetLength(Result.FEntries, lsAll.Count);
-      for i:=0 to lsAll.Count-1 do begin
+      for var i := 0 to lsAll.Count-1 do begin
          Result.FEntries[i].SourceName:=lsAll[i];
          Result.FEntries[i].Runnable:=CountBits(FAllLines.SourceLines[lsAll[i]]);
          Result.FEntries[i].NonCovered:=CountBits(FNonCovered.SourceLines[lsAll[i]]);
