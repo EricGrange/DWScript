@@ -632,15 +632,16 @@ begin
    Result := False;
 
    scHandle := OpenSCManager(nil, nil, GENERIC_READ);
+   if scHandle = 0 then Exit;
    try
-      svInfo:=OpenService(scHandle, PChar(ServiceName), GENERIC_READ);
-      if svInfo<>0 then begin
+      svInfo := OpenService(scHandle, PChar(ServiceName), GENERIC_READ);
+      if svInfo <> 0 then begin
          try
             QueryServiceStatus(svInfo, status);
          finally
             CloseServiceHandle(svInfo);
          end;
-         Result:=True;
+         Result := True;
       end;
    finally
       CloseServiceHandle(scHandle);
