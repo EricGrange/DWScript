@@ -155,14 +155,18 @@ type
     property CaseSensitive: Boolean read FCaseSensitive write SetCaseSensitive;
   end;
 
+// ------------------------------------------------------------------
+// ------------------------------------------------------------------
+// ------------------------------------------------------------------
 implementation
+// ------------------------------------------------------------------
+// ------------------------------------------------------------------
+// ------------------------------------------------------------------
 
-{$IFDEF MSWINDOWS}
-uses RTLConsts, Types;
-{$ENDIF}
-{$IFDEF LINUX}
-uses RTLConsts, SysConst;
-{$ENDIF}
+const
+   cDuplicateNotAllowed = 'List does not allow duplicates';
+   cListIndexOutOfBounds = 'List index out of bounds (%d)';
+   cNotAllowedOnSortedList = 'List operation not allowed when sorted';
 
 { TdwsStrings }
 
@@ -261,10 +265,7 @@ begin
 end;
 
 procedure TdwsStrings.Error(const Msg: String; Data: Integer);
-{$ifdef FPC}
-begin
-   raise EStringListError.Create(Msg);
-{$else}
+{$ifdef WIN32_ASM}
   function ReturnAddr: Pointer;
   asm
      MOV eax, [EBP+4]
@@ -272,6 +273,9 @@ begin
 
 begin
   raise EStringListError.CreateFmt(Msg, [Data]) at ReturnAddr;
+{$else}
+begin
+   raise EStringListError.Create(Msg);
 {$endif}
 end;
 
@@ -732,7 +736,7 @@ begin
       if Find(S, Result) then begin
          case Duplicates of
             dupIgnore: Exit;
-            dupError: Error(@SDuplicateString, 0);
+            dupError: Error(cDuplicateNotAllowed, 0);
          end;
       end;
    end;
@@ -751,7 +755,7 @@ end;
 
 procedure TdwsStringList.Delete(Index: Integer);
 begin
-  if Cardinal(Index)>=Cardinal(FCount) then Error(@SListIndexError, Index);
+  if Cardinal(Index)>=Cardinal(FCount) then Error(cListIndexOutOfBounds, Index);
   Finalize(FList^[Index]);
   Dec(FCount);
   if Index < FCount then
@@ -761,8 +765,8 @@ end;
 
 procedure TdwsStringList.Exchange(Index1, Index2: Integer);
 begin
-  if (Index1 < 0) or (Index1 >= FCount) then Error(@SListIndexError, Index1);
-  if (Index2 < 0) or (Index2 >= FCount) then Error(@SListIndexError, Index2);
+  if (Index1 < 0) or (Index1 >= FCount) then Error(cListIndexOutOfBounds, Index1);
+  if (Index2 < 0) or (Index2 >= FCount) then Error(cListIndexOutOfBounds, Index2);
   ExchangeItems(Index1, Index2);
 end;
 
@@ -807,7 +811,7 @@ end;
 
 function TdwsStringList.Get(Index: Integer): String;
 begin
-   if Cardinal(Index) >= Cardinal(FCount) then Error(@SListIndexError, Index);
+   if Cardinal(Index) >= Cardinal(FCount) then Error(cListIndexOutOfBounds, Index);
    Result := FList^[Index].FString;
 end;
 
@@ -823,7 +827,7 @@ end;
 
 function TdwsStringList.GetObject(Index: Integer): IUnknown;
 begin
-   if Cardinal(Index) >= Cardinal(FCount) then Error(@SListIndexError, Index);
+   if Cardinal(Index) >= Cardinal(FCount) then Error(cListIndexOutOfBounds, Index);
    Result := FList^[Index].FObject;
 end;
 
@@ -863,8 +867,8 @@ end;
 
 procedure TdwsStringList.InsertObject(Index: Integer; const S: String; const AObject: IUnknown);
 begin
-  if Sorted then Error(@SSortedListError, 0);
-  if (Index < 0) or (Index > FCount) then Error(@SListIndexError, Index);
+  if Sorted then Error(cNotAllowedOnSortedList, 0);
+  if (Index < 0) or (Index > FCount) then Error(cListIndexOutOfBounds, Index);
   InsertItem(Index, S, AObject);
 end;
 
@@ -884,14 +888,14 @@ end;
 
 procedure TdwsStringList.Put(Index: Integer; const S: String);
 begin
-  if Sorted then Error(@SSortedListError, 0);
-  if Cardinal(Index)>=Cardinal(FCount) then Error(@SListIndexError, Index);
+  if Sorted then Error(cNotAllowedOnSortedList, 0);
+  if Cardinal(Index)>=Cardinal(FCount) then Error(cListIndexOutOfBounds, Index);
   FList^[Index].FString := S;
 end;
 
 procedure TdwsStringList.PutObject(Index: Integer; const AObject: IUnknown);
 begin
-   if Cardinal(Index)>=Cardinal(FCount) then Error(@SListIndexError, Index);
+   if Cardinal(Index)>=Cardinal(FCount) then Error(cListIndexOutOfBounds, Index);
    FList^[Index].FObject := AObject;
 end;
 
