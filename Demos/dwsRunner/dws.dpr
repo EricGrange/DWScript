@@ -11,9 +11,6 @@ program dws;
 
 {$r *.dres}
 uses
-{$ifdef WINDOWS}
-  Winapi.Windows, Winapi.ActiveX,
-{$endif}
   System.Classes,
   System.SysUtils,
   dwsXPlatform,
@@ -23,16 +20,18 @@ uses
   dwsUtils,
   dwsFunctions,
   dwsUnitSymbols,
-  SynZip,
   dwsMathFunctions,
   dwsStringFunctions,
   dwsTimeFunctions,
   dwsVariantFunctions,
   dwsFileFunctions,
+{$ifdef MSWINDOWS}
   dwsBigIntegerFunctions.GMP,
   dwsMPIR.Bundle,
-  dwsClassesLibModule,
   dwsZipLibModule,
+  dwsWMIDatabase,
+{$endif}
+  dwsClassesLibModule,
   dwsEncodingLibModule,
   dwsCryptoLibModule,
   dwsWebLibModule,
@@ -42,7 +41,6 @@ uses
   dwsJSONConnector,
   dwsSynSQLiteDatabase,
   dwsSynODBCDatabase,
-  dwsWMIDatabase,
   dwsGraphicLibrary,
   dwsTurboJPEG.Bundle,
   dwsErrors,
