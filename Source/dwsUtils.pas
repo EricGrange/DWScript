@@ -3792,12 +3792,15 @@ begin
    ps2 := PWideChar(Pointer(s2));
    if ps1 = ps2 then Exit(0);
    if ps1 <> nil then begin
+      {$if Defined(WIN64_ASM) or Defined(WIN32_ASM)}
       n1 := PInteger(NativeUInt(ps1)-4)^;
+      {$else}
+      n1:=Length(s1);
+      {$endif}
       if ps2 <> nil then begin
          {$if Defined(WIN64_ASM) or Defined(WIN32_ASM)}
          n2 := PInteger(NativeUInt(ps2)-4)^;
          {$else}
-         n1:=Length(s1);
          n2:=Length(s2);
          {$endif}
          if n1 < n2 then begin
