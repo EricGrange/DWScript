@@ -519,7 +519,7 @@ begin
             Result.Size:=0;
       end;
       fomFastSequentialRead : begin
-         hFile:=OpenFileForSequentialReadOnly(validFileName);
+         hFile:=OpenFileForSequentialReadOnly(validFileName, [ ofoNoRaiseError ]);
          if hFile<>INVALID_HANDLE_VALUE then
             Result:=TFileHandleStream.Create(hFile)
          else Result:=nil;

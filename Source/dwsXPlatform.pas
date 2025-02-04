@@ -2212,7 +2212,7 @@ begin
    Result:=CreateFile(PChar(fileName), GENERIC_READ, FILE_SHARE_READ+FILE_SHARE_WRITE,
                       nil, OPEN_EXISTING, FILE_FLAG_SEQUENTIAL_SCAN, 0);
    if (Result = INVALID_HANDLE_VALUE) and not (ofoNoRaiseError in options) then begin
-      if GetLastError<>ERROR_FILE_NOT_FOUND then
+      if GetLastError <> ERROR_FILE_NOT_FOUND then
          RaiseLastOSError;
    end;
    {$ELSE}
