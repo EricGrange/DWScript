@@ -136,17 +136,12 @@ type
       private
          {$ifndef SRW_FALLBACK}
          FSRWLock : Pointer;
-         FDummy : array [0..95-4*SizeOf(Pointer)] of Byte; // padding
+         FDummy : array [0..63-4*SizeOf(Pointer)] of Byte; // padding
          {$else}
-         FLock : TdwsCriticalSection;
+         FLock : TLightweightMREW;
          {$endif}
 
       public
-         {$ifdef SRW_FALLBACK}
-         constructor Create;
-         destructor Destroy; override;
-         {$endif}
-
          procedure BeginRead; inline;
          function  TryBeginRead : Boolean; inline;
          procedure EndRead; inline;
@@ -2314,10 +2309,10 @@ var
 begin
    Result := 0;
    while byteCount > 0 do begin
+      {$ifdef WINDOWS}
       if byteCount > cOneGigabyte then
          bytesToRead := cOneGigabyte
       else bytesToRead := byteCount;
-      {$ifdef WINDOWS}
       if not ReadFile(hFile, buffer^, bytesToRead, Cardinal(bytesToRead), nil) then
          RaiseLastOSError;
       {$else}
@@ -3152,6 +3147,37 @@ procedure TMultiReadSingleWrite.EndWrite;
 begin
    ReleaseSRWLockExclusive(FSRWLock)
 end;
+{$else} // SRW_FALLBACK
+procedure TMultiReadSingleWrite.BeginRead;
+begin
+   FLock.BeginRead;
+end;
+
+function TMultiReadSingleWrite.TryBeginRead : Boolean;
+begin
+   Result:=FLock.TryBeginRead;
+end;
+
+procedure TMultiReadSingleWrite.EndRead;
+begin
+   FLock.EndRead;
+end;
+
+procedure TMultiReadSingleWrite.BeginWrite;
+begin
+   FLock.BeginWrite;
+end;
+
+function TMultiReadSingleWrite.TryBeginWrite : Boolean;
+begin
+   Result:=FLock.TryBeginWrite;
+end;
+
+procedure TMultiReadSingleWrite.EndWrite;
+begin
+   FLock.EndWrite;
+end;
+{$endif}
 
 function TMultiReadSingleWrite.State : TMultiReadSingleWriteState;
 begin
@@ -3168,56 +3194,6 @@ begin
       Result:=mrswWriteLock;
    end;
 end;
-{$else} // SRW_FALLBACK
-constructor TMultiReadSingleWrite.Create;
-begin
-   FLock := TdwsCriticalSection.Create;
-end;
-
-destructor TMultiReadSingleWrite.Destroy;
-begin
-   FLock.Free;
-end;
-
-procedure TMultiReadSingleWrite.BeginRead;
-begin
-   FLock.Enter;
-end;
-
-function TMultiReadSingleWrite.TryBeginRead : Boolean;
-begin
-   Result:=FLock.TryEnter;
-end;
-
-procedure TMultiReadSingleWrite.EndRead;
-begin
-   FLock.Leave;
-end;
-
-procedure TMultiReadSingleWrite.BeginWrite;
-begin
-   FLock.Enter;
-end;
-
-function TMultiReadSingleWrite.TryBeginWrite : Boolean;
-begin
-   Result:=FLock.TryEnter;
-end;
-
-procedure TMultiReadSingleWrite.EndWrite;
-begin
-   FLock.Leave;
-end;
-
-function TMultiReadSingleWrite.State : TMultiReadSingleWriteState;
-begin
-   if FLock.TryEnter then begin
-      FLock.Leave;
-      Result := mrswUnlocked;
-   end else Result := mrswWriteLock;
-end;
-
-{$endif}
 
 // ------------------
 // ------------------ TTimerTimeout ------------------
