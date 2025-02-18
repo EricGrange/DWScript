@@ -1032,7 +1032,7 @@ class procedure THttpAPI.Check(error : HRESULT; api : THttpAPIs; const where : S
 begin
    case error of
       NO_ERROR : ;
-      ERROR_NETNAME_DELETED : ; // ignored
+      ERROR_NETNAME_DELETED, ERROR_SEM_TIMEOUT : ; // ignored
    else
       raise EHttpApiServer.Create(api, error, where);
    end;
