@@ -260,6 +260,7 @@ type
          procedure SetMaxQueueLength(const val : Cardinal);
 
          function HttpThreadExceptionIntercepted(E : Exception) : Boolean;
+         procedure HttpThreadExceptionFatal(E : Exception);
 
       public
          /// initialize the HTTP Service
@@ -341,6 +342,8 @@ type
          property ServerEvents : IdwsHTTPServerEvents read FServerEvents write FServerEvents;
          property URLRewriter : TdwsURLRewriter read FURLRewriter write FURLRewriter;
    end;
+
+   EHttpApi2ServerFatalException = class (Exception);
 
 const
    /// used by THttpApi2Server.Request for http.sys to send a static file
@@ -1005,6 +1008,21 @@ begin
    Result := (tmp = nil);
 end;
 
+// HttpThreadExceptionFatal
+//
+procedure THttpApi2Server.HttpThreadExceptionFatal(E : Exception);
+var
+   EFatal : EHttpApi2ServerFatalException;
+begin
+   EFatal := EHttpApi2ServerFatalException.CreateFmt(
+      'Fatal Exception (%s) in %s: %s',
+      [ E.ClassName, ClassName, E.Message ]
+   );
+   if HttpThreadExceptionIntercepted(EFatal) then
+      EFatal.Free
+   else raise EFatal;
+end;
+
 // Execute
 //
 procedure THttpApi2Server.Execute;
@@ -1204,10 +1222,8 @@ begin
    CoUninitialize;
 
    except
-      on E : Exception do begin
-         if not HttpThreadExceptionIntercepted(E) then
-            raise;
-      end;
+      on E : Exception do
+         HttpThreadExceptionFatal(E);
    end;
 end;
 
