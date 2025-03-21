@@ -1979,13 +1979,14 @@ begin
       Status:=esrNone;
       RunProgramExpr(FProg.FInitExpr);
 
-      if not (FProg.Expr.Taxonomy = ebtBlockExprBase) then
-         DoStep(FProg.FExpr);
-
-      Result:=True;
+      if not Msgs.HasErrors then begin
+         if FProg.Expr.Taxonomy = ebtBlockExprBase then
+            DoStep(FProg.FExpr);
+         Result := True;
+      end;
    except
       // we should never end up here
-      FProgramState:=psRunningStopped;
+      FProgramState := psRunningStopped;
       raise;
    end;
 end;

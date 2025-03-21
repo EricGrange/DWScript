@@ -100,6 +100,7 @@ type
          procedure SimpleStringListIndexOf;
          procedure ExceptionInInitialization;
          procedure ExceptionInFinalization;
+         procedure ErrorInInitialization;
          procedure CaseOfBuiltinHelper;
          procedure CompilerInternals;
          procedure CompilerAbort;
@@ -1978,6 +1979,32 @@ begin
 
    exec:=prog.Execute;
    CheckEquals('Runtime Error: Assertion failed [line: 2, column: 1]'#13#10, exec.Msgs.AsInfo);
+end;
+
+// ErrorInInitialization
+//
+procedure TCornerCasesTests.ErrorInInitialization;
+var
+   prog : IdwsProgram;
+   exec : IdwsExecution;
+   code : String;
+begin
+   code := 'unit test; interface implementation'#10
+         + 'var i := 0;'#10
+         + 'initialization'#10
+         + 'i := 1 div i;';
+   prog := FCompiler.Compile(code);
+   CheckEquals('', prog.Msgs.AsInfo, 'Compile');
+   exec := prog.CreateNewExecution;
+   try
+      CheckFalse((exec as TdwsProgramExecution).BeginProgram, 'BeginProgram');
+      Check(exec.ProgramState = psRunning, 'Running');
+      CheckEquals('Runtime Error: Division by zero [line: 4, column: 8]'#13#10, exec.Msgs.AsInfo, 'Msgs');
+   finally
+      (exec as TdwsProgramExecution).EndProgram;
+   end;
+   exec := nil;
+   prog := nil;
 end;
 
 // CaseOfBuiltinHelper
