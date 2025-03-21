@@ -34,6 +34,8 @@ unit UHttpSys2WebServer;
 
 {$I dws.inc}
 
+{$define EnablePas2JS}
+
 interface
 
 uses
@@ -542,7 +544,7 @@ begin
       case fileInfo.Typ of
          fatRAW :
             ProcessStaticFile(fileInfo.CookedPathName, request, response);
-         {$ifdef EnablePas2Js}
+         {$ifdef EnablePas2JS}
          fatP2JS :
             FDWS.HandleP2JS(fileInfo.CookedPathName, request, response);
          {$endif}
