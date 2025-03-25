@@ -676,24 +676,26 @@ end;
 // GetBlobField
 //
 function TdwsSynSQLiteDataSet.GetBlobField(index : Integer) : RawByteString;
+var
+   rq : TSQLite3Statement;
 begin
    if FEOFReached then
       RaiseNoActiveRecord;
    if Cardinal(index) >= Cardinal(FRequest.FieldCount) then
       RaiseInvalidFieldIndex(index);
-   Result := FRequest.FieldBlob(index);
+
+   rq := FRequest.Request;
+   SetString(Result, sqlite3.column_blob(rq, index), sqlite3.column_bytes(rq, index));
 end;
 
 // DoPrepareFields
 //
 procedure TdwsSynSQLiteDataSet.DoPrepareFields;
-var
-   i, n : Integer;
 begin
-   n:=FRequest.FieldCount;
+   var n := FRequest.FieldCount;
    SetLength(FFields, n);
-   for i:=0 to n-1 do
-      FFields[i]:=TdwsSynSQLiteDataField.Create(Self, i);
+   for var i := 0 to n-1 do
+      FFields[i] := TdwsSynSQLiteDataField.Create(Self, i);
 end;
 
 // ------------------
