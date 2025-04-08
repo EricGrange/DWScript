@@ -1,1 +1,2 @@
 Syntax Error: Incompatible types: "String" and "TEnum" [line: 5, column: 7]
+Hint: Empty FOR loop [line: 5, column: 19]

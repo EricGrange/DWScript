@@ -1,3 +1,4 @@
 Errors >>>>
+Hint: Empty FOR loop [line: 7, column: 35]
 Runtime Error: FOR loop STEP should be strictly positive: -1 [line: 7, column: 1]
 Result >>>>

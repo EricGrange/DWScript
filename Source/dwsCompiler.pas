@@ -6377,6 +6377,9 @@ begin
          if not FTok.TestDelete(ttDO) then
            FMsgs.AddCompilerStop(FTok.HotPos, CPE_DoExpected);
 
+         if FTok.Test(ttSEMI) then
+            FMsgs.AddCompilerHint(FTok.HotPos, CPH_EmptyForBlock);
+
          if loopFirstStatement<>nil then begin
             iterBlockExpr:=TBlockExpr.Create(FCompilerContext, FTok.HotPos);
             iterBlockExpr.AddStatement(loopFirstStatement);

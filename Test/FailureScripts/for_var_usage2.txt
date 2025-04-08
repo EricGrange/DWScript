@@ -1,1 +1,2 @@
 Warning: Assignment to FOR-Loop variable [line: 3, column: 9]
+Hint: Empty FOR loop [line: 3, column: 22]

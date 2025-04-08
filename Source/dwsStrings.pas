@@ -407,6 +407,7 @@ const
 
   CPH_EmptyThenBlock = 'Empty THEN block';
   CPH_EmptyElseBlock = 'Empty ELSE block';
+  CPH_EmptyForBlock = 'Empty FOR loop';
   CPH_BeginInCaseOfElseClause = 'Redundant "begin" in clause of a case..of';
 
   CPH_CaseRangeLowerBoundIsGreaterThanHigherBound = 'Case range condition lower bound is greater than higher bound';

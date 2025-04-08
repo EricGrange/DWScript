@@ -133,6 +133,8 @@ type
          procedure EndDot;
 
          procedure SizeOfSpecial;
+
+         procedure EmptyForLoop;
    end;
 
    ETestException = class (Exception);
@@ -2560,6 +2562,16 @@ begin
 
    CheckEquals('112', prog.Execute.Result.ToString, 'SizeOf');
    prog := nil;
+end;
+
+// EmptyForLoop
+//
+procedure TCornerCasesTests.EmptyForLoop;
+var
+   prog : IdwsProgram;
+begin
+   prog := FCompiler.Compile('for var i := 1 to 10 do ;');
+   CheckEquals('Hint: Empty FOR loop [line: 1, column: 25]'#13#10, prog.Msgs.AsInfo);
 end;
 
 // ------------------------------------------------------------------
