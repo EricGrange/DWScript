@@ -31,6 +31,7 @@ type
          procedure PlusMinus;
          procedure TripleApos;
          procedure UnderscoreInNumbers;
+         procedure TokenTypesToStringTest;
 
          procedure ActionStream;
    end;
@@ -455,6 +456,23 @@ begin
       t.Free;
       rules.Free;
    end;
+end;
+
+// TokenTypesToStringTest
+//
+procedure TTokenizerTests.TokenTypesToStringTest;
+var
+  emptySet : TTokenTypes;
+begin
+  emptySet := [];
+  CheckEquals('', TokenTypesToString(emptySet), 'Empty set should return empty string');
+
+  CheckEquals('"lazy"', TokenTypesToString([ttLAZY]), 'Single word token');
+  CheckEquals('"+"', TokenTypesToString([ttPLUS]), 'Single operator token');
+
+  CheckEquals('"var" or "const"', TokenTypesToString([ttVAR, ttCONST]), 'Multiple word tokens');
+
+  CheckEquals('Integer Literal or Float Literal or "+"', TokenTypesToString([ttIntVal, ttFloatVal, ttPLUS]), 'Mixed token types');
 end;
 
 // ActionStream
