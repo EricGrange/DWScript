@@ -309,15 +309,34 @@ var
 begin
    entry := @Entries[Count];
    fileHeader := @entry.FileHeader;
+
+   // Clear streamed flag
+   fileHeader.fileInfo.flags := fileHeader.fileInfo.flags and not (1 shl 3);
+
    fileHeader.signature := PK_ENTRY_SIGNATURE;
    fileHeader.madeBy := $14;
    fileHeader.fileInfo.neededVersion := $14;
+
    Result := ZipStream.Position;
    fileHeader.localHeadOff := Result - AppendOffset;
    entry.Name := StringToUTF8(zipName);
    fileHeader.fileInfo.SetUTF8FileName;
    fileHeader.fileInfo.nameLen := Length(entry.Name);
    fileHeader.fileInfo.extraLen := 0; // source may have something here
+
+   // Is this a directory ?
+   if (entry.Name <> '') and (entry.Name[fileHeader.fileInfo.nameLen] in ['/', '\']) then begin
+      // Set directory attribute
+      fileHeader.extFileAttr := fileHeader.extFileAttr or $10;
+   end;
+   // Normalize to Unix
+   var p := PAnsiChar(Pointer(entry.Name));
+   while p^ <> #0 do begin
+      if p^ = '\' then
+         p^ := '/';
+      Inc(p);
+   end;
+
    ZipStream.Write(Magic, SizeOf(Magic));
    ZipStream.Write(fileHeader.fileInfo, SizeOf(fileHeader.fileInfo));
    ZipStream.Write(Pointer(entry.Name)^, fileHeader.fileInfo.nameLen);
