@@ -3683,11 +3683,13 @@ begin
       Exit(inherited DoGenerate(systemTable, Table, parentSym));
 
    FIsGenerating:=True;
-   CheckName(table, Name);
+   CheckName(table, Name, Overloaded);
 
    flags:=[];
    if Deprecated<>'' then
       Include(flags, iffDeprecated);
+   if Overloaded then
+      Include(flags, iffOverloaded);
 
    if ResultType='' then begin
       func:=TCustomInternalMagicProcedure.Create(table, Name, GetParameters(systemTable, table),
@@ -3707,7 +3709,7 @@ begin
       end;
    end;
 
-   Result:=table.FindLocal(Name) as TMagicFuncSymbol;
+   Result := func.FuncSymbol;
 end;
 
 //

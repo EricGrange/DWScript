@@ -56,6 +56,10 @@ type
          procedure FuncOverloadStrEval(Info: TProgramInfo);
          function  FuncFastEval(const args : TExprBaseListExec) : Variant;
          function  FuncFastPointEval(const args : TExprBaseListExec) : Variant;
+
+         function FuncFastOverloadEvalString(const args : TExprBaseListExec) : Variant;
+         function FuncFastOverloadEvalInteger(const args : TExprBaseListExec) : Variant;
+
          procedure ProcCallLevelsEval(Info: TProgramInfo);
          procedure FuncReturnStrings(Info: TProgramInfo);
          procedure FuncReturnStrings2(Info: TProgramInfo);
@@ -152,6 +156,7 @@ type
          procedure VirtCreateFunc;
          procedure CallbackFuncNameTest;
          procedure DefaultParamValueTest;
+         procedure FuncVastEvalOverloadTest;
 
          procedure ParseNameTests;
 
@@ -524,6 +529,16 @@ begin
    func.Assign(FUnit.Functions.Items[FUnit.Functions.IndexOf('FuncEnum')]);
    func.Name := 'FuncEnumDef';
    (func.Parameters.Items[0] as TdwsParameter).DefaultValue := 12;
+
+   func:=FUnit.Functions.Add('FuncFastOverload', 'String');
+   func.Parameters.Add('v', 'String');
+   func.Overloaded := True;
+   func.OnFastEval:=FuncFastOverloadEvalString;
+
+   func:=FUnit.Functions.Add('FuncFastOverload', 'Integer');
+   func.Parameters.Add('v', 'Integer');
+   func.Overloaded := True;
+   func.OnFastEval:=FuncFastOverloadEvalInteger;
 end;
 
 // DeclareTestClasses
@@ -1061,6 +1076,22 @@ begin
    rec[0]:=args.AsInteger[0];
    rec[1]:=rec[0]+1;
    Result:=IDataContext(args.Exec.Stack.CreateDataContext(rec, 0));
+end;
+
+// FuncFastOverloadEvalString
+//
+function TdwsUnitTestsContext.FuncFastOverloadEvalString(const args : TExprBaseListExec) : Variant;
+begin
+   Result := args.AsString[0];
+   Result := Result + Result;
+end;
+
+// FuncFastOverloadEvalInteger
+//
+function TdwsUnitTestsContext.FuncFastOverloadEvalInteger(const args : TExprBaseListExec) : Variant;
+begin
+   Result := args.AsInteger[0];
+   Result := Result + Result;
 end;
 
 // ProcCallLevelsEval
@@ -2794,6 +2825,23 @@ begin
 
    CheckEquals('', prog.Execute.Msgs.AsInfo, 'exec errs');
    CheckEquals('512', prog.Execute.Result.ToString, 'exec result');
+end;
+
+// FuncVastEvalOverloadTest
+//
+procedure TdwsUnitTests.FuncVastEvalOverloadTest;
+var
+   prog : IdwsProgram;
+begin
+   prog := FCompiler.Compile(
+       'var s := "1"; var i := 1;'#10
+      +'PrintLn(FuncFastOverload(s));'#10
+      +'PrintLn(FuncFastOverload(i));'
+   );
+
+   CheckEquals('', prog.Msgs.AsInfo, 'Compile');
+
+   CheckEquals('11'#13#10'2'#13#10, prog.Execute.Result.ToString, 'Compile');
 end;
 
 // ExplicitUses
