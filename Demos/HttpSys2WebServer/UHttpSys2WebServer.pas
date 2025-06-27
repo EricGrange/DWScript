@@ -416,11 +416,9 @@ end;
 // FileAccessTypeFromFileName
 //
 function THttpSys2WebServer.FileAccessTypeFromFileName(const fileName : TFileName) : TFileAccessType;
-var
-   i : Integer;
 begin
-   for i := 0 to High(FDWSExtensions) do begin
-      if StrEndsWith(fileName, FDWSExtensions[i].Str) then
+   for var i := 0 to High(FDWSExtensions) do begin
+      if StrIEndsWith(fileName, FDWSExtensions[i].Str) then
          Exit(FDWSExtensions[i].Typ);
    end;
    Result := fatRAW;
