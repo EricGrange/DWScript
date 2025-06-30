@@ -71,7 +71,8 @@ type
          // Used to implement a lazy flush on FileAccessInfoCaches
          FCacheCounter : Cardinal;
          FFileAccessInfoCacheSize : Integer;
-         FDWSExtensions : array of TDWSExtension;
+         FDWSExtensions : array ['/'..'Z' ] of array of TDWSExtension;
+         FDefaultFileAccessType : TFileAccessType;
          FMethodsNotAllowed : TWebRequestMethodVerbs;
          FURLRewriter : TdwsURLRewriter;
 
@@ -81,14 +82,15 @@ type
          function HttpPort : Integer;
          function HttpsPort : Integer;
 
+         class function NormalizedExtensionLastChar(lastChar : Char) : Char; static; inline;
          procedure RegisterExtensions(list : TdwsJSONValue; typ : TFileAccessType);
+
+         function FileAccessTypeFromFileName(const fileName : TFileName) : TFileAccessType;
 
          function ParseMethodList(list : TdwsJSONValue) : TWebRequestMethodVerbs;
 
          procedure Initialize(const basePath : TFileName; options : TdwsJSONValue;
                               const aServiceName : String); virtual;
-
-         function FileAccessTypeFromFileName(const fileName : TFileName) : TFileAccessType;
 
          function  GetURLRewriteRules : String;
          procedure SetURLRewriteRules(const json : String);
@@ -193,6 +195,13 @@ const
          +'"ScriptedExtensions": [".dws"],'
          // List of extensions that go through the Pascal To JavaScript  filter
          +'"P2JSExtensions": [".p2js",".pas.js"],'
+         // List of extensions to serve as static files (use null to serve all as static)
+         +'"StaticExtensions": ['
+            +'".htm",".html",".js",".css",".xml",'    // web
+            +'".png",".jpg",".webp",".svg",'          // images
+            +'".zip",".7z",".gz",".exe",'             // archives &binaries
+            +'".txt",".csv",".json"'                  // text
+            +'],'
          // List of HTTP methods that will return a 405 'Not Allowed' response
          +'"MethodsNotAllowed": ["TRACE"]'
       +'}';
@@ -271,18 +280,56 @@ begin
    inherited;
 end;
 
+// NormalizedExtensionLastChar
+//
+class function THttpSys2WebServer.NormalizedExtensionLastChar(lastChar : Char) : Char;
+begin
+   case lastChar of
+      '0'..'9', 'A'..'Z' : Result := lastChar;
+      'a'..'z' : Result := Char(Ord(lastChar) + (Ord('A') - Ord('a')));
+   else
+      Result := '/'; //catch all
+   end;
+end;
+
 // RegisterExtensions
 //
 procedure THttpSys2WebServer.RegisterExtensions(list : TdwsJSONValue; typ : TFileAccessType);
 var
    i, n : Integer;
+   lastChar : Char;
+   ext : String;
 begin
-   n:=Length(FDWSExtensions);
-   SetLength(FDWSExtensions, n+list.ElementCount);
    for i := 0 to list.ElementCount-1 do begin
-      FDWSExtensions[n+i].Str := list.Elements[i].AsString;
-      FDWSExtensions[n+i].Typ := typ;
+      ext := list.Elements[i].AsString;
+      n := Length(ext);
+      if (n < 2) or (ext[1] <> '.') then
+         raise Exception.CreateFmt('Invalid file extension "%s"', [ ext ]);
+      lastChar := NormalizedExtensionLastChar(ext[n]);
+
+      n := Length(FDWSExtensions[lastChar]);
+      SetLength(FDWSExtensions[lastChar], n+1);
+
+      FDWSExtensions[lastChar][n].Str := ext;
+      FDWSExtensions[lastChar][n].Typ := typ;
    end;
+end;
+
+// FileAccessTypeFromFileName
+//
+function THttpSys2WebServer.FileAccessTypeFromFileName(const fileName : TFileName) : TFileAccessType;
+var
+   lastChar : Char;
+begin
+   if fileName <> '' then
+      lastChar := NormalizedExtensionLastChar(fileName[Length(fileName)])
+   else lastChar := '/';
+
+   for var i := 0 to High(FDWSExtensions[lastChar]) do begin
+      if StrIEndsWith(fileName, FDWSExtensions[lastChar][i].Str) then
+         Exit(FDWSExtensions[lastChar][i].Typ);
+   end;
+   Result := FDefaultFileAccessType;
 end;
 
 // ParseMethodList
@@ -317,6 +364,7 @@ procedure THttpSys2WebServer.Initialize(const basePath : TFileName; options : Td
 var
    logPath, errorLogPath, exceptionLogPath : TdwsJSONValue;
    serverOptions : TdwsJSONValue;
+   staticExtensions : TdwsJSONValue;
    env: TdwsJSONObject;
    i, nbThreads : Integer;
 begin
@@ -362,6 +410,14 @@ begin
 
       RegisterExtensions(serverOptions['ScriptedExtensions'], fatDWS);
       RegisterExtensions(serverOptions['P2JSExtensions'], fatP2JS);
+
+      staticExtensions := serverOptions['StaticExtensions'];
+      if not staticExtensions.IsNull then begin
+         RegisterExtensions(serverOptions['StaticExtensions'], fatRAW);
+         FDefaultFileAccessType := fatNone;
+      end else begin
+         FDefaultFileAccessType := fatRAW;
+      end;
 
       FURLInfos := EnumerateURLInfos(serverOptions);
       for i := 0 to High(FURLInfos) do
@@ -411,17 +467,6 @@ begin
 
    if nbThreads>1 then
       FServer.Clone(nbThreads-1);
-end;
-
-// FileAccessTypeFromFileName
-//
-function THttpSys2WebServer.FileAccessTypeFromFileName(const fileName : TFileName) : TFileAccessType;
-begin
-   for var i := 0 to High(FDWSExtensions) do begin
-      if StrIEndsWith(fileName, FDWSExtensions[i].Str) then
-         Exit(FDWSExtensions[i].Typ);
-   end;
-   Result := fatRAW;
 end;
 
 // GetURLRewriteRules
@@ -546,6 +591,8 @@ begin
          fatP2JS :
             FDWS.HandleP2JS(fileInfo.CookedPathName, request, response);
          {$endif}
+         fatNone :
+            ProcessStandardError(request, 404, 'not found',  response);
       else
          if fileInfo.DefaultMimeType <> '' then
             response.ContentType := fileInfo.DefaultMimeType;

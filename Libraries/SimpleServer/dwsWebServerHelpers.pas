@@ -53,7 +53,7 @@ type
          property IndexFileNames : TStrings read FIndexFileNames;
    end;
 
-   TFileAccessType = (fatRAW, fatDWS, fatPAS, fatP2JS);
+   TFileAccessType = (fatRAW, fatDWS, fatPAS, fatP2JS, fatNone);
 
    TFileAccessInfo = class(TRefCountedObject)
       public
