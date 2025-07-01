@@ -1225,6 +1225,8 @@ procedure SwapSingles(var a, b : Single); inline;
 procedure SwapDoubles(var a, b : Double); inline;
 procedure SwapPointers(var a, b : Pointer); inline;
 
+procedure ExchangeBytes(const a, b; size : Integer);
+
 procedure TransferSimpleHashBuckets(const src, dest; nbSrcBuckets, nbDestBuckets, bucketSize : Integer);
 
 procedure QuickSortDoublePrecision(a : PDoubleArray; minIndex, maxIndex : NativeInt);
@@ -8320,6 +8322,46 @@ begin
    buf := a;
    a := b;
    b := buf;
+end;
+
+// ExchangeBytes
+//
+procedure ExchangeBytes(const a, b; size : Integer);
+begin
+   var p1 : PByte := @a;
+   var p2 : PByte := @b;
+   while size >= 8 do begin
+      var buf := PUInt64(p1)^;
+      PUInt64(p1)^ := PUInt64(p2)^;
+      PUInt64(p2)^ := buf;
+      Dec(size, 8);
+      Inc(p1, 8);
+      Inc(p2, 8);
+   end;
+
+   if size >= 4 then begin
+      var buf := PUInt32(p1)^;
+      PUInt32(p1)^ := PUInt32(p2)^;
+      PUInt32(p2)^ := buf;
+      Dec(size, 4);
+      Inc(p1, 4);
+      Inc(p2, 4);
+   end;
+
+   if size >= 2 then begin
+      var buf := PWord(p1)^;
+      PWord(p1)^ := PWord(p2)^;
+      PWord(p2)^ := buf;
+      Dec(size, 2);
+      Inc(p1, 2);
+      Inc(p2, 2);
+   end;
+
+   if size > 0 then begin
+      var buf := p1^;
+      p1^ := p2^;
+      p2^ := buf;
+   end;
 end;
 
 // ------------------
