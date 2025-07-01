@@ -57,6 +57,8 @@ type
       Str : String;
       Typ : TFileAccessType;
    end;
+   TDWSExtensions = array of TDWSExtension;
+   PDWSExtensions = ^TDWSExtensions;
 
    THttpSys2WebServer = class (TInterfacedSelfObject, IHttpSys2WebServer, IWebServerInfo)
       protected
@@ -71,7 +73,7 @@ type
          // Used to implement a lazy flush on FileAccessInfoCaches
          FCacheCounter : Cardinal;
          FFileAccessInfoCacheSize : Integer;
-         FDWSExtensions : array ['/'..'Z' ] of array of TDWSExtension;
+         FDWSExtensions : array ['a'..'z' ] of TDWSExtensions;
          FDefaultFileAccessType : TFileAccessType;
          FMethodsNotAllowed : TWebRequestMethodVerbs;
          FURLRewriter : TdwsURLRewriter;
@@ -82,8 +84,9 @@ type
          function HttpPort : Integer;
          function HttpsPort : Integer;
 
-         class function NormalizedExtensionLastChar(lastChar : Char) : Char; static; inline;
+         function NormalizedExtensionLastChar(lastChar : Char) : Char; inline;
          procedure RegisterExtensions(list : TdwsJSONValue; typ : TFileAccessType);
+         procedure SortExtensionsByLength;
 
          function FileAccessTypeFromFileName(const fileName : TFileName) : TFileAccessType;
 
@@ -282,13 +285,13 @@ end;
 
 // NormalizedExtensionLastChar
 //
-class function THttpSys2WebServer.NormalizedExtensionLastChar(lastChar : Char) : Char;
+function THttpSys2WebServer.NormalizedExtensionLastChar(lastChar : Char) : Char;
 begin
    case lastChar of
-      '0'..'9', 'A'..'Z' : Result := lastChar;
-      'a'..'z' : Result := Char(Ord(lastChar) + (Ord('A') - Ord('a')));
+      'a'..'z' : Result := lastChar;
+      'A'..'Z' : Result := Char(Ord(lastChar) + (Ord('a') - Ord('A')));
    else
-      Result := '/'; //catch all
+      Result := Low(FDWSExtensions); //catch all
    end;
 end;
 
@@ -315,6 +318,24 @@ begin
    end;
 end;
 
+// SortExtensionsByLength
+//
+procedure THttpSys2WebServer.SortExtensionsByLength;
+begin
+   for var lastChar := Low(FDWSExtensions) to High(FDWSExtensions) do begin
+      var extensions : PDWSExtensions := @FDWSExtensions[lastChar];
+      var n := Length(extensions^);
+      for var i := 0 to n - 2 do begin
+         var maxIdx := i;
+         for var j := i + 1 to n - 1 do
+            if Length(extensions^[j].Str) > Length(extensions^[maxIdx].Str) then
+               maxIdx := j;
+         if maxIdx <> i then
+            ExchangeBytes(extensions^[i], extensions^[maxIdx], SizeOf(TDWSExtension));
+      end;
+   end;
+end;
+
 // FileAccessTypeFromFileName
 //
 function THttpSys2WebServer.FileAccessTypeFromFileName(const fileName : TFileName) : TFileAccessType;
@@ -323,11 +344,12 @@ var
 begin
    if fileName <> '' then
       lastChar := NormalizedExtensionLastChar(fileName[Length(fileName)])
-   else lastChar := '/';
+   else lastChar := Low(FDWSExtensions);
 
-   for var i := 0 to High(FDWSExtensions[lastChar]) do begin
-      if StrIEndsWith(fileName, FDWSExtensions[lastChar][i].Str) then
-         Exit(FDWSExtensions[lastChar][i].Typ);
+   var extensions : PDWSExtensions := @FDWSExtensions[lastChar];
+   for var i := 0 to High(extensions^) do begin
+      if StrIEndsWith(fileName, extensions^[i].Str) then
+         Exit(extensions^[i].Typ);
    end;
    Result := FDefaultFileAccessType;
 end;
@@ -418,6 +440,8 @@ begin
       end else begin
          FDefaultFileAccessType := fatRAW;
       end;
+
+      SortExtensionsByLength;
 
       FURLInfos := EnumerateURLInfos(serverOptions);
       for i := 0 to High(FURLInfos) do
