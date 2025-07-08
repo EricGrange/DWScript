@@ -37,6 +37,10 @@ type
       procedure DoEval(const args : TExprBaseListExec; var result : IDataContext); override;
    end;
 
+   TCurrentStackTrace = class(TInternalMagicStringFunction)
+      procedure DoEvalAsString(const args : TExprBaseListExec; var Result : String); override;
+   end;
+
 const
    SYS_TSOURCECODELOCATION = 'TSourceCodeLocation';
 
@@ -133,6 +137,26 @@ begin
    end;
 end;
 
+// ------------------
+// ------------------ TCurrentStackTrace ------------------
+// ------------------
+
+// DoEvalAsString
+//
+procedure TCurrentStackTrace.DoEvalAsString(const args : TExprBaseListExec; var Result : String);
+begin
+   var exec := args.Exec as TdwsProgramExecution;
+   var callersOnly := args.AsBoolean[0];
+   var callStack := args.Exec.GetCallStack;
+   if not callersOnly then begin
+      var location : TdwsExprLocation;
+      location.Expr := args.Expr;
+      location.Prog := exec.CurrentProg;
+      Insert(location, callStack, 0);
+   end;
+   Result := exec.CallStackToString(callStack);
+end;
+
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
@@ -147,6 +171,8 @@ initialization
 
    RegisterInternalFunction(TCurrentSourceCodeLocation, 'CurrentSourceCodeLocation', [], SYS_TSOURCECODELOCATION, []);
    RegisterInternalFunction(TCallerSourceCodeLocation, 'CallerSourceCodeLocation', [], SYS_TSOURCECODELOCATION, []);
+
+   RegisterInternalStringFunction(TCurrentStackTrace, 'CurrentStackTrace', ['callersOnly=N', SYS_BOOLEAN]);
 
 end.
 
