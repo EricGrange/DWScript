@@ -1169,11 +1169,11 @@ begin
          end
       else if IdemPChar(P, 'UPGRADE:') then
          knownHeader := reqUpgrade
-      else knownHeader := reqCacheControl; // mark not found
+      else knownHeader := reqCacheControl;
 
-      if knownHeader<>reqCacheControl then begin
+      if knownHeader <> reqCacheControl then begin
          pKnown := @Headers.KnownHeaders[knownHeader];
-         while P^<>':' do
+         while P^ <> ':' do
             Inc(P);
          Inc(P); // jump ':'
          while P^ = ' ' do
