@@ -680,11 +680,15 @@ procedure THttpApi2Server.SendError(request : PHTTP_REQUEST_V2; response : PHTTP
 var
    bytesSent : Cardinal;
 begin
+   FillChar(response^, SizeOf(response^), 0);
+
    FLogFieldsData.ProtocolStatus := statusCode;
    response^.SetErrorStatus(statusCode, FOutStatus, @FDataChunkForErrorContent, errorMsg);
    HttpAPI.SendHttpResponse(FReqQueue, request^.RequestId, 0, response^, nil, bytesSent, nil, 0, nil, FLogDataPtr);
 end;
 
+// AddUrl
+//
 function THttpApi2Server.AddUrl(const info : THttpSys2URLInfo) : Integer;
 var
    s : String;
@@ -1074,6 +1078,7 @@ begin
       FillChar(request^, SizeOf(HTTP_REQUEST_V2), 0);
       errCode := HttpAPI.ReceiveHttpRequest(FReqQueue, requestID, 0, request^,
                                             Length(requestBuffer), bytesRead);
+
       if Terminated then
          break;
       case errCode of
@@ -1111,8 +1116,8 @@ begin
             FWebRequest.InContentType := inContentType;
 
             // cleanup response
-            FillChar(response^, SizeOf(response^), 0);
             FWebResponse.Clear;
+            FillChar(response^, SizeOf(response^), 0);
 
             try
                // compute response
@@ -1361,7 +1366,6 @@ const
       'OPTIONS', 'GET', 'HEAD', 'POST', 'PUT', 'DELETE', 'TRACE',
       'CONNECT', 'TRACK', 'MOVE', 'COPY', 'PROPFIND', 'PROPPATCH',
       'MKCOL', 'LOCK', 'UNLOCK', 'SEARCH'
-
       );
 
 var
@@ -1466,14 +1470,6 @@ initialization
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
-
-//   Assert((sizeof(HTTP_REQUEST_V2) = 464+8) and (sizeof(HTTP_SSL_INFO) = 28) and
-//      (sizeof(HTTP_DATA_CHUNK_INMEMORY) = 24) and
-//      (sizeof(HTTP_DATA_CHUNK_FILEHANDLE) = 32) and
-//      (sizeof(HTTP_REQUEST_HEADERS) = 344) and
-//      (sizeof(HTTP_RESPONSE_HEADERS) = 256) and (sizeof(HTTP_COOKED_URL) = 24) and
-//      (sizeof(HTTP_RESPONSE_V2) = 288) and (ord(reqUserAgent) = 40) and
-//      (ord(respLocation) = 23) and (sizeof(THttpHeader) = 4));
 
    if InitSocketInterface then
       WSAStartup(WinsockLevel, vWsaDataOnce)
