@@ -29,6 +29,9 @@ type
          procedure HostExcept(info : TProgramInfo);
          procedure RoundTrip(info : TProgramInfo);
 
+         procedure NotGtrFloat(info : TProgramInfo);
+         procedure NotGtrString(info : TProgramInfo);
+
          procedure InvalidAddUnit;
 
       published
@@ -135,6 +138,8 @@ type
          procedure SizeOfSpecial;
 
          procedure EmptyForLoop;
+
+         procedure OperatorOverload;
    end;
 
    ETestException = class (Exception);
@@ -415,6 +420,20 @@ begin
    func := info.RootInfo(info.ParamAsString[0]);
    n := info.ParamAsInteger[1];
    Info.ResultAsString := func.Call([n-1]).ValueAsString;
+end;
+
+// NotGtrFloat
+//
+procedure TCornerCasesTests.NotGtrFloat(info : TProgramInfo);
+begin
+   info.ResultAsBoolean := not (info.ParamAsFloat[0] > info.ParamAsFloat[1]);
+end;
+
+// NotGtrString
+//
+procedure TCornerCasesTests.NotGtrString(info : TProgramInfo);
+begin
+   info.ResultAsBoolean := not (info.ParamAsString[0] > info.ParamAsString[1]);
 end;
 
 // IncludeViaEvent
@@ -2572,6 +2591,97 @@ var
 begin
    prog := FCompiler.Compile('for var i := 1 to 10 do ;');
    CheckEquals('Hint: Empty FOR loop [line: 1, column: 25]'#13#10, prog.Msgs.AsInfo);
+end;
+
+// OperatorOverload
+//
+procedure TCornerCasesTests.OperatorOverload;
+var
+   compiler : TDelphiWebScript;
+   myUnit : TdwsUnit;
+begin
+   compiler := TDelphiWebScript.Create(nil);
+   myUnit := TdwsUnit.Create(nil);
+   try
+      myUnit.UnitName := 'TestOperatorOverload';
+      myUnit.Script := compiler;
+
+      var f := myUnit.Functions.Add;
+      f.Name := 'NotGtrFloat';
+      f.ResultType := 'Boolean';
+      var p := f.Parameters.Add;
+      p.DataType := 'Float';
+      p.Name := 'a';
+      p := f.Parameters.Add;
+      p.DataType := 'Float';
+      p.Name := 'b';
+      f.OnEval := NotGtrFloat;
+
+      f := myUnit.Functions.Add;
+      f.Name := 'NotGtrString';
+      f.ResultType := 'Boolean';
+      p := f.Parameters.Add;
+      p.DataType := 'String';
+      p.Name := 'a';
+      p := f.Parameters.Add;
+      p.DataType := 'String';
+      p.Name := 'b';
+      f.OnEval := NotGtrString;
+
+      var o := myUnit.Operators.Add;
+      o.Operator := ttGTR;
+      o.Params.Add.Name := 'Float';
+      o.Params.Add.Name := 'Float';
+      o.ResultType := 'Boolean';
+      o.UsesAccess := 'NotGtrFloat';
+
+      o := myUnit.Operators.Add;
+      o.Operator := ttGTR;
+      o.Params.Add.Name := 'String';
+      o.Params.Add.Name := 'String';
+      o.ResultType := 'Boolean';
+      o.UsesAccess := 'NotGtrString';
+
+      var prog := compiler.Compile(
+         '''
+         var fA, fB : Float;
+         fA := 20;
+         fB := 3;
+         Print(fA > fB);
+         var sA, sB : String;
+         sA := '20';
+         sB := '3';
+         Print(sA > sB);
+         var iA, iB : Integer;
+         iA := 20;
+         iB := 3;
+         Print(iA > iB);
+         '''
+      );
+      try
+         CheckEquals('', prog.Msgs.AsInfo);
+         var exec := prog.Execute;
+         try
+            CheckEquals('FalseTrueTrue', exec.Result.ToUTF8String);
+         finally
+            exec := nil;
+         end;
+      finally
+         prog := nil;
+      end;
+
+   finally
+      myUnit.Free;
+      compiler.Free;
+   end;
+   FCompiler.OnInclude := DoOnInclude;
+   FCompiler.OnNeedUnitEx := DoOnNeedUnit;
+
+   FUnit:=TdwsUnit.Create(nil);
+   FUnit.UnitName:='CornerCases';
+   FUnit.Functions.Add('ReExec').OnEval:=ReExec;
+   FUnit.Functions.Add('HostExcept').OnEval:=HostExcept;
+
 end;
 
 // ------------------------------------------------------------------
