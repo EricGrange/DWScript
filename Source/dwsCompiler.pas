@@ -424,7 +424,7 @@ type
          function GetConstParamExpr(const aScriptPos: TScriptPos; dataSym : TParamSymbol) : TVarExpr;
          function GetSelfParamExpr(const aScriptPos: TScriptPos; selfSym : TDataSymbol) : TVarExpr;
 
-         function ReadAssign(token : TTokenType; var left : TDataExpr) : TProgramExpr;
+         function ReadAssign(token : TTokenType; var left : TDataExpr; purpose : TAssignExprPurpose) : TProgramExpr;
 
          function ReadSetOfType(const typeName : String; typeContext : TdwsReadTypeContext) : TSetOfSymbol;
 
@@ -760,8 +760,6 @@ type
                                 resultType : TdwsResultType;
                                 const stackParams : TStackParameters;
                                 const mainFileName : String) : TdwsMainProgram;
-         function CreateAssign(const scriptPos : TScriptPos; token : TTokenType;
-                               left : TDataExpr; right : TTypedExpr) : TProgramExpr;
 
          function CreateArrayLow(const aScriptPos : TScriptPos; baseExpr : TProgramExpr; typ : TArraySymbol; captureBase : Boolean) : TTypedExpr;
          function CreateArrayHigh(const aScriptPos : TScriptPos; baseExpr : TProgramExpr; typ : TArraySymbol; captureBase : Boolean) : TTypedExpr;
@@ -2920,7 +2918,9 @@ begin
       varExpr.IncRefCount;
       {$endif}
 
-      Result:=CreateAssign(scriptPos, ttASSIGN, varExpr, initExpr);
+      Result := dwsCompilerUtils.CreateAssignExpr(
+         FCompilerContext, scriptPos, ttASSIGN, varExpr, initExpr, aepVarDecl
+      );
       initExpr:=nil;
 
    end else begin
@@ -4669,7 +4669,7 @@ begin
                      FMsgs.AddCompilerError(FTok.HotPos, CPE_CantWriteToLeftSide);
                   if locExprClass.InheritsFrom(TVarExpr) then
                      WarnForVarUsage(TVarExpr(locExpr), hotPos);
-                  Result := ReadAssign(token, TDataExpr(locExpr));
+                  Result := ReadAssign(token, TDataExpr(locExpr), aepNormal);
                end;
 
             end else begin
@@ -5342,7 +5342,9 @@ begin
    Inc(FSourcePostConditionsIndex);
    CurrentProg.Table.AddSymbol(sym);
    varExpr := GetVarExpr(FTok.HotPos, sym);
-   initExpr := CreateAssign(FTok.HotPos, ttASSIGN, varExpr, expr);
+   initExpr := dwsCompilerUtils.CreateAssignExpr(
+      FCompilerContext, FTok.HotPos, ttASSIGN, varExpr, expr, aepNormal
+   );
    CurrentProg.InitExpr.AddStatement(initExpr);
 
    Result := GetVarExpr(FTok.HotPos, sym);
@@ -5525,7 +5527,7 @@ begin
             if Expr.Typ is TClassOfSymbol then
                FMsgs.AddCompilerError(FTok.HotPos, CPE_ObjectReferenceExpected);
             var fieldExpr := ReadField(aPos, nil, TFieldSymbol(sym), expr);
-            Result := ReadAssign(ttASSIGN, fieldExpr);
+            Result := ReadAssign(ttASSIGN, fieldExpr, aepNormal);
 
          end else if sym is TClassVarSymbol then begin
 
@@ -5533,7 +5535,7 @@ begin
             RecordSymbolUseImplicitReference(sym, aPos, True);
             OrphanAndNil(expr);
             var fieldExpr : TDataExpr := GetVarExpr(aPos, TClassVarSymbol(sym));
-            Result := ReadAssign(ttASSIGN, fieldExpr);
+            Result := ReadAssign(ttASSIGN, fieldExpr, aepNormal);
 
          end else if sym is TMethodSymbol then begin
 
@@ -6463,8 +6465,10 @@ begin
             inExprVarSym := TScriptDataSymbol.Create('', inExpr.Typ);
             CurrentProg.Table.AddSymbol(inExprVarSym);
             inExprVarExpr := GetVarExpr(inPos, inExprVarSym);
-            inExprAssignExpr := CreateAssignExpr(FCompilerContext, FTok.HotPos, ttASSIGN,
-                                                 inExprVarExpr, TTypedExpr(inExpr));
+            inExprAssignExpr := dwsCompilerUtils.CreateAssignExpr(
+               FCompilerContext, FTok.HotPos, ttASSIGN,
+               inExprVarExpr, TTypedExpr(inExpr), aepNormal
+            );
             inExpr := inExprVarExpr;
             inExpr.IncRefCount;
          end;
@@ -6486,8 +6490,11 @@ begin
             blockExpr := EnsureLoopVarExpr(forPos, loopVarName, loopVarNamePos, loopVarExpr, arraySymbol.Typ);
 
             iterVarExpr := GetVarExpr(inPos, iterVarSym) as TIntVarExpr;
-            readArrayItemExpr := CreateAssign(FTok.HotPos, ttASSIGN, loopVarExpr,
-                                              CreateArrayExpr(FTok.HotPos, (inExpr as TDataExpr), iterVarExpr));
+            readArrayItemExpr := dwsCompilerUtils.CreateAssignExpr(
+               FCompilerContext, FTok.HotPos, ttASSIGN, loopVarExpr,
+               CreateArrayExpr(FTok.HotPos, (inExpr as TDataExpr), iterVarExpr),
+               aepNormal
+            );
 
             iterVarExpr := GetVarExpr(inPos, iterVarSym) as TIntVarExpr;
 
@@ -7065,7 +7072,7 @@ end;
 
 // ReadAssign
 //
-function TdwsCompiler.ReadAssign(token : TTokenType; var left : TDataExpr) : TProgramExpr;
+function TdwsCompiler.ReadAssign(token : TTokenType; var left : TDataExpr; purpose : TAssignExprPurpose) : TProgramExpr;
 var
    hotPos : TScriptPos;
    right : TTypedExpr;
@@ -7099,7 +7106,9 @@ begin
       if (token = ttASSIGN) and not FMsgs.HasErrors then
          CheckAssigningToSelf;
 
-      Result := CreateAssign(hotPos, token, left, right);
+      Result := dwsCompilerUtils.CreateAssignExpr(
+         FCompilerContext, hotPos, token, left, right, purpose
+      );
       left := nil;
    except
       OrphanAndNil(left);
@@ -9991,8 +10000,10 @@ begin
       try
          expr:=ReadExpr(propSym.Typ);
          if expr<>nil then begin
-            resultExpr:=TVarExpr.CreateTyped(FCompilerContext, scriptPos, proc.Func.Result);
-            proc.Expr:=CreateAssign(scriptPos, ttASSIGN, resultExpr, expr);
+            resultExpr := TVarExpr.CreateTyped(FCompilerContext, scriptPos, proc.Func.Result);
+            proc.Expr := dwsCompilerUtils.CreateAssignExpr(
+               FCompilerContext, scriptPos, ttASSIGN, resultExpr, expr, aepNormal
+            );
          end;
       finally
          CurrentProg:=oldProg;
@@ -10086,9 +10097,12 @@ begin
                end;
                instr:=nil;
                if (expr is TDataExpr) and TDataExpr(expr).IsWritable then begin
-                  leftExpr:=TDataExpr(expr);
-                  paramExpr:=GetConstParamExpr(scriptPos, paramSymbol);
-                  proc.Expr:=CreateAssign(scriptPos, ttASSIGN, leftExpr, paramExpr);
+                  leftExpr := TDataExpr(expr);
+                  paramExpr := GetConstParamExpr(scriptPos, paramSymbol);
+                  proc.Expr := dwsCompilerUtils.CreateAssignExpr(
+                     FCompilerContext, scriptPos, ttASSIGN,
+                     leftExpr, paramExpr, aepNormal
+                  );
                end else begin
                   FMsgs.AddCompilerError(scriptPos, CPE_CantWriteToLeftSide);
                   OrphanAndNil(expr);
@@ -10760,7 +10774,7 @@ begin
       RecordSymbolUse(proc.Func.Result, exitPos, [suReference, suWrite, suImplicit]);
       leftExpr:=TVarExpr.CreateTyped(FCompilerContext, exitPos, proc.Func.Result);
       try
-         assignExpr := ReadAssign(ttASSIGN, leftExpr);
+         assignExpr := ReadAssign(ttASSIGN, leftExpr, aepExitValue);
          try
             leftExpr := nil;
             if gotParenthesis and not FTok.TestDelete(ttBRIGHT) then
@@ -11721,7 +11735,10 @@ function TdwsCompiler.ReadTerm(isWrite : Boolean = False; expecting : TTypeSymbo
             proc.Expr:=resultExpr;
          end else begin
             resultVar:=TVarExpr.CreateTyped(FCompilerContext, procPos, proc.Func.Result);
-            proc.Expr:=CreateAssign(procPos, ttASSIGN, resultVar, resultExpr);
+            proc.Expr := dwsCompilerUtils.CreateAssignExpr(
+               FCompilerContext, procPos, ttASSIGN,
+               resultVar, resultExpr, aepExitValue
+            );
          end;
 
       end else begin
@@ -13796,14 +13813,6 @@ begin
    DoSectionChanged;
 end;
 
-// CreateAssign
-//
-function TdwsCompiler.CreateAssign(const scriptPos : TScriptPos; token : TTokenType;
-                                   left : TDataExpr; right : TTypedExpr) : TProgramExpr;
-begin
-   Result := CreateAssignExpr(FCompilerContext, scriptPos, token, left, right);
-end;
-
 // CreateArrayLow
 //
 function TdwsCompiler.CreateArrayLow(const aScriptPos : TScriptPos; baseExpr : TProgramExpr; typ : TArraySymbol; captureBase : Boolean) : TTypedExpr;
@@ -13965,7 +13974,7 @@ function TdwsCompiler.CreateAssignOperatorExpr(token : TTokenType; const scriptP
 begin
    Result := dwsCompilerUtils.CreateAssignExpr(
       FCompilerContext, scriptPos,
-      token, aLeft, aRight
+      token, aLeft, aRight, aepOperator
    );
 end;
 

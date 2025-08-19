@@ -46,6 +46,14 @@ type
       );
    TCompilerOptions = set of TCompilerOption;
 
+   TAssignExprPurpose = (
+      aepNormal,        // normal assignement
+      aepVarDecl,       // assignment part of a variable declaration
+      aepExitValue,     // implicit assignment in an Exit
+      aepSpecialize,    // assignment specialization of a generic
+      aepOperator       // operator assignement
+   );
+
    TdwsCompilerContext = class (TdwsBaseSymbolsContext)
       private
          FProg : TObject;

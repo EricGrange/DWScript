@@ -321,6 +321,7 @@ const
   // Assign
   CPE_RightSideNeedsReturnType = 'Assignment''s right-side-argument has no return type';
   CPE_CantWriteToLeftSide = 'Cannot assign a value to the left-side argument';
+  CPE_ExitValueNeedsType = 'Invalid Exit argument';
 
   // Function/Procedures
   CPE_FunctionTypeExpected = 'Function type expected';

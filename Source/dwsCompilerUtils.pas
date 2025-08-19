@@ -89,7 +89,8 @@ function NameToArrayMethod(const name : String; msgs : TdwsCompileMessageList;
 
 function CreateAssignExpr(context : TdwsCompilerContext;
                           const scriptPos : TScriptPos; token : TTokenType;
-                          left : TDataExpr; right : TTypedExpr) : TProgramExpr;
+                          left : TDataExpr; right : TTypedExpr;
+                          purpose : TAssignExprPurpose) : TProgramExpr;
 
 function CreateSimpleFuncExpr(context : TdwsCompilerContext; const aScriptPos : TScriptPos;
                               funcSym: TFuncSymbol) : TFuncExprBase;
@@ -179,7 +180,7 @@ end;
 //
 function CreateAssignExpr(context : TdwsCompilerContext;
                           const scriptPos : TScriptPos; token : TTokenType;
-                          left : TDataExpr; right : TTypedExpr) : TProgramExpr;
+                          left : TDataExpr; right : TTypedExpr; purpose : TAssignExprPurpose) : TProgramExpr;
 
 var
    classOpSymbol : TClassOperatorSymbol;
@@ -314,7 +315,12 @@ begin
 
       context.OrphanObject(left);
       context.OrphanObject(right);
-      context.Msgs.AddCompilerError(scriptPos, CPE_RightSideNeedsReturnType);
+      case purpose of
+         aepExitValue:
+            context.Msgs.AddCompilerError(scriptPos, CPE_ExitValueNeedsType);
+      else
+         context.Msgs.AddCompilerError(scriptPos, CPE_RightSideNeedsReturnType);
+      end;
       Result:=TNullExpr.Create(scriptPos);
 
    end;

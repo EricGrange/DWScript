@@ -5431,7 +5431,8 @@ begin
    specializedRight := Right.SpecializeTypedExpr(context);
    Result := dwsCompilerUtils.CreateAssignExpr(
       CompilerContextFromSpecialization(context), ScriptPos,
-      Token, specializedLeft, specializedRight
+      Token, specializedLeft, specializedRight,
+      aepSpecialize
    );
    if Result = nil then begin
       specializedLeft.Free;
