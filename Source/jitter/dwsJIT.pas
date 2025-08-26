@@ -963,13 +963,19 @@ var
    p : TParamSymbol;
    paramTyp : TTypeSymbol;
    argExpr : TExprBase;
+   anyNumberOfParams : Boolean;
 begin
    funcSym := funcExpr.FuncSym;
    if funcSym = nil then Exit;
    if funcExpr is TMagicFuncExpr then begin
+      anyNumberOfParams := funcSym.Params.AnyNumberOfParams;
       for i := 0 to funcExpr.Args.Count-1 do begin
-         p:=funcSym.Params[i];
+         if anyNumberOfParams then
+            p := funcSym.Params[0]
+         else p := funcSym.Params[i];
+
          if p.ClassType<>TParamSymbol then continue;
+
          argExpr:=funcExpr.Args[i];
          if not (argExpr is TJITTedTypedExpr) then begin
             paramTyp := p.Typ.UnAliasedType;

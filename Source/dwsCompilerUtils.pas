@@ -625,6 +625,7 @@ var
    argTyp : TTypeSymbol;
    initialErrorCount : Integer;
    tooManyArguments, tooFewArguments : Boolean;
+   anyNumberOfParams : Boolean;
    argPos : TScriptPos;
 begin
    funcSym := funcExpr.FuncSym;
@@ -634,37 +635,59 @@ begin
 
    initialErrorCount:=context.Msgs.Count;
 
-   // Check number of arguments = number of parameters
-   if funcExpr.Args.Count>paramCount then begin
-      tooManyArguments:=True;
-      while funcExpr.Args.Count>paramCount do begin
-         context.OrphanObject(funcExpr.Args.ExprBase[funcExpr.Args.Count-1]);
-         funcExpr.Args.Delete(funcExpr.Args.Count-1);
-      end;
-   end else tooManyArguments:=False;
+   anyNumberOfParams := funcSym.Params.AnyNumberOfParams;
 
-   tooFewArguments:=False;
-   while funcExpr.Args.Count<paramCount do begin
-      // Complete missing args by default values
-      paramSymbol:=TParamSymbol(funcSym.Params[funcExpr.Args.Count]);
-      if paramSymbol is TParamSymbolWithDefaultValue then
-         funcExpr.Args.Add(TConstExpr.CreateTyped(context, paramSymbol.Typ,
-                                                  TParamSymbolWithDefaultValue(paramSymbol).DefaultValue))
-      else begin
-         tooFewArguments:=True;
-         Break;
+   if anyNumberOfParams then begin
+
+      tooManyArguments := False;
+      tooFewArguments := False;
+
+   end else begin
+
+      // Check number of arguments = number of parameters
+      if funcExpr.Args.Count > paramCount then begin
+
+         if not anyNumberOfParams then begin
+            tooManyArguments:=True;
+            while funcExpr.Args.Count>paramCount do begin
+               context.OrphanObject(funcExpr.Args.ExprBase[funcExpr.Args.Count-1]);
+               funcExpr.Args.Delete(funcExpr.Args.Count-1);
+            end;
+         end else tooManyArguments := False;
+
+      end else begin
+
+         tooManyArguments := False;
+
       end;
+
+      tooFewArguments := False;
+      while funcExpr.Args.Count < paramCount do begin
+         // Complete missing args by default values
+         paramSymbol := TParamSymbol(funcSym.Params[funcExpr.Args.Count]);
+         if paramSymbol is TParamSymbolWithDefaultValue then
+            funcExpr.Args.Add(TConstExpr.CreateTyped(context, paramSymbol.Typ,
+                                                     TParamSymbolWithDefaultValue(paramSymbol).DefaultValue))
+         else begin
+            tooFewArguments := True;
+            Break;
+         end;
+      end;
+
    end;
 
-   if paramCount<funcExpr.Args.Count then
-      nbParamsToCheck:=paramCount
-   else nbParamsToCheck:=funcExpr.Args.Count;
+   if (paramCount < funcExpr.Args.Count) and not anyNumberOfParams then
+      nbParamsToCheck := paramCount
+   else nbParamsToCheck := funcExpr.Args.Count;
 
    for i := 0 to nbParamsToCheck-1 do begin
       arg := TTypedExpr(funcExpr.Args.ExprBase[i]);
       if arg.ClassType = TErrorValueExpr then continue;
 
-      paramSymbol:=TParamSymbol(funcSym.Params[i]);
+      if anyNumberOfParams then
+         paramSymbol := TParamSymbol(funcSym.Params[0])
+      else paramSymbol := TParamSymbol(funcSym.Params[i]);
+
       if i < Length(argPosArray) then
          argPos:=argPosArray[i]
       else argPos:=funcExpr.ScriptPos;

@@ -532,6 +532,8 @@ type
          function Description(skip : Integer) : String;
 
          property Symbols[x : Integer] : TParamSymbol read GetSymbol; default;
+
+         function AnyNumberOfParams : Boolean;
    end;
 
    // TExpressionSymbolTable
@@ -648,7 +650,7 @@ type
    end;
 
    TParamSymbolSemantics = ( pssCopy, pssConst, pssVar, pssLazy );
-   TParamSymbolOption = ( psoForbidImplicitCasts, psoInternal );
+   TParamSymbolOption = ( psoForbidImplicitCasts, psoInternal, psoAnyNumberOfParams );
    TParamSymbolOptions = set of TParamSymbolOption;
 
    // parameter: procedure P(x: Integer);
@@ -668,6 +670,7 @@ type
          function Semantics : TParamSymbolSemantics; virtual;
          function ForbidImplicitCasts : Boolean;
          function IsInternal : Boolean;
+         function IsAnyNumberOfParams : Boolean;
    end;
 
    THasParamSymbolMethod = function (param : TParamSymbol) : Boolean of object;
@@ -6410,8 +6413,8 @@ end;
 //
 function TParamsSymbolTable.GetSymbol(x : Integer) : TParamSymbol;
 begin
-   Result:=TParamSymbol(inherited Symbols[x]);
-   Assert(Result is TParamSymbol);
+   Result := TParamSymbol(inherited Symbols[x]);
+   Assert(Result.ClassType.InheritsFrom(TParamSymbol));
 end;
 
 // Description
@@ -6426,6 +6429,13 @@ begin
          Result := Result + '; ' + Symbols[i].Description;
       Result := '(' + Result + ')';
    end else Result := '()';
+end;
+
+// AnyNumberOfParams
+//
+function TParamsSymbolTable.AnyNumberOfParams : Boolean;
+begin
+   Result := (Count = 1) and TParamSymbol(inherited Symbols[0]).IsAnyNumberOfParams
 end;
 
 // ------------------
@@ -6678,6 +6688,13 @@ end;
 function TParamSymbol.IsInternal : Boolean;
 begin
    Result := psoInternal in FOptions;
+end;
+
+// IsAnyNumberOfParams
+//
+function TParamSymbol.IsAnyNumberOfParams : Boolean;
+begin
+   Result := psoAnyNumberOfParams in FOptions;
 end;
 
 // Clone

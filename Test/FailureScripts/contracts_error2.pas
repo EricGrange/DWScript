@@ -1,5 +1,5 @@
 procedure Test;
 require
-	Print : 'Invalid string';
+	Sleep : 'Invalid string';
 begin
 end;

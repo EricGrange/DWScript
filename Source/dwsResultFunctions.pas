@@ -52,8 +52,8 @@ uses dwsStrings, dwsConstExprs, dwsUtils, dwsCoreExprs;
 //
 procedure RegisterStandardResultFunctions(table : TSymbolTable);
 begin
-   TPrintFunction.Create(table, 'Print', ['s', SYS_VARIANT], '', []);
-   TPrintLnFunction.Create(table, 'PrintLn', ['s', SYS_VARIANT], '', []);
+   TPrintFunction.Create(table, 'Print', ['...', SYS_VARIANT], '', []);
+   TPrintLnFunction.Create(table, 'PrintLn', ['...', SYS_VARIANT], '', []);
 end;
 
 // ------------------
@@ -71,22 +71,24 @@ var
       buf : String;
    begin
       exprBase.EvalAsString(args.Exec, buf);
-      Result:=TdwsProgramExecution(args.Exec).Result;
+      Result := TdwsProgramExecution(args.Exec).Result;
       Result.AddString(buf);
    end;
 
-var
-   exprBaseClass : TClass;
 begin
-   exprBase:=args.ExprBase[0];
-   exprBaseClass:=exprBase.ClassType;
-   Result:=TdwsProgramExecution(args.Exec).Result;
-   if exprBaseClass=TConstStringExpr then begin
-      Result.AddString(TConstStringExpr(exprBase).Value);
-   end else if exprBaseClass=TIntVarExpr then begin
-      Result.AddString(exprBase.EvalAsInteger(args.Exec));
-   end else begin
-      EvalString(Result);
+   Result := TdwsProgramExecution(args.Exec).Result;
+
+   for var i := 0 to args.Count-1 do begin
+      exprBase := args.ExprBase[i];
+      var exprBaseClass := exprBase.ClassType;
+
+      if exprBaseClass = TConstStringExpr then begin
+         Result.AddString(TConstStringExpr(exprBase).Value);
+      end else if exprBaseClass = TIntVarExpr then begin
+         Result.AddString(exprBase.EvalAsInteger(args.Exec));
+      end else begin
+         EvalString(Result);
+      end;
    end;
 end;
 

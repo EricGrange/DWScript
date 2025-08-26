@@ -305,6 +305,10 @@ begin
       case c of
          '@','&','!':
             ParamSpecifier(c, paramRec);
+         '.': begin
+            Assert(paramRec.ParamName = '...');
+            paramRec.Options := [ psoAnyNumberOfParams ];
+         end;
       else
          paramRec.IsVarParam:=False;
          paramRec.IsConstParam:=False;
