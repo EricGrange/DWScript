@@ -271,7 +271,7 @@ type
          // - if you will call AddUrl() methods later, set CreateSuspended to FALSE,
          // then call explicitely the Resume method, after all AddUrl() calls, in
          // order to start the server
-         constructor Create(CreateSuspended : Boolean; const aServiceName : String);
+         constructor Create(aCreateSuspended : Boolean; const aServiceName : String);
          /// release all associated memory and handles
          destructor Destroy; override;
 
@@ -528,11 +528,12 @@ end;
 
 // Create
 //
-constructor THttpApi2Server.Create(CreateSuspended : Boolean; const aServiceName : String);
+constructor THttpApi2Server.Create(aCreateSuspended : Boolean; const aServiceName : String);
 var
    bindInfo : HTTP_BINDING_INFO;
 begin
-   inherited Create(true);
+   // Suspended status is handled manually at the end of the constructor
+   inherited Create(True);
 
    FLogType:=HttpLoggingTypeNCSA;
 
@@ -564,7 +565,7 @@ begin
       hSetUrlGroupProperty, 'THttpApi2Server.Create');
 
    FClones := TSimpleList<THttpApi2Server>.Create;
-   if not CreateSuspended then
+   if not aCreateSuspended then
       Suspended := False;
 end;
 
@@ -594,8 +595,10 @@ begin
 
       end;
 
-      for i := FClones.Count-1 downto 0 do
+      for i := FClones.Count-1 downto 0 do begin
+         FClones[i].WaitFor;
          FClones[i].Free;
+      end;
       FClones.Free;
 
    end;
@@ -960,20 +963,20 @@ var
    qosInfo : HTTP_QOS_SETTING_INFO;
    limitInfo : HTTP_CONNECTION_LIMIT_INFO;
 begin
-   if val<=0 then
-      val:=HTTP_LIMIT_INFINITE;
-   FMaxConnections:=val;
+   if val <= 0 then
+      val := HTTP_LIMIT_INFINITE;
+   FMaxConnections := val;
 
-   qosInfo.QosType:=HttpQosSettingTypeConnectionLimit;
-   qosInfo.QosSetting:=@limitInfo;
+   qosInfo.QosType := HttpQosSettingTypeConnectionLimit;
+   qosInfo.QosSetting := @limitInfo;
 
-   limitInfo.Flags:=1;
-   limitInfo.MaxConnections:=FMaxConnections;
+   limitInfo.Flags := 1;
+   limitInfo.MaxConnections := FMaxConnections;
 
    HttpAPI.Check(
-      HttpAPI.SetServerSessionProperty(FServerSessionID, HttpServerQosProperty,
-                                       @qosInfo, SizeOf(qosInfo)),
-      hSetServerSessionProperty, 'SetMaxConnections'
+      HttpAPI.SetUrlGroupProperty(FUrlGroupID, HttpServerQosProperty,
+                                  @qosInfo, SizeOf(qosInfo)),
+      hSetServerSessionProperty, 'THttpApi2Server.SetMaxConnections'
    );
 end;
 

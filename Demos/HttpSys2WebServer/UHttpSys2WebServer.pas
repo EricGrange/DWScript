@@ -468,11 +468,11 @@ begin
 
       LoadAuthenticateOptions(serverOptions['Authentication']);
 
-      FServer.MaxConnections:=serverOptions['MaxConnections'].AsInteger;
+      FServer.MaxConnections := serverOptions['MaxConnections'].AsInteger;
 
       FServer.MaxQueueLength := serverOptions['MaxQueueLength'].AsInteger;
 
-      FServer.MaxBandwidth:=serverOptions['MaxBandwidth'].AsInteger;
+      FServer.MaxBandwidth := serverOptions['MaxBandwidth'].AsInteger;
 
       FServer.MaxInputCountLength:=serverOptions['MaxInputLength'].AsInteger;
 
