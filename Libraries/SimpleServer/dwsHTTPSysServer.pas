@@ -964,7 +964,7 @@ begin
       val:=HTTP_LIMIT_INFINITE;
    FMaxConnections:=val;
 
-   qosInfo.QosType:=HttpQosSettingTypeBandwidth;
+   qosInfo.QosType:=HttpQosSettingTypeConnectionLimit;
    qosInfo.QosSetting:=@limitInfo;
 
    limitInfo.Flags:=1;
@@ -973,7 +973,8 @@ begin
    HttpAPI.Check(
       HttpAPI.SetServerSessionProperty(FServerSessionID, HttpServerQosProperty,
                                        @qosInfo, SizeOf(qosInfo)),
-      hSetServerSessionProperty, 'SetMaxConnections');
+      hSetServerSessionProperty, 'SetMaxConnections'
+   );
 end;
 
 // GetMaxQueueLength
