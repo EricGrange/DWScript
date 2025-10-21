@@ -1207,6 +1207,7 @@ type
          function Optimize(context : TdwsCompilerContext) : TProgramExpr; override;
          function SpecializeProgramExpr(const context : ISpecializationContext) : TProgramExpr; override;
          procedure EnumerateSteppableExprs(const callback : TExprBaseProc); override;
+         function InterruptsFlow : Boolean; override;
 
          property ElseExpr : TProgramExpr read FElse write FElse;
    end;
@@ -6572,6 +6573,13 @@ procedure TIfThenElseExpr.EnumerateSteppableExprs(const callback : TExprBaseProc
 begin
    callback(ThenExpr);
    callback(ElseExpr);
+end;
+
+// InterruptsFlow
+//
+function TIfThenElseExpr.InterruptsFlow : Boolean;
+begin
+   Result := ThenExpr.InterruptsFlow and ElseExpr.InterruptsFlow;
 end;
 
 // GetSubExpr

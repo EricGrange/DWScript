@@ -29,6 +29,21 @@ begin
 	exit;
 end;
 
+procedure Test5;
+begin
+	if Random > 0.5 then
+		exit
+	else exit;
+	PrintLn('a');
+end;
+
+procedure Test6;
+begin
+	if True then
+		exit;
+	PrintLn('a');
+end;
+
 Test1;
-raise Exception.Create;
+raise Exception.Create('oops');
 Test2;
