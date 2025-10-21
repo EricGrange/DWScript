@@ -2325,7 +2325,7 @@ begin
          stmt:=ReadRootStatement(action, Result);
          if Assigned(stmt) then begin
             Result.AddStatement(Stmt);
-            if (reach=rsReachable) and (stmt.InterruptsFlow) then
+            if (reach=rsReachable) and (stmt.InterruptsFlow <> iftNone) then
                reach:=rsUnReachable;
          end;
 
@@ -4518,8 +4518,8 @@ begin
 
             if Assigned(stmt) then begin
                blockExpr.AddStatement(stmt);
-               if (reach=rsReachable) and stmt.InterruptsFlow then
-                  reach:=rsUnReachable;
+               if (reach = rsReachable) and (stmt.InterruptsFlow <> iftNone) then
+                  reach := rsUnReachable;
             end;
 
             case action of

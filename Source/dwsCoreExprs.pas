@@ -1207,7 +1207,7 @@ type
          function Optimize(context : TdwsCompilerContext) : TProgramExpr; override;
          function SpecializeProgramExpr(const context : ISpecializationContext) : TProgramExpr; override;
          procedure EnumerateSteppableExprs(const callback : TExprBaseProc); override;
-         function InterruptsFlow : Boolean; override;
+         function InterruptsFlow : TInterruptFlowType; override;
 
          property ElseExpr : TProgramExpr read FElse write FElse;
    end;
@@ -1372,6 +1372,7 @@ type
 
          function Optimize(context : TdwsCompilerContext) : TProgramExpr; override;
          procedure EnumerateSteppableExprs(const callback : TExprBaseProc); override;
+         function InterruptsFlow : TInterruptFlowType; override;
 
          property CaseConditions : TTightList read FCaseConditions;
          property ValueExpr: TTypedExpr read FValueExpr write FValueExpr;
@@ -1592,6 +1593,7 @@ type
 
          function SpecializeProgramExpr(const context : ISpecializationContext) : TProgramExpr; override;
          procedure EnumerateSteppableExprs(const callback : TExprBaseProc); override;
+         function InterruptsFlow : TInterruptFlowType; override;
 
          property CondExpr : TTypedExpr read FCondExpr write FCondExpr;
          property LoopExpr : TProgramExpr read FLoopExpr write FLoopExpr;
@@ -1600,32 +1602,34 @@ type
    TLoopExprClass = class of TLoopExpr;
 
    // while FCondExpr do FLoopExpr
-   TWhileExpr = class(TLoopExpr)
+   TWhileExpr = class sealed (TLoopExpr)
       public
          procedure EvalNoResult(exec : TdwsExecution); override;
          function Optimize(context : TdwsCompilerContext) : TProgramExpr; override;
+         function InterruptsFlow : TInterruptFlowType; override;
    end;
 
    // repeat FLoopExpr while FCondExpr
-   TRepeatExpr = class(TLoopExpr)
+   TRepeatExpr = class sealed (TLoopExpr)
       public
          procedure EvalNoResult(exec : TdwsExecution); override;
          function Optimize(context : TdwsCompilerContext) : TProgramExpr; override;
+         function InterruptsFlow : TInterruptFlowType; override;
    end;
 
    TFlowControlExpr = class(TNoResultExpr)
-      public
-         function InterruptsFlow : Boolean; override;
    end;
 
-   TBreakExpr = class(TFlowControlExpr)
+   TBreakExpr = class sealed (TFlowControlExpr)
       public
          procedure EvalNoResult(exec : TdwsExecution); override;
+         function InterruptsFlow : TInterruptFlowType; override;
    end;
 
    TExitExpr = class(TFlowControlExpr)
       public
          procedure EvalNoResult(exec : TdwsExecution); override;
+         function InterruptsFlow : TInterruptFlowType; override;
    end;
 
    TExitValueExpr = class(TExitExpr)
@@ -1645,12 +1649,15 @@ type
          property AssignExpr : TAssignExpr read FAssignExpr;
    end;
 
-   TContinueExpr = class(TFlowControlExpr)
+   TContinueExpr = class sealed (TFlowControlExpr)
       public
          procedure EvalNoResult(exec : TdwsExecution); override;
+         function InterruptsFlow : TInterruptFlowType; override;
    end;
 
    TRaiseBaseExpr = class(TNoResultExpr)
+      public
+         function InterruptsFlow : TInterruptFlowType; override;
    end;
 
    // raise TExceptionClass.Create;
@@ -1667,8 +1674,6 @@ type
          destructor Destroy; override;
 
          procedure EvalNoResult(exec : TdwsExecution); override;
-
-         function InterruptsFlow : Boolean; override;
    end;
 
    TReraiseExpr = class(TRaiseBaseExpr)
@@ -6577,9 +6582,9 @@ end;
 
 // InterruptsFlow
 //
-function TIfThenElseExpr.InterruptsFlow : Boolean;
+function TIfThenElseExpr.InterruptsFlow : TInterruptFlowType;
 begin
-   Result := ThenExpr.InterruptsFlow and ElseExpr.InterruptsFlow;
+   Result := MinInterruptFlowType(ThenExpr.InterruptsFlow, ElseExpr.InterruptsFlow);
 end;
 
 // GetSubExpr
@@ -6701,45 +6706,62 @@ end;
 // EnumerateSteppableExprs
 //
 procedure TCaseExpr.EnumerateSteppableExprs(const callback : TExprBaseProc);
-var
-   i : Integer;
 begin
-   for i := 0 to CaseConditions.Count-1 do
+   for var i := 0 to CaseConditions.Count-1 do
       callback(TCaseCondition(CaseConditions.List[i]).TrueExpr);
    callback(ElseExpr);
+end;
+
+// InterruptsFlow
+//
+function TCaseExpr.InterruptsFlow : TInterruptFlowType;
+begin
+   if ElseExpr = nil then
+      Exit(iftNone);
+   Result := ElseExpr.InterruptsFlow;
+   if Result = iftNone then
+      Exit;
+
+   var caseList := CaseConditions.List;
+   for var i := 0 to CaseConditions.Count-1 do begin
+      var cc := TCaseCondition(caseList[i]);
+      if cc.TrueExpr = nil then
+         Exit(iftNone);
+      var ccInterrupt := cc.TrueExpr.InterruptsFlow;
+      case ccInterrupt of
+         iftNone : Exit(iftNone);
+         iftLoop : Result := iftLoop;
+      end;
+   end;
 end;
 
 // GetSubExpr
 //
 function TCaseExpr.GetSubExpr(i : Integer) : TExprBase;
-var
-   j : Integer;
-   cond : TCaseCondition;
 begin
    case i of
-      0 : Result:=ValueExpr;
-      1 : Result:=ElseExpr;
+      0 : Result := ValueExpr;
+      1 : Result := ElseExpr;
    else
       Dec(i, 2);
-      for j:=0 to FCaseConditions.Count-1 do begin
-         cond:=TCaseCondition(FCaseConditions.List[j]);
-         if i<cond.GetSubExprCount then
+      for var j := 0 to FCaseConditions.Count-1 do begin
+         var cond := TCaseCondition(FCaseConditions.List[j]);
+         if i < cond.GetSubExprCount then
             Exit(cond.GetSubExpr(i));
          Dec(i, cond.GetSubExprCount);
       end;
-      Result:=nil;
+      Result := nil;
    end;
 end;
 
 // GetSubExprCount
 //
 function TCaseExpr.GetSubExprCount : Integer;
-var
-   i : Integer;
 begin
-   Result:=2;
-   for i:=0 to FCaseConditions.Count-1 do
-      Inc(Result, TCaseCondition(FCaseConditions.List[i]).GetSubExprCount);
+   Result := 2;
+   var ccList := FCaseConditions.List;
+   for var i := 0 to FCaseConditions.Count-1 do
+      Inc(Result, TCaseCondition(ccList[i]).GetSubExprCount);
 end;
 
 // ------------------
@@ -6750,13 +6772,12 @@ end;
 //
 procedure TCaseStringExpr.EvalNoResult(exec : TdwsExecution);
 var
-   x : Integer;
    value : String;
-   cc : TCaseCondition;
 begin
    FValueExpr.EvalAsString(exec, value);
-   for x := 0 to FCaseConditions.Count - 1 do begin
-      cc:=TCaseCondition(FCaseConditions.List[x]);
+   var ccList := FCaseConditions.List;
+   for var x := 0 to FCaseConditions.Count - 1 do begin
+      var cc := TCaseCondition(ccList[x]);
       if cc.StringIsTrue(exec, value) then begin
          exec.DoStep(cc.TrueExpr);
          cc.TrueExpr.EvalNoResult(exec);
@@ -6778,13 +6799,12 @@ end;
 //
 procedure TCaseIntegerExpr.EvalNoResult(exec : TdwsExecution);
 var
-   x : Integer;
-   value : int64;
-   cc : TCaseCondition;
+   value : Int64;
 begin
-   value:=FValueExpr.EvalAsInteger(exec);
-   for x:=0 to FCaseConditions.Count-1 do begin
-      cc:=TCaseCondition(FCaseConditions.List[x]);
+   value := FValueExpr.EvalAsInteger(exec);
+   var ccList := FCaseConditions.List;
+   for var x := 0 to FCaseConditions.Count-1 do begin
+      var cc := TCaseCondition(ccList[x]);
       if cc.IntegerIsTrue(value) then begin
          exec.DoStep(cc.TrueExpr);
          cc.TrueExpr.EvalNoResult(exec);
@@ -7489,6 +7509,15 @@ begin
    callback(LoopExpr);
 end;
 
+// InterruptsFlow
+//
+function TLoopExpr.InterruptsFlow : TInterruptFlowType;
+begin
+   if (CondExpr = nil) and (LoopExpr.InterruptsFlow = iftProcedure) then
+      Result := iftProcedure
+   else Result := iftNone;
+end;
+
 // GetSubExpr
 //
 function TLoopExpr.GetSubExpr(i : Integer) : TExprBase;
@@ -7545,6 +7574,17 @@ begin
    end;
 end;
 
+// InterruptsFlow
+//
+function TWhileExpr.InterruptsFlow : TInterruptFlowType;
+begin
+   if     (CondExpr.ClassType = TConstBooleanExpr)
+      and TConstBooleanExpr(CondExpr).Value
+      and (LoopExpr.InterruptsFlow = iftProcedure) then
+      Result := iftProcedure
+   else Result := iftNone;
+end;
+
 { TRepeatExpr }
 
 procedure TRepeatExpr.EvalNoResult(exec : TdwsExecution);
@@ -7580,15 +7620,13 @@ begin
    end;
 end;
 
-// ------------------
-// ------------------ TFlowControlExpr ------------------
-// ------------------
-
 // InterruptsFlow
 //
-function TFlowControlExpr.InterruptsFlow : Boolean;
+function TRepeatExpr.InterruptsFlow : TInterruptFlowType;
 begin
-   Result:=True;
+   Result := FLoopExpr.InterruptsFlow;
+   if Result = iftLoop then
+      Result := iftNone;
 end;
 
 // ------------------
@@ -7602,6 +7640,13 @@ begin
    exec.Status:=esrBreak;
 end;
 
+// InterruptsFlow
+//
+function TBreakExpr.InterruptsFlow : TInterruptFlowType;
+begin
+   Result := iftLoop;
+end;
+
 // ------------------
 // ------------------ TBreakExpr ------------------
 // ------------------
@@ -7611,6 +7656,13 @@ end;
 procedure TExitExpr.EvalNoResult(exec : TdwsExecution);
 begin
    exec.Status:=esrExit;
+end;
+
+// InterruptsFlow
+//
+function TExitExpr.InterruptsFlow : TInterruptFlowType;
+begin
+   Result := iftProcedure;
 end;
 
 // ------------------
@@ -7662,6 +7714,13 @@ end;
 procedure TContinueExpr.EvalNoResult(exec : TdwsExecution);
 begin
    exec.Status:=esrContinue;
+end;
+
+// InterruptsFlow
+//
+function TContinueExpr.InterruptsFlow : TInterruptFlowType;
+begin
+   Result := iftLoop;
 end;
 
 // ------------------
@@ -7896,6 +7955,17 @@ begin
 end;
 
 // ------------------
+// ------------------ TRaiseBaseExpr ------------------
+// ------------------
+
+// InterruptsFlow
+//
+function TRaiseBaseExpr.InterruptsFlow : TInterruptFlowType;
+begin
+   Result := iftProcedure;
+end;
+
+// ------------------
 // ------------------ TRaiseExpr ------------------
 // ------------------
 
@@ -7938,13 +8008,6 @@ begin
    if exec.IsDebugging then
       exec.DebuggerNotifyException(exceptObj);
    raise e;
-end;
-
-// InterruptsFlow
-//
-function TRaiseExpr.InterruptsFlow : Boolean;
-begin
-   Result:=True;
 end;
 
 // GetSubExpr

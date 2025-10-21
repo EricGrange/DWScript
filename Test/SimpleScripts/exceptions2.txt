@@ -1,3 +1,6 @@
+Errors >>>>
+Warning: Unreachable code [line: 13, column: 14]
+Result >>>>
 Caught once
 Caught again
 Ended

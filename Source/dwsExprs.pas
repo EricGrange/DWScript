@@ -680,6 +680,8 @@ type
          property CallStack : TdwsExprLocationArray read FCallStack;
    end;
 
+   TInterruptFlowType = (iftNone, iftLoop, iftProcedure);
+
    // Base class of all expressions attached to a program
    TProgramExpr = class(TExprBase)
       protected
@@ -717,7 +719,7 @@ type
 
          procedure EnumerateSteppableExprs(const callback : TExprBaseProc); virtual;
 
-         function InterruptsFlow : Boolean; virtual;
+         function InterruptsFlow : TInterruptFlowType; virtual;
 
          property Typ : TTypeSymbol read GetType;
          property BaseType : TTypeSymbol read GetBaseType;
@@ -826,6 +828,7 @@ type
 
          function SpecializeProgramExpr(const context : ISpecializationContext) : TProgramExpr; override;
          procedure EnumerateSteppableExprs(const callback : TExprBaseProc); override;
+         function InterruptsFlow : TInterruptFlowType; override;
 
          function Taxonomy : TExprBaseTaxonomy; override;
 
@@ -1663,6 +1666,8 @@ type
          property VMT : TMethodSymbolArray read FVMT write FVMT;
    end;
 
+function MinInterruptFlowType(const a, b : TInterruptFlowType) : TInterruptFlowType; inline;
+
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
@@ -1677,6 +1682,15 @@ uses
    dwsInfoClasses, dwsCompilerUtils, dwsConstExprs, dwsResultFunctions,
    dwsSpecializationContext, dwsDynamicArrays, dwsArrayExprs, dwsAssociativeArrays,
    dwsStrings, dwsUTF8;
+
+// MinInterruptFlowType
+//
+function MinInterruptFlowType(const a, b : TInterruptFlowType) : TInterruptFlowType; inline;
+begin
+   if Ord(a) < Ord(b) then
+      Result := a
+   else Result := b;
+end;
 
 // TScriptDynamicArray_InitData
 //
@@ -3981,9 +3995,9 @@ end;
 
 // InterruptsFlow
 //
-function TProgramExpr.InterruptsFlow : Boolean;
+function TProgramExpr.InterruptsFlow : TInterruptFlowType;
 begin
-   Result:=False;
+   Result := iftNone;
 end;
 
 // ------------------
@@ -4314,11 +4328,21 @@ end;
 // EnumerateSteppableExprs
 //
 procedure TBlockExprBase.EnumerateSteppableExprs(const callback : TExprBaseProc);
-var
-   i : Integer;
 begin
-   for i := 0 to FCount-1 do
+   for var i := 0 to FCount-1 do
       callback(FStatements[i]);
+end;
+
+// InterruptsFlow
+//
+function TBlockExprBase.InterruptsFlow : TInterruptFlowType;
+begin
+   Result := iftNone;
+   for var i := 0 to FCount-1 do begin
+      Result := FStatements[i].InterruptsFlow;
+      if Result <> iftNone then
+         Exit;
+   end;
 end;
 
 // Taxonomy

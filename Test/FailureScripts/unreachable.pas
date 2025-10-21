@@ -44,6 +44,14 @@ begin
 	PrintLn('a');
 end;
 
+procedure Test7;
+begin
+	repeat 
+		exit;
+	until False;
+	PrintLn('a');
+end;
+
 Test1;
 raise Exception.Create('oops');
 Test2;
