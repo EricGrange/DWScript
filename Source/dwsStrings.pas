@@ -140,6 +140,8 @@ const
   CPE_ThenExpected = 'THEN expected';
   CPE_ElseExpected = 'ELSE expected';
   CPE_OfExpected = 'OF expected';
+  CPE_LessExpected = '< expected';
+  CPE_GrtExpected = '> expected';
   CPE_ExpressionExpected = 'Expression expected';
   CPE_DotDotExpected = '".." expected';
   CPE_EndExpected = 'END expected';

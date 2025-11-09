@@ -897,7 +897,8 @@ const
       ttUNIT, ttUNTIL, ttUSES,
       ttVAR, ttVIRTUAL,
       ttWHILE, ttWITH, ttWRITE,
-      ttXOR
+      ttXOR,
+      ttTARRAY
       ];
 type
    TTokenAlphaLookup = record

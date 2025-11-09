@@ -64,7 +64,8 @@ type
      ttPROGRAM, ttLIBRARY,
 
      // Tokens for compatibility to Delphi
-     ttREGISTER, ttPASCAL, ttCDECL, ttSAFECALL, ttSTDCALL, ttFASTCALL, ttREFERENCE
+     ttREGISTER, ttPASCAL, ttCDECL, ttSAFECALL, ttSTDCALL, ttFASTCALL, ttREFERENCE,
+     ttTARRAY
      );
 
    TTokenTypes = set of TTokenType;
@@ -106,7 +107,7 @@ const
      'private', 'protected', 'public', 'published',
      'program', 'library',
      'register', 'pascal', 'cdecl', 'safecall', 'stdcall', 'fastcall', 'reference'
-     );
+     ,'tarray');
    cWordTokenTypes = [ ttLAZY..ttSAR, ttIMPLIES, ttIMPLICIT, ttDEFAULT..ttREFERENCE ];
 
 

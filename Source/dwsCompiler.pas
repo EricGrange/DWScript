@@ -428,7 +428,7 @@ type
 
          function ReadSetOfType(const typeName : String; typeContext : TdwsReadTypeContext) : TSetOfSymbol;
 
-         function ReadArrayType(const typeName : String; typeContext : TdwsReadTypeContext) : TTypeSymbol;
+         function ReadArrayType(const typeName : String; typeContext : TdwsReadTypeContext; IsTArrayType : Boolean = False) : TTypeSymbol;
          function ReadAssociativeArrayType(const typeName : String; keyType : TTypeSymbol;
                                            typeContext : TdwsReadTypeContext) : TAssociativeArraySymbol;
          function ReadArrayConstant(closingToken : TTokenType; expecting : TTypeSymbol) : TArrayConstantExpr;
@@ -7821,7 +7821,7 @@ end;
 
 // ReadArrayType
 //
-function TdwsCompiler.ReadArrayType(const TypeName: String; typeContext : TdwsReadTypeContext): TTypeSymbol;
+function TdwsCompiler.ReadArrayType(const TypeName: String; typeContext : TdwsReadTypeContext; IsTArrayType : Boolean = False): TTypeSymbol;
 var
    hotPos : TScriptPos;
 
@@ -7939,10 +7939,10 @@ begin
             FMsgs.AddCompilerStop(FTok.HotPos, CPE_ArrayBracketRightExpected);
       end;
 
-      if not FTok.TestDelete(ttOF) then
+      if FTok.TestDeleteAny([ttOF, ttLESS]) = ttNone then
          FMsgs.AddCompilerStop(FTok.HotPos, CPE_OfExpected);
 
-      if FTok.TestDelete(ttCONST) then begin
+      if (not IsTArrayType) and FTok.TestDelete(ttCONST) then begin
 
          if not (typeContext in [tcDeclaration, tcParameter, tcOperand]) then
             FMsgs.AddCompilerError(FTok.HotPos, CPE_TypeExpected);
@@ -7955,7 +7955,7 @@ begin
 
          typ:=ReadType('', typeContext);
 
-         if boundsOk and (min.Count>0) then begin
+         if (not IsTArrayType) and boundsOk and (min.Count>0) then begin
 
             if typ.ClassType=TRecordSymbol then
                if not TRecordSymbol(typ).IsFullyDefined then
@@ -7980,6 +7980,11 @@ begin
 
             Result := TDynamicArraySymbol.Create(TypeName, typ, FCompilerContext.TypInteger);
 
+            if IsTArrayType and not FTok.TestDelete(ttGTR) then
+            begin
+              FreeAndNil(Result);
+              FMsgs.AddCompilerStop(FTok.HotPos, CPE_GrtExpected);
+            end;
          end;
 
       end;
@@ -10882,14 +10887,18 @@ var
    sym : TSymbol;
 begin
    hotPos:=FTok.HotPos;
-   tt:=FTok.TestDeleteAny([ttARRAY, ttSET,
+   tt:=FTok.TestDeleteAny([ttARRAY, ttTARRAY, ttSET,
                            ttRECORD, ttCLASS, ttINTERFACE, ttHELPER,
                            ttBLEFT, ttENUM, ttFLAGS, ttPARTIAL, ttSTATIC, ttSTRICT,
                            ttPROCEDURE, ttFUNCTION, ttREFERENCE]);
 
    case tt of
-      ttARRAY : begin
-         Result:=ReadArrayType(typeName, typeContext);
+      ttARRAY, ttTARRAY  : begin
+         if (tt = ttTARRAY) then
+           if not FTok.Test(ttLESS) then  //TArray<T>
+             FMsgs.AddCompilerStop(FTok.HotPos, CPE_LessExpected);
+
+         Result:=ReadArrayType(typeName, typeContext, tt = ttTARRAY);
          if typeName='' then
             RecordSymbolUse(Result, hotPos, [suReference, suImplicit]);
       end;
