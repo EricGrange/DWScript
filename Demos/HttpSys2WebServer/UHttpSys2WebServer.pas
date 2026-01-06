@@ -691,14 +691,8 @@ end;
 // FindDirectoryIndex
 //
 function THttpSys2WebServer.FindDirectoryIndex(var pathFileName : String) : Boolean;
-var
-   noTrailingPathDelimiter : Boolean;
 begin
-   noTrailingPathDelimiter:=AutoRedirectFolders and (not StrEndsWith(pathFileName, '\'));
-
    Result:=FDirectoryIndex.IndexFileForDirectory(pathFileName);
-   if Result and noTrailingPathDelimiter then
-
 end;
 
 // Name
