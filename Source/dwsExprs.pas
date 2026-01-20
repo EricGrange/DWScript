@@ -966,7 +966,8 @@ type
                         potResultInteger, potResultFloat, potResultBoolean,
                         potResultString, potResultConstString,
                         potData, potConstData, potArrayExpr,
-                        potLazy, potInitResult);
+                        potLazy, potInitResult,
+                        potResultDynArrayClone );
    PPushOperator = ^TPushOperator;
    TPushOperator = packed record
       FStackAddr : Integer;
@@ -1002,6 +1003,7 @@ type
       procedure ExecuteConstData(exec : TdwsExecution);
       procedure ExecuteInitResult(exec : TdwsExecution);
       procedure ExecuteLazy(exec : TdwsExecution);
+      procedure ExecuteResultDynArrayClone(exec : TdwsExecution);
    end;
    TPushOperatorArray = packed array [0..MaxInt shr 5] of TPushOperator;
    PPushOperatorArray = ^TPushOperatorArray;
@@ -4797,6 +4799,8 @@ begin
       if ArgExpr.InheritsFrom(TConstStringExpr) then
          FTypeParamSym:=TSymbol(potResultConstString)
       else FTypeParamSym:=TSymbol(potResultString)
+   else if argTyp.UnAliasedTypeIs(TDynamicArraySymbol) and argExpr.IsConstant then
+      FTypeParamSym := TSymbol(potResultDynArrayClone)
    else FTypeParamSym:=TSymbol(potResult);
    FStackAddr:=StackAddr;
    FArgExpr:=ArgExpr;
@@ -4852,6 +4856,7 @@ begin
       NativeInt(potConstData) : ExecuteConstData(exec);
       NativeInt(potInitResult) : ExecuteInitResult(exec);
       NativeInt(potLazy) : ExecuteLazy(exec);
+      NativeInt(potResultDynArrayClone) : ExecuteResultDynArrayClone(exec);
    else
       ExecuteData(exec);
    end;
@@ -5041,6 +5046,19 @@ begin
    p.VRecord.PRecord := FArgExpr;
    p.VRecord.RecInfo := Pointer(exec.Stack.BasePointer);
    {$endif}
+end;
+
+// ExecuteResultDynArrayClone
+//
+procedure TPushOperator.ExecuteResultDynArrayClone(exec : TdwsExecution);
+var
+   src, cloned : IScriptDynArray;
+begin
+   FArgExpr.EvalAsScriptDynArray(exec, src);
+   CreateNewDynamicArray(src.ElementType, cloned);
+   if src.ArrayLength > 0 then
+      cloned.Concat(src, 0, src.ArrayLength);
+   exec.Stack.Data[exec.Stack.StackPointer + FStackAddr] := cloned;
 end;
 
 // ------------------
