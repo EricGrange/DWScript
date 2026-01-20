@@ -63,6 +63,7 @@ uses
   dwsGraphicLibrary in '..\..\Libraries\GraphicsLib\dwsGraphicLibrary.pas',
   dwsBackgroundWorkersLibModule in '..\..\Libraries\SimpleServer\dwsBackgroundWorkersLibModule.pas' {dwsBackgroundWorkersLib: TDataModule},
   dwsEncodingLibModule in '..\..\Libraries\ClassesLib\dwsEncodingLibModule.pas' {dwsEncodingLib: TDataModule},
+  dwsMath3DFunctions,
   dwsHTTPSysServer in '..\..\Libraries\SimpleServer\dwsHTTPSysServer.pas',
   dwsHTTPSysServerEvents in '..\..\Libraries\SimpleServer\dwsHTTPSysServerEvents.pas';
 
