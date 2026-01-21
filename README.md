@@ -6,11 +6,11 @@ DWScript is an object-oriented scripting engine for Delphi based on the [Delphi]
 
 Goals of the project go beyond web usages, and cover general purpose scripting.
 
-To get started see FirstSteps or [Language], for news see the [posts tagged "DWS"](http://delphitools.info/tag/dws/) at [DelphiTools.info](http://delphitools.info/). You can also have a look at the [FAQ]. If you have other questions related to DWScript programming, usage or integration, [StackOverflow](http://stackoverflow.com/questions/tagged/dwscript) is a good place to ask them. For bugs, use the [Issues tracker](https://bitbucket.org/egrange/dwscript/issues).
+To get started see the new [DWScript Compendium](https://compendium.dwscript.net/) website, for news see the [posts tagged "DWS"](http://delphitools.info/tag/dws/) at [DelphiTools.info](http://delphitools.info/). You can also have a look at the [FAQ]. If you have other questions related to DWScript programming, usage or integration, [StackOverflow](http://stackoverflow.com/questions/tagged/dwscript) is a good place to ask them. For bugs, use the [Issues tracker](https://bitbucket.org/egrange/dwscript/issues).
 
 This project is currently maintained by Eric Grange (http://delphitools.info), and sponsored by [Creative IT](http://creative-it.net), it is based on original DWS2 by Matthias Ackermann (http://sourceforge.net/projects/dws/) initiated way back in the last century.
 
-DWScript lead platform is currently Delphi 10.3, compatibility with older Delphi version is not officially maintained, it may work, or it may not.
+DWScript lead platform is currently Delphi 12, compatibility with older Delphi version is not officially maintained, it may work, or it may not.
 
 ## Licensing ##
 
@@ -20,3 +20,4 @@ DWScript is released under Mozilla Public License 1.1 which, in short, means tha
 If you can't or don't want to satisfy the above requirements, contact the project manager for use under other license schemes.
 
 The JavaScript CodeGen is currently licensed under GPL v3.
+
