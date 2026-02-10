@@ -884,7 +884,7 @@ begin
    end;
 end;
 
-{ TMaxIntBalueFunc }
+{ TMaxIntValueFunc }
 
 function TMaxIntValueFunc.DoEvalAsInteger(const args : TExprBaseListExec) : Int64;
 begin
