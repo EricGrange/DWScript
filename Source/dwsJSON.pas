@@ -2536,20 +2536,16 @@ end;
 // DoClone
 //
 function TdwsJSONArray.DoClone : TdwsJSONValue;
-var
-   arr : TdwsJSONArray;
-   elem : TdwsJSONValue;
-   i : Integer;
 begin
-   arr:=vArray.Create;
+   var arr := vArray.Create;
    arr.SetCapacity(FCount);
-   arr.FCount:=FCount;
-   for i:=0 to FCount-1 do begin
-      elem:=FElements^[i].Clone;
-      elem.FOwner:=Self;
-      arr.FElements^[i]:=elem;
+   arr.FCount := FCount;
+   for var i := 0 to FCount-1 do begin
+      var elem := FElements^[i].Clone;
+      elem.FOwner := arr;
+      arr.FElements^[i] := elem;
    end;
-   Result:=arr;
+   Result := arr;
 end;
 
 // DoExtend
@@ -2561,7 +2557,6 @@ begin
    var otherArr := TdwsJSONArray(other);
    for var i := 0 to otherArr.FCount-1 do
       Add(otherArr.FElements^[i].Clone);
-
 end;
 
 // SetOwner

@@ -1,0 +1,19 @@
+Test1 assign: {"first":{"id":1,"name":"A"}}
+Test1 original intact: 2
+Test2 nested array: {"row":[10,20,30]}
+Test2 original intact: 2
+Test3 clone after release: {"data":[{"x":1},{"x":2},{"x":3}]}
+Test3 reparent: {"item":{"x":1}}
+Test4 cross-assign: {"a":{"v":"alpha"},"b":{"v":"beta"}}
+Test5 deep access: [100,200]
+Test5 deep value: 400
+Test5 deep reparent: {"extracted":{"level2":[100,200]}}
+Test6 original[0]: red
+Test6 clone[0]: yellow
+Test6 original[1]: purple
+Test6 clone[1]: green
+Test7 top-level array clone: [{"k":"v1"},{"k":"v2"},{"k":"v3"}]
+Test7 reparent from array clone: {"elem":{"k":"v2"}}
+Test8 loop (10 iterations): OK
+Test8 template intact: 2
+All tests completed
