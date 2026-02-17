@@ -1,0 +1,10 @@
+a = nil: True
+nil = a: True
+a = b (empty): False
+a[1] = nil: False
+nil = a[1]: False
+a[1] = b(empty): False
+a[1] = b[1] (diff): False
+a[1] = c (same): True
+a(empty) = b[1]: False
+a = b (both empty): False

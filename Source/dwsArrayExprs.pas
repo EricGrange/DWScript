@@ -756,6 +756,11 @@ type
          procedure EvalAsScriptDynArray(exec : TdwsExecution; var result : IScriptDynArray); override;
    end;
 
+   TDynArrayCmpEqualExpr = class(TBooleanBinOpExpr)
+      public
+         function EvalAsBoolean(exec : TdwsExecution) : Boolean; override;
+   end;
+
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
@@ -3484,6 +3489,26 @@ begin
    CreateNewDynamicArray(Typ.Typ, result);
    if a <> nil then
       (a.GetSelf as TScriptAssociativeArray).CopyKeys(result);
+end;
+
+// ------------------
+// ------------------ TDynArrayCmpEqualExpr ------------------
+// ------------------
+
+function TDynArrayCmpEqualExpr.EvalAsBoolean(exec : TdwsExecution) : Boolean;
+var
+   l, r : IScriptDynArray;
+begin
+   FLeft.EvalAsScriptDynArray(exec, l);
+   FRight.EvalAsScriptDynArray(exec, r);
+
+   if l = r then
+      Result := True
+   else if l = nil then
+      Result := (r.ArrayLength = 0)
+   else if r = nil then
+      Result := (l.ArrayLength = 0)
+   else Result := False;
 end;
 
 end.

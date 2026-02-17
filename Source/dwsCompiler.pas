@@ -11176,6 +11176,14 @@ begin
                   if opExpr = nil then begin
                      resultTyp := Result.Typ.UnAliasedType;
                      if     (tt in [ ttEQ, ttNOT_EQ, ttEQ_EQ, ttEXCL_EQ ])
+                        and (
+                               ( (resultTyp is TDynamicArraySymbol) and ((rightTyp is TDynamicArraySymbol) or (rightTyp = FCompilerContext.TypNil)) )
+                            or ( (rightTyp is TDynamicArraySymbol) and (resultTyp = FCompilerContext.TypNil) )
+                            ) then begin
+                        Result := TDynArrayCmpEqualExpr.Create(FCompilerContext, hotPos, tt, Result, right);
+                        if tt in [ttNOT_EQ, ttEXCL_EQ] then
+                           Result := TNotBoolExpr.Create(FCompilerContext, hotPos, Result);
+                     end else if     (tt in [ ttEQ, ttNOT_EQ, ttEQ_EQ, ttEXCL_EQ ])
                         and (rightTyp<>nil)
                         and (
                                 resultTyp.IsClassSymbol
