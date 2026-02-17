@@ -104,10 +104,10 @@ begin
    {$else}
 
    cat := CreateOleObject('ADOX.Catalog');
-   cat.Create('Provider=Microsoft.ACE.OLEDB.12.0;Data Source=Data\Db.mdb;');
+   cat.Create('Provider=Microsoft.ACE.OLEDB.16.0;Data Source=Data\Db.mdb;');
 
    conn := CreateOleObject('ADODB.Connection');
-   conn.ConnectionString := 'Provider=Microsoft.ACE.OLEDB.12.0;Data Source=Data\Db.mdb;Persist Security Info=False';
+   conn.ConnectionString := 'Provider=Microsoft.ACE.OLEDB.16.0;Data Source=Data\Db.mdb;Persist Security Info=False';
    conn.Open;
 
    {$endif}
