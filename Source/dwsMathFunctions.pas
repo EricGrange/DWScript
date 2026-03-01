@@ -1071,19 +1071,23 @@ asm
 
 @@loop8:
    movupd xmm2, [rcx]
-   mulpd xmm2, [rdx]
+   movupd xmm4, [rdx]
+   mulpd xmm2, xmm4
    addpd xmm0, xmm2
    
    movupd xmm3, [rcx+16]
-   mulpd xmm3, [rdx+16]
+   movupd xmm4, [rdx+16]
+   mulpd xmm3, xmm4
    addpd xmm1, xmm3
 
    movupd xmm2, [rcx+32]
-   mulpd xmm2, [rdx+32]
+   movupd xmm4, [rdx+32]
+   mulpd xmm2, xmm4
    addpd xmm0, xmm2
    
    movupd xmm3, [rcx+48]
-   mulpd xmm3, [rdx+48]
+   movupd xmm4, [rdx+48]
+   mulpd xmm3, xmm4
    addpd xmm1, xmm3
 
    add rcx, 64
@@ -1098,10 +1102,12 @@ asm
    jz @@tail2
 
    movupd xmm2, [rcx]
-   mulpd xmm2, [rdx]
+   movupd xmm4, [rdx]
+   mulpd xmm2, xmm4
    addpd xmm0, xmm2
    movupd xmm3, [rcx+16]
-   mulpd xmm3, [rdx+16]
+   movupd xmm4, [rdx+16]
+   mulpd xmm3, xmm4
    addpd xmm0, xmm3
    add rcx, 32
    add rdx, 32
@@ -1111,7 +1117,8 @@ asm
    jz @@tail1
 
    movupd xmm2, [rcx]
-   mulpd xmm2, [rdx]
+   movupd xmm4, [rdx]
+   mulpd xmm2, xmm4
    addpd xmm0, xmm2
    add rcx, 16
    add rdx, 16
