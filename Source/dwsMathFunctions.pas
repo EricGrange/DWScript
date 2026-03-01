@@ -1055,6 +1055,82 @@ begin
    args.Exec.RandSeed:=args.AsInteger[0] xor cDefaultRandSeed;
 end;
 
+{$ifdef WIN64_ASM}
+function SSE2_DotProduct(p1, p2 : PDouble; count : NativeInt) : Double;
+// p1 = rcx, p2 = rdx, count = r8
+asm
+   xorpd xmm0, xmm0 // accumulator 1
+   xorpd xmm1, xmm1 // accumulator 2
+   
+   mov rax, r8
+   shr rax, 3      // rax = count / 8
+   and r8, 7       // r8 = count % 8
+   
+   test rax, rax
+   jz @@tail
+
+@@loop8:
+   movupd xmm2, [rcx]
+   mulpd xmm2, [rdx]
+   addpd xmm0, xmm2
+   
+   movupd xmm3, [rcx+16]
+   mulpd xmm3, [rdx+16]
+   addpd xmm1, xmm3
+
+   movupd xmm2, [rcx+32]
+   mulpd xmm2, [rdx+32]
+   addpd xmm0, xmm2
+   
+   movupd xmm3, [rcx+48]
+   mulpd xmm3, [rdx+48]
+   addpd xmm1, xmm3
+
+   add rcx, 64
+   add rdx, 64
+   dec rax
+   jnz @@loop8
+
+@@tail:
+   addpd xmm0, xmm1
+
+   test r8, 4
+   jz @@tail2
+
+   movupd xmm2, [rcx]
+   mulpd xmm2, [rdx]
+   addpd xmm0, xmm2
+   movupd xmm3, [rcx+16]
+   mulpd xmm3, [rdx+16]
+   addpd xmm0, xmm3
+   add rcx, 32
+   add rdx, 32
+
+@@tail2:
+   test r8, 2
+   jz @@tail1
+
+   movupd xmm2, [rcx]
+   mulpd xmm2, [rdx]
+   addpd xmm0, xmm2
+   add rcx, 16
+   add rdx, 16
+
+@@tail1:
+   // Horizontal add: sum high and low doubles of xmm0
+   movhlps xmm1, xmm0
+   addsd xmm0, xmm1
+
+   test r8, 1
+   jz @@exit
+   movsd xmm1, [rcx]
+   mulsd xmm1, [rdx]
+   addsd xmm0, xmm1
+
+@@exit:
+end;
+{$endif}
+
 { TArrayDotProductFunc }
 
 procedure TArrayDotProductFunc.DoEvalAsFloat(const args : TExprBaseListExec; var Result : Double);
@@ -1063,7 +1139,6 @@ var
    off1, off2, count : Integer;
    n1, stride1, n2, stride2 : NativeInt;
    p1, p2 : PDouble;
-   i : Integer;
 begin
    args.EvalAsDynArray(0, arr1);
    args.EvalAsDynArray(1, arr2);
@@ -1092,11 +1167,17 @@ begin
 
    p1 := Pointer(IntPtr(p1) + off1 * stride1);
    p2 := Pointer(IntPtr(p2) + off2 * stride2);
-   for i := 0 to count - 1 do begin
+
+   {$ifdef WIN64_ASM}
+   if (stride1 = SizeOf(Double)) and (stride2 = SizeOf(Double)) then
+      Result := SSE2_DotProduct(p1, p2, count);
+   {$else}
+   for var i := 0 to count - 1 do begin
       Result := Result + p1^ * p2^;
       p1 := Pointer(IntPtr(p1) + stride1);
       p2 := Pointer(IntPtr(p2) + stride2);
    end;
+   {$endif}
 end;
 
 // ------------------
