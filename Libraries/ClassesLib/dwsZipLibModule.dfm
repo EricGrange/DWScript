@@ -268,7 +268,7 @@ object dwsZipLib: TdwsZipLib
                 DataType = 'String'
               end>
             Kind = mkProcedure
-            OnFastEval = dwsZipClassesTDeflateCompressorMethodsWriteDataFastEval
+            OnFastEvalNoResult = dwsZipClassesTDeflateCompressorMethodsWriteDataFastEval
           end
           item
             Name = 'Flush'

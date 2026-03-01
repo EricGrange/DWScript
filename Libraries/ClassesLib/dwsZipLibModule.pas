@@ -58,8 +58,8 @@ type
     procedure dwsZipClassesTDeflateCompressorCleanUp(ExternalObject: TObject);
     procedure dwsZipClassesTDeflateCompressorMethodsFlushEval(
       Info: TProgramInfo; ExtObject: TObject);
-    function dwsZipClassesTDeflateCompressorMethodsWriteDataFastEval(
-      baseExpr: TTypedExpr; const args: TExprBaseListExec): Variant;
+    procedure dwsZipClassesTDeflateCompressorMethodsWriteDataFastEval(
+      baseExpr: TTypedExpr; const args: TExprBaseListExec);
     procedure dwsZipClassesTZipWriterMethodsAddDeflatedDataEval(
       Info: TProgramInfo; ExtObject: TObject);
     procedure dwsZipClassesTDeflateCompressorMethodsCRC32Eval(
@@ -506,14 +506,14 @@ constructor TZipCompressor.Create(outStream : TStream; compressionLevel : Intege
 begin
    FDestStream := outStream;
 
-   FZStream := Default(TZStream);
-   FZStream.zalloc := @zlibAllocMem;
-   FZStream.zfree := @zlibFreeMem;
+   StreamInit(FZStream);
+   if not DeflateInit(FZStream, compressionLevel, False) then
+      raise EdwsZIPException.Create('deflateInit2 failed');
 
    FZStream.next_out := @FBufferOut;
    FZStream.avail_out := SizeOf(FBufferOut);
-   FInitialized := deflateInit2_(FZStream, compressionLevel, Z_DEFLATED, -MAX_WBITS, DEF_MEM_LEVEL,
-                                 Z_DEFAULT_STRATEGY, ZLIB_VERSION, SizeOf(FZStream)) >= 0
+
+   FInitialized := True;
 end;
 
 destructor TZipCompressor.Destroy;
@@ -530,9 +530,16 @@ end;
 procedure TZipCompressor.Flush;
 begin
    if FInitialized then begin
-      while     (Check(deflate(FZStream, Z_FINISH), [ Z_OK, Z_STREAM_END ], 'Flush') <> Z_STREAM_END)
-            and (FZStream.avail_out = 0) do
-         FlushBufferOut;
+      while True do begin
+         if FZStream.avail_out = 0 then
+            FlushBufferOut;
+         var ret := deflate(FZStream, Z_FINISH);
+         if ret = Z_STREAM_END then break;
+         if (ret <> Z_OK) and (ret <> Z_BUF_ERROR) then
+            raise EdwsZIPException.CreateFmt('Flush error %d', [ret]);
+         if (ret = Z_BUF_ERROR) and (FZStream.avail_out <> 0) then
+            break; // No progress possible
+      end;
       FlushBufferOut;
    end;
 end;
@@ -559,10 +566,13 @@ begin
    FZStream.next_in := Pointer(@buffer);
    FZStream.avail_in := count;
    while FZStream.avail_in > 0 do begin
-      if Check(deflate(FZStream, Z_NO_FLUSH), [ Z_OK ], 'Write') <> Z_OK then
-         raise EdwsZIPException.Create('ZCompress');
       if FZStream.avail_out = 0 then
          FlushBufferOut;
+      var ret := deflate(FZStream, Z_NO_FLUSH);
+      if (ret <> Z_OK) and (ret <> Z_BUF_ERROR) then
+         raise EdwsZIPException.CreateFmt('ZCompress error %d', [ret]);
+      if (ret = Z_BUF_ERROR) and (FZStream.avail_out <> 0) then
+         raise EdwsZIPException.Create('ZCompress buffer error');
    end;
    FZStream.next_in := nil;
    FZStream.avail_in := 0;
@@ -572,28 +582,25 @@ end;
 //
 function TZipCompressor.WriteData(const data : String) : NativeInt;
 var
-   p : PWordArray;
+   p : PWideChar;
    buffer : array [Word] of Byte;
    size : NativeInt;
 begin
    Result := Length(data);
    case Result of
-      0 : Exit(0);
-      1 : begin
-         Write(Pointer(data)^, 1);
-         Exit(1);
-      end
+      0 : ;
+      1 : Write(Pointer(data)^, 1);
    else
       p := Pointer(data);
       size := Result;
       while size > SizeOf(buffer) do begin
-         WordsToBytes(p, @buffer, SizeOf(buffer));
-         Dec(size, SizeOf(buffer));
-         Inc(p, size);
+         WordsToBytes(PWordArray(p), @buffer, SizeOf(buffer));
          Write(buffer, SizeOf(buffer));
+         Dec(size, SizeOf(buffer));
+         Inc(p, SizeOf(buffer));
       end;
       if size > 0 then begin
-         WordsToBytes(p, @buffer, size);
+         WordsToBytes(PWordArray(p), @buffer, Integer(size));
          Write(buffer, size);
       end;
    end;
@@ -826,8 +833,8 @@ begin
    szs.Free;
 end;
 
-function TdwsZipLib.dwsZipClassesTDeflateCompressorMethodsWriteDataFastEval(
-  baseExpr: TTypedExpr; const args: TExprBaseListExec): Variant;
+procedure TdwsZipLib.dwsZipClassesTDeflateCompressorMethodsWriteDataFastEval(
+  baseExpr: TTypedExpr; const args: TExprBaseListExec);
 var
    obj : IScriptObj;
    szs : TScriptZipStream;
@@ -838,7 +845,8 @@ begin
    if szs.Flushed then
       raise EdwsZIPException.Create('Compressor already flushed');
    args.EvalAsString(0, buf);
-   szs.Compressor.WriteData(buf);
+   if szs.Compressor.WriteData(buf) <> Length(buf) then
+      raise EdwsZIPException.Create('Failed to process all data');
 end;
 
 procedure TdwsZipLib.dwsZipClassesTDeflateCompressorMethodsCRC32Eval(
