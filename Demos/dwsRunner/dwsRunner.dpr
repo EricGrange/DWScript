@@ -34,6 +34,7 @@ uses
   dwsCryptoLibModule,
   dwsWebLibModule,
   dwsDatabaseLibModule,
+  dwsSystemInfoLibModule,
   dwsGraphicLibrary,
   dwsTurboJPEG.Bundle,
   dwsComConnector,
@@ -54,6 +55,7 @@ begin
    TdwsZipLib.Create(Result).dwsZip.Script:=Result;
    TdwsWebLib.Create(Result).dwsWeb.Script:=Result;
    TdwsDatabaseLib.Create(Result).dwsDatabase.Script:=Result;
+   TdwsSystemInfoLibModule.Create(Result).Script:=Result;
 end;
 
 procedure WriteHeader;
@@ -157,17 +159,50 @@ begin
    WriteLn('..."', exeName, '" generated successfully!');
 end;
 
+procedure RunRunner(project : TRunnerProject; paramOffset : Integer; embedded : Boolean);
 var
-   fileName : String;
-   source : String;
    script : TDelphiWebScript;
    prog : IdwsProgram;
    exec : IdwsProgramExecution;
-   i, paramOffset : Integer;
+   source : String;
    params : array of Variant;
+   i : Integer;
+begin
+   script:=CreateScript;
+   try
+      source:=project.Attach(script);
+
+      prog:=script.Compile(source);
+
+      if prog.Msgs.Count>0 then begin
+         if prog.Msgs.HasErrors or not embedded then
+            Writeln(prog.Msgs.AsInfo);
+         if prog.Msgs.HasErrors then Exit;
+      end;
+
+      SetLength(params, ParamCount-paramOffset+2);
+      params[0]:=ParamStr(0);
+      for i:=paramOffset to ParamCount do
+         params[i-paramOffset+1]:=ParamStr(i);
+
+      exec:=prog.ExecuteParam(params);
+      Writeln(exec.Result.ToString);
+      if exec.Msgs.Count>0 then
+         Writeln(exec.Msgs.AsInfo);
+      
+      exec:=nil;
+      prog:=nil;
+   finally
+      script.Free;
+   end;
+end;
+
+var
+   fileName : String;
    project : TRunnerProject;
    zr : TZipRead;
    embedded : Boolean;
+   paramOffset : Integer;
 begin
    zr:=TZipRead.Create(HInstance, 'SCRIPT', RT_RCDATA);
    if zr.Count=0 then begin
@@ -211,32 +246,8 @@ begin
       end;
    end;
    try
-      script:=CreateScript;
-      try
-         source:=project.Attach(script);
-
-         prog:=script.Compile(source);
-
-         if prog.Msgs.Count>0 then begin
-            if prog.Msgs.HasErrors or not embedded then
-               Writeln(prog.Msgs.AsInfo);
-            if prog.Msgs.HasErrors then Exit;
-         end;
-
-         SetLength(params, ParamCount-paramOffset+2);
-         params[0]:=ParamStr(0);
-         for i:=paramOffset to ParamCount do
-            params[i-paramOffset+1]:=ParamStr(i);
-         exec:=prog.ExecuteParam(params);
-         Writeln(exec.Result.ToString);
-         if exec.Msgs.Count>0 then
-            Writeln(exec.Msgs.AsInfo);
-      finally
-         project.Free;
-         script.Free;
-      end;
-   except
-      on E: Exception do
-         Writeln(E.ClassName, ': ', E.Message);
+      RunRunner(project, paramOffset, embedded);
+   finally
+      project.Free;
    end;
 end.
