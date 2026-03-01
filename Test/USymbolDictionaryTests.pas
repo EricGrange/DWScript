@@ -38,6 +38,7 @@ type
          procedure PartialClassMethod;
 
          procedure PseudoMethod;
+         procedure ArrayDotProductOverload;
 
          procedure OverloadForwardDictionary;
          procedure OverloadMethodDictionary;
@@ -403,8 +404,27 @@ begin
    CheckEquals(
           '[{"symbol":{"name":"Map","class":"TPseudoMethodSymbol"},"positions":[{"usages":["suReference"],"position":" [line: 1, column: 16]"}]},'
         + '{"symbol":{"name":"StrSplit","class":"TMagicFuncSymbol"},"positions":[{"usages":["suReference","suWrite"],"position":" [line: 1, column: 1]"}]},'
-        + '{"symbol":{"name":"Trim","class":"TMagicFuncSymbol"},"positions":[{"usages":["suReference","suRead"],"position":" [line: 1, column: 20]"}]}]',
+        + '{"symbol":{"name":"Trim","class":"TMagicFuncSymbol"},"positions":[{"usages":["suReference","suRead"],"position":" [line: 1, column: 20]"}]},'
+        + '{"symbol":{"name":"Trim","class":"TMagicFuncSymbol"},"positions":[{"usages":["suReference","suRead"],"position":" [line: 1, column: 20]"},'
+        + '{"usages":["suReference","suRead"],"position":" [line: 1, column: 20]"}]}]',
       prog.SymbolDictionary.ToJSON);
+end;
+
+// ArrayDotProductOverload
+//
+procedure TSymbolDictionaryTests.ArrayDotProductOverload;
+var
+   prog : IdwsProgram;
+begin
+   prog:=FCompiler.Compile(
+      'var a1, a2 : array of Float;'#13#10
+      +'ArrayDotProduct(a1, a2);'#13#10
+      +'a1.DotProduct(a2);'#13#10
+      +'ArrayDotProduct(a1, a2, 0, 0, 1);'
+      );
+   CheckEquals('', prog.Msgs.AsInfo);
+   Check(prog.SymbolDictionary.ToJSON.Contains('"name":"ArrayDotProduct"'), 'ArrayDotProduct missing');
+   Check(prog.SymbolDictionary.ToJSON.Contains('"name":"DotProduct"'), 'DotProduct helper missing');
 end;
 
 // OverloadForwardDictionary

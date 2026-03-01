@@ -309,6 +309,10 @@ type
       procedure DoEvalProc(const args : TExprBaseListExec); override;
    end;
 
+   TArrayDotProductFunc = class(TInternalMagicFloatFunction)
+      procedure DoEvalAsFloat(const args : TExprBaseListExec; var Result : Double); override;
+   end;
+
    TFloatArrayProcessFunc = class(TInternalMagicDynArrayFunction)
       procedure DoEvalAsDynArray(const args : TExprBaseListExec; var result : IScriptDynArray); override;
       procedure DoProcess(p : PDouble; n : NativeInt; stride : Integer; const args : TExprBaseListExec); virtual; abstract;
@@ -1051,6 +1055,50 @@ begin
    args.Exec.RandSeed:=args.AsInteger[0] xor cDefaultRandSeed;
 end;
 
+{ TArrayDotProductFunc }
+
+procedure TArrayDotProductFunc.DoEvalAsFloat(const args : TExprBaseListExec; var Result : Double);
+var
+   arr1, arr2 : IScriptDynArray;
+   off1, off2, count : Integer;
+   n1, stride1, n2, stride2 : NativeInt;
+   p1, p2 : PDouble;
+   i : Integer;
+begin
+   args.EvalAsDynArray(0, arr1);
+   args.EvalAsDynArray(1, arr2);
+
+   p1 := (arr1 as IPDoubleArray).AsPDouble(n1, stride1);
+   p2 := (arr2 as IPDoubleArray).AsPDouble(n2, stride2);
+
+   if args.Count = 2 then begin
+      off1 := 0;
+      off2 := 0;
+      count := Math.Min(n1, n2);
+   end else begin
+      off1 := args.AsInteger[2];
+      off2 := args.AsInteger[3];
+      count := args.AsInteger[4];
+
+      if count < 0 then
+         raise EScriptError.CreateFmt(RTE_PositiveCountExpected, [count]);
+
+      if (off1 < 0) or (off1 + count > n1) or (off2 < 0) or (off2 + count > n2) then
+         raise EScriptError.Create('ArrayDotProduct: Index out of bounds');
+   end;
+
+   Result := 0;
+   if count <= 0 then Exit;
+
+   p1 := Pointer(IntPtr(p1) + off1 * stride1);
+   p2 := Pointer(IntPtr(p2) + off2 * stride2);
+   for i := 0 to count - 1 do begin
+      Result := Result + p1^ * p2^;
+      p1 := Pointer(IntPtr(p1) + stride1);
+      p2 := Pointer(IntPtr(p2) + stride2);
+   end;
+end;
+
 // ------------------
 // ------------------ TFloatArrayProcessFunc ------------------
 // ------------------
@@ -1270,6 +1318,9 @@ initialization
    RegisterInternalFloatFunction(TRandGFunc, 'RandG', ['mean', SYS_FLOAT, 'stdDev', SYS_FLOAT]);
    RegisterInternalIntFunction(TRandSeedFunc, 'RandSeed', [], [iffDeprecated]);
    RegisterInternalProcedure(TSetRandSeedFunc, 'SetRandSeed', ['seed', SYS_INTEGER]);
+
+   RegisterInternalFloatFunction(TArrayDotProductFunc, 'ArrayDotProduct', ['arr1', SYS_ARRAY_OF_FLOAT, 'arr2', SYS_ARRAY_OF_FLOAT], [iffStateLess, iffOverloaded], 'DotProduct');
+   RegisterInternalFloatFunction(TArrayDotProductFunc, 'ArrayDotProduct', ['arr1', SYS_ARRAY_OF_FLOAT, 'arr2', SYS_ARRAY_OF_FLOAT, 'offset1', SYS_INTEGER, 'offset2', SYS_INTEGER, 'count', SYS_INTEGER], [iffStateLess, iffOverloaded]);
 
    RegisterInternalFunction(TFloatArrayOffsetFunc, '', ['a', SYS_ARRAY_OF_FLOAT, 'operand', SYS_FLOAT], SYS_ARRAY_OF_FLOAT, [], 'Offset');
    RegisterInternalFunction(TFloatArrayMultiplyFunc, '', ['a', SYS_ARRAY_OF_FLOAT, 'operand', SYS_FLOAT], SYS_ARRAY_OF_FLOAT, [], 'Multiply');

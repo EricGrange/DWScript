@@ -1,0 +1,7 @@
+ArrayDotProduct: Index out of bounds
+ArrayDotProduct: Index out of bounds
+ArrayDotProduct: Index out of bounds
+ArrayDotProduct: Index out of bounds
+ArrayDotProduct: Index out of bounds
+ArrayDotProduct: Index out of bounds
+Positive count expected (got -1)
