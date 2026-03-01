@@ -3,7 +3,7 @@ unit UdwsTimeSeriesTests;
 interface
 
 uses
-   Classes, SysUtils,
+   System.Classes, System.SysUtils,
    dwsXPlatformTests, dwsComp, dwsCompiler, dwsExprs, dwsErrors,
    dwsXPlatform, dwsSymbols, dwsUtils,
    dwsCompilerContext, dwsTimeSeriesLibModule, dwsJSONConnector;

@@ -3,7 +3,7 @@ unit UdwsSystemInfoTests;
 interface
 
 uses
-   Classes, SysUtils,
+   System.Classes, System.SysUtils,
    dwsXPlatformTests, dwsComp, dwsCompiler, dwsExprs, dwsErrors,
    dwsSystemInfoLibModule, dwsXPlatform, dwsCompilerContext;
 

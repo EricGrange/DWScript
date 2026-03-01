@@ -5,11 +5,11 @@ unit UJSCodeGenTests;
 interface
 
 uses
-   Forms, Classes, SysUtils, TestFrameWork, Windows, Messages,
+   Vcl.Forms, System.Classes, System.SysUtils, TestFrameWork, Winapi.Windows, Winapi.Messages,
    UJSTestChromium,
    dwsComp, dwsCompiler, dwsExprs, dwsUtils, dwsXPlatform, dwsUnitSymbols,
    dwsCodeGen, dwsJSCodeGen, dwsJSLibModule, dwsFunctions, dwsCompilerContext,
-   dwsErrors, ClipBrd;
+   dwsErrors, Vcl.Clipbrd;
 
 type
 

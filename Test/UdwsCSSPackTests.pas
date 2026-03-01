@@ -17,7 +17,7 @@ unit UdwsCSSPackTests;
 
 interface
 
-uses Classes, SysUtils, Math, dwsXPlatformTests, dwsCSSPack;
+uses System.Classes, System.SysUtils, System.Math, dwsXPlatformTests, dwsCSSPack;
 
 type
 

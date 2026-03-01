@@ -3,7 +3,7 @@ unit UMemoryTests;
 interface
 
 uses
-   Classes, SysUtils, Types, Variants, ComObj,
+   System.Classes, System.SysUtils, System.Types, System.Variants, System.Win.ComObj,
    dwsXPlatform, dwsUtils, dwsCompilerContext,
    dwsXPlatformTests, dwsComp, dwsCompiler, dwsExprs, dwsSymbols;
 

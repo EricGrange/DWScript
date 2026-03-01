@@ -5,9 +5,9 @@ unit UCOMConnectorTests;
 interface
 
 uses
-   Windows, Classes, SysUtils,
+   Winapi.Windows, System.Classes, System.SysUtils,
    dwsXPlatformTests, dwsComp, dwsCompiler, dwsExprs, dwsErrors,
-   dwsComConnector, Variants, ActiveX, ComObj, dwsXPlatform, dwsUtils,
+   dwsComConnector, System.Variants, Winapi.ActiveX, System.Win.ComObj, dwsXPlatform, dwsUtils,
    dwsEncodingLibModule, dwsCompilerContext;
 
 type

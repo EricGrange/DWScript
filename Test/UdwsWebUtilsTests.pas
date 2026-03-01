@@ -17,7 +17,7 @@ unit UdwsWebUtilsTests;
 
 interface
 
-uses Classes, SysUtils, Math, dwsXPlatformTests, dwsWebUtils;
+uses System.Classes, System.SysUtils, System.Math, dwsXPlatformTests, dwsWebUtils;
 
 type
 

@@ -3,9 +3,9 @@ unit UInstantiateTests;
 interface
 
 uses
-   Windows, Classes, SysUtils,
+   Winapi.Windows, System.Classes, System.SysUtils,
    dwsXPlatformTests, dwsComp, dwsCompiler, dwsExprs, dwsDataContext,
-   dwsTokenizer, dwsXPlatform, dwsFileSystem, dwsErrors, dwsUtils, Variants,
+   dwsTokenizer, dwsXPlatform, dwsFileSystem, dwsErrors, dwsUtils, System.Variants,
    dwsSymbols, dwsPascalTokenizer, dwsStrings, dwsJSON;
 
 type

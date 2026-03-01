@@ -3,7 +3,7 @@ unit UDebuggerTests;
 interface
 
 uses
-   Classes, SysUtils, Variants, ComObj,
+   System.Classes, System.SysUtils, System.Variants, System.Win.ComObj,
    dwsXPlatformTests, dwsComp, dwsCompiler, dwsExprs, dwsErrors, dwsInfo,
    dwsUtils, dwsSymbols, dwsDebugger, dwsStrings, dwsEvaluate, dwsScriptSource,
    dwsCompilerContext, dwsXPlatform, dwsXXHash, dwsUnitSymbols, dwsCoverage;

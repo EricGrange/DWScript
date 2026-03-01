@@ -3,7 +3,7 @@ unit UJSONConnectorTests;
 interface
 
 uses
-   Windows, Classes, SysUtils, Variants,
+   Winapi.Windows, System.Classes, System.SysUtils, System.Variants,
    dwsXPlatformTests, dwsComp, dwsCompiler, dwsExprs, dwsErrors,
    dwsXPlatform, dwsUtils, dwsJSONConnector, dwsCompilerContext;
 

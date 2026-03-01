@@ -5,7 +5,7 @@ unit UBigIntegerTests;
 interface
 
 uses
-   Windows, Classes, SysUtils,
+   Winapi.Windows, System.Classes, System.SysUtils,
    dwsXPlatformTests, dwsComp, dwsCompiler, dwsExprs, dwsErrors,
    dwsBigIntegerFunctions.GMP, dwsXPlatform, dwsSymbols, dwsUtils,
    dwsMPIR.Bundle, dwsCompilerContext;

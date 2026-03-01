@@ -3,7 +3,7 @@ unit UTestDispatcher;
 interface
 
 Uses
- Windows, SysUtils, ActiveX, Variants, ComObj, dwsExprs, dwsFunctions, dwsLegacy;
+ Winapi.Windows, System.SysUtils, Winapi.ActiveX, System.Variants, System.Win.ComObj, dwsExprs, dwsFunctions, dwsLegacy;
 
 Type
 

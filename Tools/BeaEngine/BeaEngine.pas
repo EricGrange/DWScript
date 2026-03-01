@@ -37,7 +37,7 @@ unit BeaEngineDelphi;
 
 interface
 
-uses Windows, SysUtils;
+uses Winapi.Windows, System.SysUtils;
 
   const
      INSTRUCT_LENGTH = 64;     

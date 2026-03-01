@@ -36,7 +36,7 @@ unit BeaEngineDelphi64;
 
 interface
 
-uses Windows,SysUtils, AnsiStrings;
+uses Winapi.Windows, System.SysUtils, System.AnsiStrings;
 
   const
      INSTRUCT_LENGTH = 80;
@@ -407,12 +407,12 @@ implementation
 
 function _strcpy(dest, src: PAnsiChar): PAnsiChar;cdecl;
 begin
-  Result := AnsiStrings.StrCopy(dest, src);
+  Result := System.AnsiStrings.StrCopy(dest, src);
 end;
 
 function _strlen(s: PAnsiChar): Cardinal; cdecl;
 begin
-  Result := AnsiStrings.StrLen(s);
+  Result := System.AnsiStrings.StrLen(s);
 end;
 
 function _memset(Destination: Pointer; C: Integer; Count: Cardinal): Pointer; cdecl;

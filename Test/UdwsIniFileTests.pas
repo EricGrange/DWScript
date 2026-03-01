@@ -3,7 +3,7 @@ unit UdwsIniFileTests;
 interface
 
 uses
-   Classes, SysUtils,
+   System.Classes, System.SysUtils,
    dwsXPlatformTests, dwsComp, dwsCompiler, dwsExprs, dwsErrors,
    dwsIniFileModule, dwsXPlatform, dwsCompilerContext;
 

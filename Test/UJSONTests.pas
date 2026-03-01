@@ -18,7 +18,7 @@ unit UJSONTests;
 interface
 
 uses
-   Classes, SysUtils, Math,
+   System.Classes, System.SysUtils, System.Math,
    dwsXPlatformTests, dwsJSON, dwsXPlatform, dwsUtils, dwsJSONPath, dwsUnicode;
 
 type
@@ -1519,7 +1519,7 @@ end;
 //
 procedure TdwsJSONTests.StoreToStream;
 begin
-   var j := TdwsJSONValue.ParseString('"éà"');
+   var j := TdwsJSONValue.ParseString('"ï¿½ï¿½"');
    try
       var ms := TMemoryStream.Create;
       try

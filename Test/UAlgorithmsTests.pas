@@ -3,7 +3,7 @@ unit UAlgorithmsTests;
 interface
 
 uses
-   Classes, SysUtils,
+   System.Classes, System.SysUtils,
    dwsXPlatformTests, dwsComp, dwsCompiler, dwsExprs, dwsErrors,
    dwsXPlatform, dwsUtils, dwsSymbols, dwsCompilerContext;
 

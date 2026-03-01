@@ -5,7 +5,7 @@ interface
 {$IF Defined(WIN32)}
 
 uses
-   Classes,
+   System.Classes,
    dwsXPlatformTests, dwsComp, dwsErrors, dwsExprList, dwsCompiler, dwsExprs,
    dwsExternalFunctions;
 
@@ -31,7 +31,7 @@ type
 implementation
 
 uses
-   SysUtils,
+   System.SysUtils,
    dwsXPlatform,
    dwsSymbols, dwsUtils, dwsDataContext;
 

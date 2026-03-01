@@ -3,7 +3,7 @@ unit UdwsCryptoTests;
 interface
 
 uses
-   Classes, SysUtils,
+   System.Classes, System.SysUtils,
    dwsXPlatformTests, dwsComp, dwsCompiler, dwsExprs, dwsErrors,
    dwsCryptoLibModule, dwsXPlatform, dwsCompilerContext, dwsEncodingLibModule,
    dwsJSONConnector;

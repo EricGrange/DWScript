@@ -3,7 +3,7 @@ unit UdwsEncodingTests;
 interface
 
 uses
-   Classes, SysUtils,
+   System.Classes, System.SysUtils,
    dwsXPlatformTests, dwsComp, dwsCompiler, dwsExprs, dwsErrors,
    dwsEncodingLibModule, dwsXPlatform, dwsEncoding, dwsCompilerContext;
 

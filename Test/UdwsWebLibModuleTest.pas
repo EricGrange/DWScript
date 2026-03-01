@@ -3,7 +3,7 @@ unit UdwsWebLibModuleTest;
 interface
 
 uses
-   Classes, SysUtils,
+   System.Classes, System.SysUtils,
    dwsXPlatformTests, dwsComp, dwsCompiler, dwsExprs, dwsErrors,
    dwsXPlatform, dwsSymbols, dwsUtils, dwsCompilerContext,
    dwsWebLibModule, dwsJSONConnector, dwsWebEnvironment;

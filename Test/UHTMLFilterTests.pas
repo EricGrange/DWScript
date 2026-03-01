@@ -3,7 +3,7 @@ unit UHTMLFilterTests;
 interface
 
 uses
-  Classes, SysUtils, dwsXPlatformTests, dwsComp, dwsCompiler, dwsExprs,
+  System.Classes, System.SysUtils, dwsXPlatformTests, dwsComp, dwsCompiler, dwsExprs,
   dwsHtmlFilter, dwsXPlatform, dwsUtils;
 
 type

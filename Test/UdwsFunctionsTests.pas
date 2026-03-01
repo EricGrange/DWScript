@@ -2,7 +2,7 @@ unit UdwsFunctionsTests;
 
 interface
 
-uses Classes, SysUtils, dwsXPlatformTests, dwsComp, dwsCompiler, dwsExprs,
+uses System.Classes, System.SysUtils, dwsXPlatformTests, dwsComp, dwsCompiler, dwsExprs,
    dwsTokenizer, dwsSymbols, dwsXPlatform, dwsUtils, dwsErrors,
    dwsMathFunctions, dwsTimeFunctions, dwsGlobalVarsFunctions, dwsVariantFunctions,
    dwsMathComplexFunctions, dwsMath3DFunctions, dwsCompilerContext,

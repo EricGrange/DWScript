@@ -3,7 +3,7 @@ unit UdwsGraphicsTests;
 interface
 
 uses
-   Classes, SysUtils,
+   System.Classes, System.SysUtils,
    dwsXPlatformTests, dwsComp, dwsCompiler, dwsExprs, dwsErrors,
    dwsGraphicLibrary, dwsXPlatform, dwsSymbols, dwsUtils,
    dwsEncodingLibModule, dwsCompilerContext;

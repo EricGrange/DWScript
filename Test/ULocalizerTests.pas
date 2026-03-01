@@ -2,8 +2,8 @@ unit ULocalizerTests;
 
 interface
 
-uses Windows, Classes, SysUtils, dwsXPlatformTests, dwsComp, dwsCompiler, dwsExprs,
-   dwsTokenizer, dwsXPlatform, dwsFileSystem, dwsErrors, dwsUtils, Variants,
+uses Winapi.Windows, System.Classes, System.SysUtils, dwsXPlatformTests, dwsComp, dwsCompiler, dwsExprs,
+   dwsTokenizer, dwsXPlatform, dwsFileSystem, dwsErrors, dwsUtils, System.Variants,
    dwsSymbols, dwsPascalTokenizer, dwsStrings, dwsStack, dwsJSON;
 
 type

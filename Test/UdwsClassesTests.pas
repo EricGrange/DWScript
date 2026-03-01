@@ -2,7 +2,7 @@ unit UdwsClassesTests;
 
 interface
 
-uses Classes, SysUtils, dwsXPlatformTests, dwsComp, dwsCompiler, dwsExprs,
+uses System.Classes, System.SysUtils, dwsXPlatformTests, dwsComp, dwsCompiler, dwsExprs,
    dwsXPlatform, dwsSymbols, dwsUtils, dwsInfo, dwsCompilerContext,
    dwsClassesLibModule, dwsZipLibModule;
 

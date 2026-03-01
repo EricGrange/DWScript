@@ -3,7 +3,7 @@ unit UJITTests;
 interface
 
 uses
-   Classes, SysUtils, Variants,
+   System.Classes, System.SysUtils, System.Variants,
    dwsXPlatformTests, dwsComp, dwsCompiler, dwsExprs, dwsXPlatform,
    dwsTokenizer, dwsErrors, dwsUtils, dwsSymbols, dwsFunctions, dwsUnitSymbols,
    dwsJITFixups, dwsJITx86, dwsJITx86_64, dwsJITx86Intrinsics, dwsCompilerContext,

@@ -5,9 +5,9 @@ interface
 {$IF Defined(WIN64)}
 
 uses
-   Classes, SysUtils, Variants,
+   System.Classes, System.SysUtils, System.Variants,
    dwsXPlatformTests, dwsJITx86Intrinsics, dwsUtils,
-   BeaEngineDelphi64, AnsiStrings;
+   BeaEngineDelphi64, System.AnsiStrings;
 
 type
 
@@ -138,7 +138,7 @@ begin
    repeat
       len:=Disasm(d);
       if len>0 then begin
-         FStream.WriteString(UTF8ToString(AnsiStrings.StrPas(d.CompleteInstr)));
+         FStream.WriteString(UTF8ToString(System.AnsiStrings.StrPas(d.CompleteInstr)));
          FStream.WriteCRLF;
          d.EIP:=d.EIP+len;
          d.SecurityBlock:=blockEnd-d.EIP;

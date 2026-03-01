@@ -2,7 +2,7 @@ unit UdwsUnitTestsStatic;
 
 interface
 
-uses Classes, SysUtils, dwsXPlatformTests, dwsComp, dwsCompiler, dwsExprs,
+uses System.Classes, System.SysUtils, dwsXPlatformTests, dwsComp, dwsCompiler, dwsExprs,
    dwsTokenizer, dwsSymbols, dwsUtils, dwsStack, UdwsUnitTests;
 
 type
