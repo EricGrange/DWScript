@@ -63,3 +63,8 @@ __recovery
 /Source/SourceUtils/__history
 /Test/__history
 /Source/__history
+/Test/dcu
+*.identcache
+*.local
+*.otares
+*.rsm
