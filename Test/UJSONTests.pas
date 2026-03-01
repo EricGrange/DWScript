@@ -1519,7 +1519,7 @@ end;
 //
 procedure TdwsJSONTests.StoreToStream;
 begin
-   var j := TdwsJSONValue.ParseString('"��"');
+   var j := TdwsJSONValue.ParseString('"'#$E9#$E0'"');
    try
       var ms := TMemoryStream.Create;
       try
