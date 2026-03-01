@@ -83,34 +83,43 @@ begin
    Set8087CW(FCW);
 end;
 
+const
+   cJetProvider = 'Microsoft.Jet.OLEDB.4.0';
+   cACEProvider = 'Microsoft.ACE.OLEDB.12.0';
+
 // ReCreateTestMDB
 //
 procedure TCOMConnectorTests.ReCreateTestMDB;
 var
-   cat : OleVariant;
-   conn : OleVariant;
+   cat: OleVariant;
+   conn: OleVariant;
+   provider: String;
 begin
    DeleteFile('Data\Db.mdb');
 
    {$ifdef WIN32}
-
-   cat := CreateOleObject('ADOX.Catalog');
-   cat.Create('Provider=Microsoft.Jet.OLEDB.4.0;Data Source=Data\Db.mdb;');
-
-   conn := CreateOleObject('ADODB.Connection');
-   conn.ConnectionString := 'Provider=Microsoft.Jet.OLEDB.4.0;Data Source=Data\Db.mdb;Persist Security Info=False';
-   conn.Open;
-
+   provider := cJetProvider;
    {$else}
+   provider := cACEProvider;
+   {$endif}
 
-   cat := CreateOleObject('ADOX.Catalog');
-   cat.Create('Provider=Microsoft.ACE.OLEDB.16.0;Data Source=Data\Db.mdb;');
+   try
+      cat := CreateOleObject('ADOX.Catalog');
+   except
+      on E: Exception do
+         raise Exception.Create('Could not create ADOX.Catalog. Please ensure Microsoft ADO and Access Database Engine are installed.'#13#10 + E.Message);
+   end;
+
+   try
+      cat.Create('Provider=' + provider + ';Data Source=Data\Db.mdb;');
+   except
+      on E: Exception do
+         raise Exception.Create('Could not create database with provider ' + provider + '. Please ensure the Microsoft Access Database Engine (64-bit for Win64) is installed.'#13#10 + E.Message);
+   end;
 
    conn := CreateOleObject('ADODB.Connection');
-   conn.ConnectionString := 'Provider=Microsoft.ACE.OLEDB.16.0;Data Source=Data\Db.mdb;Persist Security Info=False';
+   conn.ConnectionString := 'Provider=' + provider + ';Data Source=Data\Db.mdb;Persist Security Info=False';
    conn.Open;
-
-   {$endif}
 
    conn.Execute('create table test (intCol INT, charCol VARCHAR(50), memoCol MEMO, dateCol DATE)');
    conn.Execute('insert into test values (10, ''ten'', ''value ten'', cdate(''2010-10-10''))');
