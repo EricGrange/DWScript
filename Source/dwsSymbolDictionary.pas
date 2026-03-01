@@ -709,9 +709,13 @@ begin
          if spl2.Count = 0 then
             Result := 1
          else if spl1[0].ScriptPos.IsBeforeOrEqual(spl2[0].ScriptPos) then
-            if spl1[0].ScriptPos.SamePosAs(spl2[0].ScriptPos) then
-               Result := CompareText(spl1.Symbol.ClassName, spl2.Symbol.ClassName)
-            else Result := -1
+            if spl1[0].ScriptPos.SamePosAs(spl2[0].ScriptPos) then begin
+               Result := CompareText(spl1.Symbol.ClassName, spl2.Symbol.ClassName);
+               if Result = 0 then
+                  Result := spl1.Count - spl2.Count;
+               if Result = 0 then
+                  Result := CompareText(spl1.Symbol.QualifiedName, spl2.Symbol.QualifiedName);
+            end else Result := -1
          else Result := 1;
       end;
    end;
