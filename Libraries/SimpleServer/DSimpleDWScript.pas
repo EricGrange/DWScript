@@ -39,12 +39,15 @@ uses
    {$ifdef ALLOW_TCP_SERVER}
    dwsTCPServerLibModule,
    {$endif}
+   {$ifdef ALLOW_SYNAPSE}
+   dwsSynapseLibModule,
+   {$endif}
    dwsJSFilter, dwsJSLibModule, dwsCodeGen,
    dwsWebEnvironment, dwsSystemInfoLibModule, dwsCPUUsage, dwsWebLibModule,
    dwsWebServerHelpers, dwsZipLibModule, dwsIniFileModule,
    dwsDataBase, dwsDataBaseLibModule, dwsSQLiteLibModule, dwsTabularLibModule,
    dwsWebServerInfo, dwsWebServerLibModule,
-   dwsBackgroundWorkersLibModule, dwsSynapseLibModule, dwsCryptoLibModule,
+   dwsBackgroundWorkersLibModule, dwsCryptoLibModule,
    dwsEncodingLibModule, dwsComConnector, dwsXXHash, dwsHTTPSysServer,
    dwsBigIntegerFunctions.GMP, dwsMPIR.Bundle, dwsTurboJPEG.Bundle,
    dwsCompilerContext, dwsFilter, dwsByteBufferFunctions
@@ -111,7 +114,9 @@ type
       FSQLite : TdwsSQLiteLib;
       FTabular : TdwsTabularLib;
       FJSON : TdwsJSONLibModule;
+      {$ifdef ALLOW_SYNAPSE}
       FSynapse : TdwsSynapseLib;
+      {$endif}
       FWebServerLib : TdwsWebServerLib;
       FBkgndWorkers : TdwsBackgroundWorkersLib;
 
@@ -336,8 +341,10 @@ begin
    FJSON:=TdwsJSONLibModule.Create(Self);
    FJSON.Script:=DelphiWebScript;
 
+   {$ifdef ALLOW_SYNAPSE}
    FSynapse:=TdwsSynapseLib.Create(Self);
    FSynapse.Script:=DelphiWebScript;
+   {$endif}
 
    cryptoLib:=TdwsCryptoLib.Create(Self);
    cryptoLib.dwsCrypto.Script:=DelphiWebScript;
