@@ -144,7 +144,7 @@ var
    tempPath : String;
 begin
    if unitName = 'TestTempPath' then begin
-      tempPath := FFolderPath + 'Temp' + PathDelim;
+      tempPath := FFolderPath + 'Data' + PathDelim + 'Temp' + PathDelim;
       FastStringReplace(tempPath, '"', '""');
       unitSource := 'unit TestTempPath; const TempPath = "' + tempPath + '";';
    end else unitSource := LoadTextFromFile(FFolderPath + unitName + '.pas');
