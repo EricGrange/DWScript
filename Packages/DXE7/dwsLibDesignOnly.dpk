@@ -49,6 +49,7 @@ contains
   dwsFunctions in '..\..\Source\dwsFunctions.pas',
   dwsGlobalVarsFunctions in '..\..\Source\dwsGlobalVarsFunctions.pas',
   dwsMathFunctions in '..\..\Source\dwsMathFunctions.pas',
+  dwsMathArrayFunctions in '..\..\Source\dwsMathArrayFunctions.pas',
   dwsStack in '..\..\Source\dwsStack.pas',
   dwsStringFunctions in '..\..\Source\dwsStringFunctions.pas',
   dwsCoreExprs in '..\..\Source\dwsCoreExprs.pas',

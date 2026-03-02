@@ -404,9 +404,7 @@ begin
    CheckEquals(
           '[{"symbol":{"name":"Map","class":"TPseudoMethodSymbol"},"positions":[{"usages":["suReference"],"position":" [line: 1, column: 16]"}]},'
         + '{"symbol":{"name":"StrSplit","class":"TMagicFuncSymbol"},"positions":[{"usages":["suReference","suWrite"],"position":" [line: 1, column: 1]"}]},'
-        + '{"symbol":{"name":"Trim","class":"TMagicFuncSymbol"},"positions":[{"usages":["suReference","suRead"],"position":" [line: 1, column: 20]"}]},'
-        + '{"symbol":{"name":"Trim","class":"TMagicFuncSymbol"},"positions":[{"usages":["suReference","suRead"],"position":" [line: 1, column: 20]"},'
-        + '{"usages":["suReference","suRead"],"position":" [line: 1, column: 20]"}]}]',
+        + '{"symbol":{"name":"Trim","class":"TMagicFuncSymbol"},"positions":[{"usages":["suReference","suRead"],"position":" [line: 1, column: 20]"}]}]',
       prog.SymbolDictionary.ToJSON);
 end;
 

@@ -1,0 +1,16 @@
+--- Max Failures ---
+Index out of bounds
+Index out of bounds
+Index out of bounds
+Index out of bounds
+Index out of bounds
+Index out of bounds
+Positive count expected (got -1)
+--- Min Failures ---
+Index out of bounds
+Index out of bounds
+Index out of bounds
+Index out of bounds
+Index out of bounds
+Index out of bounds
+Positive count expected (got -1)

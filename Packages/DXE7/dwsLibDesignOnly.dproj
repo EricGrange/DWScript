@@ -99,6 +99,7 @@
         <DCCReference Include="..\..\Source\dwsFunctions.pas"/>
         <DCCReference Include="..\..\Source\dwsGlobalVarsFunctions.pas"/>
         <DCCReference Include="..\..\Source\dwsMathFunctions.pas"/>
+        <DCCReference Include="..\..\Source\dwsMathArrayFunctions.pas"/>
         <DCCReference Include="..\..\Source\dwsStack.pas"/>
         <DCCReference Include="..\..\Source\dwsStringFunctions.pas"/>
         <DCCReference Include="..\..\Source\dwsCoreExprs.pas"/>
