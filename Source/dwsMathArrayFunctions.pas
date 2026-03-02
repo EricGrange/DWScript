@@ -74,6 +74,10 @@ type
       procedure DoProcess(p : PDouble; n : NativeInt; stride : Integer; const args : TExprBaseListExec); override;
    end;
 
+   TFloatArrayOffsetScaledFunc = class(TInternalMagicDynArrayFunction)
+      procedure DoEvalAsDynArray(const args : TExprBaseListExec; var result : IScriptDynArray); override;
+   end;
+
 implementation
 
 uses dwsDynamicArrays;
@@ -456,6 +460,86 @@ asm
    sub rdx, 2
    jnz @@loop2
 end;
+
+procedure SSE2_OffsetScaled(p1, p2 : PDouble; count : NativeInt; scale : Double);
+// p1 = rcx, p2 = rdx, count = r8, scale = xmm3
+asm
+   unpcklpd xmm3, xmm3
+
+   mov rax, r8
+   shr rax, 3
+   and r8, 7
+   
+   test rax, rax
+   jz @@tail
+
+@@loop8:
+   movupd xmm0, [rcx]
+   movupd xmm1, [rdx]
+   mulpd xmm1, xmm3
+   addpd xmm0, xmm1
+   movupd [rcx], xmm0
+
+   movupd xmm0, [rcx+16]
+   movupd xmm1, [rdx+16]
+   mulpd xmm1, xmm3
+   addpd xmm0, xmm1
+   movupd [rcx+16], xmm0
+
+   movupd xmm0, [rcx+32]
+   movupd xmm1, [rdx+32]
+   mulpd xmm1, xmm3
+   addpd xmm0, xmm1
+   movupd [rcx+32], xmm0
+
+   movupd xmm0, [rcx+48]
+   movupd xmm1, [rdx+48]
+   mulpd xmm1, xmm3
+   addpd xmm0, xmm1
+   movupd [rcx+48], xmm0
+
+   add rcx, 64
+   add rdx, 64
+   dec rax
+   jnz @@loop8
+
+@@tail:
+   test r8, 4
+   jz @@tail2
+   movupd xmm0, [rcx]
+   movupd xmm1, [rdx]
+   mulpd xmm1, xmm3
+   addpd xmm0, xmm1
+   movupd [rcx], xmm0
+   movupd xmm0, [rcx+16]
+   movupd xmm1, [rdx+16]
+   mulpd xmm1, xmm3
+   addpd xmm0, xmm1
+   movupd [rcx+16], xmm0
+   add rcx, 32
+   add rdx, 32
+
+@@tail2:
+   test r8, 2
+   jz @@tail1
+   movupd xmm0, [rcx]
+   movupd xmm1, [rdx]
+   mulpd xmm1, xmm3
+   addpd xmm0, xmm1
+   movupd [rcx], xmm0
+   add rcx, 16
+   add rdx, 16
+
+@@tail1:
+   test r8, 1
+   jz @@exit
+   movsd xmm0, [rcx]
+   movsd xmm1, [rdx]
+   mulsd xmm1, xmm3
+   addsd xmm0, xmm1
+   movsd [rcx], xmm0
+@@exit:
+end;
 {$endif}
 
 { TArrayDotProductFunc }
@@ -758,6 +842,72 @@ begin
 end;
 
 // ------------------
+// ------------------ TFloatArrayOffsetScaledFunc ------------------
+// ------------------
+
+// DoEvalAsDynArray
+//
+procedure TFloatArrayOffsetScaledFunc.DoEvalAsDynArray(const args : TExprBaseListExec; var result : IScriptDynArray);
+var
+   arr1, arr2 : IScriptDynArray;
+   off1, off2, count : Integer;
+   n1, stride1, n2, stride2 : NativeInt;
+   p1, p2 : PDouble;
+   scale : Double;
+begin
+   args.EvalAsDynArray(0, arr1);
+   result := arr1;
+
+   args.EvalAsDynArray(1, arr2);
+   scale := args.AsFloat[2];
+
+   p1 := (arr1 as IPDoubleArray).AsPDouble(n1, stride1);
+   p2 := (arr2 as IPDoubleArray).AsPDouble(n2, stride2);
+
+   if args.Count = 3 then begin
+      off1 := 0;
+      off2 := 0;
+      if n1 <= n2 then
+        count := n1
+      else count := n2;
+   end else begin
+      off1 := args.AsInteger[3];
+      off2 := args.AsInteger[4];
+      count := args.AsInteger[5];
+
+      if count < 0 then
+         raise EScriptError.CreateFmt(RTE_PositiveCountExpected, [count]);
+
+      if off1 < 0 then
+         raise EScriptError.CreateFmt(RTE_ArrayLowerBoundExceeded, [off1]);
+      if off1 + count > n1 then
+         raise EScriptError.CreateFmt(RTE_ArrayUpperBoundExceeded, [off1 + count - 1]);
+      if off2 < 0 then
+         raise EScriptError.CreateFmt(RTE_ArrayLowerBoundExceeded, [off2]);
+      if off2 + count > n2 then
+         raise EScriptError.CreateFmt(RTE_ArrayUpperBoundExceeded, [off2 + count - 1]);
+   end;
+
+   if count <= 0 then Exit;
+
+   p1 := Pointer(IntPtr(p1) + off1 * stride1);
+   p2 := Pointer(IntPtr(p2) + off2 * stride2);
+
+   {$ifdef WIN64_ASM}
+   if (stride1 = SizeOf(Double)) and (stride2 = SizeOf(Double)) then begin
+      SSE2_OffsetScaled(p1, p2, count, scale);
+      Exit;
+   end;
+   {$endif}
+
+   for var i := 0 to count - 1 do begin
+      p1^ := p1^ + p2^ * scale;
+      p1 := Pointer(IntPtr(p1) + stride1);
+      p2 := Pointer(IntPtr(p2) + stride2);
+   end;
+end;
+
+// ------------------
 // ------------------ TFloatArrayReciprocalFunc ------------------
 // ------------------
 
@@ -793,6 +943,9 @@ initialization
    RegisterInternalFunction(TFloatArrayMaxArrayFunc, '', ['arr1', SYS_ARRAY_OF_FLOAT, 'arr2', SYS_ARRAY_OF_FLOAT, 'offset1', SYS_INTEGER, 'offset2', SYS_INTEGER, 'count', SYS_INTEGER], SYS_ARRAY_OF_FLOAT, [iffOverloaded], 'Max');
    RegisterInternalFunction(TFloatArrayMaxArrayFunc, '', ['arr1', SYS_ARRAY_OF_FLOAT, 'arr2', SYS_ARRAY_OF_FLOAT], SYS_ARRAY_OF_FLOAT, [iffOverloaded], 'Max');
    RegisterInternalFunction(TFloatArrayMaxFunc, '', ['a', SYS_ARRAY_OF_FLOAT, 'operand', SYS_FLOAT], SYS_ARRAY_OF_FLOAT, [iffOverloaded], 'Max');
+
+   RegisterInternalFunction(TFloatArrayOffsetScaledFunc, '', ['arr1', SYS_ARRAY_OF_FLOAT, 'arr2', SYS_ARRAY_OF_FLOAT, 'scale', SYS_FLOAT, 'offset1', SYS_INTEGER, 'offset2', SYS_INTEGER, 'count', SYS_INTEGER], SYS_ARRAY_OF_FLOAT, [iffOverloaded], 'OffsetScaled');
+   RegisterInternalFunction(TFloatArrayOffsetScaledFunc, '', ['arr1', SYS_ARRAY_OF_FLOAT, 'arr2', SYS_ARRAY_OF_FLOAT, 'scale', SYS_FLOAT], SYS_ARRAY_OF_FLOAT, [iffOverloaded], 'OffsetScaled');
 
    RegisterInternalFunction(TFloatArrayMultiplyAddFunc, '', ['a', SYS_ARRAY_OF_FLOAT, 'scale', SYS_FLOAT, 'offset', SYS_FLOAT], SYS_ARRAY_OF_FLOAT, [], 'MultiplyAdd');
    RegisterInternalFunction(TFloatArrayReciprocalFunc, '', ['a', SYS_ARRAY_OF_FLOAT], SYS_ARRAY_OF_FLOAT, [], 'Reciprocal');

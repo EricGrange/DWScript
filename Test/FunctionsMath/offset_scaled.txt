@@ -1,0 +1,9 @@
+3-arg: 11 12 13 14 15 16 17 18 19 20
+6-arg: 1 2 5 6 7 6 7 8 9 10
+Negative count: Caught: Positive count expected (got -1)
+off1 < 0: Caught: Lower bound exceeded! Index -1
+off1 too large: Caught: Upper bound exceeded! Index 2
+off1+count too large: Caught: Upper bound exceeded! Index 2
+off2 < 0: Caught: Lower bound exceeded! Index -1
+off2 too large: Caught: Upper bound exceeded! Index 2
+off2+count too large: Caught: Upper bound exceeded! Index 2
