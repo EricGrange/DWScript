@@ -23,7 +23,7 @@ unit dwsKernelCompilerCommon;
 interface
 
 uses
-   System.Classes, System.SysUtils, dwsUtils;
+   System.Classes, System.SysUtils, System.Math, dwsUtils;
 
 type
    EdwsKCLException = class (Exception);
@@ -105,6 +105,51 @@ type
       function Eval(const AValues : TDoubleDynArray) : Double; override;
    end;
 
+   TKCLSubNode = class(TKCLMapNode)
+   public
+      function Eval(const AValues : TDoubleDynArray) : Double; override;
+   end;
+
+   TKCLDivNode = class(TKCLMapNode)
+   public
+      function Eval(const AValues : TDoubleDynArray) : Double; override;
+   end;
+
+   TKCLSigmoidNode = class(TKCLMapNode)
+   public
+      function Eval(const AValues : TDoubleDynArray) : Double; override;
+   end;
+
+   TKCLHardSigmoidNode = class(TKCLMapNode)
+   public
+      function Eval(const AValues : TDoubleDynArray) : Double; override;
+   end;
+
+   TKCLExpNode = class(TKCLMapNode)
+   public
+      function Eval(const AValues : TDoubleDynArray) : Double; override;
+   end;
+
+   TKCLLogNode = class(TKCLMapNode)
+   public
+      function Eval(const AValues : TDoubleDynArray) : Double; override;
+   end;
+
+   TKCLPowerNode = class(TKCLMapNode)
+   public
+      function Eval(const AValues : TDoubleDynArray) : Double; override;
+   end;
+
+   TKCLConstantNode = class(TKCLInputNode)
+   private
+      FValue : Double;
+      FDimensions : TKCLDimensions;
+   public
+      constructor Create(const AName : String; AValue : Double; const ADimensions : TKCLDimensions); reintroduce;
+      property Value : Double read FValue;
+      property Dimensions : TKCLDimensions read FDimensions;
+   end;
+
    TKCLReLUNode = class(TKCLMapNode)
    public
       function Eval(const AValues : TDoubleDynArray) : Double; override;
@@ -165,6 +210,16 @@ type
       constructor Create(const AName : String; const AInputs : TKCLNodes; AAxis : Integer); reintroduce;
       function Eval(const AValues : TDoubleDynArray) : Double; override;
       property Axis : Integer read FAxis;
+   end;
+
+   TKCLMaxPool2DNode = class(TKCLStencilNode)
+   private
+      FKernelSize : Integer;
+      FStride : Integer;
+   public
+      constructor Create(const AName : String; const AInputs : TKCLNodes; AKernelSize, AStride: Integer); reintroduce;
+      property KernelSize : Integer read FKernelSize;
+      property Stride : Integer read FStride;
    end;
 
    TKCLGlobalAvgPoolNode = class(TKCLReduceNode)
@@ -352,6 +407,98 @@ begin
 end;
 
 // ------------------
+// ------------------ TKCLSubNode ------------------
+// ------------------
+
+// Eval
+//
+function TKCLSubNode.Eval(const AValues : TDoubleDynArray) : Double;
+begin
+   Result := AValues[0] - AValues[1];
+end;
+
+// ------------------
+// ------------------ TKCLDivNode ------------------
+// ------------------
+
+// Eval
+//
+function TKCLDivNode.Eval(const AValues : TDoubleDynArray) : Double;
+begin
+   if AValues[1] <> 0.0 then Result := AValues[0] / AValues[1] else Result := 0.0;
+end;
+
+// ------------------
+// ------------------ TKCLSigmoidNode ------------------
+// ------------------
+
+// Eval
+//
+function TKCLSigmoidNode.Eval(const AValues : TDoubleDynArray) : Double;
+begin
+   Result := 1.0 / (1.0 + Exp(-AValues[0]));
+end;
+
+// ------------------
+// ------------------ TKCLHardSigmoidNode ------------------
+// ------------------
+
+// Eval
+//
+function TKCLHardSigmoidNode.Eval(const AValues : TDoubleDynArray) : Double;
+begin
+   Result := (AValues[0] + 3.0) / 6.0;
+   if Result < 0.0 then Result := 0.0
+   else if Result > 1.0 then Result := 1.0;
+end;
+
+// ------------------
+// ------------------ TKCLExpNode ------------------
+// ------------------
+
+// Eval
+//
+function TKCLExpNode.Eval(const AValues : TDoubleDynArray) : Double;
+begin
+   Result := Exp(AValues[0]);
+end;
+
+// ------------------
+// ------------------ TKCLLogNode ------------------
+// ------------------
+
+// Eval
+//
+function TKCLLogNode.Eval(const AValues : TDoubleDynArray) : Double;
+begin
+   if AValues[0] > 0.0 then Result := Ln(AValues[0]) else Result := 0.0;
+end;
+
+// ------------------
+// ------------------ TKCLPowerNode ------------------
+// ------------------
+
+// Eval
+//
+function TKCLPowerNode.Eval(const AValues : TDoubleDynArray) : Double;
+begin
+   Result := Power(AValues[0], AValues[1]);
+end;
+
+// ------------------
+// ------------------ TKCLConstantNode ------------------
+// ------------------
+
+// Create
+//
+constructor TKCLConstantNode.Create(const AName : String; AValue : Double; const ADimensions : TKCLDimensions);
+begin
+   inherited Create(AName, -1); // -1 as it's not a standard input
+   FValue := AValue;
+   FDimensions := ADimensions;
+end;
+
+// ------------------
 // ------------------ TKCLReLUNode ------------------
 // ------------------
 
@@ -441,6 +588,17 @@ end;
 function TKCLConcatNode.Eval(const AValues : TDoubleDynArray) : Double;
 begin
    Result := 0; // Not used normally, Concat needs special backend handling
+end;
+
+// ------------------
+// ------------------ TKCLMaxPool2DNode ------------------
+// ------------------
+
+constructor TKCLMaxPool2DNode.Create(const AName : String; const AInputs : TKCLNodes; AKernelSize, AStride: Integer);
+begin
+   inherited Create(AName, AInputs);
+   FKernelSize := AKernelSize;
+   FStride := AStride;
 end;
 
 // ------------------

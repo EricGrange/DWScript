@@ -219,7 +219,9 @@ begin
                var node := sortedNodes[n];
                nodeToBufferIdx.Add(node, n);
                
-               if node is TKCLInputNode then begin
+               if node is TKCLConstantNode then begin
+                  nodeDims[n] := Copy(TKCLConstantNode(node).Dimensions);
+               end else if node is TKCLInputNode then begin
                   var inIdx := TKCLInputNode(node).InputIndex;
                   nodeDims[n] := Copy(ABuffers[inIdx].Dimensions);
                end else if node is TKCLMapNode then begin
@@ -272,9 +274,26 @@ begin
                      dims[dimW] := rsNode.TargetWidth;
                   end;
                   nodeDims[n] := dims;
+               end else if node is TKCLMaxPool2DNode then begin
+                  var in1Idx := nodeToBufferIdx[node.Inputs[0]];
+                  var dims := Copy(nodeDims[in1Idx]);
+                  var mpNode := TKCLMaxPool2DNode(node);
+                  var st := mpNode.Stride;
+                  if Length(dims) >= 3 then begin
+                     var dimH := High(dims) - 2;
+                     var dimW := High(dims) - 1;
+                     dims[dimH] := (dims[dimH] + st - 1) div st;
+                     dims[dimW] := (dims[dimW] + st - 1) div st;
+                  end;
+                  nodeDims[n] := dims;
                end else if node is TKCLGlobalAvgPoolNode then begin
                   var in1Idx := nodeToBufferIdx[node.Inputs[0]];
-                  nodeDims[n] := Copy(nodeDims[in1Idx]);
+                  var dims := Copy(nodeDims[in1Idx]);
+                  if Length(dims) >= 3 then begin
+                     dims[High(dims) - 2] := 1;
+                     dims[High(dims) - 1] := 1;
+                  end;
+                  nodeDims[n] := dims;
                end;
                
                var elems : NativeInt := 1;
@@ -305,7 +324,11 @@ begin
                var dimsOut := nodeDims[n];
                SetLength(indices, Length(dimsOut));
                
-               if node is TKCLInputNode then begin
+               if node is TKCLConstantNode then begin
+                  var val := TKCLConstantNode(node).Value;
+                  for var i := 0 to nodeTotalElements[n] - 1 do
+                     nodeBuffers[n][i] := val;
+               end else if node is TKCLInputNode then begin
                   var inIdx := TKCLInputNode(node).InputIndex;
                   for var i := 0 to nodeTotalElements[n] - 1 do begin
                      IndexFromFlat(i, dimsOut, indices);
@@ -475,17 +498,77 @@ begin
                      end;
                      nodeBuffers[n][i] := val;
                   end;
+               end else if node is TKCLMaxPool2DNode then begin
+                  var in1Idx := nodeToBufferIdx[node.Inputs[0]];
+                  var mpNode := TKCLMaxPool2DNode(node);
+                  var kSize := mpNode.KernelSize;
+                  var kHalf := kSize div 2;
+                  var st := mpNode.Stride;
+                  var dimsIn := nodeDims[in1Idx];
+                  
+                  for var i := 0 to nodeTotalElements[n] - 1 do begin
+                     IndexFromFlat(i, dimsOut, indices);
+                     var maxVal : Double := -1e30;
+                     if Length(dimsOut) >= 3 then begin
+                        var dimH := High(dimsOut) - 2;
+                        var dimW := High(dimsOut) - 1;
+                        var h_out := indices[dimH];
+                        var w_out := indices[dimW];
+                        var h_in_center := h_out * st;
+                        var w_in_center := w_out * st;
+
+                        for var dy := -kHalf to kHalf do begin
+                           for var dx := -kHalf to kHalf do begin
+                              var ny := h_in_center + dy;
+                              var nx := w_in_center + dx;
+                              if (ny >= 0) and (ny < dimsIn[dimH]) and (nx >= 0) and (nx < dimsIn[dimW]) then begin
+                                 var nIndices := Copy(indices);
+                                 nIndices[dimH] := ny;
+                                 nIndices[dimW] := nx;
+                                 var val := nodeBuffers[in1Idx][FlatIndex(nIndices, dimsIn)];
+                                 if val > maxVal then maxVal := val;
+                              end;
+                           end;
+                        end;
+                     end;
+                     nodeBuffers[n][i] := maxVal;
+                  end;
                end else if node is TKCLGlobalAvgPoolNode then begin
                   var in1Idx := nodeToBufferIdx[node.Inputs[0]];
-                  var inElems := nodeTotalElements[in1Idx];
-                  var sum : Double := 0.0;
-                  for var i := 0 to inElems - 1 do
-                     sum := sum + nodeBuffers[in1Idx][i];
-                  var avg : Double := 0.0;
-                  if inElems > 0 then
-                     avg := sum / inElems;
-                  for var i := 0 to nodeTotalElements[n] - 1 do
-                     nodeBuffers[n][i] := avg;
+                  var dimsIn := nodeDims[in1Idx];
+                  
+                  if Length(dimsIn) >= 3 then begin
+                     var dimH := High(dimsIn) - 2;
+                     var dimW := High(dimsIn) - 1;
+                     var inH := dimsIn[dimH];
+                     var inW := dimsIn[dimW];
+                     var count := inH * inW;
+                     
+                     for var i := 0 to nodeTotalElements[n] - 1 do begin
+                        IndexFromFlat(i, dimsOut, indices);
+                        var sum : Double := 0.0;
+                        var inIdxs := Copy(indices);
+                        for var y := 0 to inH - 1 do begin
+                           for var x := 0 to inW - 1 do begin
+                              inIdxs[dimH] := y;
+                              inIdxs[dimW] := x;
+                              sum := sum + nodeBuffers[in1Idx][FlatIndex(inIdxs, dimsIn)];
+                           end;
+                        end;
+                        nodeBuffers[n][i] := sum / count;
+                     end;
+                  end else begin
+                     // Fallback for rank < 3: average everything
+                     var inElems := nodeTotalElements[in1Idx];
+                     var sum : Double := 0.0;
+                     for var i := 0 to inElems - 1 do
+                        sum := sum + nodeBuffers[in1Idx][i];
+                     var avg : Double := 0.0;
+                     if inElems > 0 then
+                        avg := sum / inElems;
+                     for var i := 0 to nodeTotalElements[n] - 1 do
+                        nodeBuffers[n][i] := avg;
+                  end;
                end;
             end;
             

@@ -1,0 +1,7 @@
+MaxPool:
+6
+8
+14
+16
+GlobalAvgPool:
+8.5
