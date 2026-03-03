@@ -799,6 +799,17 @@ object dwsWebLib: TdwsWebLib
             OnEval = dwsWebClassesHttpQueryMethodsSetIgnoreSSLCertificateErrorsEval
           end
           item
+            Name = 'SetEnableSSLRevocation'
+            Parameters = <
+              item
+                Name = 'val'
+                DataType = 'Boolean'
+              end>
+            Attributes = [maStatic]
+            Kind = mkClassProcedure
+            OnEval = dwsWebClassesHttpQueryMethodsSetEnableSSLRevocationEval
+          end
+          item
             Name = 'GetIgnoreSSLCertificateErrors'
             ResultType = 'Boolean'
             Attributes = [maStatic]
@@ -944,6 +955,11 @@ object dwsWebLib: TdwsWebLib
             Name = 'DisableRedirects'
             DataType = 'Boolean'
             WriteAccess = 'SetDisableRedirects'
+          end
+          item
+            Name = 'EnableSSLRevocation'
+            DataType = 'Boolean'
+            WriteAccess = 'SetEnableSSLRevocation'
           end>
       end
       item

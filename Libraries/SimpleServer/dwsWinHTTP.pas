@@ -50,6 +50,7 @@ type
       public
          CertificateInfo : TdwsHttpCertificateInfo;
          DisableRedirects : Boolean;
+         EnableSSLRevocation : Boolean;
          function GetCertificateInfo(var certInfo : WINHTTP_CERTIFICATE_INFO) : Boolean;
    end;
 
@@ -62,7 +63,8 @@ type
       destructor Destroy; override;
 
       procedure ConnectServer(const uri : TURI; const proxyName : String;
-                              connectTimeout, sendTimeout, receiveTimeout : Integer);
+                              connectTimeout, sendTimeout, receiveTimeout : Integer;
+                              enableSSLRevocation : Boolean);
 
       procedure SetCredentials(const credentials : Variant);
       procedure SetCustomHeaders(const customHeaders : Variant);
@@ -154,6 +156,11 @@ begin
             RaiseLastOSError;
       end;
    end;
+   if fHttps and EnableSSLRevocation then begin
+      flag := WINHTTP_ENABLE_SSL_REVOCATION;
+      if not WinHttpSetOption(fRequest, WINHTTP_OPTION_ENABLE_FEATURE, @flag, SizeOf(flag)) then
+         RaiseLastOSError;
+   end;
    inherited;
    if CertificateInfo <> nil then
       CertificateInfo.Read(Self);
@@ -185,7 +192,8 @@ end;
 // ConnectServer
 //
 procedure TdwsWinHttpConnection.ConnectServer(const uri : TURI; const proxyName : String;
-                                              connectTimeout, sendTimeout, receiveTimeout : Integer);
+                                              connectTimeout, sendTimeout, receiveTimeout : Integer;
+                                              enableSSLRevocation : Boolean);
 begin
    if FWinHttp <> nil then begin
       if    (FWinHttp.Server <> uri.Server)
@@ -194,7 +202,8 @@ begin
          or (FProxyName <> proxyName)
          or (FConnectTimeout <> connectTimeout)
          or (FSendTimeout <> sendTimeout)
-         or (FReceiveTimeout <> receiveTimeout) then begin
+         or (FReceiveTimeout <> receiveTimeout)
+         or (FWinHttp.EnableSSLRevocation <> enableSSLRevocation) then begin
          FWinHttp.Free;
          FWinHttp := nil;
       end;
@@ -203,6 +212,7 @@ begin
       FWinHttp := TdwsWinHTTP.Create(uri.Server, uri.Port, uri.Https,
                                      StringToUTF8(proxyName), '',
                                      connectTimeout, sendTimeout, receiveTimeout);
+      FWinHttp.EnableSSLRevocation := enableSSLRevocation;
       FProxyName := proxyName;
       FPort := uri.Port;
       FConnectTimeout := connectTimeout;

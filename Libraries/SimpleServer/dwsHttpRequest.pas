@@ -35,6 +35,7 @@ const
    cWinHttpReceiveTimeout : TGUID = '{0D14B470-4F8A-48AE-BAD2-426E15FE4E03}';
    cWinHttpCustomHeaders : TGUID = '{FD05B54E-FBF2-498A-BD1F-0B1F18F27A1E}';
    cWinHttpDisabledRedirects : TGUID = '{D004A7CD-D009-4E5A-B297-B2A0038281B9}';
+   cWinHttpEnableSSLRevocation : TGUID = '{E98B7D55-179A-48B6-8788-3053538BC670}';
 
    cWinHttpSynchronousRequest : TGUID = '{7D0B442B-0D52-4D05-95A1-3964FAB588CA}';
 
@@ -319,19 +320,21 @@ begin
          conn.ConnectServer(uri, customStates.StringStateDef(cWinHttpProxyName, ''),
                             customStates.IntegerStateDef(cWinHttpConnectTimeout, HTTP_DEFAULT_CONNECTTIMEOUT),
                             customStates.IntegerStateDef(cWinHttpSendTimeout, HTTP_DEFAULT_SENDTIMEOUT),
-                            customStates.IntegerStateDef(cWinHttpReceiveTimeout, HTTP_DEFAULT_RECEIVETIMEOUT));
+                            customStates.IntegerStateDef(cWinHttpReceiveTimeout, HTTP_DEFAULT_RECEIVETIMEOUT),
+                            customStates.BooleanStateDef(cWinHttpEnableSSLRevocation, False));
          conn.SetIgnoreSSLErrors(customStates[cWinHttpIgnoreSSLCertificateErrors]);
          conn.SetCredentials(customStates[cWinHttpCredentials]);
          conn.SetCustomHeaders(customStates[cWinHttpCustomHeaders]);
          keepAlive := customStates.BooleanStateDef(cWinHttpKeepAlive, cWinHttpDefaultKeepAlive);
          conn.FWinHttp.DisableRedirects := customStates.BooleanStateDef(cWinHttpDisabledRedirects, False);
       end else begin
-         conn.ConnectServer(uri, '', HTTP_DEFAULT_CONNECTTIMEOUT, HTTP_DEFAULT_SENDTIMEOUT, HTTP_DEFAULT_RECEIVETIMEOUT);
+         conn.ConnectServer(uri, '', HTTP_DEFAULT_CONNECTTIMEOUT, HTTP_DEFAULT_SENDTIMEOUT, HTTP_DEFAULT_RECEIVETIMEOUT, False);
          conn.SetIgnoreSSLErrors(unassignedVariant);
          conn.SetCredentials(unassignedVariant);
          conn.SetCustomHeaders(unassignedVariant);
          keepAlive := cWinHttpDefaultKeepAlive;
          conn.FWinHttp.DisableRedirects := False;
+         conn.FWinHttp.EnableSSLRevocation := False;
       end;
       conn.SetOnProgress(onProgress);
       conn.FWinHttp.CertificateInfo := certificateInfo;

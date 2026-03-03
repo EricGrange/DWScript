@@ -49,6 +49,8 @@ type
       ExtObject: TObject);
     procedure dwsWebClassesHttpQueryMethodsSetIgnoreSSLCertificateErrorsEval(
       Info: TProgramInfo; ExtObject: TObject);
+    procedure dwsWebClassesHttpQueryMethodsSetEnableSSLRevocationEval(
+      Info: TProgramInfo; ExtObject: TObject);
     procedure dwsWebClassesHttpQueryMethodsGetIgnoreSSLCertificateErrorsEval(
       Info: TProgramInfo; ExtObject: TObject);
     procedure dwsWebFunctionsGetHostByAddrEval(info: TProgramInfo);
@@ -522,6 +524,12 @@ procedure TdwsWebLib.dwsWebClassesHttpQueryMethodsClearCredentialsEval(
   Info: TProgramInfo; ExtObject: TObject);
 begin
    Info.Execution.CustomStates[cWinHttpCredentials]:=Unassigned;
+end;
+
+procedure TdwsWebLib.dwsWebClassesHttpQueryMethodsSetEnableSSLRevocationEval(
+  Info: TProgramInfo; ExtObject: TObject);
+begin
+   Info.Execution.CustomStates[cWinHttpEnableSSLRevocation]:=Info.ParamAsBoolean[0];
 end;
 
 procedure TdwsWebLib.dwsWebClassesHttpQueryMethodsSetIgnoreSSLCertificateErrorsEval(
