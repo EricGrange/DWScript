@@ -23,7 +23,7 @@ unit dwsKernelCompilerCommon;
 interface
 
 uses
-   System.Classes, System.SysUtils;
+   System.Classes, System.SysUtils, dwsUtils;
 
 type
    EdwsKCLException = class (Exception);
@@ -81,7 +81,7 @@ type
    TKCLMapNode = class(TKCLNode)
    public
       function Category : TKCLNodeCategory; override;
-      function Eval(const AValues : array of Double) : Double; virtual; abstract;
+      function Eval(const AValues : TDoubleDynArray) : Double; virtual; abstract;
    end;
 
    TKCLStencilNode = class(TKCLNode)
@@ -97,15 +97,74 @@ type
    // Specific nodes
    TKCLAddNode = class(TKCLMapNode)
    public
-      function Eval(const AValues : array of Double) : Double; override;
+      function Eval(const AValues : TDoubleDynArray) : Double; override;
    end;
 
    TKCLMulNode = class(TKCLMapNode)
    public
-      function Eval(const AValues : array of Double) : Double; override;
+      function Eval(const AValues : TDoubleDynArray) : Double; override;
+   end;
+
+   TKCLReLUNode = class(TKCLMapNode)
+   public
+      function Eval(const AValues : TDoubleDynArray) : Double; override;
+   end;
+
+   TKCLReLU6Node = class(TKCLMapNode)
+   public
+      function Eval(const AValues : TDoubleDynArray) : Double; override;
+   end;
+
+   TKCLHardSwishNode = class(TKCLMapNode)
+   public
+      function Eval(const AValues : TDoubleDynArray) : Double; override;
    end;
 
    TKCLConv2DNode = class(TKCLStencilNode)
+   private
+      FWeights : TDoubleDynArray;
+      FBias : TDoubleDynArray;
+      FKernelSize : Integer;
+      FStride : Integer;
+   public
+      constructor Create(const AName : String; const AInputs : TKCLNodes; const AWeights, ABias: TDoubleDynArray; AKernelSize, AStride: Integer); reintroduce;
+      property Weights : TDoubleDynArray read FWeights;
+      property Bias : TDoubleDynArray read FBias;
+      property KernelSize : Integer read FKernelSize;
+      property Stride : Integer read FStride;
+   end;
+
+   TKCLDepthwiseConv2DNode = class(TKCLStencilNode)
+   private
+      FWeights : TDoubleDynArray;
+      FBias : TDoubleDynArray;
+      FKernelSize : Integer;
+      FStride : Integer;
+   public
+      constructor Create(const AName : String; const AInputs : TKCLNodes; const AWeights, ABias: TDoubleDynArray; AKernelSize, AStride: Integer); reintroduce;
+      property Weights : TDoubleDynArray read FWeights;
+      property Bias : TDoubleDynArray read FBias;
+      property KernelSize : Integer read FKernelSize;
+      property Stride : Integer read FStride;
+   end;
+
+   TKCLResizeBilinearNode = class(TKCLStencilNode)
+   private
+      FTargetHeight : Integer;
+      FTargetWidth : Integer;
+   public
+      constructor Create(const AName : String; const AInputs : TKCLNodes; ATargetHeight, ATargetWidth : Integer); reintroduce;
+      property TargetHeight : Integer read FTargetHeight;
+      property TargetWidth : Integer read FTargetWidth;
+   end;
+
+   TKCLConcatNode = class(TKCLMapNode)
+   private
+      FAxis : Integer;
+   public
+      constructor Create(const AName : String; const AInputs : TKCLNodes; AAxis : Integer); reintroduce;
+      function Eval(const AValues : TDoubleDynArray) : Double; override;
+      property Axis : Integer read FAxis;
    end;
 
    TKCLGlobalAvgPoolNode = class(TKCLReduceNode)
@@ -276,7 +335,7 @@ end;
 
 // Eval
 //
-function TKCLAddNode.Eval(const AValues : array of Double) : Double;
+function TKCLAddNode.Eval(const AValues : TDoubleDynArray) : Double;
 begin
    Result := AValues[0] + AValues[1];
 end;
@@ -287,9 +346,101 @@ end;
 
 // Eval
 //
-function TKCLMulNode.Eval(const AValues : array of Double) : Double;
+function TKCLMulNode.Eval(const AValues : TDoubleDynArray) : Double;
 begin
    Result := AValues[0] * AValues[1];
+end;
+
+// ------------------
+// ------------------ TKCLReLUNode ------------------
+// ------------------
+
+// Eval
+//
+function TKCLReLUNode.Eval(const AValues : TDoubleDynArray) : Double;
+begin
+   if AValues[0] > 0.0 then Result := AValues[0] else Result := 0.0;
+end;
+
+// ------------------
+// ------------------ TKCLReLU6Node ------------------
+// ------------------
+
+// Eval
+//
+function TKCLReLU6Node.Eval(const AValues : TDoubleDynArray) : Double;
+begin
+   if AValues[0] > 6.0 then Result := 6.0
+   else if AValues[0] > 0.0 then Result := AValues[0]
+   else Result := 0.0;
+end;
+
+// ------------------
+// ------------------ TKCLHardSwishNode ------------------
+// ------------------
+
+// Eval
+//
+function TKCLHardSwishNode.Eval(const AValues : TDoubleDynArray) : Double;
+var
+   v : Double;
+begin
+   v := AValues[0] + 3.0;
+   if v < 0.0 then v := 0.0
+   else if v > 6.0 then v := 6.0;
+   Result := AValues[0] * v / 6.0;
+end;
+
+// ------------------
+// ------------------ TKCLConv2DNode ------------------
+// ------------------
+
+constructor TKCLConv2DNode.Create(const AName : String; const AInputs : TKCLNodes; const AWeights, ABias: TDoubleDynArray; AKernelSize, AStride: Integer);
+begin
+   inherited Create(AName, AInputs);
+   FWeights := AWeights;
+   FBias := ABias;
+   FKernelSize := AKernelSize;
+   FStride := AStride;
+end;
+
+// ------------------
+// ------------------ TKCLDepthwiseConv2DNode ------------------
+// ------------------
+
+constructor TKCLDepthwiseConv2DNode.Create(const AName : String; const AInputs : TKCLNodes; const AWeights, ABias: TDoubleDynArray; AKernelSize, AStride: Integer);
+begin
+   inherited Create(AName, AInputs);
+   FWeights := AWeights;
+   FBias := ABias;
+   FKernelSize := AKernelSize;
+   FStride := AStride;
+end;
+
+// ------------------
+// ------------------ TKCLResizeBilinearNode ------------------
+// ------------------
+
+constructor TKCLResizeBilinearNode.Create(const AName : String; const AInputs : TKCLNodes; ATargetHeight, ATargetWidth : Integer);
+begin
+   inherited Create(AName, AInputs);
+   FTargetHeight := ATargetHeight;
+   FTargetWidth := ATargetWidth;
+end;
+
+// ------------------
+// ------------------ TKCLConcatNode ------------------
+// ------------------
+
+constructor TKCLConcatNode.Create(const AName : String; const AInputs : TKCLNodes; AAxis : Integer);
+begin
+   inherited Create(AName, AInputs);
+   FAxis := AAxis;
+end;
+
+function TKCLConcatNode.Eval(const AValues : TDoubleDynArray) : Double;
+begin
+   Result := 0; // Not used normally, Concat needs special backend handling
 end;
 
 // ------------------

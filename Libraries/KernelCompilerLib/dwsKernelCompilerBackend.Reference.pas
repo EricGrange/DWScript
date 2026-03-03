@@ -113,32 +113,32 @@ end;
 //
 procedure TKCLReferenceBackend.Execute(AKernel : TKCLKernel; const ABuffers : array of TKCLStridedBufferDescriptor);
 var
-   dims : TKCLDimensions;
-   totalElements : NativeInt;
-   nodeBuffers : array of TArray<Double>;
+   nodeDims : array of TKCLDimensions;
+   nodeTotalElements : array of NativeInt;
+   nodeBuffers : array of TDoubleDynArray;
    nodeToBufferIdx : TDictionary<TKCLNode, Integer>;
    savedMask : TArithmeticExceptionMask;
-   indices : TArray<Integer>;
    sortedNodes : TList<TKCLNode>;
    visiting : TDictionary<TKCLNode, Boolean>;
    visited : TDictionary<TKCLNode, Boolean>;
+   indices : TArray<Integer>;
 
-   function FlatIndex(const AIdx : array of Integer) : Integer;
+   function FlatIndex(const AIdx : array of Integer; const ADims : TKCLDimensions) : Integer;
    begin
       Result := 0;
       var mult := 1;
       for var i := High(AIdx) downto 0 do begin
          Result := Result + AIdx[i] * mult;
-         mult := mult * dims[i];
+         mult := mult * ADims[i];
       end;
    end;
 
-   procedure IndexFromFlat(AFlat : Integer; var AIdx : array of Integer);
+   procedure IndexFromFlat(AFlat : Integer; const ADims : TKCLDimensions; var AIdx : array of Integer);
    begin
       for var i := High(AIdx) downto 0 do begin
-         if dims[i] > 0 then begin
-            AIdx[i] := AFlat mod dims[i];
-            AFlat := AFlat div dims[i];
+         if ADims[i] > 0 then begin
+            AIdx[i] := AFlat mod ADims[i];
+            AFlat := AFlat div ADims[i];
          end else
             AIdx[i] := 0;
       end;
@@ -169,26 +169,17 @@ begin
    if Length(ABuffers) < inputCount + outputCount then
       raise EdwsKCLException.CreateFmt('TKCLReferenceBackend.Execute: Expected at least %d buffers, but got %d', [inputCount + outputCount, Length(ABuffers)]);
 
-   dims := ABuffers[0].Dimensions;
-   totalElements := 1;
-   for var i := 0 to High(dims) do
-      totalElements := totalElements * dims[i];
-      
-   // Domain validation and Capacity validation
+   // Capacity validation for all buffers independent of DAG bounds
    for var b := 0 to High(ABuffers) do begin
-      if b > 0 then begin
-         if Length(ABuffers[b].Dimensions) <> Length(dims) then
-            raise EdwsKCLException.Create('KCL: Spatial domain mismatch (dimensions length).');
-         for var i := 0 to High(dims) do
-            if ABuffers[b].Dimensions[i] <> dims[i] then
-               raise EdwsKCLException.Create('KCL: Spatial domain mismatch (dimension size).');
-      end;
-      
+      var totalElements : NativeInt := 1;
+      for var i := 0 to High(ABuffers[b].Dimensions) do
+         totalElements := totalElements * ABuffers[b].Dimensions[i];
+         
       var maxOffset : NativeInt := 0;
       var minOffset : NativeInt := 0;
       if totalElements > 0 then begin
-         for var d := 0 to High(dims) do begin
-            var extent := (dims[d] - 1) * ABuffers[b].Strides[d];
+         for var d := 0 to High(ABuffers[b].Dimensions) do begin
+            var extent := (ABuffers[b].Dimensions[d] - 1) * ABuffers[b].Strides[d];
             if extent > 0 then
                maxOffset := maxOffset + extent
             else
@@ -207,8 +198,6 @@ begin
          raise EdwsKCLException.Create('KCL: Dynamic bounds exceed logical Capacity.');
    end;
 
-   SetLength(indices, Length(dims));
-
    // Mask FPU Exceptions
    savedMask := SetExceptionMask([exInvalidOp, exDenormalized, exZeroDivide, exOverflow, exUnderflow, exPrecision]);
    try
@@ -219,87 +208,295 @@ begin
          for var j := 0 to High(AKernel.Outputs) do
             VisitNode(AKernel.Outputs[j]);
 
+         SetLength(nodeDims, sortedNodes.Count);
+         SetLength(nodeTotalElements, sortedNodes.Count);
          SetLength(nodeBuffers, sortedNodes.Count);
-         for var i := 0 to sortedNodes.Count - 1 do begin
-            SetLength(nodeBuffers[i], totalElements);
-            for var j := 0 to totalElements - 1 do
-               nodeBuffers[i][j] := 0.0;
-         end;
             
          nodeToBufferIdx := TDictionary<TKCLNode, Integer>.Create;
          try
-            // Topological evaluation
+            // 1. Calculate and propagate dimensions and total elements
             for var n := 0 to sortedNodes.Count - 1 do begin
                var node := sortedNodes[n];
                nodeToBufferIdx.Add(node, n);
                
                if node is TKCLInputNode then begin
                   var inIdx := TKCLInputNode(node).InputIndex;
-                  for var i := 0 to totalElements - 1 do begin
-                     IndexFromFlat(i, indices);
+                  nodeDims[n] := Copy(ABuffers[inIdx].Dimensions);
+               end else if node is TKCLMapNode then begin
+                  var in1Idx := nodeToBufferIdx[node.Inputs[0]];
+                  nodeDims[n] := Copy(nodeDims[in1Idx]);
+                  if node is TKCLConcatNode then begin
+                     var cNode := TKCLConcatNode(node);
+                     var ax := cNode.Axis;
+                     var newDim := nodeDims[n][ax];
+                     for var k := 1 to High(node.Inputs) do begin
+                        var inKIdx := nodeToBufferIdx[node.Inputs[k]];
+                        newDim := newDim + nodeDims[inKIdx][ax];
+                     end;
+                     nodeDims[n][ax] := newDim;
+                  end;
+               end else if node is TKCLConv2DNode then begin
+                  var in1Idx := nodeToBufferIdx[node.Inputs[0]];
+                  var dims := Copy(nodeDims[in1Idx]);
+                  var cvNode := TKCLConv2DNode(node);
+                  var st := cvNode.Stride;
+                  if Length(dims) >= 3 then begin
+                     var dimH := High(dims) - 2;
+                     var dimW := High(dims) - 1;
+                     var outC := Length(cvNode.Bias);
+                     dims[dimH] := (dims[dimH] + st - 1) div st;
+                     dims[dimW] := (dims[dimW] + st - 1) div st;
+                     dims[High(dims)] := outC;
+                  end;
+                  nodeDims[n] := dims;
+               end else if node is TKCLDepthwiseConv2DNode then begin
+                  var in1Idx := nodeToBufferIdx[node.Inputs[0]];
+                  var dims := Copy(nodeDims[in1Idx]);
+                  var dwNode := TKCLDepthwiseConv2DNode(node);
+                  var st := dwNode.Stride;
+                  if Length(dims) >= 3 then begin
+                     var dimH := High(dims) - 2;
+                     var dimW := High(dims) - 1;
+                     dims[dimH] := (dims[dimH] + st - 1) div st;
+                     dims[dimW] := (dims[dimW] + st - 1) div st;
+                  end;
+                  nodeDims[n] := dims;
+               end else if node is TKCLResizeBilinearNode then begin
+                  var in1Idx := nodeToBufferIdx[node.Inputs[0]];
+                  var dims := Copy(nodeDims[in1Idx]);
+                  var rsNode := TKCLResizeBilinearNode(node);
+                  if Length(dims) >= 3 then begin
+                     var dimH := High(dims) - 2;
+                     var dimW := High(dims) - 1;
+                     dims[dimH] := rsNode.TargetHeight;
+                     dims[dimW] := rsNode.TargetWidth;
+                  end;
+                  nodeDims[n] := dims;
+               end else if node is TKCLGlobalAvgPoolNode then begin
+                  var in1Idx := nodeToBufferIdx[node.Inputs[0]];
+                  nodeDims[n] := Copy(nodeDims[in1Idx]);
+               end;
+               
+               var elems : NativeInt := 1;
+               for var i := 0 to High(nodeDims[n]) do
+                  elems := elems * nodeDims[n][i];
+               nodeTotalElements[n] := elems;
+               
+               SetLength(nodeBuffers[n], elems);
+               for var j := 0 to elems - 1 do
+                  nodeBuffers[n][j] := 0.0;
+            end;
+            
+            // 2. Output verification
+            for var j := 0 to High(AKernel.Outputs) do begin
+               var outNode := AKernel.Outputs[j];
+               var outIdx := nodeToBufferIdx[outNode];
+               var outBuf := ABuffers[inputCount + j];
+               if Length(nodeDims[outIdx]) <> Length(outBuf.Dimensions) then
+                  raise EdwsKCLException.Create('KCL: Output spatial domain length mismatch.');
+               for var i := 0 to High(nodeDims[outIdx]) do
+                  if nodeDims[outIdx][i] <> outBuf.Dimensions[i] then
+                     raise EdwsKCLException.Create('KCL: Output spatial domain size mismatch.');
+            end;
+
+            // 3. Topological evaluation
+            for var n := 0 to sortedNodes.Count - 1 do begin
+               var node := sortedNodes[n];
+               var dimsOut := nodeDims[n];
+               SetLength(indices, Length(dimsOut));
+               
+               if node is TKCLInputNode then begin
+                  var inIdx := TKCLInputNode(node).InputIndex;
+                  for var i := 0 to nodeTotalElements[n] - 1 do begin
+                     IndexFromFlat(i, dimsOut, indices);
                      nodeBuffers[n][i] := GetValue(ABuffers[inIdx], indices);
+                  end;
+               end else if node is TKCLConcatNode then begin
+                  var cNode := TKCLConcatNode(node);
+                  var ax := cNode.Axis;
+                  var curDimOffset := 0;
+                  for var k := 0 to High(node.Inputs) do begin
+                     var inKIdx := nodeToBufferIdx[node.Inputs[k]];
+                     var inKDims := nodeDims[inKIdx];
+                     var inKElems := nodeTotalElements[inKIdx];
+                     var inKIndices : TArray<Integer>;
+                     SetLength(inKIndices, Length(inKDims));
+                     
+                     for var i := 0 to inKElems - 1 do begin
+                        IndexFromFlat(i, inKDims, inKIndices);
+                        var outIdxs := Copy(inKIndices);
+                        outIdxs[ax] := outIdxs[ax] + curDimOffset;
+                        nodeBuffers[n][FlatIndex(outIdxs, dimsOut)] := nodeBuffers[inKIdx][i];
+                     end;
+                     curDimOffset := curDimOffset + inKDims[ax];
                   end;
                end else if node is TKCLMapNode then begin
                   var in1Idx := nodeToBufferIdx[node.Inputs[0]];
                   var in2Idx := -1;
                   if Length(node.Inputs) > 1 then in2Idx := nodeToBufferIdx[node.Inputs[1]];
                   
-                  for var i := 0 to totalElements - 1 do begin
+                  for var i := 0 to nodeTotalElements[n] - 1 do begin
                      var val1 := nodeBuffers[in1Idx][i];
                      var val2 : Double := 0;
                      if in2Idx >= 0 then val2 := nodeBuffers[in2Idx][i];
-                     nodeBuffers[n][i] := TKCLMapNode(node).Eval([val1, val2]);
+                     var evalArgs : TDoubleDynArray;
+                     SetLength(evalArgs, 2);
+                     evalArgs[0] := val1;
+                     evalArgs[1] := val2;
+                     nodeBuffers[n][i] := TKCLMapNode(node).Eval(evalArgs);
                   end;
                end else if node is TKCLConv2DNode then begin
                   var in1Idx := nodeToBufferIdx[node.Inputs[0]];
-                  for var i := 0 to totalElements - 1 do begin
-                     IndexFromFlat(i, indices);
-                     
+                  var cvNode := TKCLConv2DNode(node);
+                  var kSize := cvNode.KernelSize;
+                  var kHalf := kSize div 2;
+                  var st := cvNode.Stride;
+                  var dimsIn := nodeDims[in1Idx];
+                  var inChannels := dimsIn[High(dimsIn)];
+                  var outChannels := dimsOut[High(dimsOut)];
+                  
+                  for var i := 0 to nodeTotalElements[n] - 1 do begin
+                     IndexFromFlat(i, dimsOut, indices);
                      var sum : Double := 0.0;
-                     if Length(dims) >= 2 then begin
-                        var dimH := High(dims) - 1;
-                        if Length(dims) >= 3 then dimH := High(dims) - 2;
-                        var dimW := dimH + 1;
+                     if Length(dimsOut) >= 3 then begin
+                        var cOut := indices[High(dimsOut)];
+                        var dimH := High(dimsOut) - 2;
+                        var dimW := High(dimsOut) - 1;
+                        var h_out := indices[dimH];
+                        var w_out := indices[dimW];
+                        var h_in_center := h_out * st;
+                        var w_in_center := w_out * st;
                         
-                        var h := indices[dimH];
-                        var w := indices[dimW];
+                        if cOut < Length(cvNode.Bias) then sum := cvNode.Bias[cOut];
                         
-                        for var dy := -1 to 1 do begin
-                           for var dx := -1 to 1 do begin
-                              var ny := h + dy;
-                              var nx := w + dx;
-                              if (ny >= 0) and (ny < dims[dimH]) and (nx >= 0) and (nx < dims[dimW]) then begin
-                                 var nIndices := Copy(indices);
-                                 nIndices[dimH] := ny;
-                                 nIndices[dimW] := nx;
-                                 sum := sum + nodeBuffers[in1Idx][FlatIndex(nIndices)];
+                        for var dy := -kHalf to kHalf do begin
+                           for var dx := -kHalf to kHalf do begin
+                              var ny := h_in_center + dy;
+                              var nx := w_in_center + dx;
+                              if (ny >= 0) and (ny < dimsIn[dimH]) and (nx >= 0) and (nx < dimsIn[dimW]) then begin
+                                 for var cIn := 0 to inChannels - 1 do begin
+                                    var nIndices := Copy(indices);
+                                    nIndices[dimH] := ny;
+                                    nIndices[dimW] := nx;
+                                    nIndices[High(dimsOut)] := cIn;
+                                    
+                                    var wIdx := (((dy + kHalf) * kSize + (dx + kHalf)) * inChannels + cIn) * outChannels + cOut;
+                                    if wIdx < Length(cvNode.Weights) then
+                                       sum := sum + nodeBuffers[in1Idx][FlatIndex(nIndices, dimsIn)] * cvNode.Weights[wIdx];
+                                 end;
                               end;
                            end;
                         end;
-                     end else begin
-                        sum := nodeBuffers[in1Idx][i];
                      end;
                      nodeBuffers[n][i] := sum;
                   end;
+               end else if node is TKCLDepthwiseConv2DNode then begin
+                  var in1Idx := nodeToBufferIdx[node.Inputs[0]];
+                  var dwNode := TKCLDepthwiseConv2DNode(node);
+                  var kSize := dwNode.KernelSize;
+                  var kHalf := kSize div 2;
+                  var st := dwNode.Stride;
+                  var dimsIn := nodeDims[in1Idx];
+                  var channels := dimsIn[High(dimsIn)];
+                  
+                  for var i := 0 to nodeTotalElements[n] - 1 do begin
+                     IndexFromFlat(i, dimsOut, indices);
+                     var sum : Double := 0.0;
+                     if Length(dimsOut) >= 3 then begin
+                        var cIdx := indices[High(dimsOut)];
+                        var dimH := High(dimsOut) - 2;
+                        var dimW := High(dimsOut) - 1;
+                        var h_out := indices[dimH];
+                        var w_out := indices[dimW];
+                        var h_in_center := h_out * st;
+                        var w_in_center := w_out * st;
+                        
+                        if cIdx < Length(dwNode.Bias) then sum := dwNode.Bias[cIdx];
+                        
+                        for var dy := -kHalf to kHalf do begin
+                           for var dx := -kHalf to kHalf do begin
+                              var ny := h_in_center + dy;
+                              var nx := w_in_center + dx;
+                              if (ny >= 0) and (ny < dimsIn[dimH]) and (nx >= 0) and (nx < dimsIn[dimW]) then begin
+                                 var nIndices := Copy(indices);
+                                 nIndices[dimH] := ny;
+                                 nIndices[dimW] := nx;
+                                 var wIdx := ((dy + kHalf) * kSize + (dx + kHalf)) * channels + cIdx;
+                                 if wIdx < Length(dwNode.Weights) then
+                                    sum := sum + nodeBuffers[in1Idx][FlatIndex(nIndices, dimsIn)] * dwNode.Weights[wIdx];
+                              end;
+                           end;
+                        end;
+                     end;
+                     nodeBuffers[n][i] := sum;
+                  end;
+               end else if node is TKCLResizeBilinearNode then begin
+                  var in1Idx := nodeToBufferIdx[node.Inputs[0]];
+                  var dimsIn := nodeDims[in1Idx];
+                  
+                  for var i := 0 to nodeTotalElements[n] - 1 do begin
+                     IndexFromFlat(i, dimsOut, indices);
+                     var val : Double := 0.0;
+                     if Length(dimsOut) >= 3 then begin
+                        var dimH := High(dimsOut) - 2;
+                        var dimW := High(dimsOut) - 1;
+                        var h_out := indices[dimH];
+                        var w_out := indices[dimW];
+                        
+                        var scaleH := dimsIn[dimH] / dimsOut[dimH];
+                        var scaleW := dimsIn[dimW] / dimsOut[dimW];
+                        
+                        var h_in := h_out * scaleH;
+                        var w_in := w_out * scaleW;
+                        
+                        var h0 := Floor(h_in);
+                        var h1 := h0 + 1;
+                        if h1 >= dimsIn[dimH] then h1 := h0;
+                        var w0 := Floor(w_in);
+                        var w1 := w0 + 1;
+                        if w1 >= dimsIn[dimW] then w1 := w0;
+                        
+                        var fh := h_in - h0;
+                        var fw := w_in - w0;
+                        
+                        var idx00 := Copy(indices); idx00[dimH] := h0; idx00[dimW] := w0;
+                        var idx01 := Copy(indices); idx01[dimH] := h0; idx01[dimW] := w1;
+                        var idx10 := Copy(indices); idx10[dimH] := h1; idx10[dimW] := w0;
+                        var idx11 := Copy(indices); idx11[dimH] := h1; idx11[dimW] := w1;
+                        
+                        var v00 := nodeBuffers[in1Idx][FlatIndex(idx00, dimsIn)];
+                        var v01 := nodeBuffers[in1Idx][FlatIndex(idx01, dimsIn)];
+                        var v10 := nodeBuffers[in1Idx][FlatIndex(idx10, dimsIn)];
+                        var v11 := nodeBuffers[in1Idx][FlatIndex(idx11, dimsIn)];
+                        
+                        var v0 := v00 * (1 - fw) + v01 * fw;
+                        var v1 := v10 * (1 - fw) + v11 * fw;
+                        val := v0 * (1 - fh) + v1 * fh;
+                     end;
+                     nodeBuffers[n][i] := val;
+                  end;
                end else if node is TKCLGlobalAvgPoolNode then begin
                   var in1Idx := nodeToBufferIdx[node.Inputs[0]];
+                  var inElems := nodeTotalElements[in1Idx];
                   var sum : Double := 0.0;
-                  for var i := 0 to totalElements - 1 do
+                  for var i := 0 to inElems - 1 do
                      sum := sum + nodeBuffers[in1Idx][i];
                   var avg : Double := 0.0;
-                  if totalElements > 0 then
-                     avg := sum / totalElements;
-                  for var i := 0 to totalElements - 1 do
+                  if inElems > 0 then
+                     avg := sum / inElems;
+                  for var i := 0 to nodeTotalElements[n] - 1 do
                      nodeBuffers[n][i] := avg;
                end;
             end;
             
-            // Write outputs
+            // 4. Write outputs
             for var j := 0 to High(AKernel.Outputs) do begin
                var outNode := AKernel.Outputs[j];
                var outIdx := nodeToBufferIdx[outNode];
-               for var i := 0 to totalElements - 1 do begin
-                  IndexFromFlat(i, indices);
+               var dimsOut := nodeDims[outIdx];
+               SetLength(indices, Length(dimsOut));
+               for var i := 0 to nodeTotalElements[outIdx] - 1 do begin
+                  IndexFromFlat(i, dimsOut, indices);
                   SetValue(ABuffers[inputCount + j], indices, nodeBuffers[outIdx][i]);
                end;
             end;
