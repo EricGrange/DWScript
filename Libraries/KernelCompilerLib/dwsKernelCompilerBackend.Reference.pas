@@ -174,13 +174,37 @@ begin
    for var i := 0 to High(dims) do
       totalElements := totalElements * dims[i];
       
-   // Domain validation
-   for var b := 1 to High(ABuffers) do begin
-      if Length(ABuffers[b].Dimensions) <> Length(dims) then
-         raise EdwsKCLException.Create('KCL: Spatial domain mismatch (dimensions length).');
-      for var i := 0 to High(dims) do
-         if ABuffers[b].Dimensions[i] <> dims[i] then
-            raise EdwsKCLException.Create('KCL: Spatial domain mismatch (dimension size).');
+   // Domain validation and Capacity validation
+   for var b := 0 to High(ABuffers) do begin
+      if b > 0 then begin
+         if Length(ABuffers[b].Dimensions) <> Length(dims) then
+            raise EdwsKCLException.Create('KCL: Spatial domain mismatch (dimensions length).');
+         for var i := 0 to High(dims) do
+            if ABuffers[b].Dimensions[i] <> dims[i] then
+               raise EdwsKCLException.Create('KCL: Spatial domain mismatch (dimension size).');
+      end;
+      
+      var maxOffset : NativeInt := 0;
+      var minOffset : NativeInt := 0;
+      if totalElements > 0 then begin
+         for var d := 0 to High(dims) do begin
+            var extent := (dims[d] - 1) * ABuffers[b].Strides[d];
+            if extent > 0 then
+               maxOffset := maxOffset + extent
+            else
+               minOffset := minOffset + extent;
+         end;
+      end;
+      
+      var size : NativeInt := 1;
+      case ABuffers[b].DataType of
+         dtInt8 : size := 1;
+         dtFloat16 : size := 2;
+         dtFloat32 : size := 4;
+      end;
+      
+      if (minOffset < 0) or (maxOffset + size > ABuffers[b].Capacity) then
+         raise EdwsKCLException.Create('KCL: Dynamic bounds exceed logical Capacity.');
    end;
 
    SetLength(indices, Length(dims));
@@ -204,14 +228,6 @@ begin
             
          nodeToBufferIdx := TDictionary<TKCLNode, Integer>.Create;
          try
-            // Zero-initialize output buffers
-            for var j := 0 to outputCount - 1 do begin
-               for var i := 0 to totalElements - 1 do begin
-                  IndexFromFlat(i, indices);
-                  SetValue(ABuffers[inputCount + j], indices, 0.0);
-               end;
-            end;
-
             // Topological evaluation
             for var n := 0 to sortedNodes.Count - 1 do begin
                var node := sortedNodes[n];
