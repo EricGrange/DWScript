@@ -213,7 +213,12 @@ begin
 
    var p := PByte(wrapper.FDescriptor.BasePointer) + offset;
    case wrapper.FDescriptor.DataType of
-      dtInt8 : PInt8(p)^ := Round(val);
+      dtInt8 : begin
+         var intVal := Round(val);
+         if intVal < -128 then intVal := -128
+         else if intVal > 127 then intVal := 127;
+         PInt8(p)^ := intVal;
+      end;
       dtFloat16 : PHalfFloat(p)^ := FloatToHalf(val);
       dtFloat32 : PSingle(p)^ := val;
    end;

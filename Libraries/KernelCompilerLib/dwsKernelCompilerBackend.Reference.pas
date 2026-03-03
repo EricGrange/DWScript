@@ -96,7 +96,12 @@ begin
 
    var p := PByte(ABuffer.BasePointer) + offset;
    case ABuffer.DataType of
-      dtInt8 : PInt8(p)^ := Round(AValue);
+      dtInt8 : begin
+         var intVal := Round(AValue);
+         if intVal < -128 then intVal := -128
+         else if intVal > 127 then intVal := 127;
+         PInt8(p)^ := intVal;
+      end;
       dtFloat16 : PHalfFloat(p)^ := FloatToHalf(AValue);
       dtFloat32 : PSingle(p)^ := AValue;
    else
@@ -114,6 +119,9 @@ var
    nodeToBufferIdx : TDictionary<TKCLNode, Integer>;
    savedMask : TArithmeticExceptionMask;
    indices : TArray<Integer>;
+   sortedNodes : TList<TKCLNode>;
+   visiting : TDictionary<TKCLNode, Boolean>;
+   visited : TDictionary<TKCLNode, Boolean>;
 
    function FlatIndex(const AIdx : array of Integer) : Integer;
    begin
@@ -134,6 +142,22 @@ var
          end else
             AIdx[i] := 0;
       end;
+   end;
+
+   procedure VisitNode(ANode : TKCLNode);
+   begin
+      if visited.ContainsKey(ANode) then Exit;
+      if visiting.ContainsKey(ANode) then
+         raise EdwsKCLException.Create('KCL: Hazard ordering violation (Cycle detected).');
+
+      visiting.Add(ANode, True);
+
+      for var i := 0 to High(ANode.Inputs) do
+         VisitNode(ANode.Inputs[i]);
+
+      visiting.Remove(ANode);
+      visited.Add(ANode, True);
+      sortedNodes.Add(ANode);
    end;
 
 begin
@@ -164,100 +188,112 @@ begin
    // Mask FPU Exceptions
    savedMask := SetExceptionMask([exInvalidOp, exDenormalized, exZeroDivide, exOverflow, exUnderflow, exPrecision]);
    try
-      SetLength(nodeBuffers, Length(AKernel.Nodes));
-      for var i := 0 to High(AKernel.Nodes) do begin
-         SetLength(nodeBuffers[i], totalElements);
-         for var j := 0 to totalElements - 1 do
-            nodeBuffers[i][j] := 0.0;
-      end;
-         
-      nodeToBufferIdx := TDictionary<TKCLNode, Integer>.Create;
+      sortedNodes := TList<TKCLNode>.Create;
+      visiting := TDictionary<TKCLNode, Boolean>.Create;
+      visited := TDictionary<TKCLNode, Boolean>.Create;
       try
-         // Zero-initialize output buffers
-         for var j := 0 to outputCount - 1 do begin
-            for var i := 0 to totalElements - 1 do begin
-               IndexFromFlat(i, indices);
-               SetValue(ABuffers[inputCount + j], indices, 0.0);
-            end;
-         end;
+         for var j := 0 to High(AKernel.Outputs) do
+            VisitNode(AKernel.Outputs[j]);
 
-         // Topological evaluation
-         for var n := 0 to High(AKernel.Nodes) do begin
-            var node := AKernel.Nodes[n];
-            nodeToBufferIdx.Add(node, n);
+         SetLength(nodeBuffers, sortedNodes.Count);
+         for var i := 0 to sortedNodes.Count - 1 do begin
+            SetLength(nodeBuffers[i], totalElements);
+            for var j := 0 to totalElements - 1 do
+               nodeBuffers[i][j] := 0.0;
+         end;
             
-            if node is TKCLInputNode then begin
-               var inIdx := TKCLInputNode(node).InputIndex;
+         nodeToBufferIdx := TDictionary<TKCLNode, Integer>.Create;
+         try
+            // Zero-initialize output buffers
+            for var j := 0 to outputCount - 1 do begin
                for var i := 0 to totalElements - 1 do begin
                   IndexFromFlat(i, indices);
-                  nodeBuffers[n][i] := GetValue(ABuffers[inIdx], indices);
+                  SetValue(ABuffers[inputCount + j], indices, 0.0);
                end;
-            end else if node is TKCLMapNode then begin
-               var in1Idx := nodeToBufferIdx[node.Inputs[0]];
-               var in2Idx := -1;
-               if Length(node.Inputs) > 1 then in2Idx := nodeToBufferIdx[node.Inputs[1]];
+            end;
+
+            // Topological evaluation
+            for var n := 0 to sortedNodes.Count - 1 do begin
+               var node := sortedNodes[n];
+               nodeToBufferIdx.Add(node, n);
                
-               for var i := 0 to totalElements - 1 do begin
-                  var val1 := nodeBuffers[in1Idx][i];
-                  var val2 : Double := 0;
-                  if in2Idx >= 0 then val2 := nodeBuffers[in2Idx][i];
-                  nodeBuffers[n][i] := TKCLMapNode(node).Eval([val1, val2]);
-               end;
-            end else if node is TKCLConv2DNode then begin
-               var in1Idx := nodeToBufferIdx[node.Inputs[0]];
-               for var i := 0 to totalElements - 1 do begin
-                  IndexFromFlat(i, indices);
+               if node is TKCLInputNode then begin
+                  var inIdx := TKCLInputNode(node).InputIndex;
+                  for var i := 0 to totalElements - 1 do begin
+                     IndexFromFlat(i, indices);
+                     nodeBuffers[n][i] := GetValue(ABuffers[inIdx], indices);
+                  end;
+               end else if node is TKCLMapNode then begin
+                  var in1Idx := nodeToBufferIdx[node.Inputs[0]];
+                  var in2Idx := -1;
+                  if Length(node.Inputs) > 1 then in2Idx := nodeToBufferIdx[node.Inputs[1]];
                   
-                  var sum : Double := 0.0;
-                  if Length(dims) >= 2 then begin
-                     var dimH := High(dims) - 1;
-                     if Length(dims) >= 3 then dimH := High(dims) - 2;
-                     var dimW := dimH + 1;
+                  for var i := 0 to totalElements - 1 do begin
+                     var val1 := nodeBuffers[in1Idx][i];
+                     var val2 : Double := 0;
+                     if in2Idx >= 0 then val2 := nodeBuffers[in2Idx][i];
+                     nodeBuffers[n][i] := TKCLMapNode(node).Eval([val1, val2]);
+                  end;
+               end else if node is TKCLConv2DNode then begin
+                  var in1Idx := nodeToBufferIdx[node.Inputs[0]];
+                  for var i := 0 to totalElements - 1 do begin
+                     IndexFromFlat(i, indices);
                      
-                     var h := indices[dimH];
-                     var w := indices[dimW];
-                     
-                     for var dy := -1 to 1 do begin
-                        for var dx := -1 to 1 do begin
-                           var ny := h + dy;
-                           var nx := w + dx;
-                           if (ny >= 0) and (ny < dims[dimH]) and (nx >= 0) and (nx < dims[dimW]) then begin
-                              var nIndices := Copy(indices);
-                              nIndices[dimH] := ny;
-                              nIndices[dimW] := nx;
-                              sum := sum + nodeBuffers[in1Idx][FlatIndex(nIndices)];
+                     var sum : Double := 0.0;
+                     if Length(dims) >= 2 then begin
+                        var dimH := High(dims) - 1;
+                        if Length(dims) >= 3 then dimH := High(dims) - 2;
+                        var dimW := dimH + 1;
+                        
+                        var h := indices[dimH];
+                        var w := indices[dimW];
+                        
+                        for var dy := -1 to 1 do begin
+                           for var dx := -1 to 1 do begin
+                              var ny := h + dy;
+                              var nx := w + dx;
+                              if (ny >= 0) and (ny < dims[dimH]) and (nx >= 0) and (nx < dims[dimW]) then begin
+                                 var nIndices := Copy(indices);
+                                 nIndices[dimH] := ny;
+                                 nIndices[dimW] := nx;
+                                 sum := sum + nodeBuffers[in1Idx][FlatIndex(nIndices)];
+                              end;
                            end;
                         end;
+                     end else begin
+                        sum := nodeBuffers[in1Idx][i];
                      end;
-                  end else begin
-                     sum := nodeBuffers[in1Idx][i];
+                     nodeBuffers[n][i] := sum;
                   end;
-                  nodeBuffers[n][i] := sum;
+               end else if node is TKCLGlobalAvgPoolNode then begin
+                  var in1Idx := nodeToBufferIdx[node.Inputs[0]];
+                  var sum : Double := 0.0;
+                  for var i := 0 to totalElements - 1 do
+                     sum := sum + nodeBuffers[in1Idx][i];
+                  var avg : Double := 0.0;
+                  if totalElements > 0 then
+                     avg := sum / totalElements;
+                  for var i := 0 to totalElements - 1 do
+                     nodeBuffers[n][i] := avg;
                end;
-            end else if node is TKCLGlobalAvgPoolNode then begin
-               var in1Idx := nodeToBufferIdx[node.Inputs[0]];
-               var sum : Double := 0.0;
-               for var i := 0 to totalElements - 1 do
-                  sum := sum + nodeBuffers[in1Idx][i];
-               var avg : Double := 0.0;
-               if totalElements > 0 then
-                  avg := sum / totalElements;
-               for var i := 0 to totalElements - 1 do
-                  nodeBuffers[n][i] := avg;
             end;
-         end;
-         
-         // Write outputs
-         for var j := 0 to High(AKernel.Outputs) do begin
-            var outNode := AKernel.Outputs[j];
-            var outIdx := nodeToBufferIdx[outNode];
-            for var i := 0 to totalElements - 1 do begin
-               IndexFromFlat(i, indices);
-               SetValue(ABuffers[inputCount + j], indices, nodeBuffers[outIdx][i]);
+            
+            // Write outputs
+            for var j := 0 to High(AKernel.Outputs) do begin
+               var outNode := AKernel.Outputs[j];
+               var outIdx := nodeToBufferIdx[outNode];
+               for var i := 0 to totalElements - 1 do begin
+                  IndexFromFlat(i, indices);
+                  SetValue(ABuffers[inputCount + j], indices, nodeBuffers[outIdx][i]);
+               end;
             end;
+         finally
+            nodeToBufferIdx.Free;
          end;
       finally
-         nodeToBufferIdx.Free;
+         sortedNodes.Free;
+         visiting.Free;
+         visited.Free;
       end;
    finally
       SetExceptionMask(savedMask);
