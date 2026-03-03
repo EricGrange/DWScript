@@ -1,0 +1,2 @@
+Domain mismatch test
+KCL: Spatial domain mismatch (dimension size). [line: 10, column: 20]
