@@ -1,4 +1,4 @@
-var k := TKernel.Create;
+﻿var k := TKCLKernel.Create;
 var in1 := k.AddInput('in1');
 
 var weights : array of Float;
@@ -17,8 +17,8 @@ bias[1] := 20.0;
 var conv := k.AddDepthwiseConv2D(in1, weights, bias, 3, 1);
 k.MarkOutput(conv);
 
-var b_in := TStridedBuffer.Create(TDataType.Float32, [4, 4, 2]);
-var b_out := TStridedBuffer.Create(TDataType.Float32, [4, 4, 2]);
+var b_in := TKCLStridedBuffer.Create(TKCLDataType.Float32, [4, 4, 2]);
+var b_out := TKCLStridedBuffer.Create(TKCLDataType.Float32, [4, 4, 2]);
 
 for var y := 0 to 3 do
    for var x := 0 to 3 do begin
@@ -26,7 +26,7 @@ for var y := 0 to 3 do
       b_in.SetData([y, x, 1], 1.0);
    end;
 
-TKernelCompiler.Dispatch(k, [b_in, b_out]);
+TKCLKernelCompiler.Dispatch(k, [b_in, b_out]);
 
 PrintLn('Ch0 0,0: ' + FloatToStr(b_out.GetData([0, 0, 0])));
 PrintLn('Ch1 0,0: ' + FloatToStr(b_out.GetData([0, 0, 1])));

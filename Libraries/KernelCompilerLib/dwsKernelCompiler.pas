@@ -1,4 +1,4 @@
-{**********************************************************************}
+﻿{**********************************************************************}
 {                                                                      }
 {    "The contents of this file are subject to the Mozilla Public      }
 {    License Version 1.1 (the "License"); you may not use this         }
@@ -30,11 +30,11 @@ uses
    dwsKernelCompilerCommon, dwsKernelCompilerBackend.Reference;
 
 const
-   SYS_DATATYPE = 'TDataType';
-   SYS_STRIDEDBUFFER = 'TStridedBuffer';
-   SYS_KERNEL = 'TKernel';
-   SYS_NODE = 'TNode';
-   SYS_KERNELCOMPILER = 'TKernelCompiler';
+   SYS_KCL_DATATYPE = 'TKCLDataType';
+   SYS_KCL_STRIDEDBUFFER = 'TKCLStridedBuffer';
+   SYS_KCL_KERNEL = 'TKCLKernel';
+   SYS_KCL_NODE = 'TKCLNode';
+   SYS_KCL_KERNELCOMPILER = 'TKCLKernelCompiler';
 
 type
    TKCLStridedBufferWrapper = class
@@ -340,7 +340,7 @@ begin
    var wrapper := TKCLKernelWrapper(externalObject);
    var node := wrapper.FKernel.AddInput(info.ParamAsString[0]);
    
-   var classSym := info.FindSymbolInUnits(SYS_NODE) as TClassSymbol;
+   var classSym := info.FindSymbolInUnits(SYS_KCL_NODE) as TClassSymbol;
    var scriptObj := TScriptObjInstance.Create(classSym, info.Execution as TdwsProgramExecution);
    scriptObj.ExternalObject := TKCLNodeWrapper.Create(node);
    info.ResultAsVariant := scriptObj as IUnknown;
@@ -358,7 +358,7 @@ begin
    var node := TKCLAddNode.Create('add', [in1.FNode, in2.FNode]);
    wrapper.FKernel.AddNode(node);
    
-   var classSym := info.FindSymbolInUnits(SYS_NODE) as TClassSymbol;
+   var classSym := info.FindSymbolInUnits(SYS_KCL_NODE) as TClassSymbol;
    var scriptObj := TScriptObjInstance.Create(classSym, info.Execution as TdwsProgramExecution);
    scriptObj.ExternalObject := TKCLNodeWrapper.Create(node);
    info.ResultAsVariant := scriptObj as IUnknown;
@@ -376,7 +376,7 @@ begin
    var node := TKCLMulNode.Create('mul', [in1.FNode, in2.FNode]);
    wrapper.FKernel.AddNode(node);
    
-   var classSym := info.FindSymbolInUnits(SYS_NODE) as TClassSymbol;
+   var classSym := info.FindSymbolInUnits(SYS_KCL_NODE) as TClassSymbol;
    var scriptObj := TScriptObjInstance.Create(classSym, info.Execution as TdwsProgramExecution);
    scriptObj.ExternalObject := TKCLNodeWrapper.Create(node);
    info.ResultAsVariant := scriptObj as IUnknown;
@@ -393,7 +393,7 @@ begin
    var node := TKCLReLUNode.Create('relu', [in1.FNode]);
    wrapper.FKernel.AddNode(node);
    
-   var classSym := info.FindSymbolInUnits(SYS_NODE) as TClassSymbol;
+   var classSym := info.FindSymbolInUnits(SYS_KCL_NODE) as TClassSymbol;
    var scriptObj := TScriptObjInstance.Create(classSym, info.Execution as TdwsProgramExecution);
    scriptObj.ExternalObject := TKCLNodeWrapper.Create(node);
    info.ResultAsVariant := scriptObj as IUnknown;
@@ -410,7 +410,7 @@ begin
    var node := TKCLReLU6Node.Create('relu6', [in1.FNode]);
    wrapper.FKernel.AddNode(node);
    
-   var classSym := info.FindSymbolInUnits(SYS_NODE) as TClassSymbol;
+   var classSym := info.FindSymbolInUnits(SYS_KCL_NODE) as TClassSymbol;
    var scriptObj := TScriptObjInstance.Create(classSym, info.Execution as TdwsProgramExecution);
    scriptObj.ExternalObject := TKCLNodeWrapper.Create(node);
    info.ResultAsVariant := scriptObj as IUnknown;
@@ -427,7 +427,7 @@ begin
    var node := TKCLHardSwishNode.Create('hardswish', [in1.FNode]);
    wrapper.FKernel.AddNode(node);
    
-   var classSym := info.FindSymbolInUnits(SYS_NODE) as TClassSymbol;
+   var classSym := info.FindSymbolInUnits(SYS_KCL_NODE) as TClassSymbol;
    var scriptObj := TScriptObjInstance.Create(classSym, info.Execution as TdwsProgramExecution);
    scriptObj.ExternalObject := TKCLNodeWrapper.Create(node);
    info.ResultAsVariant := scriptObj as IUnknown;
@@ -462,7 +462,7 @@ begin
    var node := TKCLConv2DNode.Create('conv2d', [in1.FNode], weights, bias, kernelSize, stride);
    wrapper.FKernel.AddNode(node);
    
-   var classSym := info.FindSymbolInUnits(SYS_NODE) as TClassSymbol;
+   var classSym := info.FindSymbolInUnits(SYS_KCL_NODE) as TClassSymbol;
    var scriptObj := TScriptObjInstance.Create(classSym, info.Execution as TdwsProgramExecution);
    scriptObj.ExternalObject := TKCLNodeWrapper.Create(node);
    info.ResultAsVariant := scriptObj as IUnknown;
@@ -497,7 +497,7 @@ begin
    var node := TKCLDepthwiseConv2DNode.Create('dwconv2d', [in1.FNode], weights, bias, kernelSize, stride);
    wrapper.FKernel.AddNode(node);
    
-   var classSym := info.FindSymbolInUnits(SYS_NODE) as TClassSymbol;
+   var classSym := info.FindSymbolInUnits(SYS_KCL_NODE) as TClassSymbol;
    var scriptObj := TScriptObjInstance.Create(classSym, info.Execution as TdwsProgramExecution);
    scriptObj.ExternalObject := TKCLNodeWrapper.Create(node);
    info.ResultAsVariant := scriptObj as IUnknown;
@@ -518,7 +518,7 @@ begin
    var node := TKCLResizeBilinearNode.Create('resize_bilinear', [in1.FNode], targetHeight, targetWidth);
    wrapper.FKernel.AddNode(node);
    
-   var classSym := info.FindSymbolInUnits(SYS_NODE) as TClassSymbol;
+   var classSym := info.FindSymbolInUnits(SYS_KCL_NODE) as TClassSymbol;
    var scriptObj := TScriptObjInstance.Create(classSym, info.Execution as TdwsProgramExecution);
    scriptObj.ExternalObject := TKCLNodeWrapper.Create(node);
    info.ResultAsVariant := scriptObj as IUnknown;
@@ -551,7 +551,7 @@ begin
    var node := TKCLConcatNode.Create('concat', inputs, axis);
    wrapper.FKernel.AddNode(node);
    
-   var classSym := info.FindSymbolInUnits(SYS_NODE) as TClassSymbol;
+   var classSym := info.FindSymbolInUnits(SYS_KCL_NODE) as TClassSymbol;
    var scriptObj := TScriptObjInstance.Create(classSym, info.Execution as TdwsProgramExecution);
    scriptObj.ExternalObject := TKCLNodeWrapper.Create(node);
    info.ResultAsVariant := scriptObj as IUnknown;
@@ -568,7 +568,7 @@ begin
    var node := TKCLGlobalAvgPoolNode.Create('gap', [in1.FNode]);
    wrapper.FKernel.AddNode(node);
    
-   var classSym := info.FindSymbolInUnits(SYS_NODE) as TClassSymbol;
+   var classSym := info.FindSymbolInUnits(SYS_KCL_NODE) as TClassSymbol;
    var scriptObj := TScriptObjInstance.Create(classSym, info.Execution as TdwsProgramExecution);
    scriptObj.ExternalObject := TKCLNodeWrapper.Create(node);
    info.ResultAsVariant := scriptObj as IUnknown;
@@ -625,49 +625,49 @@ end;
 procedure RegisterKernelCompilerSymbols(systemTable : TSystemSymbolTable; unitTable : TSymbolTable;
                                        cleanupEvent : TObjectDestroyEvent);
 begin
-   var typDataType := TEnumerationSymbol.Create(SYS_DATATYPE, systemTable.TypInteger, enumScoped);
+   var typDataType := TEnumerationSymbol.Create(SYS_KCL_DATATYPE, systemTable.TypInteger, enumScoped);
    unitTable.AddSymbol(typDataType);
    typDataType.AddElement(TElementSymbol.Create('Int8', typDataType, Ord(dtInt8), False));
    typDataType.AddElement(TElementSymbol.Create('Float16', typDataType, Ord(dtFloat16), False));
    typDataType.AddElement(TElementSymbol.Create('Float32', typDataType, Ord(dtFloat32), False));
 
-   var clsStridedBuffer := TClassSymbol.Create(SYS_STRIDEDBUFFER, systemTable.TypTObject);
+   var clsStridedBuffer := TClassSymbol.Create(SYS_KCL_STRIDEDBUFFER, systemTable.TypTObject);
    clsStridedBuffer.OnObjectDestroy := cleanupEvent;
    unitTable.AddSymbol(clsStridedBuffer);
-   var clsNode := TClassSymbol.Create(SYS_NODE, systemTable.TypTObject);
+   var clsNode := TClassSymbol.Create(SYS_KCL_NODE, systemTable.TypTObject);
    clsNode.OnObjectDestroy := cleanupEvent;
    unitTable.AddSymbol(clsNode);
-   var clsKernel := TClassSymbol.Create(SYS_KERNEL, systemTable.TypTObject);
+   var clsKernel := TClassSymbol.Create(SYS_KCL_KERNEL, systemTable.TypTObject);
    clsKernel.OnObjectDestroy := cleanupEvent;
    unitTable.AddSymbol(clsKernel);
-   var clsKernelCompiler := TClassSymbol.Create(SYS_KERNELCOMPILER, systemTable.TypTObject);
+   var clsKernelCompiler := TClassSymbol.Create(SYS_KCL_KERNELCOMPILER, systemTable.TypTObject);
    unitTable.AddSymbol(clsKernelCompiler);
 
    // Register 'array of TStridedBuffer'
-   unitTable.AddSymbol(TDynamicArraySymbol.Create('array of ' + SYS_STRIDEDBUFFER, clsStridedBuffer, systemTable.TypInteger));
+   unitTable.AddSymbol(TDynamicArraySymbol.Create('array of ' + SYS_KCL_STRIDEDBUFFER, clsStridedBuffer, systemTable.TypInteger));
    
    // Register 'array of TNode'
-   unitTable.AddSymbol(TDynamicArraySymbol.Create('array of ' + SYS_NODE, clsNode, systemTable.TypInteger));
+   unitTable.AddSymbol(TDynamicArraySymbol.Create('array of ' + SYS_KCL_NODE, clsNode, systemTable.TypInteger));
 
-   TStridedBufferCreateMethod.Create(mkConstructor, [], 'Create', ['dataType', SYS_DATATYPE, 'dimensions', 'array of Integer'], '', clsStridedBuffer, cvPublic, unitTable);
+   TStridedBufferCreateMethod.Create(mkConstructor, [], 'Create', ['dataType', SYS_KCL_DATATYPE, 'dimensions', 'array of Integer'], '', clsStridedBuffer, cvPublic, unitTable);
    TStridedBufferSetDataMethod.Create(mkProcedure, [], 'SetData', ['indices', 'array of Integer', 'value', 'Float'], '', clsStridedBuffer, cvPublic, unitTable);
    TStridedBufferGetDataMethod.Create(mkFunction, [], 'GetData', ['indices', 'array of Integer'], 'Float', clsStridedBuffer, cvPublic, unitTable);
 
    TKernelCreateMethod.Create(mkConstructor, [], 'Create', [], '', clsKernel, cvPublic, unitTable);
-   TKernelAddInputMethod.Create(mkFunction, [], 'AddInput', ['name', 'String'], SYS_NODE, clsKernel, cvPublic, unitTable);
-   TKernelAddAddMethod.Create(mkFunction, [], 'AddAdd', ['in1', SYS_NODE, 'in2', SYS_NODE], SYS_NODE, clsKernel, cvPublic, unitTable);
-   TKernelAddMulMethod.Create(mkFunction, [], 'AddMul', ['in1', SYS_NODE, 'in2', SYS_NODE], SYS_NODE, clsKernel, cvPublic, unitTable);
-   TKernelAddReLUMethod.Create(mkFunction, [], 'AddReLU', ['in1', SYS_NODE], SYS_NODE, clsKernel, cvPublic, unitTable);
-   TKernelAddReLU6Method.Create(mkFunction, [], 'AddReLU6', ['in1', SYS_NODE], SYS_NODE, clsKernel, cvPublic, unitTable);
-   TKernelAddHardSwishMethod.Create(mkFunction, [], 'AddHardSwish', ['in1', SYS_NODE], SYS_NODE, clsKernel, cvPublic, unitTable);
-   TKernelAddConv2DMethod.Create(mkFunction, [], 'AddConv2D', ['input', SYS_NODE, 'weights', 'array of Float', 'bias', 'array of Float', 'kernelSize', 'Integer', 'stride', 'Integer'], SYS_NODE, clsKernel, cvPublic, unitTable);
-   TKernelAddDepthwiseConv2DMethod.Create(mkFunction, [], 'AddDepthwiseConv2D', ['input', SYS_NODE, 'weights', 'array of Float', 'bias', 'array of Float', 'kernelSize', 'Integer', 'stride', 'Integer'], SYS_NODE, clsKernel, cvPublic, unitTable);
-   TKernelAddResizeBilinearMethod.Create(mkFunction, [], 'AddResizeBilinear', ['input', SYS_NODE, 'targetHeight', 'Integer', 'targetWidth', 'Integer'], SYS_NODE, clsKernel, cvPublic, unitTable);
-   TKernelAddConcatMethod.Create(mkFunction, [], 'AddConcat', ['inputs', 'array of ' + SYS_NODE, 'axis', 'Integer'], SYS_NODE, clsKernel, cvPublic, unitTable);
-   TKernelAddGlobalAvgPoolMethod.Create(mkFunction, [], 'AddGlobalAvgPool', ['input', SYS_NODE], SYS_NODE, clsKernel, cvPublic, unitTable);
-   TKernelMarkOutputMethod.Create(mkProcedure, [], 'MarkOutput', ['node', SYS_NODE], '', clsKernel, cvPublic, unitTable);
+   TKernelAddInputMethod.Create(mkFunction, [], 'AddInput', ['name', 'String'], SYS_KCL_NODE, clsKernel, cvPublic, unitTable);
+   TKernelAddAddMethod.Create(mkFunction, [], 'AddAdd', ['in1', SYS_KCL_NODE, 'in2', SYS_KCL_NODE], SYS_KCL_NODE, clsKernel, cvPublic, unitTable);
+   TKernelAddMulMethod.Create(mkFunction, [], 'AddMul', ['in1', SYS_KCL_NODE, 'in2', SYS_KCL_NODE], SYS_KCL_NODE, clsKernel, cvPublic, unitTable);
+   TKernelAddReLUMethod.Create(mkFunction, [], 'AddReLU', ['in1', SYS_KCL_NODE], SYS_KCL_NODE, clsKernel, cvPublic, unitTable);
+   TKernelAddReLU6Method.Create(mkFunction, [], 'AddReLU6', ['in1', SYS_KCL_NODE], SYS_KCL_NODE, clsKernel, cvPublic, unitTable);
+   TKernelAddHardSwishMethod.Create(mkFunction, [], 'AddHardSwish', ['in1', SYS_KCL_NODE], SYS_KCL_NODE, clsKernel, cvPublic, unitTable);
+   TKernelAddConv2DMethod.Create(mkFunction, [], 'AddConv2D', ['input', SYS_KCL_NODE, 'weights', 'array of Float', 'bias', 'array of Float', 'kernelSize', 'Integer', 'stride', 'Integer'], SYS_KCL_NODE, clsKernel, cvPublic, unitTable);
+   TKernelAddDepthwiseConv2DMethod.Create(mkFunction, [], 'AddDepthwiseConv2D', ['input', SYS_KCL_NODE, 'weights', 'array of Float', 'bias', 'array of Float', 'kernelSize', 'Integer', 'stride', 'Integer'], SYS_KCL_NODE, clsKernel, cvPublic, unitTable);
+   TKernelAddResizeBilinearMethod.Create(mkFunction, [], 'AddResizeBilinear', ['input', SYS_KCL_NODE, 'targetHeight', 'Integer', 'targetWidth', 'Integer'], SYS_KCL_NODE, clsKernel, cvPublic, unitTable);
+   TKernelAddConcatMethod.Create(mkFunction, [], 'AddConcat', ['inputs', 'array of ' + SYS_KCL_NODE, 'axis', 'Integer'], SYS_KCL_NODE, clsKernel, cvPublic, unitTable);
+   TKernelAddGlobalAvgPoolMethod.Create(mkFunction, [], 'AddGlobalAvgPool', ['input', SYS_KCL_NODE], SYS_KCL_NODE, clsKernel, cvPublic, unitTable);
+   TKernelMarkOutputMethod.Create(mkProcedure, [], 'MarkOutput', ['node', SYS_KCL_NODE], '', clsKernel, cvPublic, unitTable);
 
-   TKernelCompilerDispatchMethod.Create(unitTable, 'Dispatch', ['kernel', SYS_KERNEL, 'buffers', 'array of TStridedBuffer'], '', [iffStaticMethod], clsKernelCompiler);
+   TKernelCompilerDispatchMethod.Create(unitTable, 'Dispatch', ['kernel', SYS_KCL_KERNEL, 'buffers', 'array of ' + SYS_KCL_STRIDEDBUFFER], '', [iffStaticMethod], clsKernelCompiler);
 end;
 
 end.

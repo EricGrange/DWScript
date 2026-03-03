@@ -1,4 +1,4 @@
-var b1 := TStridedBuffer.Create(TDataType.Float32, [4]);
+﻿var b1 := TKCLStridedBuffer.Create(TKCLDataType.Float32, [4]);
 
 PrintLn("Write index test");
 try

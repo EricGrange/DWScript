@@ -1,10 +1,10 @@
-var k := TKernel.Create;
+﻿var k := TKCLKernel.Create;
 var in1 := k.AddInput('in1');
 var sum := k.AddAdd(in1, in1);
 k.MarkOutput(sum);
 
-var b1 := TStridedBuffer.Create(TDataType.Float32, [2, 3, 2]);
-var b2 := TStridedBuffer.Create(TDataType.Float32, [2, 3, 2]);
+var b1 := TKCLStridedBuffer.Create(TKCLDataType.Float32, [2, 3, 2]);
+var b2 := TKCLStridedBuffer.Create(TKCLDataType.Float32, [2, 3, 2]);
 
 var val : Integer := 1;
 for var z := 0 to 1 do
@@ -14,7 +14,7 @@ for var z := 0 to 1 do
          val := val + 1;
       end;
 
-TKernelCompiler.Dispatch(k, [b1, b2]);
+TKCLKernelCompiler.Dispatch(k, [b1, b2]);
 
 for var z := 0 to 1 do
    for var y := 0 to 2 do

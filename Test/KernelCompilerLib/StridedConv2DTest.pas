@@ -1,4 +1,4 @@
-var k := TKernel.Create;
+﻿var k := TKCLKernel.Create;
 var in1 := k.AddInput('in1');
 
 var weights : array of Float;
@@ -17,8 +17,8 @@ bias[1] := 20.0;
 var conv := k.AddConv2D(in1, weights, bias, 1, 2);
 k.MarkOutput(conv);
 
-var b_in := TStridedBuffer.Create(TDataType.Float32, [4, 4, 2]);
-var b_out := TStridedBuffer.Create(TDataType.Float32, [2, 2, 2]); // Output gets downsampled to 2x2
+var b_in := TKCLStridedBuffer.Create(TKCLDataType.Float32, [4, 4, 2]);
+var b_out := TKCLStridedBuffer.Create(TKCLDataType.Float32, [2, 2, 2]); // Output gets downsampled to 2x2
 
 for var y := 0 to 3 do
    for var x := 0 to 3 do begin
@@ -26,7 +26,7 @@ for var y := 0 to 3 do
       b_in.SetData([y, x, 1], (y + x) * 2);
    end;
 
-TKernelCompiler.Dispatch(k, [b_in, b_out]);
+TKCLKernelCompiler.Dispatch(k, [b_in, b_out]);
 
 for var y := 0 to 1 do begin
    for var x := 0 to 1 do

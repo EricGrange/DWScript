@@ -1,4 +1,4 @@
-var b := TStridedBuffer.Create(TDataType.Float16, [1]);
+﻿var b := TKCLStridedBuffer.Create(TKCLDataType.Float16, [1]);
 
 // Test Smallest Positive Denormal (approx 5.96e-8)
 // Bit pattern $0001

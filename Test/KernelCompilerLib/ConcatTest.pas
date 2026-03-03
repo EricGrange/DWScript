@@ -1,4 +1,4 @@
-var k := TKernel.Create;
+﻿var k := TKCLKernel.Create;
 var in1 := k.AddInput('in1');
 var in2 := k.AddInput('in2');
 
@@ -6,9 +6,9 @@ var in2 := k.AddInput('in2');
 var cat := k.AddConcat([in1, in2], 2);
 k.MarkOutput(cat);
 
-var b1 := TStridedBuffer.Create(TDataType.Float32, [1, 2, 2]);
-var b2 := TStridedBuffer.Create(TDataType.Float32, [1, 2, 3]);
-var b_out := TStridedBuffer.Create(TDataType.Float32, [1, 2, 5]);
+var b1 := TKCLStridedBuffer.Create(TKCLDataType.Float32, [1, 2, 2]);
+var b2 := TKCLStridedBuffer.Create(TKCLDataType.Float32, [1, 2, 3]);
+var b_out := TKCLStridedBuffer.Create(TKCLDataType.Float32, [1, 2, 5]);
 
 // b1 channels
 b1.SetData([0, 0, 0], 1);
@@ -24,7 +24,7 @@ b2.SetData([0, 1, 0], 40);
 b2.SetData([0, 1, 1], 50);
 b2.SetData([0, 1, 2], 60);
 
-TKernelCompiler.Dispatch(k, [b1, b2, b_out]);
+TKCLKernelCompiler.Dispatch(k, [b1, b2, b_out]);
 
 for var x := 0 to 1 do begin
    for var c := 0 to 4 do

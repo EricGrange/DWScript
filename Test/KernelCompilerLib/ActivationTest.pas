@@ -1,4 +1,4 @@
-var k := TKernel.Create;
+﻿var k := TKCLKernel.Create;
 var in1 := k.AddInput('in1');
 
 var relu := k.AddReLU(in1);
@@ -9,10 +9,10 @@ k.MarkOutput(relu);
 k.MarkOutput(relu6);
 k.MarkOutput(hs);
 
-var b_in := TStridedBuffer.Create(TDataType.Float32, [5]);
-var b_relu := TStridedBuffer.Create(TDataType.Float32, [5]);
-var b_relu6 := TStridedBuffer.Create(TDataType.Float32, [5]);
-var b_hs := TStridedBuffer.Create(TDataType.Float32, [5]);
+var b_in := TKCLStridedBuffer.Create(TKCLDataType.Float32, [5]);
+var b_relu := TKCLStridedBuffer.Create(TKCLDataType.Float32, [5]);
+var b_relu6 := TKCLStridedBuffer.Create(TKCLDataType.Float32, [5]);
+var b_hs := TKCLStridedBuffer.Create(TKCLDataType.Float32, [5]);
 
 // Test values: -5.0, -1.5, 0.0, 3.0, 10.0
 b_in.SetData([0], -5.0);
@@ -21,7 +21,7 @@ b_in.SetData([2], 0.0);
 b_in.SetData([3], 3.0);
 b_in.SetData([4], 10.0);
 
-TKernelCompiler.Dispatch(k, [b_in, b_relu, b_relu6, b_hs]);
+TKCLKernelCompiler.Dispatch(k, [b_in, b_relu, b_relu6, b_hs]);
 
 PrintLn('--- ReLU ---');
 for var i := 0 to 4 do PrintLn(FloatToStr(b_relu.GetData([i])));
