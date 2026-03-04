@@ -225,6 +225,15 @@ type
    TKCLGlobalAvgPoolNode = class(TKCLReduceNode)
    end;
 
+   TKCLSoftMaxNode = class(TKCLNode)
+   private
+      FAxis : Integer;
+   public
+      constructor Create(const AName : String; const AInputs : TKCLNodes; AAxis : Integer); reintroduce;
+      function Category : TKCLNodeCategory; override;
+      property Axis : Integer read FAxis;
+   end;
+
    TKCLKernel = class
    private
       FNodes : TKCLNodes;
@@ -599,6 +608,21 @@ begin
    inherited Create(AName, AInputs);
    FKernelSize := AKernelSize;
    FStride := AStride;
+end;
+
+// ------------------
+// ------------------ TKCLSoftMaxNode ------------------
+// ------------------
+
+constructor TKCLSoftMaxNode.Create(const AName : String; const AInputs : TKCLNodes; AAxis : Integer);
+begin
+   inherited Create(AName, AInputs);
+   FAxis := AAxis;
+end;
+
+function TKCLSoftMaxNode.Category : TKCLNodeCategory;
+begin
+   Result := ncReduce;
 end;
 
 // ------------------

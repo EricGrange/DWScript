@@ -163,6 +163,10 @@ type
       procedure Execute(info : TProgramInfo; var externalObject : TObject); override;
    end;
 
+   TKernelAddSoftMaxMethod = class(TInternalMethod)
+      procedure Execute(info : TProgramInfo; var externalObject : TObject); override;
+   end;
+
    TKernelMarkOutputMethod = class(TInternalMethod)
       procedure Execute(info : TProgramInfo; var externalObject : TObject); override;
    end;
@@ -778,6 +782,24 @@ begin
 end;
 
 // ------------------
+// ------------------ TKernelAddSoftMaxMethod ------------------
+// ------------------
+
+procedure TKernelAddSoftMaxMethod.Execute(info : TProgramInfo; var externalObject : TObject);
+begin
+   var wrapper := TKCLKernelWrapper(externalObject);
+   var in1 := TKCLNodeWrapper(info.ParamAsScriptObj[0].ExternalObject);
+   var axis := info.ParamAsInteger[1];
+   var node := TKCLSoftMaxNode.Create('softmax', [in1.FNode], axis);
+   wrapper.FKernel.AddNode(node);
+   
+   var classSym := info.FindSymbolInUnits(SYS_KCL_NODE) as TClassSymbol;
+   var scriptObj := TScriptObjInstance.Create(classSym, info.Execution as TdwsProgramExecution);
+   scriptObj.ExternalObject := TKCLNodeWrapper.Create(node);
+   info.ResultAsVariant := scriptObj as IUnknown;
+end;
+
+// ------------------
 // ------------------ TKernelMarkOutputMethod ------------------
 // ------------------
 
@@ -877,6 +899,7 @@ begin
    TKernelAddMaxPool2DMethod.Create(mkFunction, [], 'AddMaxPool2D', ['input', SYS_KCL_NODE, 'kernelSize', 'Integer', 'stride', 'Integer'], SYS_KCL_NODE, clsKernel, cvPublic, unitTable);
    TKernelAddConcatMethod.Create(mkFunction, [], 'AddConcat', ['inputs', 'array of ' + SYS_KCL_NODE, 'axis', 'Integer'], SYS_KCL_NODE, clsKernel, cvPublic, unitTable);
    TKernelAddGlobalAvgPoolMethod.Create(mkFunction, [], 'AddGlobalAvgPool', ['input', SYS_KCL_NODE], SYS_KCL_NODE, clsKernel, cvPublic, unitTable);
+   TKernelAddSoftMaxMethod.Create(mkFunction, [], 'AddSoftMax', ['input', SYS_KCL_NODE, 'axis', 'Integer'], SYS_KCL_NODE, clsKernel, cvPublic, unitTable);
    TKernelMarkOutputMethod.Create(mkProcedure, [], 'MarkOutput', ['node', SYS_KCL_NODE], '', clsKernel, cvPublic, unitTable);
 
    TKernelCompilerDispatchMethod.Create(unitTable, 'Dispatch', ['kernel', SYS_KCL_KERNEL, 'buffers', 'array of ' + SYS_KCL_STRIDEDBUFFER], '', [iffStaticMethod], clsKernelCompiler);

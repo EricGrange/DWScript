@@ -312,9 +312,13 @@ begin
                      dims[High(dims) - 1] := 1;
                   end;
                   nodeDims[n] := dims;
+               end else if node is TKCLSoftMaxNode then begin
+                  var in1Idx := nodeToBufferIdx[node.Inputs[0]];
+                  nodeDims[n] := Copy(nodeDims[in1Idx]);
                end;
-               
+
                var elems : NativeInt := 1;
+
                for var i := 0 to High(nodeDims[n]) do
                   elems := elems * nodeDims[n][i];
                nodeTotalElements[n] := elems;
@@ -594,6 +598,49 @@ begin
                         end;
                      end;
                      nodeBuffers[n][i] := maxVal;
+                  end;
+               end else if node is TKCLSoftMaxNode then begin
+                  var in1Idx := nodeToBufferIdx[node.Inputs[0]];
+                  var smNode := TKCLSoftMaxNode(node);
+                  var axis := smNode.Axis;
+                  var dimsIn := nodeDims[in1Idx];
+                  var axisSize := dimsIn[axis];
+                  
+                  // For SoftMax, we iterate over all other dimensions
+                  var totalOtherElements : NativeInt := 1;
+                  for var k := 0 to High(dimsIn) do if k <> axis then totalOtherElements := totalOtherElements * dimsIn[k];
+                  
+                  for var i := 0 to totalOtherElements - 1 do begin
+                     var baseIndices : array of Integer;
+                     SetLength(baseIndices, Length(dimsIn));
+                     
+                     // Construct indices for all dimensions except axis
+                     var tempIdx := i;
+                     for var k := High(dimsIn) downto 0 do if k <> axis then begin
+                        baseIndices[k] := tempIdx mod dimsIn[k];
+                        tempIdx := tempIdx div dimsIn[k];
+                     end else baseIndices[k] := 0;
+                     
+                     // 1. Find max for stability
+                     var maxVal : Double := -1e30;
+                     for var a := 0 to axisSize - 1 do begin
+                        baseIndices[axis] := a;
+                        var val := nodeBuffers[in1Idx][FlatIndex(baseIndices, dimsIn)];
+                        if val > maxVal then maxVal := val;
+                     end;
+                     
+                     // 2. Compute sum of exp
+                     var sumExp : Double := 0.0;
+                     for var a := 0 to axisSize - 1 do begin
+                        baseIndices[axis] := a;
+                        sumExp := sumExp + Exp(nodeBuffers[in1Idx][FlatIndex(baseIndices, dimsIn)] - maxVal);
+                     end;
+                     
+                     // 3. Compute SoftMax
+                     for var a := 0 to axisSize - 1 do begin
+                        baseIndices[axis] := a;
+                        nodeBuffers[n][FlatIndex(baseIndices, dimsIn)] := Exp(nodeBuffers[in1Idx][FlatIndex(baseIndices, dimsIn)] - maxVal) / sumExp;
+                     end;
                   end;
                end else if node is TKCLGlobalAvgPoolNode then begin
                   var in1Idx := nodeToBufferIdx[node.Inputs[0]];
