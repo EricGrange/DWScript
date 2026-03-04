@@ -522,6 +522,7 @@ begin
                end else if node is TKCLResizeBilinearNode then begin
                   var in1Idx := nodeToBufferIdx[node.Inputs[0]];
                   var dimsIn := nodeDims[in1Idx];
+                  var rsNode := TKCLResizeBilinearNode(node);
                   
                   for var i := 0 to nodeTotalElements[n] - 1 do begin
                      IndexFromFlat(i, dimsOut, indices);
@@ -532,11 +533,21 @@ begin
                         var h_out := indices[dimH];
                         var w_out := indices[dimW];
                         
-                        var scaleH := dimsIn[dimH] / dimsOut[dimH];
-                        var scaleW := dimsIn[dimW] / dimsOut[dimW];
+                        var scaleH, scaleW : Double;
+                        if rsNode.AlignCorners and (dimsOut[dimH] > 1) then scaleH := (dimsIn[dimH] - 1) / (dimsOut[dimH] - 1)
+                        else scaleH := dimsIn[dimH] / dimsOut[dimH];
                         
-                        var h_in := h_out * scaleH;
-                        var w_in := w_out * scaleW;
+                        if rsNode.AlignCorners and (dimsOut[dimW] > 1) then scaleW := (dimsIn[dimW] - 1) / (dimsOut[dimW] - 1)
+                        else scaleW := dimsIn[dimW] / dimsOut[dimW];
+                        
+                        var h_in, w_in : Double;
+                        if rsNode.HalfPixelCenters then begin
+                           h_in := Max(0.0, (h_out + 0.5) * scaleH - 0.5);
+                           w_in := Max(0.0, (w_out + 0.5) * scaleW - 0.5);
+                        end else begin
+                           h_in := h_out * scaleH;
+                           w_in := w_out * scaleW;
+                        end;
                         
                         var h0 := Floor(h_in);
                         var h1 := h0 + 1;

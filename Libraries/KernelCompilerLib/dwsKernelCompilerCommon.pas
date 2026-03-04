@@ -197,10 +197,14 @@ type
    private
       FTargetHeight : Integer;
       FTargetWidth : Integer;
+      FAlignCorners : Boolean;
+      FHalfPixelCenters : Boolean;
    public
-      constructor Create(const AName : String; const AInputs : TKCLNodes; ATargetHeight, ATargetWidth : Integer); reintroduce;
+      constructor Create(const AName : String; const AInputs : TKCLNodes; ATargetHeight, ATargetWidth : Integer; AAlignCorners: Boolean = False; AHalfPixelCenters: Boolean = False); reintroduce;
       property TargetHeight : Integer read FTargetHeight;
       property TargetWidth : Integer read FTargetWidth;
+      property AlignCorners : Boolean read FAlignCorners;
+      property HalfPixelCenters : Boolean read FHalfPixelCenters;
    end;
 
    TKCLConcatNode = class(TKCLMapNode)
@@ -577,11 +581,13 @@ end;
 // ------------------ TKCLResizeBilinearNode ------------------
 // ------------------
 
-constructor TKCLResizeBilinearNode.Create(const AName : String; const AInputs : TKCLNodes; ATargetHeight, ATargetWidth : Integer);
+constructor TKCLResizeBilinearNode.Create(const AName : String; const AInputs : TKCLNodes; ATargetHeight, ATargetWidth : Integer; AAlignCorners: Boolean = False; AHalfPixelCenters: Boolean = False);
 begin
    inherited Create(AName, AInputs);
    FTargetHeight := ATargetHeight;
    FTargetWidth := ATargetWidth;
+   FAlignCorners := AAlignCorners;
+   FHalfPixelCenters := AHalfPixelCenters;
 end;
 
 // ------------------

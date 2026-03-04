@@ -53,6 +53,22 @@ type
    PDouble = ^Double;
    PSingle = ^Single;
 
+const
+   // Global constants for SSE2_Exp to ensure RIP-relative access in 64-bit ASM
+   G_EXP_LN2_INV : array [0..1] of Double = (1.44269504088896340, 1.44269504088896340);
+   G_EXP_LN2_HI  : array [0..1] of Double = (0.693147180369123816, 0.693147180369123816);
+   G_EXP_LN2_LO  : array [0..1] of Double = (1.9082149292705877e-10, 1.9082149292705877e-10);
+   G_EXP_P0 : array [0..1] of Double = (1.0, 1.0);
+   G_EXP_P1 : array [0..1] of Double = (1.0, 1.0);
+   G_EXP_P2 : array [0..1] of Double = (0.5, 0.5);
+   G_EXP_P3 : array [0..1] of Double = (0.16666666666666666, 0.16666666666666666);
+   G_EXP_P4 : array [0..1] of Double = (0.041666666666666664, 0.041666666666666664);
+   G_EXP_P5 : array [0..1] of Double = (0.008333333333333333, 0.008333333333333333);
+   G_EXP_P6 : array [0..1] of Double = (0.0013888888888888889, 0.0013888888888888889);
+   G_EXP_1023 : array [0..1] of Int64 = (1023, 1023);
+   G_EXP_MIN_CLAMP : array [0..1] of Double = (-708.0, -708.0);
+   G_EXP_MAX_CLAMP : array [0..1] of Double = (709.0, 709.0);
+
 // ------------------
 // ------------------ SSE2 ASM Helpers (Win64) ------------------
 // ------------------
@@ -186,6 +202,184 @@ asm
    add rcx, 16; add rdx, 8; dec rax; jnz @loop
 @tail:
    and r8, 1; jz @done; cvtsd2ss xmm0, qword ptr [rcx]; movss dword ptr [rdx], xmm0
+@done:
+end;
+
+procedure SSE2_ReLU6(p1, pr : PDouble; count : NativeInt);
+const
+   c0 : array [0..1] of Double = (0.0, 0.0);
+   c6 : array [0..1] of Double = (6.0, 6.0);
+asm
+   .noframe
+   test r8, r8; jle @done
+   movupd xmm1, [c0]; movupd xmm2, [c6]
+   mov rax, r8; shr rax, 1; jz @tail
+@loop:
+   movupd xmm0, [rcx]; maxpd xmm0, xmm1; minpd xmm0, xmm2; movupd [rdx], xmm0
+   add rcx, 16; add rdx, 16; dec rax; jnz @loop
+@tail:
+   and r8, 1; jz @done; movsd xmm0, qword ptr [rcx]; maxsd xmm0, xmm1; minsd xmm0, xmm2; movsd qword ptr [rdx], xmm0
+@done:
+end;
+
+procedure SSE2_HardSigmoid(p1, pr : PDouble; count : NativeInt);
+const
+   c0 : array [0..1] of Double = (0.0, 0.0);
+   c1 : array [0..1] of Double = (1.0, 1.0);
+   c3 : array [0..1] of Double = (3.0, 3.0);
+   cInv6 : array [0..1] of Double = (0.16666666666666666, 0.16666666666666666);
+asm
+   .noframe
+   test r8, r8; jle @done
+   movupd xmm1, [c0]; movupd xmm2, [c1]; movupd xmm3, [c3]; movupd xmm4, [cInv6]
+   mov rax, r8; shr rax, 1; jz @tail
+@loop:
+   movupd xmm0, [rcx]; addpd xmm0, xmm3; mulpd xmm0, xmm4; maxpd xmm0, xmm1; minpd xmm0, xmm2; movupd [rdx], xmm0
+   add rcx, 16; add rdx, 16; dec rax; jnz @loop
+@tail:
+   and r8, 1; jz @done; movsd xmm0, qword ptr [rcx]; addsd xmm0, xmm3; mulsd xmm0, xmm4; maxsd xmm0, xmm1; minsd xmm0, xmm2; movsd qword ptr [rdx], xmm0
+@done:
+end;
+
+procedure SSE2_HardSwish(p1, pr : PDouble; count : NativeInt);
+const
+   c0 : array [0..1] of Double = (0.0, 0.0);
+   c3 : array [0..1] of Double = (3.0, 3.0);
+   c6 : array [0..1] of Double = (6.0, 6.0);
+   cInv6 : array [0..1] of Double = (0.16666666666666666, 0.16666666666666666);
+asm
+   .noframe
+   test r8, r8; jle @done
+   movupd xmm1, [c0]; movupd xmm2, [c3]; movupd xmm3, [c6]; movupd xmm4, [cInv6]
+   mov rax, r8; shr rax, 1; jz @tail
+@loop:
+   movupd xmm0, [rcx]; movapd xmm5, xmm0
+   addpd xmm0, xmm2; maxpd xmm0, xmm1; minpd xmm0, xmm3
+   mulpd xmm0, xmm5; mulpd xmm0, xmm4; movupd [rdx], xmm0
+   add rcx, 16; add rdx, 16; dec rax; jnz @loop
+@tail:
+   and r8, 1; jz @done; movsd xmm0, qword ptr [rcx]; movapd xmm5, xmm0
+   addsd xmm0, xmm2; maxsd xmm0, xmm1; minsd xmm0, xmm3
+   mulsd xmm0, xmm5; mulsd xmm0, xmm4; movsd qword ptr [rdx], xmm0
+@done:
+end;
+
+procedure SSE2_Exp(p1, pr : PDouble; count : NativeInt);
+asm
+   .noframe
+   test r8, r8
+   jle @done
+   push rsi
+   lea r9, [G_EXP_LN2_INV]
+   lea r10, [G_EXP_LN2_HI]
+   lea r11, [G_EXP_LN2_LO]
+   mov rax, r8
+   shr rax, 1
+   jz @tail
+@loop:
+   movupd xmm0, [rcx]
+   lea rsi, [G_EXP_MIN_CLAMP]; movupd xmm1, [rsi]; maxpd xmm0, xmm1
+   lea rsi, [G_EXP_MAX_CLAMP]; movupd xmm1, [rsi]; minpd xmm0, xmm1
+   movupd xmm1, [r9]; mulpd xmm1, xmm0
+   cvtpd2dq xmm2, xmm1; cvtdq2pd xmm1, xmm2
+   movapd xmm3, xmm1; movupd xmm4, [r10]; mulpd xmm3, xmm4; subpd xmm0, xmm3
+   movapd xmm3, xmm1; movupd xmm4, [r11]; mulpd xmm3, xmm4; subpd xmm0, xmm3 
+   lea rsi, [G_EXP_P6]; movupd xmm3, [rsi]; mulpd xmm3, xmm0
+   lea rsi, [G_EXP_P5]; movupd xmm4, [rsi]; addpd xmm3, xmm4; mulpd xmm3, xmm0
+   lea rsi, [G_EXP_P4]; movupd xmm4, [rsi]; addpd xmm3, xmm4; mulpd xmm3, xmm0
+   lea rsi, [G_EXP_P3]; movupd xmm4, [rsi]; addpd xmm3, xmm4; mulpd xmm3, xmm0
+   lea rsi, [G_EXP_P2]; movupd xmm4, [rsi]; addpd xmm3, xmm4; mulpd xmm3, xmm0
+   lea rsi, [G_EXP_P1]; movupd xmm4, [rsi]; addpd xmm3, xmm4; mulpd xmm3, xmm0
+   lea rsi, [G_EXP_P0]; movupd xmm4, [rsi]; addpd xmm3, xmm4
+   movd r9d, xmm2; psrldq xmm2, 4; movd r10d, xmm2
+   movsxd rsi, r9d; add rsi, 1023; shl rsi, 52; movq xmm1, rsi
+   movsxd rsi, r10d; add rsi, 1023; shl rsi, 52; movq xmm4, rsi
+   punpcklqdq xmm1, xmm4
+   mulpd xmm3, xmm1
+   movupd [rdx], xmm3
+   lea r9, [G_EXP_LN2_INV]; lea r10, [G_EXP_LN2_HI]; lea r11, [G_EXP_LN2_LO]
+   add rcx, 16; add rdx, 16; dec rax; jnz @loop
+@tail:
+   and r8, 1
+   jz @finish
+   movsd xmm0, [rcx]
+   lea rsi, [G_EXP_MIN_CLAMP]; movsd xmm1, [rsi]; maxsd xmm0, xmm1
+   lea rsi, [G_EXP_MAX_CLAMP]; movsd xmm1, [rsi]; minsd xmm0, xmm1
+   movsd xmm1, [r9]; mulsd xmm1, xmm0
+   cvtsd2si rax, xmm1; cvtsi2sd xmm1, rax
+   movsd xmm3, xmm1; mulsd xmm3, [r10]; subsd xmm0, xmm3
+   movsd xmm3, xmm1; mulsd xmm3, [r11]; subsd xmm0, xmm3
+   lea rsi, [G_EXP_P6]; movsd xmm3, [rsi]; mulsd xmm3, xmm0
+   lea rsi, [G_EXP_P5]; movsd xmm4, [rsi]; addsd xmm3, xmm4; mulsd xmm3, xmm0
+   lea rsi, [G_EXP_P4]; movsd xmm4, [rsi]; addsd xmm3, xmm4; mulsd xmm3, xmm0
+   lea rsi, [G_EXP_P3]; movsd xmm4, [rsi]; addsd xmm3, xmm4; mulsd xmm3, xmm0
+   lea rsi, [G_EXP_P2]; movsd xmm4, [rsi]; addsd xmm3, xmm4; mulsd xmm3, xmm0
+   lea rsi, [G_EXP_P1]; movsd xmm4, [rsi]; addsd xmm3, xmm4; mulsd xmm3, xmm0
+   lea rsi, [G_EXP_P0]; movsd xmm4, [rsi]; addsd xmm3, xmm4
+   add rax, 1023; shl rax, 52; movq xmm1, rax
+   mulsd xmm3, xmm1; movsd [rdx], xmm3
+@finish:
+   pop rsi
+@done:
+end;
+
+procedure SSE2_Sigmoid(p1, pr : PDouble; count : NativeInt);
+var
+   i : NativeInt;
+   c1 : Double;
+begin
+   if count <= 0 then Exit;
+   for i := 0 to count - 1 do
+      pr[i] := -p1[i];
+   SSE2_Exp(pr, pr, count);
+   c1 := 1.0;
+   for i := 0 to count - 1 do
+      pr[i] := 1.0 / (c1 + pr[i]);
+end;
+
+procedure SSE2_MulScaled(pSrc : PDouble; scalar : Double; pDst : PDouble; count : NativeInt);
+asm
+   .noframe
+   test r9, r9; jle @done; movsd xmm2, xmm1; unpcklpd xmm2, xmm2; mov rax, r9; shr rax, 1; jz @tail
+@loop:
+   movupd xmm0, [rcx]; mulpd xmm0, xmm2; movupd [r8], xmm0
+   add rcx, 16; add r8, 16; dec rax; jnz @loop
+@tail:
+   and r9, 1; jz @done; movsd xmm0, qword ptr [rcx]; mulsd xmm0, xmm2; movsd qword ptr [r8], xmm0
+@done:
+end;
+
+procedure SSE2_MaxVector(pSrc : PDouble; count : NativeInt; var maxV : Double);
+asm
+   .noframe
+   test rdx, rdx; jle @done
+   movsd xmm0, qword ptr [rcx]; unpcklpd xmm0, xmm0
+   mov rax, rdx; shr rax, 1; jz @tail
+@loop:
+   movupd xmm1, [rcx]; maxpd xmm0, xmm1; add rcx, 16; dec rax; jnz @loop
+@tail:
+   movhlps xmm1, xmm0; maxsd xmm0, xmm1
+   and rdx, 1; jz @finish
+   maxsd xmm0, qword ptr [rcx]
+@finish:
+   movsd [r8], xmm0
+@done:
+end;
+
+procedure SSE2_SumVector(pSrc : PDouble; count : NativeInt; var sum : Double);
+asm
+   .noframe
+   xorpd xmm0, xmm0
+   test rdx, rdx; jle @done
+   mov rax, rdx; shr rax, 1; jz @tail
+@loop:
+   movupd xmm1, [rcx]; addpd xmm0, xmm1; add rcx, 16; dec rax; jnz @loop
+@tail:
+   movhlps xmm1, xmm0; addsd xmm0, xmm1
+   and rdx, 1; jz @finish
+   addsd xmm0, qword ptr [rcx]
+@finish:
+   movsd [r8], xmm0
 @done:
 end;
 
@@ -450,8 +644,11 @@ begin
                      p1 := Pointer(nodeBuffers[in1]); pr := Pointer(nodeBuffers[n]);
                      if in2Idx = -1 then begin
                         if node is TKCLReLUNode then SSE2_ReLU(p1, pr, total)
-                        else if node is TKCLSigmoidNode then for i := 0 to total-1 do pr[i] := 1.0 / (1.0 + Exp(-p1[i]))
-                        else if node is TKCLReLU6Node then for i := 0 to total-1 do begin vVal := p1[i]; if vVal > 6.0 then vVal := 6.0 else if vVal < 0.0 then vVal := 0.0; pr[i] := vVal; end
+                        else if node is TKCLSigmoidNode then SSE2_Sigmoid(p1, pr, total)
+                        else if node is TKCLReLU6Node then SSE2_ReLU6(p1, pr, total)
+                        else if node is TKCLHardSwishNode then SSE2_HardSwish(p1, pr, total)
+                        else if node is TKCLHardSigmoidNode then SSE2_HardSigmoid(p1, pr, total)
+                        else if node is TKCLExpNode then SSE2_Exp(p1, pr, total)
                         else begin
                            SetLength(args, 2); args[1] := 0;
                            for i := 0 to total-1 do begin args[0] := p1[i]; pr[i] := TKCLMapNode(node).Eval(args); end;
@@ -488,7 +685,9 @@ begin
                   kS := cv.KernelSize; kH := kS div 2;
                   pI := Pointer(nodeBuffers[in1]); pr := Pointer(nodeBuffers[n]);
                   pW := Pointer(cv.Weights); pB := Pointer(cv.Bias);
-                  SSE2_SetBias(pr, pB, total, outC);
+                  for i := 0 to (total div outC) - 1 do
+                     for j := 0 to outC - 1 do
+                        pr[i * outC + j] := pB[j];
                   for hO := 0 to outH - 1 do begin
                      hiC := hO * cv.Stride;
                      for wO := 0 to outW - 1 do begin
@@ -520,7 +719,9 @@ begin
                   kS := dw.KernelSize; kH := kS div 2;
                   pI := Pointer(nodeBuffers[in1]); pr := Pointer(nodeBuffers[n]);
                   pW := Pointer(dw.Weights); pB := Pointer(dw.Bias);
-                  SSE2_SetBias(pr, pB, total, inC);
+                  for i := 0 to (total div inC) - 1 do
+                     for j := 0 to inC - 1 do
+                        pr[i * inC + j] := pB[j];
                   for hO := 0 to outH - 1 do begin
                      hiC := hO * dw.Stride;
                      for wO := 0 to outW - 1 do begin
@@ -546,12 +747,34 @@ begin
                   in1 := nodeToBufferIdx[node.Inputs[0]]; sm := TKCLSoftMaxNode(node);
                   dims := nodeDims[in1]; axisIdxNative := sm.Axis; axisSize := dims[axisIdxNative];
                   totalOther := 1; for k := 0 to High(dims) do if k<>axisIdxNative then totalOther := totalOther * dims[k];
-                  SetLength(baseI, Length(dims));
-                  for i := 0 to totalOther-1 do begin
-                     tempVal := i; for k := High(dims) downto 0 do if k<>axisIdxNative then begin baseI[k] := tempVal mod dims[k]; tempVal := tempVal div dims[k]; end else baseI[k]:=0;
-                     maxV := -1e30; for loopA := 0 to axisSize-1 do begin baseI[axisIdxNative]:=loopA; vVal := nodeBuffers[in1][FlatIndex(baseI, dims)]; if vVal > maxV then maxV := vVal; end;
-                     sumE := 0; for loopA := 0 to axisSize-1 do begin baseI[axisIdxNative]:=loopA; sumE := sumE + Exp(nodeBuffers[in1][FlatIndex(baseI, dims)]-maxV); end;
-                     for loopA := 0 to axisSize-1 do begin baseI[axisIdxNative]:=loopA; nodeBuffers[n][FlatIndex(baseI, dims)] := Exp(nodeBuffers[in1][FlatIndex(baseI, dims)]-maxV)/sumE; end;
+                  
+                  if axisIdxNative = High(dims) then begin
+                     // Fast path: SoftMax along the last (contiguous) dimension
+                     for i := 0 to totalOther - 1 do begin
+                        p1 := PDouble(nodeBuffers[in1]) + (i * axisSize);
+                        pr := PDouble(nodeBuffers[n]) + (i * axisSize);
+                        
+                        SSE2_MaxVector(p1, axisSize, maxV);
+                        
+                        // temp = exp(x - maxV)
+                        for loopA := 0 to axisSize - 1 do
+                           pr[loopA] := p1[loopA] - maxV;
+                        SSE2_Exp(pr, pr, axisSize);
+                        
+                        SSE2_SumVector(pr, axisSize, sumE);
+                        
+                        // x = temp / sumE
+                        vVal := 1.0 / sumE;
+                        SSE2_MulScaled(pr, vVal, pr, axisSize);
+                     end;
+                  end else begin
+                     SetLength(baseI, Length(dims));
+                     for i := 0 to totalOther-1 do begin
+                        tempVal := i; for k := High(dims) downto 0 do if k<>axisIdxNative then begin baseI[k] := tempVal mod dims[k]; tempVal := tempVal div dims[k]; end else baseI[k]:=0;
+                        maxV := -1e30; for loopA := 0 to axisSize-1 do begin baseI[axisIdxNative]:=loopA; vVal := nodeBuffers[in1][FlatIndex(baseI, dims)]; if vVal > maxV then maxV := vVal; end;
+                        sumE := 0; for loopA := 0 to axisSize-1 do begin baseI[axisIdxNative]:=loopA; sumE := sumE + Exp(nodeBuffers[in1][FlatIndex(baseI, dims)]-maxV); end;
+                        for loopA := 0 to axisSize-1 do begin baseI[axisIdxNative]:=loopA; nodeBuffers[n][FlatIndex(baseI, dims)] := Exp(nodeBuffers[in1][FlatIndex(baseI, dims)]-maxV)/sumE; end;
+                     end;
                   end;
                end else if node is TKCLResizeBilinearNode then begin
                   rs := TKCLResizeBilinearNode(node); in1 := nodeToBufferIdx[node.Inputs[0]];
@@ -560,8 +783,23 @@ begin
                   for i := 0 to total-1 do begin
                      IndexFromFlat(i, dimsOutLocal, lIdx); resVal := 0;
                      if Length(dimsOutLocal) >= 3 then begin
-                        axisIdxLocal := High(dimsOutLocal)-2; stepX := High(dimsOutLocal)-1; scaleH := dims[axisIdxLocal]/dimsOutLocal[axisIdxLocal]; scaleW := dims[stepX]/dimsOutLocal[stepX];
-                        h_in := lIdx[axisIdxLocal]*scaleH; w_in := lIdx[stepX]*scaleW; h0 := Floor(h_in); h1 := Min(h0+1, dims[axisIdxLocal]-1);
+                        axisIdxLocal := High(dimsOutLocal)-2; stepX := High(dimsOutLocal)-1; 
+                        
+                        if rs.AlignCorners and (dimsOutLocal[axisIdxLocal] > 1) then scaleH := (dims[axisIdxLocal] - 1) / (dimsOutLocal[axisIdxLocal] - 1)
+                        else scaleH := dims[axisIdxLocal] / dimsOutLocal[axisIdxLocal];
+                        
+                        if rs.AlignCorners and (dimsOutLocal[stepX] > 1) then scaleW := (dims[stepX] - 1) / (dimsOutLocal[stepX] - 1)
+                        else scaleW := dims[stepX] / dimsOutLocal[stepX];
+                        
+                        if rs.HalfPixelCenters then begin
+                           h_in := Max(0.0, (lIdx[axisIdxLocal] + 0.5) * scaleH - 0.5);
+                           w_in := Max(0.0, (lIdx[stepX] + 0.5) * scaleW - 0.5);
+                        end else begin
+                           h_in := lIdx[axisIdxLocal]*scaleH; 
+                           w_in := lIdx[stepX]*scaleW; 
+                        end;
+                        
+                        h0 := Floor(h_in); h1 := Min(h0+1, dims[axisIdxLocal]-1);
                         w0 := Floor(w_in); w1 := Min(w0+1, dims[stepX]-1); fh := h_in-h0; fw := w_in-w0;
                         SetLength(c00, Length(dims)); for k := 0 to High(dims) do c00[k] := lIdx[k]; c00[axisIdxLocal]:=h0; c00[stepX]:=w0;
                         SetLength(c01, Length(dims)); for k := 0 to High(dims) do c01[k] := lIdx[k]; c01[axisIdxLocal]:=h0; c01[stepX]:=w1;

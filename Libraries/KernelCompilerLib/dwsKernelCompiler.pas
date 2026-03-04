@@ -713,8 +713,12 @@ begin
    
    var targetHeight := info.ParamAsInteger[1];
    var targetWidth := info.ParamAsInteger[2];
+   var alignCorners := False;
+   if info.ParamCount > 3 then alignCorners := info.ParamAsBoolean[3];
+   var halfPixelCenters := False;
+   if info.ParamCount > 4 then halfPixelCenters := info.ParamAsBoolean[4];
    
-   var node := TKCLResizeBilinearNode.Create('resize_bilinear', [in1.FNode], targetHeight, targetWidth);
+   var node := TKCLResizeBilinearNode.Create('resize_bilinear', [in1.FNode], targetHeight, targetWidth, alignCorners, halfPixelCenters);
    wrapper.FKernel.AddNode(node);
    
    var classSym := info.FindSymbolInUnits(SYS_KCL_NODE) as TClassSymbol;
@@ -934,7 +938,7 @@ begin
    TKernelAddHardSwishMethod.Create(mkFunction, [], 'AddHardSwish', ['in1', SYS_KCL_NODE], SYS_KCL_NODE, clsKernel, cvPublic, unitTable);
    TKernelAddConv2DMethod.Create(mkFunction, [], 'AddConv2D', ['input', SYS_KCL_NODE, 'weights', 'array of Float', 'bias', 'array of Float', 'kernelSize', 'Integer', 'stride', 'Integer'], SYS_KCL_NODE, clsKernel, cvPublic, unitTable);
    TKernelAddDepthwiseConv2DMethod.Create(mkFunction, [], 'AddDepthwiseConv2D', ['input', SYS_KCL_NODE, 'weights', 'array of Float', 'bias', 'array of Float', 'kernelSize', 'Integer', 'stride', 'Integer'], SYS_KCL_NODE, clsKernel, cvPublic, unitTable);
-   TKernelAddResizeBilinearMethod.Create(mkFunction, [], 'AddResizeBilinear', ['input', SYS_KCL_NODE, 'targetHeight', 'Integer', 'targetWidth', 'Integer'], SYS_KCL_NODE, clsKernel, cvPublic, unitTable);
+   TKernelAddResizeBilinearMethod.Create(mkFunction, [], 'AddResizeBilinear', ['input', SYS_KCL_NODE, 'targetHeight', 'Integer', 'targetWidth', 'Integer', 'alignCorners=False', 'Boolean', 'halfPixelCenters=False', 'Boolean'], SYS_KCL_NODE, clsKernel, cvPublic, unitTable);
    TKernelAddMaxPool2DMethod.Create(mkFunction, [], 'AddMaxPool2D', ['input', SYS_KCL_NODE, 'kernelSize', 'Integer', 'stride', 'Integer'], SYS_KCL_NODE, clsKernel, cvPublic, unitTable);
    TKernelAddConcatMethod.Create(mkFunction, [], 'AddConcat', ['inputs', 'array of ' + SYS_KCL_NODE, 'axis', 'Integer'], SYS_KCL_NODE, clsKernel, cvPublic, unitTable);
    TKernelAddGlobalAvgPoolMethod.Create(mkFunction, [], 'AddGlobalAvgPool', ['input', SYS_KCL_NODE], SYS_KCL_NODE, clsKernel, cvPublic, unitTable);
