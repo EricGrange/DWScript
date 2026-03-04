@@ -226,7 +226,25 @@ begin
                   nodeDims[n] := Copy(ABuffers[inIdx].Dimensions);
                end else if node is TKCLMapNode then begin
                   var in1Idx := nodeToBufferIdx[node.Inputs[0]];
-                  nodeDims[n] := Copy(nodeDims[in1Idx]);
+                  var dims := Copy(nodeDims[in1Idx]);
+                  if (Length(node.Inputs) > 1) and not (node is TKCLConcatNode) then begin
+                     var in2Idx := nodeToBufferIdx[node.Inputs[1]];
+                     var dims2 := nodeDims[in2Idx];
+                     if Length(dims) < Length(dims2) then begin
+                        var oldDims := dims;
+                        SetLength(dims, Length(dims2));
+                        for var i := 0 to High(dims) do dims[i] := 1;
+                        for var i := 0 to High(oldDims) do dims[High(dims) - High(oldDims) + i] := oldDims[i];
+                     end;
+                     for var i := 0 to High(dims) do begin
+                        var d2Idx := i - (Length(dims) - Length(dims2));
+                        var d2 := 1; if d2Idx >= 0 then d2 := dims2[d2Idx];
+                        if (dims[i] <> d2) and (dims[i] <> 1) and (d2 <> 1) then
+                           raise EdwsKCLException.Create('KCL: Incompatible shapes for broadcasting.');
+                        dims[i] := Max(dims[i], d2);
+                     end;
+                  end;
+                  nodeDims[n] := dims;
                   if node is TKCLConcatNode then begin
                      var cNode := TKCLConcatNode(node);
                      var ax := cNode.Axis;
@@ -355,18 +373,62 @@ begin
                   end;
                end else if node is TKCLMapNode then begin
                   var in1Idx := nodeToBufferIdx[node.Inputs[0]];
+                  var dims1 := nodeDims[in1Idx];
                   var in2Idx := -1;
                   if Length(node.Inputs) > 1 then in2Idx := nodeToBufferIdx[node.Inputs[1]];
-                  
-                  for var i := 0 to nodeTotalElements[n] - 1 do begin
-                     var val1 := nodeBuffers[in1Idx][i];
-                     var val2 : Double := 0;
-                     if in2Idx >= 0 then val2 := nodeBuffers[in2Idx][i];
-                     var evalArgs : TDoubleDynArray;
-                     SetLength(evalArgs, 2);
-                     evalArgs[0] := val1;
-                     evalArgs[1] := val2;
-                     nodeBuffers[n][i] := TKCLMapNode(node).Eval(evalArgs);
+
+                  var sameShape := False;
+                  if in2Idx >= 0 then begin
+                     var dims2 := nodeDims[in2Idx];
+                     if Length(dims1) = Length(dims2) then begin
+                        sameShape := True;
+                        for var k := 0 to High(dims1) do if dims1[k] <> dims2[k] then begin
+                           sameShape := False;
+                           break;
+                        end;
+                     end;
+                  end else sameShape := True;
+
+                  if sameShape then begin
+                     // Fast Path: matching shapes
+                     for var i := 0 to nodeTotalElements[n] - 1 do begin
+                        var val1 := nodeBuffers[in1Idx][i];
+                        var val2 : Double := 0;
+                        if in2Idx >= 0 then val2 := nodeBuffers[in2Idx][i];
+                        var evalArgs : TDoubleDynArray;
+                        SetLength(evalArgs, 2);
+                        evalArgs[0] := val1;
+                        evalArgs[1] := val2;
+                        nodeBuffers[n][i] := TKCLMapNode(node).Eval(evalArgs);
+                     end;
+                  end else begin
+                     // Broadcasting Path
+                     var dims2 := nodeDims[in2Idx];
+                     var idx1, idx2 : array of Integer;
+                     SetLength(idx1, Length(dims1));
+                     SetLength(idx2, Length(dims2));
+
+                     for var i := 0 to nodeTotalElements[n] - 1 do begin
+                        IndexFromFlat(i, dimsOut, indices);
+
+                        for var k := 0 to High(idx1) do begin
+                           var outIdx := k + (Length(dimsOut) - Length(dims1));
+                           if dims1[k] = 1 then idx1[k] := 0 else idx1[k] := indices[outIdx];
+                        end;
+                        for var k := 0 to High(idx2) do begin
+                           var outIdx := k + (Length(dimsOut) - Length(dims2));
+                           if dims2[k] = 1 then idx2[k] := 0 else idx2[k] := indices[outIdx];
+                        end;
+
+                        var val1 := nodeBuffers[in1Idx][FlatIndex(idx1, dims1)];
+                        var val2 := nodeBuffers[in2Idx][FlatIndex(idx2, dims2)];
+
+                        var evalArgs : TDoubleDynArray;
+                        SetLength(evalArgs, 2);
+                        evalArgs[0] := val1;
+                        evalArgs[1] := val2;
+                        nodeBuffers[n][i] := TKCLMapNode(node).Eval(evalArgs);
+                     end;
                   end;
                end else if node is TKCLConv2DNode then begin
                   var in1Idx := nodeToBufferIdx[node.Inputs[0]];
