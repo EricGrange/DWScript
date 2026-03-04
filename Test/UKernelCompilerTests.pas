@@ -1,12 +1,14 @@
 unit UKernelCompilerTests;
 
+{$I dws.inc}
+
 interface
 
 uses
    System.Classes, System.SysUtils,
    dwsXPlatformTests, dwsComp, dwsCompiler, dwsExprs, dwsErrors,
    dwsKernelCompilerLibModule, dwsXPlatform, dwsCompilerContext,
-   dwsKernelCompilerCommon;
+   dwsKernelCompilerCommon, dwsKernelCompiler;
 
 type
 
@@ -20,8 +22,8 @@ type
          procedure SetUp; override;
          procedure TearDown; override;
 
-         procedure Execution;
-         procedure Compilation;
+         procedure Execution(const compilerClass : String = '');
+         procedure DoCompilation;
 
       published
 
@@ -29,6 +31,8 @@ type
          procedure CompilationWithMapAndSymbols;
          procedure ExecutionNonOptimized;
          procedure ExecutionOptimized;
+         procedure ExecutionReference;
+         procedure ExecutionSSE2;
    end;
 
 // ------------------------------------------------------------------
@@ -66,9 +70,9 @@ begin
    FTests.Free;
 end;
 
-// Compilation
+// DoCompilation
 //
-procedure TKernelCompilerTests.Compilation;
+procedure TKernelCompilerTests.DoCompilation;
 var
    source : TStringList;
    i : Integer;
@@ -93,7 +97,7 @@ end;
 procedure TKernelCompilerTests.CompilationNormal;
 begin
    FCompiler.Config.CompilerOptions:=[coOptimize];
-   Compilation;
+   DoCompilation;
 end;
 
 // CompilationWithMapAndSymbols
@@ -101,7 +105,7 @@ end;
 procedure TKernelCompilerTests.CompilationWithMapAndSymbols;
 begin
    FCompiler.Config.CompilerOptions:=[coSymbolDictionary, coContextMap, coAssertions];
-   Compilation;
+   DoCompilation;
 end;
 
 // ExecutionNonOptimized
@@ -120,15 +124,30 @@ begin
    Execution;
 end;
 
+procedure TKernelCompilerTests.ExecutionReference;
+begin
+   FCompiler.Config.CompilerOptions:=[coAssertions];
+   Execution('TKCLReferenceCompiler');
+end;
+
+procedure TKernelCompilerTests.ExecutionSSE2;
+begin
+{$IFDEF WIN64_ASM}
+   FCompiler.Config.CompilerOptions:=[coAssertions];
+   Execution('TKCLSSE2Compiler');
+{$ENDIF}
+end;
+
 // Execution
 //
-procedure TKernelCompilerTests.Execution;
+procedure TKernelCompilerTests.Execution(const compilerClass : String);
 var
    source, expectedResult : TStringList;
    i : Integer;
    prog : IdwsProgram;
    exec : IdwsProgramExecution;
    resultText, resultsFileName : String;
+   scriptSource : String;
 begin
    source:=TStringList.Create;
    expectedResult:=TStringList.Create;
@@ -136,7 +155,11 @@ begin
 
       for i:=0 to FTests.Count-1 do begin
          source.LoadFromFile(FTests[i]);
-         prog:=FCompiler.Compile(source.Text);
+         scriptSource := source.Text;
+         if compilerClass <> '' then
+            scriptSource := 'type TKCLKernelCompiler = ' + compilerClass + '; ' + scriptSource;
+
+         prog:=FCompiler.Compile(scriptSource);
 
          CheckEquals('', prog.Msgs.AsInfo, FTests[i]);
          try

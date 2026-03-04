@@ -16,6 +16,8 @@
 {**********************************************************************}
 unit dwsKernelCompilerLibModule;
 
+{$I dws.inc}
+
 interface
 
 uses
@@ -43,7 +45,11 @@ type
 implementation
 
 uses
-  dwsKernelCompiler;
+  dwsKernelCompiler
+{$IFDEF WIN64_ASM}
+  , dwsKernelCompilerSSE2
+{$ENDIF}
+  ;
 
 {$R *.dfm}
 
@@ -53,6 +59,9 @@ procedure TKCLUnit.AddUnitSymbols(systemTable: TSystemSymbolTable; Table: TSymbo
 begin
   inherited;
   RegisterKernelCompilerSymbols(systemTable, Table, StandardCleanUp);
+{$IFDEF WIN64_ASM}
+  RegisterSSE2CompilerSymbols(Table);
+{$ENDIF}
 end;
 
 procedure TKCLUnit.StandardCleanUp(ExternalObject: TObject);

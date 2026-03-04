@@ -27,7 +27,11 @@ uses
    dwsXPlatform, dwsUtils, dwsStrings,
    dwsFunctions, dwsSymbols, dwsExprs, dwsUnitSymbols, dwsComp,
    dwsMagicExprs, dwsExprList,
-   dwsKernelCompilerCommon, dwsKernelCompilerBackend.Reference;
+   dwsKernelCompilerCommon, dwsKernelCompilerBackend.Reference
+{$IFDEF WIN64_ASM}
+   , dwsKernelCompilerBackend.SSE2
+{$ENDIF}
+   ;
 
 const
    SYS_KCL_DATATYPE = 'TKCLDataType';
@@ -35,6 +39,7 @@ const
    SYS_KCL_KERNEL = 'TKCLKernel';
    SYS_KCL_NODE = 'TKCLNode';
    SYS_KCL_KERNELCOMPILER = 'TKCLKernelCompiler';
+   SYS_KCL_REFERENCECOMPILER = 'TKCLReferenceCompiler';
 
 type
    TKCLStridedBufferWrapper = class
@@ -172,7 +177,15 @@ type
    end;
 
    TKernelCompilerDispatchMethod = class(TInternalMagicProcedure)
+   protected
+      procedure ExecuteDispatch(AKernel : TKCLKernel; const ABuffers : array of TKCLStridedBufferDescriptor); virtual;
+   public
       procedure DoEvalProc(const args : TExprBaseListExec); override;
+   end;
+
+   TReferenceCompilerDispatchMethod = class(TKernelCompilerDispatchMethod)
+   protected
+      procedure ExecuteDispatch(AKernel : TKCLKernel; const ABuffers : array of TKCLStridedBufferDescriptor); override;
    end;
 
 procedure RegisterKernelCompilerSymbols(systemTable : TSystemSymbolTable; unitTable : TSymbolTable;
@@ -814,6 +827,20 @@ end;
 // ------------------ TKernelCompilerDispatchMethod ------------------
 // ------------------
 
+procedure TKernelCompilerDispatchMethod.ExecuteDispatch(AKernel : TKCLKernel; const ABuffers : array of TKCLStridedBufferDescriptor);
+begin
+{$IFDEF WIN64_ASM}
+   var backend := TKCLSSE2Backend.Create;
+{$ELSE}
+   var backend := TKCLReferenceBackend.Create;
+{$ENDIF}
+   try
+      backend.Execute(AKernel, ABuffers);
+   finally
+      backend.Free;
+   end;
+end;
+
 procedure TKernelCompilerDispatchMethod.DoEvalProc(const args : TExprBaseListExec);
 begin
    var kernelObj : IScriptObj;
@@ -837,9 +864,18 @@ begin
          raise EdwsKCLException.Create('KCL: Buffer array element is not a script object.');
    end;
 
+   ExecuteDispatch(kernel.FKernel, buffers);
+end;
+
+// ------------------
+// ------------------ TReferenceCompilerDispatchMethod ------------------
+// ------------------
+
+procedure TReferenceCompilerDispatchMethod.ExecuteDispatch(AKernel : TKCLKernel; const ABuffers : array of TKCLStridedBufferDescriptor);
+begin
    var backend := TKCLReferenceBackend.Create;
    try
-      backend.Execute(kernel.FKernel, buffers);
+      backend.Execute(AKernel, ABuffers);
    finally
       backend.Free;
    end;
@@ -867,6 +903,9 @@ begin
    unitTable.AddSymbol(clsKernel);
    var clsKernelCompiler := TClassSymbol.Create(SYS_KCL_KERNELCOMPILER, systemTable.TypTObject);
    unitTable.AddSymbol(clsKernelCompiler);
+
+   var clsReferenceCompiler := TClassSymbol.Create(SYS_KCL_REFERENCECOMPILER, clsKernelCompiler);
+   unitTable.AddSymbol(clsReferenceCompiler);
 
    // Register 'array of TStridedBuffer'
    unitTable.AddSymbol(TDynamicArraySymbol.Create('array of ' + SYS_KCL_STRIDEDBUFFER, clsStridedBuffer, systemTable.TypInteger));
@@ -903,6 +942,7 @@ begin
    TKernelMarkOutputMethod.Create(mkProcedure, [], 'MarkOutput', ['node', SYS_KCL_NODE], '', clsKernel, cvPublic, unitTable);
 
    TKernelCompilerDispatchMethod.Create(unitTable, 'Dispatch', ['kernel', SYS_KCL_KERNEL, 'buffers', 'array of ' + SYS_KCL_STRIDEDBUFFER], '', [iffStaticMethod], clsKernelCompiler);
+   TReferenceCompilerDispatchMethod.Create(unitTable, 'Dispatch', ['kernel', SYS_KCL_KERNEL, 'buffers', 'array of ' + SYS_KCL_STRIDEDBUFFER], '', [iffStaticMethod], clsReferenceCompiler);
 end;
 
 end.

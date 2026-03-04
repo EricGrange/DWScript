@@ -50,7 +50,8 @@ uses
    dwsBackgroundWorkersLibModule, dwsCryptoLibModule,
    dwsEncodingLibModule, dwsComConnector, dwsXXHash, dwsHTTPSysServer,
    dwsBigIntegerFunctions.GMP, dwsMPIR.Bundle, dwsTurboJPEG.Bundle,
-   dwsCompilerContext, dwsFilter, dwsByteBufferFunctions
+   dwsCompilerContext, dwsFilter, dwsByteBufferFunctions,
+   dwsKernelCompilerLibModule
    ;
 
 type
@@ -355,6 +356,8 @@ begin
    TdwsZipLib.Create(Self).dwsZip.Script:=DelphiWebScript;
 
    TdwsIniFileLib.Create(Self).dwsIniFile.Script:=DelphiWebScript;
+
+   TdwsKernelCompilerLib.Create(Self).Script := DelphiWebScript;
 
    FCompiledPrograms := TCompiledProgramHash.Create;
    FCompiledProgramsLock := TMultiReadSingleWrite.Create;

@@ -202,7 +202,7 @@ const
          +'"StaticExtensions": ['
             +'".htm",".html",".js",".css",".xml",'    // web
             +'".png",".jpg",".webp",".svg",'          // images
-            +'".zip",".7z",".gz",".exe",'             // archives &binaries
+            +'".zip",".7z",".gz",".exe",".bin",'      // archives &binaries
             +'".txt",".csv",".json"'                  // text
             +'],'
          // List of HTTP methods that will return a 405 'Not Allowed' response

@@ -35,6 +35,7 @@ uses
   dwsWebLibModule,
   dwsDatabaseLibModule,
   dwsSystemInfoLibModule,
+  dwsKernelCompilerLibModule,
   dwsGraphicLibrary,
   dwsTurboJPEG.Bundle,
   dwsComConnector,
@@ -56,6 +57,7 @@ begin
    TdwsWebLib.Create(Result).dwsWeb.Script:=Result;
    TdwsDatabaseLib.Create(Result).dwsDatabase.Script:=Result;
    TdwsSystemInfoLibModule.Create(Result).Script:=Result;
+   TdwsKernelCompilerLib.Create(Result).dwsKernelCompilerUnit.Script:=Result;
 end;
 
 procedure WriteHeader;
