@@ -21,9 +21,11 @@ unit dwsKernelCompilerBackend.SSE2;
 {$I dws.inc}
 {$POINTERMATH ON}
 
-interface
+{$IFNDEF WIN64_ASM}
+   {$ERROR KCL SSE2 backend is only supported on Win64}
+{$ENDIF}
 
-{$IFDEF WIN64_ASM}
+interface
 
 uses
    System.Classes, System.SysUtils, System.Math, System.Generics.Collections,
@@ -38,11 +40,13 @@ type
       procedure Execute(AKernel : TKCLKernel; const ABuffers : array of TKCLStridedBufferDescriptor);
    end;
 
-{$ENDIF}
-
+// ------------------------------------------------------------------
+// ------------------------------------------------------------------
+// ------------------------------------------------------------------
 implementation
-
-{$IFDEF WIN64_ASM}
+// ------------------------------------------------------------------
+// ------------------------------------------------------------------
+// ------------------------------------------------------------------
 
 type
    PInt8 = ^ShortInt;
@@ -635,7 +639,5 @@ begin
       finally sortedNodes.Free; visiting.Free; visited.Free; end;
    finally SetExceptionMask(savedMask); end;
 end;
-
-{$ENDIF}
 
 end.

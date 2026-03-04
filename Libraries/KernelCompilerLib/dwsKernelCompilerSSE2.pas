@@ -20,18 +20,16 @@ unit dwsKernelCompilerSSE2;
 
 {$I dws.inc}
 
+{$IFNDEF WIN64_ASM}
+   {$ERROR KCL SSE2 backend is only supported on Win64}
+{$ENDIF}
+
 interface
 
 uses
-   dwsSymbols
-{$IFDEF WIN64_ASM}
-   , System.Classes, System.SysUtils,
-   dwsUnitSymbols, dwsComp, dwsExprs, dwsFunctions,
-   dwsKernelCompilerCommon, dwsKernelCompiler, dwsKernelCompilerBackend.SSE2
-{$ENDIF}
-   ;
-
-{$IFDEF WIN64_ASM}
+   System.Classes, System.SysUtils,
+   dwsSymbols, dwsUnitSymbols, dwsComp, dwsExprs, dwsFunctions,
+   dwsKernelCompilerCommon, dwsKernelCompiler, dwsKernelCompilerBackend.SSE2;
 
 type
    TSSE2CompilerDispatchMethod = class(TKernelCompilerDispatchMethod)
@@ -39,13 +37,15 @@ type
       procedure ExecuteDispatch(AKernel : TKCLKernel; const ABuffers : array of TKCLStridedBufferDescriptor); override;
    end;
 
-{$ENDIF}
-
 procedure RegisterSSE2CompilerSymbols(unitTable : TSymbolTable);
 
+// ------------------------------------------------------------------
+// ------------------------------------------------------------------
+// ------------------------------------------------------------------
 implementation
-
-{$IFDEF WIN64_ASM}
+// ------------------------------------------------------------------
+// ------------------------------------------------------------------
+// ------------------------------------------------------------------
 
 // ------------------
 // ------------------ TSSE2CompilerDispatchMethod ------------------
@@ -61,13 +61,10 @@ begin
    end;
 end;
 
-{$ENDIF}
-
 // RegisterSSE2CompilerSymbols
 //
 procedure RegisterSSE2CompilerSymbols(unitTable : TSymbolTable);
 begin
-{$IFDEF WIN64_ASM}
    var clsBase := unitTable.FindSymbol(SYS_KCL_KERNELCOMPILER, cvMagic) as TClassSymbol;
    if clsBase = nil then
       raise Exception.Create('KCL: Base compiler class not found.');
@@ -76,7 +73,6 @@ begin
    unitTable.AddSymbol(clsSSE2);
 
    TSSE2CompilerDispatchMethod.Create(unitTable, 'Dispatch', ['kernel', SYS_KCL_KERNEL, 'buffers', 'array of ' + SYS_KCL_STRIDEDBUFFER], '', [iffStaticMethod], clsSSE2);
-{$ENDIF}
 end;
 
 end.
