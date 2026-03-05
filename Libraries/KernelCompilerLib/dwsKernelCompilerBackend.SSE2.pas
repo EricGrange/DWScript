@@ -433,7 +433,7 @@ var
    visiting : TDictionary<TKCLNode, Boolean>;
    visited : TDictionary<TKCLNode, Boolean>;
    
-   n, i, j, k, loopA, stepX, stepY, hO, wO, hiC, wiC, inputCount, outputCount, nx, ny, inC, outC, inH, inW, outH, outW, kS, kH, in1, in2Idx, axisIdxLocal : Integer;
+   n, i, j, k, loopA, stepX, stepY, hO, wO, inputCount, outputCount, nx, ny, inC, outC, inH, inW, outH, outW, kS, in1, in2Idx, axisIdxLocal : Integer;
    axisIdxNative, axisSize, totalOther, totalElems, total, inKIdx, oIdx : NativeInt;
    h0, h1, w0, w1 : Integer;
    p1, p2, pr, pI, pW, pB, pWBase, pIBase, pIBaseY, pROut : PDouble;
@@ -449,6 +449,7 @@ var
    rs : TKCLResizeBilinearNode;
    dIn, dO_ : TKCLStridedBufferDescriptor;
    curDimOffset : NativeInt;
+   pad_h, pad_top, pad_w, pad_left, h_in_start, w_in_start : Integer;
 
    function FlatIndex(const AIdx : TKCLDimensions; const ADims : TKCLDimensions) : Integer;
    var
@@ -547,7 +548,10 @@ begin
                      end;
                      for i := 0 to High(dims) do begin
                         k := i - (Length(dims)-Length(dims2));
-                        if k >= 0 then dims[i] := Max(dims[i], dims2[k]);
+                        tempVal := 1; if k >= 0 then tempVal := dims2[k];
+                        if (dims[i] <> tempVal) and (dims[i] <> 1) and (tempVal <> 1) then
+                           EdwsKCLException.RaiseBroadcastingMismatch(i, dims[i], tempVal);
+                        dims[i] := Max(dims[i], tempVal);
                      end;
                   end;
                   nodeDims[n] := dims;
@@ -562,6 +566,19 @@ begin
                      dims[High(dims)-2] := (dims[High(dims)-2] + cv.Stride - 1) div cv.Stride;
                      dims[High(dims)-1] := (dims[High(dims)-1] + cv.Stride - 1) div cv.Stride;
                      dims[High(dims)] := Length(cv.Bias);
+                  end;
+                  nodeDims[n] := dims;
+               end else if node is TKCLConv2DTransposeNode then begin
+                  dims := Copy(nodeDims[nodeToBufferIdx[node.Inputs[0]]]);
+                  var cvtNode := TKCLConv2DTransposeNode(node);
+                  var st := cvtNode.Stride;
+                  if Length(dims) >= 3 then begin
+                     var dimH := High(dims) - 2;
+                     var dimW := High(dims) - 1;
+                     outC := Length(cvtNode.Bias);
+                     dims[dimH] := dims[dimH] * st;
+                     dims[dimW] := dims[dimW] * st;
+                     dims[High(dims)] := outC;
                   end;
                   nodeDims[n] := dims;
                end else if node is TKCLDepthwiseConv2DNode then begin
@@ -604,10 +621,10 @@ begin
                var outIdx := nodeToBufferIdx[outNode];
                var outBuf := ABuffers[inputCount + j];
                if Length(nodeDims[outIdx]) <> Length(outBuf.Dimensions) then
-                  raise EdwsKCLException.Create('KCL: Output spatial domain length mismatch.');
+                  EdwsKCLException.RaiseSpatialDomainLengthMismatch(Length(nodeDims[outIdx]), Length(outBuf.Dimensions));
                for i := 0 to High(nodeDims[outIdx]) do
                   if nodeDims[outIdx][i] <> outBuf.Dimensions[i] then
-                     raise EdwsKCLException.Create('KCL: Output spatial domain size mismatch.');
+                     EdwsKCLException.RaiseSpatialDomainSizeMismatch(i, nodeDims[outIdx][i], outBuf.Dimensions[i]);
             end;
 
             for n := 0 to sortedNodes.Count - 1 do begin
@@ -682,25 +699,31 @@ begin
                   inC := dims[High(dims)]; outC := dOutDims[High(dOutDims)];
                   inH := dims[High(dims)-2]; inW := dims[High(dims)-1];
                   outH := dOutDims[High(dOutDims)-2]; outW := dOutDims[High(dOutDims)-1];
-                  kS := cv.KernelSize; kH := kS div 2;
+                  kS := cv.KernelSize;
                   pI := Pointer(nodeBuffers[in1]); pr := Pointer(nodeBuffers[n]);
                   pW := Pointer(cv.Weights); pB := Pointer(cv.Bias);
                   for i := 0 to (total div outC) - 1 do
                      for j := 0 to outC - 1 do
                         pr[i * outC + j] := pB[j];
+                  
+                  pad_h := Max(0, (outH - 1) * cv.Stride + kS - inH);
+                  pad_top := pad_h div 2;
+                  pad_w := Max(0, (outW - 1) * cv.Stride + kS - inW);
+                  pad_left := pad_w div 2;
+
                   for hO := 0 to outH - 1 do begin
-                     hiC := hO * cv.Stride;
+                     h_in_start := hO * cv.Stride - pad_top;
                      for wO := 0 to outW - 1 do begin
-                        wiC := wO * cv.Stride;
+                        w_in_start := wO * cv.Stride - pad_left;
                         pROut := pr + (hO * outW + wO) * outC;
-                        for stepY := -kH to kH do begin
-                           ny := hiC + stepY;
+                        for stepY := 0 to kS - 1 do begin
+                           ny := h_in_start + stepY;
                            if (ny >= 0) and (ny < inH) then begin
                               pIBaseY := pI + (ny * inW * inC);
-                              for stepX := -kH to kH do begin
-                                 nx := wiC + stepX;
+                              for stepX := 0 to kS - 1 do begin
+                                 nx := w_in_start + stepX;
                                  if (nx >= 0) and (nx < inW) then begin
-                                    pWBase := pW + (((stepY + kH) * kS + (stepX + kH)) * inC * outC);
+                                    pWBase := pW + ((stepY * kS + stepX) * inC * outC);
                                     pIBase := pIBaseY + (nx * inC);
                                     for k := 0 to inC - 1 do
                                        SSE2_AddScaled(pWBase + (k * outC), (pIBase + k)^, pROut, outC);
@@ -710,31 +733,93 @@ begin
                         end;
                      end;
                   end;
+               end else if node is TKCLConv2DTransposeNode then begin
+                  in1 := nodeToBufferIdx[node.Inputs[0]];
+                  var cvtNode := TKCLConv2DTransposeNode(node);
+                  kS := cvtNode.KernelSize;
+                  var st := cvtNode.Stride;
+                  dims1 := nodeDims[in1];
+                  inC := dims1[High(dims1)];
+                  dOutDims := nodeDims[n];
+                  outC := dOutDims[High(dOutDims)];
+                  
+                  for i := 0 to total - 1 do begin
+                     IndexFromFlat(i, dOutDims, lIdx);
+                     sumVal := 0.0;
+                     if Length(dOutDims) >= 3 then begin
+                        var cOut := lIdx[High(dOutDims)];
+                        var dimH := High(dOutDims) - 2;
+                        var dimW := High(dOutDims) - 1;
+                        var h_out := lIdx[dimH];
+                        var w_out := lIdx[dimW];
+                        
+                        pad_h := Max(0, (dims1[dimH] - 1) * st + kS - dOutDims[dimH]);
+                        pad_top := pad_h div 2;
+                        pad_w := Max(0, (dims1[dimW] - 1) * st + kS - dOutDims[dimW]);
+                        pad_left := pad_w div 2;
+                        
+                        if cOut < Length(cvtNode.Bias) then sumVal := cvtNode.Bias[cOut];
+                        
+                        for stepY := 0 to kS - 1 do begin
+                           var h_in_f := (h_out + pad_top - stepY);
+                           if (h_in_f >= 0) and (h_in_f mod st = 0) then begin
+                              ny := h_in_f div st;
+                              if (ny >= 0) and (ny < dims1[dimH]) then begin
+                                 for stepX := 0 to kS - 1 do begin
+                                    var w_in_f := (w_out + pad_left - stepX);
+                                    if (w_in_f >= 0) and (w_in_f mod st = 0) then begin
+                                       nx := w_in_f div st;
+                                       if (nx >= 0) and (nx < dims1[dimW]) then begin
+                                          for var cInIdx := 0 to inC - 1 do begin
+                                             idx1 := Copy(lIdx);
+                                             idx1[dimH] := ny;
+                                             idx1[dimW] := nx;
+                                             idx1[High(dOutDims)] := cInIdx;
+                                             
+                                             var wIdx := ((stepY * kS + stepX) * inC + cInIdx) * outC + cOut;
+                                             if wIdx < Length(cvtNode.Weights) then
+                                                sumVal := sumVal + nodeBuffers[in1][FlatIndex(idx1, dims1)] * cvtNode.Weights[wIdx];
+                                          end;
+                                       end;
+                                    end;
+                                 end;
+                              end;
+                           end;
+                        end;
+                     end;
+                     nodeBuffers[n][i] := sumVal;
+                  end;
                end else if node is TKCLDepthwiseConv2DNode then begin
                   dw := TKCLDepthwiseConv2DNode(node); in1 := nodeToBufferIdx[node.Inputs[0]];
                   dims := nodeDims[in1]; dOutDims := nodeDims[n];
                   inC := dims[High(dims)];
                   inH := dims[High(dims)-2]; inW := dims[High(dims)-1];
                   outH := dOutDims[High(dOutDims)-2]; outW := dOutDims[High(dOutDims)-1];
-                  kS := dw.KernelSize; kH := kS div 2;
+                  kS := dw.KernelSize;
                   pI := Pointer(nodeBuffers[in1]); pr := Pointer(nodeBuffers[n]);
                   pW := Pointer(dw.Weights); pB := Pointer(dw.Bias);
                   for i := 0 to (total div inC) - 1 do
                      for j := 0 to inC - 1 do
                         pr[i * inC + j] := pB[j];
+                  
+                  pad_h := Max(0, (outH - 1) * dw.Stride + kS - inH);
+                  pad_top := pad_h div 2;
+                  pad_w := Max(0, (outW - 1) * dw.Stride + kS - inW);
+                  pad_left := pad_w div 2;
+
                   for hO := 0 to outH - 1 do begin
-                     hiC := hO * dw.Stride;
+                     h_in_start := hO * dw.Stride - pad_top;
                      for wO := 0 to outW - 1 do begin
-                        wiC := wO * dw.Stride;
+                        w_in_start := wO * dw.Stride - pad_left;
                         pROut := pr + (hO * outW + wO) * inC;
-                        for stepY := -kH to kH do begin
-                           ny := hiC + stepY;
+                        for stepY := 0 to kS - 1 do begin
+                           ny := h_in_start + stepY;
                            if (ny >= 0) and (ny < inH) then begin
                               pIBaseY := pI + (ny * inW * inC);
-                              for stepX := -kH to kH do begin
-                                 nx := wiC + stepX;
+                              for stepX := 0 to kS - 1 do begin
+                                 nx := w_in_start + stepX;
                                  if (nx >= 0) and (nx < inW) then begin
-                                    pWBase := pW + (((stepY + kH) * kS + (stepX + kH)) * inC);
+                                    pWBase := pW + ((stepY * kS + stepX) * inC);
                                     pIBase := pIBaseY + (nx * inC);
                                     SSE2_MulAdd(pIBase, pWBase, pROut, inC);
                                  end;
@@ -817,20 +902,26 @@ begin
                   inC := dims[High(dims)];
                   inH := dims[High(dims)-2]; inW := dims[High(dims)-1];
                   outH := dOutDims[High(dOutDims)-2]; outW := dOutDims[High(dOutDims)-1];
-                  kS := mp.KernelSize; kH := kS div 2;
+                  kS := mp.KernelSize;
                   pI := Pointer(nodeBuffers[in1]); pr := Pointer(nodeBuffers[n]);
                   for i := 0 to total - 1 do pr[i] := -1e30;
+                  
+                  pad_h := Max(0, (outH - 1) * mp.Stride + kS - inH);
+                  pad_top := pad_h div 2;
+                  pad_w := Max(0, (outW - 1) * mp.Stride + kS - inW);
+                  pad_left := pad_w div 2;
+
                   for hO := 0 to outH - 1 do begin
-                     hiC := hO * mp.Stride;
+                     h_in_start := hO * mp.Stride - pad_top;
                      for wO := 0 to outW - 1 do begin
-                        wiC := wO * mp.Stride;
+                        w_in_start := wO * mp.Stride - pad_left;
                         pROut := pr + (hO * outW + wO) * inC;
-                        for stepY := -kH to kH do begin
-                           ny := hiC + stepY;
+                        for stepY := 0 to kS - 1 do begin
+                           ny := h_in_start + stepY;
                            if (ny >= 0) and (ny < inH) then begin
                               pIBaseY := pI + (ny * inW * inC);
-                              for stepX := -kH to kH do begin
-                                 nx := wiC + stepX;
+                              for stepX := 0 to kS - 1 do begin
+                                 nx := w_in_start + stepX;
                                  if (nx >= 0) and (nx < inW) then begin
                                     pIBase := pIBaseY + (nx * inC);
                                     SSE2_Max(pIBase, pROut, inC);

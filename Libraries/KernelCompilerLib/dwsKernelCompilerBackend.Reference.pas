@@ -240,7 +240,7 @@ begin
                         var d2Idx := i - (Length(dims) - Length(dims2));
                         var d2 := 1; if d2Idx >= 0 then d2 := dims2[d2Idx];
                         if (dims[i] <> d2) and (dims[i] <> 1) and (d2 <> 1) then
-                           raise EdwsKCLException.Create('KCL: Incompatible shapes for broadcasting.');
+                           EdwsKCLException.RaiseBroadcastingMismatch(i, dims[i], d2);
                         dims[i] := Max(dims[i], d2);
                      end;
                   end;
@@ -266,6 +266,20 @@ begin
                      var outC := Length(cvNode.Bias);
                      dims[dimH] := (dims[dimH] + st - 1) div st;
                      dims[dimW] := (dims[dimW] + st - 1) div st;
+                     dims[High(dims)] := outC;
+                  end;
+                  nodeDims[n] := dims;
+               end else if node is TKCLConv2DTransposeNode then begin
+                  var in1Idx := nodeToBufferIdx[node.Inputs[0]];
+                  var dims := Copy(nodeDims[in1Idx]);
+                  var cvtNode := TKCLConv2DTransposeNode(node);
+                  var st := cvtNode.Stride;
+                  if Length(dims) >= 3 then begin
+                     var dimH := High(dims) - 2;
+                     var dimW := High(dims) - 1;
+                     var outC := Length(cvtNode.Bias);
+                     dims[dimH] := dims[dimH] * st;
+                     dims[dimW] := dims[dimW] * st;
                      dims[High(dims)] := outC;
                   end;
                   nodeDims[n] := dims;
@@ -334,10 +348,10 @@ begin
                var outIdx := nodeToBufferIdx[outNode];
                var outBuf := ABuffers[inputCount + j];
                if Length(nodeDims[outIdx]) <> Length(outBuf.Dimensions) then
-                  raise EdwsKCLException.Create('KCL: Output spatial domain length mismatch.');
+                  EdwsKCLException.RaiseSpatialDomainLengthMismatch(Length(nodeDims[outIdx]), Length(outBuf.Dimensions));
                for var i := 0 to High(nodeDims[outIdx]) do
                   if nodeDims[outIdx][i] <> outBuf.Dimensions[i] then
-                     raise EdwsKCLException.Create('KCL: Output spatial domain size mismatch.');
+                     EdwsKCLException.RaiseSpatialDomainSizeMismatch(i, nodeDims[outIdx][i], outBuf.Dimensions[i]);
             end;
 
             // 3. Topological evaluation
@@ -438,7 +452,6 @@ begin
                   var in1Idx := nodeToBufferIdx[node.Inputs[0]];
                   var cvNode := TKCLConv2DNode(node);
                   var kSize := cvNode.KernelSize;
-                  var kHalf := kSize div 2;
                   var st := cvNode.Stride;
                   var dimsIn := nodeDims[in1Idx];
                   var inChannels := dimsIn[High(dimsIn)];
@@ -453,15 +466,21 @@ begin
                         var dimW := High(dimsOut) - 1;
                         var h_out := indices[dimH];
                         var w_out := indices[dimW];
-                        var h_in_center := h_out * st;
-                        var w_in_center := w_out * st;
+                        
+                        var pad_h := Max(0, (dimsOut[dimH] - 1) * st + kSize - dimsIn[dimH]);
+                        var pad_top := pad_h div 2;
+                        var pad_w := Max(0, (dimsOut[dimW] - 1) * st + kSize - dimsIn[dimW]);
+                        var pad_left := pad_w div 2;
+
+                        var h_in_start := h_out * st - pad_top;
+                        var w_in_start := w_out * st - pad_left;
                         
                         if cOut < Length(cvNode.Bias) then sum := cvNode.Bias[cOut];
                         
-                        for var dy := -kHalf to kHalf do begin
-                           for var dx := -kHalf to kHalf do begin
-                              var ny := h_in_center + dy;
-                              var nx := w_in_center + dx;
+                        for var ky := 0 to kSize - 1 do begin
+                           for var kx := 0 to kSize - 1 do begin
+                              var ny := h_in_start + ky;
+                              var nx := w_in_start + kx;
                               if (ny >= 0) and (ny < dimsIn[dimH]) and (nx >= 0) and (nx < dimsIn[dimW]) then begin
                                  for var cIn := 0 to inChannels - 1 do begin
                                     var nIndices := Copy(indices);
@@ -469,9 +488,73 @@ begin
                                     nIndices[dimW] := nx;
                                     nIndices[High(dimsOut)] := cIn;
                                     
-                                    var wIdx := (((dy + kHalf) * kSize + (dx + kHalf)) * inChannels + cIn) * outChannels + cOut;
+                                    var wIdx := ((ky * kSize + kx) * inChannels + cIn) * outChannels + cOut;
                                     if wIdx < Length(cvNode.Weights) then
                                        sum := sum + nodeBuffers[in1Idx][FlatIndex(nIndices, dimsIn)] * cvNode.Weights[wIdx];
+                                 end;
+                              end;
+                           end;
+                        end;
+                     end;
+                     nodeBuffers[n][i] := sum;
+                  end;
+               end else if node is TKCLConv2DTransposeNode then begin
+                  var in1Idx := nodeToBufferIdx[node.Inputs[0]];
+                  var cvtNode := TKCLConv2DTransposeNode(node);
+                  var kSize := cvtNode.KernelSize;
+                  var st := cvtNode.Stride;
+                  var dimsIn := nodeDims[in1Idx];
+                  var inChannels := dimsIn[High(dimsIn)];
+                  var outChannels := dimsOut[High(dimsOut)];
+                  
+                  // Transpose Conv is equivalent to a gradient of Conv2D
+                  // or 'scatter-add' of weights onto input pixels.
+                  // For reference backend, we'll use a simpler 'gather' approach:
+                  // y[h, w] = sum_{dy, dx} x[(h+pad-dy)/st, (w+pad-dx)/st] * w[dy, dx]
+                  // Only for cases where (h+pad-dy) % st == 0
+                  
+                  for var i := 0 to nodeTotalElements[n] - 1 do begin
+                     IndexFromFlat(i, dimsOut, indices);
+                     var sum : Double := 0.0;
+                     if Length(dimsOut) >= 3 then begin
+                        var cOut := indices[High(dimsOut)];
+                        var dimH := High(dimsOut) - 2;
+                        var dimW := High(dimsOut) - 1;
+                        var h_out := indices[dimH];
+                        var w_out := indices[dimW];
+                        
+                        var pad_h := Max(0, (dimsIn[dimH] - 1) * st + kSize - dimsOut[dimH]);
+                        var pad_top := pad_h div 2;
+                        var pad_w := Max(0, (dimsIn[dimW] - 1) * st + kSize - dimsOut[dimW]);
+                        var pad_left := pad_w div 2;
+
+                        if cOut < Length(cvtNode.Bias) then sum := cvtNode.Bias[cOut];
+                        
+                        for var ky := 0 to kSize - 1 do begin
+                           var h_in_f := (h_out + pad_top - ky);
+                           if (h_in_f >= 0) and (h_in_f mod st = 0) then begin
+                              var ny := h_in_f div st;
+                              if (ny >= 0) and (ny < dimsIn[dimH]) then begin
+                                 for var kx := 0 to kSize - 1 do begin
+                                    var w_in_f := (w_out + pad_left - kx);
+                                    if (w_in_f >= 0) and (w_in_f mod st = 0) then begin
+                                       var nx := w_in_f div st;
+                                       if (nx >= 0) and (nx < dimsIn[dimW]) then begin
+                                          for var cIn := 0 to inChannels - 1 do begin
+                                             var nIndices := Copy(indices);
+                                             nIndices[dimH] := ny;
+                                             nIndices[dimW] := nx;
+                                             nIndices[High(dimsOut)] := cIn;
+                                             
+                                             // Weight layout: [kSize, kSize, outC, inC] for transpose? 
+                                             // Or [kSize, kSize, inC, outC]?
+                                             // Usually [kSize, kSize, inC, outC] for TConv
+                                             var wIdx := ((ky * kSize + kx) * inChannels + cIn) * outChannels + cOut;
+                                             if wIdx < Length(cvtNode.Weights) then
+                                                sum := sum + nodeBuffers[in1Idx][FlatIndex(nIndices, dimsIn)] * cvtNode.Weights[wIdx];
+                                          end;
+                                       end;
+                                    end;
                                  end;
                               end;
                            end;
@@ -483,7 +566,6 @@ begin
                   var in1Idx := nodeToBufferIdx[node.Inputs[0]];
                   var dwNode := TKCLDepthwiseConv2DNode(node);
                   var kSize := dwNode.KernelSize;
-                  var kHalf := kSize div 2;
                   var st := dwNode.Stride;
                   var dimsIn := nodeDims[in1Idx];
                   var channels := dimsIn[High(dimsIn)];
@@ -497,20 +579,26 @@ begin
                         var dimW := High(dimsOut) - 1;
                         var h_out := indices[dimH];
                         var w_out := indices[dimW];
-                        var h_in_center := h_out * st;
-                        var w_in_center := w_out * st;
+                        
+                        var pad_h := Max(0, (dimsOut[dimH] - 1) * st + kSize - dimsIn[dimH]);
+                        var pad_top := pad_h div 2;
+                        var pad_w := Max(0, (dimsOut[dimW] - 1) * st + kSize - dimsIn[dimW]);
+                        var pad_left := pad_w div 2;
+
+                        var h_in_start := h_out * st - pad_top;
+                        var w_in_start := w_out * st - pad_left;
                         
                         if cIdx < Length(dwNode.Bias) then sum := dwNode.Bias[cIdx];
                         
-                        for var dy := -kHalf to kHalf do begin
-                           for var dx := -kHalf to kHalf do begin
-                              var ny := h_in_center + dy;
-                              var nx := w_in_center + dx;
+                        for var ky := 0 to kSize - 1 do begin
+                           for var kx := 0 to kSize - 1 do begin
+                              var ny := h_in_start + ky;
+                              var nx := w_in_start + kx;
                               if (ny >= 0) and (ny < dimsIn[dimH]) and (nx >= 0) and (nx < dimsIn[dimW]) then begin
                                  var nIndices := Copy(indices);
                                  nIndices[dimH] := ny;
                                  nIndices[dimW] := nx;
-                                 var wIdx := ((dy + kHalf) * kSize + (dx + kHalf)) * channels + cIdx;
+                                 var wIdx := (ky * kSize + kx) * channels + cIdx;
                                  if wIdx < Length(dwNode.Weights) then
                                     sum := sum + nodeBuffers[in1Idx][FlatIndex(nIndices, dimsIn)] * dwNode.Weights[wIdx];
                               end;
@@ -579,7 +667,6 @@ begin
                   var in1Idx := nodeToBufferIdx[node.Inputs[0]];
                   var mpNode := TKCLMaxPool2DNode(node);
                   var kSize := mpNode.KernelSize;
-                  var kHalf := kSize div 2;
                   var st := mpNode.Stride;
                   var dimsIn := nodeDims[in1Idx];
                   
@@ -591,13 +678,19 @@ begin
                         var dimW := High(dimsOut) - 1;
                         var h_out := indices[dimH];
                         var w_out := indices[dimW];
-                        var h_in_center := h_out * st;
-                        var w_in_center := w_out * st;
+                        
+                        var pad_h := Max(0, (dimsOut[dimH] - 1) * st + kSize - dimsIn[dimH]);
+                        var pad_top := pad_h div 2;
+                        var pad_w := Max(0, (dimsOut[dimW] - 1) * st + kSize - dimsIn[dimW]);
+                        var pad_left := pad_w div 2;
 
-                        for var dy := -kHalf to kHalf do begin
-                           for var dx := -kHalf to kHalf do begin
-                              var ny := h_in_center + dy;
-                              var nx := w_in_center + dx;
+                        var h_in_start := h_out * st - pad_top;
+                        var w_in_start := w_out * st - pad_left;
+
+                        for var ky := 0 to kSize - 1 do begin
+                           for var kx := 0 to kSize - 1 do begin
+                              var ny := h_in_start + ky;
+                              var nx := w_in_start + kx;
                               if (ny >= 0) and (ny < dimsIn[dimH]) and (nx >= 0) and (nx < dimsIn[dimW]) then begin
                                  var nIndices := Copy(indices);
                                  nIndices[dimH] := ny;

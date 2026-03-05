@@ -26,7 +26,13 @@ uses
    System.Classes, System.SysUtils, System.Math, dwsUtils;
 
 type
-   EdwsKCLException = class (Exception);
+   EdwsKCLException = class (Exception)
+   public
+      class procedure RaiseSpatialDomainLengthMismatch(AExpected, AActual : Integer);
+      class procedure RaiseSpatialDomainSizeMismatch(ADim, AExpected, AActual : Integer);
+      class procedure RaiseBroadcastingMismatch(ADim, AVal1, AVal2 : Integer);
+      class procedure RaiseIndicesCountMismatch(AExpected, AActual : Integer);
+   end;
 
    TKCLDataType = (dtInt8, dtFloat16, dtFloat32);
 
@@ -179,6 +185,20 @@ type
       property Stride : Integer read FStride;
    end;
 
+   TKCLConv2DTransposeNode = class(TKCLStencilNode)
+   private
+      FWeights : TDoubleDynArray;
+      FBias : TDoubleDynArray;
+      FKernelSize : Integer;
+      FStride : Integer;
+   public
+      constructor Create(const AName : String; const AInputs : TKCLNodes; const AWeights, ABias: TDoubleDynArray; AKernelSize, AStride: Integer); reintroduce;
+      property Weights : TDoubleDynArray read FWeights;
+      property Bias : TDoubleDynArray read FBias;
+      property KernelSize : Integer read FKernelSize;
+      property Stride : Integer read FStride;
+   end;
+
    TKCLDepthwiseConv2DNode = class(TKCLStencilNode)
    private
       FWeights : TDoubleDynArray;
@@ -260,6 +280,28 @@ implementation
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
+{ EdwsKCLException }
+
+class procedure EdwsKCLException.RaiseSpatialDomainLengthMismatch(AExpected, AActual : Integer);
+begin
+   raise EdwsKCLException.CreateFmt('KCL: Output spatial domain length mismatch (node expected %d, buffer has %d).', [AExpected, AActual]);
+end;
+
+class procedure EdwsKCLException.RaiseSpatialDomainSizeMismatch(ADim, AExpected, AActual : Integer);
+begin
+   raise EdwsKCLException.CreateFmt('KCL: Output spatial domain size mismatch at dimension %d (node expected %d, buffer has %d).', [ADim, AExpected, AActual]);
+end;
+
+class procedure EdwsKCLException.RaiseBroadcastingMismatch(ADim, AVal1, AVal2 : Integer);
+begin
+   raise EdwsKCLException.CreateFmt('KCL: Incompatible shapes for broadcasting at dimension %d (got %d and %d).', [ADim, AVal1, AVal2]);
+end;
+
+class procedure EdwsKCLException.RaiseIndicesCountMismatch(AExpected, AActual : Integer);
+begin
+   raise EdwsKCLException.CreateFmt('KCL: Indices count mismatch (expected %d, passed %d).', [AExpected, AActual]);
+end;
+
 // HalfToFloat
 //
 function HalfToFloat(h : THalfFloat) : Single;
@@ -556,6 +598,19 @@ end;
 // ------------------
 
 constructor TKCLConv2DNode.Create(const AName : String; const AInputs : TKCLNodes; const AWeights, ABias: TDoubleDynArray; AKernelSize, AStride: Integer);
+begin
+   inherited Create(AName, AInputs);
+   FWeights := AWeights;
+   FBias := ABias;
+   FKernelSize := AKernelSize;
+   FStride := AStride;
+end;
+
+// ------------------
+// ------------------ TKCLConv2DTransposeNode ------------------
+// ------------------
+
+constructor TKCLConv2DTransposeNode.Create(const AName : String; const AInputs : TKCLNodes; const AWeights, ABias: TDoubleDynArray; AKernelSize, AStride: Integer);
 begin
    inherited Create(AName, AInputs);
    FWeights := AWeights;

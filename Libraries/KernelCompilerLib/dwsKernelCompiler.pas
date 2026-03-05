@@ -19,6 +19,7 @@
 unit dwsKernelCompiler;
 
 {$I dws.inc}
+{$POINTERMATH ON}
 
 interface
 
@@ -26,7 +27,7 @@ uses
    System.Classes, System.SysUtils, System.Variants,
    dwsXPlatform, dwsUtils, dwsStrings,
    dwsFunctions, dwsSymbols, dwsExprs, dwsUnitSymbols, dwsComp,
-   dwsMagicExprs, dwsExprList,
+   dwsMagicExprs, dwsExprList, dwsByteBuffer,
    dwsKernelCompilerCommon, dwsKernelCompilerBackend.Reference
 {$IFDEF WIN64_ASM}
    , dwsKernelCompilerBackend.SSE2
@@ -84,7 +85,23 @@ type
       procedure Execute(info : TProgramInfo; var externalObject : TObject); override;
    end;
 
+   TStridedBufferSetBulkDataMethod = class(TInternalMethod)
+      procedure Execute(info : TProgramInfo; var externalObject : TObject); override;
+   end;
+
    TStridedBufferGetDataMethod = class(TInternalMethod)
+      procedure Execute(info : TProgramInfo; var externalObject : TObject); override;
+   end;
+
+   TStridedBufferGetBulkDataMethod = class(TInternalMethod)
+      procedure Execute(info : TProgramInfo; var externalObject : TObject); override;
+   end;
+
+   TStridedBufferSetArrayDataMethod = class(TInternalMethod)
+      procedure Execute(info : TProgramInfo; var externalObject : TObject); override;
+   end;
+
+   TStridedBufferGetArrayDataMethod = class(TInternalMethod)
       procedure Execute(info : TProgramInfo; var externalObject : TObject); override;
    end;
 
@@ -169,6 +186,10 @@ type
    end;
 
    TKernelAddSoftMaxMethod = class(TInternalMethod)
+      procedure Execute(info : TProgramInfo; var externalObject : TObject); override;
+   end;
+
+   TKernelAddConv2DTransposeMethod = class(TInternalMethod)
       procedure Execute(info : TProgramInfo; var externalObject : TObject); override;
    end;
 
@@ -266,7 +287,7 @@ begin
    
    var len := argIndices.ArrayLength;
    if len <> Length(wrapper.FDescriptor.Dimensions) then
-      raise EdwsKCLException.Create('KCL: Indices count mismatch.');
+      EdwsKCLException.RaiseIndicesCountMismatch(Length(wrapper.FDescriptor.Dimensions), len);
 
    var offset : NativeInt := 0;
    for var i := 0 to len - 1 do begin
@@ -305,6 +326,129 @@ end;
 // ------------------ TStridedBufferGetDataMethod ------------------
 // ------------------
 
+type
+   TProgramInfoCracker = class(TProgramInfo);
+
+procedure TStridedBufferSetBulkDataMethod.Execute(info : TProgramInfo; var externalObject : TObject);
+begin
+   var wrapper := TKCLStridedBufferWrapper(externalObject);
+   var intf : IUnknown := info.ParamAsVariant[0];
+   var buffer : IdwsByteBuffer;
+   if (intf = nil) or (intf.QueryInterface(IdwsByteBuffer, buffer) <> 0) then
+      raise EdwsKCLException.Create('KCL: Argument is not a ByteBuffer.');
+   
+   var bb := TdwsByteBuffer(buffer);
+   
+   var srcOffset := info.ParamAsInteger[1];
+   var elementCount := info.ParamAsInteger[2];
+   var dataType := TKCLDataType(info.ParamAsInteger[3]);
+   
+   var totalBytes : NativeInt := 0;
+   case dataType of
+      dtInt8 : totalBytes := elementCount;
+      dtFloat16 : totalBytes := elementCount * 2;
+      dtFloat32 : totalBytes := elementCount * 4;
+   end;
+   
+   if (srcOffset < 0) or (srcOffset + totalBytes > bb.Count) then
+      raise EdwsKCLException.Create('KCL: ByteBuffer overflow during bulk SetData.');
+
+   // Row-major bulk transfer assumes contiguous target
+   // We'll only support bulk transfer for contiguous buffers for now
+   // Verify if contiguous
+   var totalElements : NativeInt := 1;
+   for var i := 0 to High(wrapper.FDescriptor.Dimensions) do
+      totalElements := totalElements * wrapper.FDescriptor.Dimensions[i];
+   
+   if elementCount > totalElements then
+      raise EdwsKCLException.Create('KCL: elementCount exceeds buffer capacity.');
+
+   var pSrc := PByte(bb.DataPtr) + srcOffset;
+   var pDest := wrapper.FDescriptor.BasePointer;
+
+   if dataType = wrapper.FDescriptor.DataType then begin
+      // Direct memcpy
+      Move(pSrc^, pDest^, totalBytes);
+   end else begin
+      // Fast conversion
+      for var i := 0 to elementCount - 1 do begin
+         var val : Double := 0;
+         case dataType of
+            dtInt8 : val := PInt8(PByte(pSrc) + i)^;
+            dtFloat16 : val := HalfToFloat(PHalfFloat(PByte(pSrc) + i * 2)^);
+            dtFloat32 : val := PSingle(PByte(pSrc) + i * 4)^;
+         end;
+         
+         case wrapper.FDescriptor.DataType of
+            dtInt8 : begin
+               var intVal := Round(val);
+               if intVal < -128 then intVal := -128 else if intVal > 127 then intVal := 127;
+               PInt8(PByte(pDest) + i)^ := intVal;
+            end;
+            dtFloat16 : PHalfFloat(PByte(pDest) + i * 2)^ := FloatToHalf(val);
+            dtFloat32 : PSingle(PByte(pDest) + i * 4)^ := val;
+         end;
+      end;
+   end;
+end;
+
+procedure TStridedBufferGetBulkDataMethod.Execute(info : TProgramInfo; var externalObject : TObject);
+begin
+   var wrapper := TKCLStridedBufferWrapper(externalObject);
+   var intf : IUnknown := info.ParamAsVariant[0];
+   var buffer : IdwsByteBuffer;
+   if (intf = nil) or (intf.QueryInterface(IdwsByteBuffer, buffer) <> 0) then
+      raise EdwsKCLException.Create('KCL: Argument is not a ByteBuffer.');
+   
+   var destOffset := info.ParamAsInteger[1];
+   var elementCount := info.ParamAsInteger[2];
+   var dataType := TKCLDataType(info.ParamAsInteger[3]);
+   
+   var totalBytes : NativeInt := 0;
+   case dataType of
+      dtInt8 : totalBytes := elementCount;
+      dtFloat16 : totalBytes := elementCount * 2;
+      dtFloat32 : totalBytes := elementCount * 4;
+   end;
+   
+   var bb := TdwsByteBuffer(buffer);
+   if (destOffset < 0) or (destOffset + totalBytes > bb.Count) then
+      raise EdwsKCLException.Create('KCL: ByteBuffer overflow during bulk GetData.');
+
+   var totalElements : NativeInt := 1;
+   for var i := 0 to High(wrapper.FDescriptor.Dimensions) do
+      totalElements := totalElements * wrapper.FDescriptor.Dimensions[i];
+   
+   if elementCount > totalElements then
+      raise EdwsKCLException.Create('KCL: elementCount exceeds buffer capacity.');
+
+   var pDest := PByte(bb.DataPtr) + destOffset;
+   var pSrc := wrapper.FDescriptor.BasePointer;
+
+   if dataType = wrapper.FDescriptor.DataType then begin
+      Move(pSrc^, pDest^, totalBytes);
+   end else begin
+      for var i := 0 to elementCount - 1 do begin
+         var val : Double := 0;
+         case wrapper.FDescriptor.DataType of
+            dtInt8 : val := PInt8(PByte(pSrc) + i)^;
+            dtFloat16 : val := HalfToFloat(PHalfFloat(PByte(pSrc) + i * 2)^);
+            dtFloat32 : val := PSingle(PByte(pSrc) + i * 4)^;
+         end;
+         
+         case dataType of
+            dtInt8 : begin
+               var intVal := Round(val);
+               if intVal < -128 then intVal := -128 else if intVal > 127 then intVal := 127;
+               PInt8(PByte(pDest) + i)^ := intVal;
+            end;
+            dtFloat16 : PHalfFloat(PByte(pDest) + i * 2)^ := FloatToHalf(val);
+            dtFloat32 : PSingle(PByte(pDest) + i * 4)^ := val;
+         end;
+      end;
+   end;
+end;
+
 procedure TStridedBufferGetDataMethod.Execute(info : TProgramInfo; var externalObject : TObject);
 begin
    var wrapper := TKCLStridedBufferWrapper(externalObject);
@@ -313,7 +457,7 @@ begin
    
    var len := argIndices.ArrayLength;
    if len <> Length(wrapper.FDescriptor.Dimensions) then
-      raise EdwsKCLException.Create('KCL: Indices count mismatch.');
+      EdwsKCLException.RaiseIndicesCountMismatch(Length(wrapper.FDescriptor.Dimensions), len);
 
    var offset : NativeInt := 0;
    for var i := 0 to len - 1 do begin
@@ -343,6 +487,70 @@ begin
    else
       info.ResultAsFloat := 0;
    end;
+end;
+
+function IsContiguous(const ABuf : TKCLStridedBufferDescriptor) : Boolean;
+var
+   idx : Integer;
+   sz : NativeInt;
+begin
+   sz := 1;
+   case ABuf.DataType of
+      dtInt8 : sz := 1;
+      dtFloat16 : sz := 2;
+      dtFloat32 : sz := 4;
+   end;
+   for idx := High(ABuf.Dimensions) downto 0 do begin
+      if ABuf.Strides[idx] <> sz then Exit(False);
+      sz := sz * ABuf.Dimensions[idx];
+   end;
+   Result := True;
+end;
+
+procedure TStridedBufferSetArrayDataMethod.Execute(info : TProgramInfo; var externalObject : TObject);
+begin
+   var wrapper := TKCLStridedBufferWrapper(externalObject);
+   var argSource : IScriptDynArray := info.ParamAsScriptDynArray[0];
+   var len := argSource.ArrayLength;
+
+   var totalElems : NativeInt := 1;
+   for var i := 0 to High(wrapper.FDescriptor.Dimensions) do
+      totalElems := totalElems * wrapper.FDescriptor.Dimensions[i];
+
+   if len <> totalElems then
+      raise EdwsKCLException.Create('KCL: Buffer size mismatch for array SetData.');
+
+   if wrapper.FDescriptor.DataType <> dtFloat32 then
+      raise EdwsKCLException.Create('KCL: Bulk Pascal array I/O currently supports Float32 only.');
+
+   if not IsContiguous(wrapper.FDescriptor) then
+      raise EdwsKCLException.Create('KCL: Buffer must be contiguous for bulk array I/O.');
+
+   var destPtr := PSingle(wrapper.FDescriptor.BasePointer);
+   for var i := 0 to len - 1 do
+      destPtr[i] := argSource.AsFloat[i];
+end;
+
+procedure TStridedBufferGetArrayDataMethod.Execute(info : TProgramInfo; var externalObject : TObject);
+begin
+   var wrapper := TKCLStridedBufferWrapper(externalObject);
+   var argDest : IScriptDynArray := info.ParamAsScriptDynArray[0];
+
+   var totalElems : NativeInt := 1;
+   for var i := 0 to High(wrapper.FDescriptor.Dimensions) do
+      totalElems := totalElems * wrapper.FDescriptor.Dimensions[i];
+
+   argDest.ArrayLength := totalElems;
+
+   if wrapper.FDescriptor.DataType <> dtFloat32 then
+      raise EdwsKCLException.Create('KCL: Bulk Pascal array I/O currently supports Float32 only.');
+
+   if not IsContiguous(wrapper.FDescriptor) then
+      raise EdwsKCLException.Create('KCL: Buffer must be contiguous for bulk array I/O.');
+
+   var srcPtr := PSingle(wrapper.FDescriptor.BasePointer);
+   for var i := 0 to totalElems - 1 do
+      argDest.AsFloat[i] := srcPtr[i];
 end;
 
 // ------------------
@@ -820,6 +1028,37 @@ end;
 // ------------------ TKernelMarkOutputMethod ------------------
 // ------------------
 
+procedure TKernelAddConv2DTransposeMethod.Execute(info : TProgramInfo; var externalObject : TObject);
+begin
+   var wrapper := TKCLKernelWrapper(externalObject);
+   var in1 := TKCLNodeWrapper(info.ParamAsScriptObj[0].ExternalObject);
+   
+   var argWeights : IScriptDynArray := info.ParamAsScriptDynArray[1];
+   var weightsLen := argWeights.ArrayLength;
+   var weights : TDoubleDynArray;
+   SetLength(weights, weightsLen);
+   for var i := 0 to weightsLen - 1 do
+      weights[i] := argWeights.AsFloat[i];
+      
+   var argBias : IScriptDynArray := info.ParamAsScriptDynArray[2];
+   var biasLen := argBias.ArrayLength;
+   var bias : TDoubleDynArray;
+   SetLength(bias, biasLen);
+   for var i := 0 to biasLen - 1 do
+      bias[i] := argBias.AsFloat[i];
+      
+   var kernelSize := info.ParamAsInteger[3];
+   var stride := info.ParamAsInteger[4];
+   
+   var node := TKCLConv2DTransposeNode.Create('conv2d_transpose', [in1.FNode], weights, bias, kernelSize, stride);
+   wrapper.FKernel.AddNode(node);
+   
+   var classSym := info.FindSymbolInUnits(SYS_KCL_NODE) as TClassSymbol;
+   var scriptObj := TScriptObjInstance.Create(classSym, info.Execution as TdwsProgramExecution);
+   scriptObj.ExternalObject := TKCLNodeWrapper.Create(node);
+   info.ResultAsVariant := scriptObj as IUnknown;
+end;
+
 procedure TKernelMarkOutputMethod.Execute(info : TProgramInfo; var externalObject : TObject);
 begin
    var wrapper := TKCLKernelWrapper(externalObject);
@@ -918,8 +1157,12 @@ begin
    unitTable.AddSymbol(TDynamicArraySymbol.Create('array of ' + SYS_KCL_NODE, clsNode, systemTable.TypInteger));
 
    TStridedBufferCreateMethod.Create(mkConstructor, [], 'Create', ['dataType', SYS_KCL_DATATYPE, 'dimensions', 'array of Integer'], '', clsStridedBuffer, cvPublic, unitTable);
-   TStridedBufferSetDataMethod.Create(mkProcedure, [], 'SetData', ['indices', 'array of Integer', 'value', 'Float'], '', clsStridedBuffer, cvPublic, unitTable);
-   TStridedBufferGetDataMethod.Create(mkFunction, [], 'GetData', ['indices', 'array of Integer'], 'Float', clsStridedBuffer, cvPublic, unitTable);
+   TStridedBufferSetDataMethod.Create(mkProcedure, [], 'SetData', ['indices', 'array of Integer', 'value', 'Float'], '', clsStridedBuffer, cvPublic, unitTable, True);
+   TStridedBufferSetBulkDataMethod.Create(mkProcedure, [], 'SetData', ['source', 'ByteBuffer', 'srcOffset', 'Integer', 'elementCount', 'Integer', 'dataType', SYS_KCL_DATATYPE], '', clsStridedBuffer, cvPublic, unitTable, True);
+   TStridedBufferSetArrayDataMethod.Create(mkProcedure, [], 'SetData', ['source', 'array of Float'], '', clsStridedBuffer, cvPublic, unitTable, True);
+   TStridedBufferGetDataMethod.Create(mkFunction, [], 'GetData', ['indices', 'array of Integer'], 'Float', clsStridedBuffer, cvPublic, unitTable, True);
+   TStridedBufferGetBulkDataMethod.Create(mkProcedure, [], 'GetData', ['dest', 'ByteBuffer', 'destOffset', 'Integer', 'elementCount', 'Integer', 'dataType', SYS_KCL_DATATYPE], '', clsStridedBuffer, cvPublic, unitTable, True);
+   TStridedBufferGetArrayDataMethod.Create(mkProcedure, [], 'GetData', ['var dest', 'array of Float'], '', clsStridedBuffer, cvPublic, unitTable, True);
 
    TKernelCreateMethod.Create(mkConstructor, [], 'Create', [], '', clsKernel, cvPublic, unitTable);
    TKernelAddInputMethod.Create(mkFunction, [], 'AddInput', ['name', 'String'], SYS_KCL_NODE, clsKernel, cvPublic, unitTable);
@@ -937,6 +1180,7 @@ begin
    TKernelAddReLU6Method.Create(mkFunction, [], 'AddReLU6', ['in1', SYS_KCL_NODE], SYS_KCL_NODE, clsKernel, cvPublic, unitTable);
    TKernelAddHardSwishMethod.Create(mkFunction, [], 'AddHardSwish', ['in1', SYS_KCL_NODE], SYS_KCL_NODE, clsKernel, cvPublic, unitTable);
    TKernelAddConv2DMethod.Create(mkFunction, [], 'AddConv2D', ['input', SYS_KCL_NODE, 'weights', 'array of Float', 'bias', 'array of Float', 'kernelSize', 'Integer', 'stride', 'Integer'], SYS_KCL_NODE, clsKernel, cvPublic, unitTable);
+   TKernelAddConv2DTransposeMethod.Create(mkFunction, [], 'AddConv2DTranspose', ['input', SYS_KCL_NODE, 'weights', 'array of Float', 'bias', 'array of Float', 'kernelSize', 'Integer', 'stride', 'Integer'], SYS_KCL_NODE, clsKernel, cvPublic, unitTable);
    TKernelAddDepthwiseConv2DMethod.Create(mkFunction, [], 'AddDepthwiseConv2D', ['input', SYS_KCL_NODE, 'weights', 'array of Float', 'bias', 'array of Float', 'kernelSize', 'Integer', 'stride', 'Integer'], SYS_KCL_NODE, clsKernel, cvPublic, unitTable);
    TKernelAddResizeBilinearMethod.Create(mkFunction, [], 'AddResizeBilinear', ['input', SYS_KCL_NODE, 'targetHeight', 'Integer', 'targetWidth', 'Integer', 'alignCorners=False', 'Boolean', 'halfPixelCenters=False', 'Boolean'], SYS_KCL_NODE, clsKernel, cvPublic, unitTable);
    TKernelAddMaxPool2DMethod.Create(mkFunction, [], 'AddMaxPool2D', ['input', SYS_KCL_NODE, 'kernelSize', 'Integer', 'stride', 'Integer'], SYS_KCL_NODE, clsKernel, cvPublic, unitTable);

@@ -1,0 +1,22 @@
+Starting Bulk I/O Comprehensive Tests...
+Testing DataType: 0 Size: 10
+SUCCESS
+Testing DataType: 0 Size: 1024
+SUCCESS
+Testing DataType: 1 Size: 10
+SUCCESS
+Testing DataType: 1 Size: 1024
+SUCCESS
+Testing DataType: 2 Size: 10
+SUCCESS
+Testing DataType: 2 Size: 1024
+SUCCESS
+Testing Conversion: 2 -> 0
+SUCCESS
+Testing Conversion: 0 -> 2
+SUCCESS
+Testing Conversion: 2 -> 1
+SUCCESS
+Testing Conversion: 1 -> 2
+SUCCESS
+All Bulk I/O tests PASSED
