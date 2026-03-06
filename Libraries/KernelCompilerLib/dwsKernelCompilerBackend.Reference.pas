@@ -44,6 +44,7 @@ implementation
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
+
 // ------------------
 // ------------------ TKCLReferenceBackend ------------------
 // ------------------
@@ -616,17 +617,20 @@ begin
                      IndexFromFlat(i, dimsOut, indices);
                      var val : Double := 0.0;
                      if Length(dimsOut) >= 3 then begin
-                        var dimH := High(dimsOut) - 2;
-                        var dimW := High(dimsOut) - 1;
-                        var h_out := indices[dimH];
-                        var w_out := indices[dimW];
+                        var dimH_out := High(dimsOut) - 2;
+                        var dimW_out := High(dimsOut) - 1;
+                        var dimH_in := High(dimsIn) - 2;
+                        var dimW_in := High(dimsIn) - 1;
+
+                        var h_out := indices[dimH_out];
+                        var w_out := indices[dimW_out];
                         
                         var scaleH, scaleW : Double;
-                        if rsNode.AlignCorners and (dimsOut[dimH] > 1) then scaleH := (dimsIn[dimH] - 1) / (dimsOut[dimH] - 1)
-                        else scaleH := dimsIn[dimH] / dimsOut[dimH];
+                        if rsNode.AlignCorners and (dimsOut[dimH_out] > 1) then scaleH := (dimsIn[dimH_in] - 1) / (dimsOut[dimH_out] - 1)
+                        else scaleH := dimsIn[dimH_in] / dimsOut[dimH_out];
                         
-                        if rsNode.AlignCorners and (dimsOut[dimW] > 1) then scaleW := (dimsIn[dimW] - 1) / (dimsOut[dimW] - 1)
-                        else scaleW := dimsIn[dimW] / dimsOut[dimW];
+                        if rsNode.AlignCorners and (dimsOut[dimW_out] > 1) then scaleW := (dimsIn[dimW_in] - 1) / (dimsOut[dimW_out] - 1)
+                        else scaleW := dimsIn[dimW_in] / dimsOut[dimW_out];
                         
                         var h_in, w_in : Double;
                         if rsNode.HalfPixelCenters then begin
@@ -639,18 +643,33 @@ begin
                         
                         var h0 := Floor(h_in);
                         var h1 := h0 + 1;
-                        if h1 >= dimsIn[dimH] then h1 := h0;
+                        if h1 >= dimsIn[dimH_in] then h1 := h0;
                         var w0 := Floor(w_in);
                         var w1 := w0 + 1;
-                        if w1 >= dimsIn[dimW] then w1 := w0;
+                        if w1 >= dimsIn[dimW_in] then w1 := w0;
                         
                         var fh := h_in - h0;
                         var fw := w_in - w0;
                         
-                        var idx00 := Copy(indices); idx00[dimH] := h0; idx00[dimW] := w0;
-                        var idx01 := Copy(indices); idx01[dimH] := h0; idx01[dimW] := w1;
-                        var idx10 := Copy(indices); idx10[dimH] := h1; idx10[dimW] := w0;
-                        var idx11 := Copy(indices); idx11[dimH] := h1; idx11[dimW] := w1;
+                        var idx00 : TArray<Integer>; SetLength(idx00, Length(dimsIn));
+                        var idx01 : TArray<Integer>; SetLength(idx01, Length(dimsIn));
+                        var idx10 : TArray<Integer>; SetLength(idx10, Length(dimsIn));
+                        var idx11 : TArray<Integer>; SetLength(idx11, Length(dimsIn));
+                        
+                        for var k := 0 to High(idx00) do begin
+                           var outIdx := k + (Length(dimsOut) - Length(dimsIn));
+                           var valIdx := 0;
+                           if (outIdx >= 0) and (outIdx < Length(indices)) then valIdx := indices[outIdx];
+                           idx00[k] := valIdx;
+                           idx01[k] := valIdx;
+                           idx10[k] := valIdx;
+                           idx11[k] := valIdx;
+                        end;
+
+                        idx00[dimH_in] := h0; idx00[dimW_in] := w0;
+                        idx01[dimH_in] := h0; idx01[dimW_in] := w1;
+                        idx10[dimH_in] := h1; idx10[dimW_in] := w0;
+                        idx11[dimH_in] := h1; idx11[dimW_in] := w1;
                         
                         var v00 := nodeBuffers[in1Idx][FlatIndex(idx00, dimsIn)];
                         var v01 := nodeBuffers[in1Idx][FlatIndex(idx01, dimsIn)];

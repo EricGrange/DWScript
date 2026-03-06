@@ -41,6 +41,8 @@ const
    SYS_KCL_NODE = 'TKCLNode';
    SYS_KCL_KERNELCOMPILER = 'TKCLKernelCompiler';
    SYS_KCL_REFERENCECOMPILER = 'TKCLReferenceCompiler';
+   SYS_KCL_SSE2COMPILER = 'TKCLSSE2Compiler';
+   SYS_KCL_JITCOMPILER = 'TKCLJITCompiler';
 
 type
    TKCLStridedBufferWrapper = class
@@ -209,6 +211,16 @@ type
       procedure ExecuteDispatch(AKernel : TKCLKernel; const ABuffers : array of TKCLStridedBufferDescriptor); override;
    end;
 
+   TSSE2CompilerDispatchMethod = class(TKernelCompilerDispatchMethod)
+   protected
+      procedure ExecuteDispatch(AKernel : TKCLKernel; const ABuffers : array of TKCLStridedBufferDescriptor); override;
+   end;
+
+   TJITCompilerDispatchMethod = class(TKernelCompilerDispatchMethod)
+   protected
+      procedure ExecuteDispatch(AKernel : TKCLKernel; const ABuffers : array of TKCLStridedBufferDescriptor); override;
+   end;
+
 procedure RegisterKernelCompilerSymbols(systemTable : TSystemSymbolTable; unitTable : TSymbolTable;
                                        cleanupEvent : TObjectDestroyEvent);
 
@@ -219,6 +231,9 @@ implementation
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
+
+uses dwsDynamicArrays;
+
 // ------------------
 // ------------------ TKCLStridedBufferWrapper ------------------
 // ------------------
@@ -527,6 +542,21 @@ begin
       raise EdwsKCLException.Create('KCL: Buffer must be contiguous for bulk array I/O.');
 
    var destPtr := PSingle(wrapper.FDescriptor.BasePointer);
+
+   var selfObj := argSource.GetSelf;
+   if selfObj is TScriptDynamicNativeFloatArray then begin
+      var nbElems, stride : NativeInt;
+      var srcPtr := TScriptDynamicNativeFloatArray(selfObj).AsPDouble(nbElems, stride);
+      if stride = 1 then begin
+{$IFDEF WIN64_ASM}
+         SSE2_CvtPD2PSContiguous(srcPtr, destPtr, len);
+{$ELSE}
+         for var i := 0 to len - 1 do destPtr[i] := srcPtr[i];
+{$ENDIF}
+         Exit;
+      end;
+   end;
+
    for var i := 0 to len - 1 do
       destPtr[i] := argSource.AsFloat[i];
 end;
@@ -549,6 +579,21 @@ begin
       raise EdwsKCLException.Create('KCL: Buffer must be contiguous for bulk array I/O.');
 
    var srcPtr := PSingle(wrapper.FDescriptor.BasePointer);
+
+   var selfObj := argDest.GetSelf;
+   if selfObj is TScriptDynamicNativeFloatArray then begin
+      var nbElems, stride : NativeInt;
+      var destPtr := TScriptDynamicNativeFloatArray(selfObj).AsPDouble(nbElems, stride);
+      if stride = 1 then begin
+{$IFDEF WIN64_ASM}
+         SSE2_CvtPS2PDContiguous(srcPtr, destPtr, totalElems);
+{$ELSE}
+         for var i := 0 to totalElems - 1 do destPtr[i] := srcPtr[i];
+{$ENDIF}
+         Exit;
+      end;
+   end;
+
    for var i := 0 to totalElems - 1 do
       argDest.AsFloat[i] := srcPtr[i];
 end;
@@ -1074,6 +1119,7 @@ procedure TKernelCompilerDispatchMethod.ExecuteDispatch(AKernel : TKCLKernel; co
 begin
 {$IFDEF WIN64_ASM}
    var backend := TKCLSSE2Backend.Create;
+   backend.AllowJIT := True;
 {$ELSE}
    var backend := TKCLReferenceBackend.Create;
 {$ENDIF}
@@ -1124,6 +1170,44 @@ begin
    end;
 end;
 
+// ------------------
+// ------------------ TSSE2CompilerDispatchMethod ------------------
+// ------------------
+
+procedure TSSE2CompilerDispatchMethod.ExecuteDispatch(AKernel : TKCLKernel; const ABuffers : array of TKCLStridedBufferDescriptor);
+begin
+{$IFDEF WIN64_ASM}
+   var backend := TKCLSSE2Backend.Create;
+   backend.AllowJIT := False;
+   try
+      backend.Execute(AKernel, ABuffers);
+   finally
+      backend.Free;
+   end;
+{$ELSE}
+   raise EdwsKCLException.Create('KCL: SSE2 backend is only supported on Win64');
+{$ENDIF}
+end;
+
+// ------------------
+// ------------------ TJITCompilerDispatchMethod ------------------
+// ------------------
+
+procedure TJITCompilerDispatchMethod.ExecuteDispatch(AKernel : TKCLKernel; const ABuffers : array of TKCLStridedBufferDescriptor);
+begin
+{$IFDEF WIN64_ASM}
+   var backend := TKCLSSE2Backend.Create;
+   backend.AllowJIT := True;
+   try
+      backend.Execute(AKernel, ABuffers);
+   finally
+      backend.Free;
+   end;
+{$ELSE}
+   raise EdwsKCLException.Create('KCL: JIT backend is only supported on Win64');
+{$ENDIF}
+end;
+
 // RegisterKernelCompilerSymbols
 //
 procedure RegisterKernelCompilerSymbols(systemTable : TSystemSymbolTable; unitTable : TSymbolTable;
@@ -1149,6 +1233,10 @@ begin
 
    var clsReferenceCompiler := TClassSymbol.Create(SYS_KCL_REFERENCECOMPILER, clsKernelCompiler);
    unitTable.AddSymbol(clsReferenceCompiler);
+   var clsSSE2Compiler := TClassSymbol.Create(SYS_KCL_SSE2COMPILER, clsKernelCompiler);
+   unitTable.AddSymbol(clsSSE2Compiler);
+   var clsJITCompiler := TClassSymbol.Create(SYS_KCL_JITCOMPILER, clsKernelCompiler);
+   unitTable.AddSymbol(clsJITCompiler);
 
    // Register 'array of TStridedBuffer'
    unitTable.AddSymbol(TDynamicArraySymbol.Create('array of ' + SYS_KCL_STRIDEDBUFFER, clsStridedBuffer, systemTable.TypInteger));
@@ -1191,6 +1279,8 @@ begin
 
    TKernelCompilerDispatchMethod.Create(unitTable, 'Dispatch', ['kernel', SYS_KCL_KERNEL, 'buffers', 'array of ' + SYS_KCL_STRIDEDBUFFER], '', [iffStaticMethod], clsKernelCompiler);
    TReferenceCompilerDispatchMethod.Create(unitTable, 'Dispatch', ['kernel', SYS_KCL_KERNEL, 'buffers', 'array of ' + SYS_KCL_STRIDEDBUFFER], '', [iffStaticMethod], clsReferenceCompiler);
+   TSSE2CompilerDispatchMethod.Create(unitTable, 'Dispatch', ['kernel', SYS_KCL_KERNEL, 'buffers', 'array of ' + SYS_KCL_STRIDEDBUFFER], '', [iffStaticMethod], clsSSE2Compiler);
+   TJITCompilerDispatchMethod.Create(unitTable, 'Dispatch', ['kernel', SYS_KCL_KERNEL, 'buffers', 'array of ' + SYS_KCL_STRIDEDBUFFER], '', [iffStaticMethod], clsJITCompiler);
 end;
 
 end.

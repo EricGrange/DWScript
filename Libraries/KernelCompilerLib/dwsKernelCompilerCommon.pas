@@ -263,6 +263,8 @@ type
       FNodes : TKCLNodes;
       FInputs : TKCLInputNodes;
       FOutputs : TKCLNodes;
+      FGraphVersion : Integer;
+      FOptimizationData : TObject;
    public
       destructor Destroy; override;
       function AddInput(const AName : String) : TKCLInputNode;
@@ -271,6 +273,8 @@ type
       property Nodes : TKCLNodes read FNodes;
       property Inputs : TKCLInputNodes read FInputs;
       property Outputs : TKCLNodes read FOutputs;
+      property GraphVersion : Integer read FGraphVersion;
+      property OptimizationData : TObject read FOptimizationData write FOptimizationData;
    end;
 
 // ------------------------------------------------------------------
@@ -280,6 +284,7 @@ implementation
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
+
 { EdwsKCLException }
 
 class procedure EdwsKCLException.RaiseSpatialDomainLengthMismatch(AExpected, AActual : Integer);
@@ -696,6 +701,7 @@ destructor TKCLKernel.Destroy;
 begin
    for var i := 0 to High(FNodes) do
       FNodes[i].Free;
+   FOptimizationData.Free;
    inherited;
 end;
 
@@ -715,6 +721,7 @@ procedure TKCLKernel.AddNode(ANode : TKCLNode);
 begin
    SetLength(FNodes, Length(FNodes) + 1);
    FNodes[High(FNodes)] := ANode;
+   Inc(FGraphVersion);
 end;
 
 // MarkOutput
@@ -724,6 +731,7 @@ begin
    ANode.OutputIndex := Length(FOutputs);
    SetLength(FOutputs, Length(FOutputs) + 1);
    FOutputs[High(FOutputs)] := ANode;
+   Inc(FGraphVersion);
 end;
 
 end.

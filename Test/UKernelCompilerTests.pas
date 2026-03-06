@@ -33,6 +33,7 @@ type
          procedure ExecutionOptimized;
          procedure ExecutionReference;
          procedure ExecutionSSE2;
+         procedure ExecutionJIT;
    end;
 
 // ------------------------------------------------------------------
@@ -135,6 +136,14 @@ begin
 {$IFDEF WIN64_ASM}
    FCompiler.Config.CompilerOptions:=[coAssertions];
    Execution('TKCLSSE2Compiler');
+{$ENDIF}
+end;
+
+procedure TKernelCompilerTests.ExecutionJIT;
+begin
+{$IFDEF WIN64_ASM}
+   FCompiler.Config.CompilerOptions:=[coAssertions];
+   Execution('TKCLJITCompiler');
 {$ENDIF}
 end;
 

@@ -29,32 +29,61 @@ interface
 
 uses
    System.Classes, System.SysUtils, System.Math, System.Generics.Collections,
-   dwsUtils, dwsKernelCompilerCommon;
+   dwsUtils, dwsKernelCompilerCommon, dwsKernelCompilerBackend.JIT;
 
 type
    TKCLSSE2Backend = class
    private
-      function GetValue(const ABuffer : TKCLStridedBufferDescriptor; const AIndex : TKCLDimensions) : Double;
-      procedure SetValue(const ABuffer : TKCLStridedBufferDescriptor; const AIndex : TKCLDimensions; AValue : Double);
+      // Execution state
+      FKernel : TKCLKernel;
+      FBuffers : TArray<TKCLStridedBufferDescriptor>;
+      FNodeDims : TArray<TKCLDimensions>;
+      FNodeTotalElements : TArray<NativeInt>;
+      FNodeBuffers : TArray<TDoubleDynArray>;
+      FNodeToBufferIdx : TDictionary<TKCLNode, Integer>;
+      FSortedNodes : TList<TKCLNode>;
+      FVisiting : TDictionary<TKCLNode, Boolean>;
+      FVisited : TDictionary<TKCLNode, Boolean>;
+      FAllowJIT : Boolean;
+
+      function GetValue(const ABuf : TKCLStridedBufferDescriptor; const AIdx : TKCLDimensions) : Double;
+      procedure SetValue(const ABuf : TKCLStridedBufferDescriptor; const AIdx : TKCLDimensions; AValue : Double);
+      
+      function FlatIndex(const AIdx : TKCLDimensions; const ADims : TKCLDimensions) : Integer;
+      procedure IndexFromFlat(AFlat : Integer; const ADims : TKCLDimensions; var AIdx : TKCLDimensions);
+      function IsContiguous(const ABuf : TKCLStridedBufferDescriptor) : Boolean;
+      
+      procedure VisitNode(ANode : TKCLNode);
+      procedure VerifyOutputs;
+      
+      procedure ProcessConstant(n : Integer; node : TKCLConstantNode);
+      procedure ProcessInput(n : Integer; node : TKCLInputNode);
+      procedure ProcessConcat(n : Integer; node : TKCLConcatNode);
+      procedure ProcessMap(n : Integer; node : TKCLMapNode);
+      procedure ProcessConv2D(n : Integer; node : TKCLConv2DNode);
+      procedure ProcessConv2DTranspose(n : Integer; node : TKCLConv2DTransposeNode);
+      procedure ProcessDepthwiseConv2D(n : Integer; node : TKCLDepthwiseConv2DNode);
+      procedure ProcessSoftMax(n : Integer; node : TKCLSoftMaxNode);
+      procedure ProcessResizeBilinear(n : Integer; node : TKCLResizeBilinearNode);
+      procedure ProcessMaxPool2D(n : Integer; node : TKCLMaxPool2DNode);
+      procedure ProcessGlobalAvgPool(n : Integer; node : TKCLGlobalAvgPoolNode);
+      procedure ProcessMapFallback(n : Integer; node : TKCLMapNode);
+
    public
+      constructor Create;
       procedure Execute(AKernel : TKCLKernel; const ABuffers : array of TKCLStridedBufferDescriptor);
+      property AllowJIT : Boolean read FAllowJIT write FAllowJIT;
    end;
 
-// ------------------------------------------------------------------
-// ------------------------------------------------------------------
-// ------------------------------------------------------------------
+procedure SSE2_CvtPS2PDContiguous(pSrc : PSingle; pDst : PDouble; count : NativeInt);
+procedure SSE2_CvtPD2PSContiguous(pSrc : PDouble; pDst : PSingle; count : NativeInt);
+
 implementation
-// ------------------------------------------------------------------
-// ------------------------------------------------------------------
-// ------------------------------------------------------------------
 
 type
    PInt8 = ^ShortInt;
-   PDouble = ^Double;
-   PSingle = ^Single;
 
 const
-   // Global constants for SSE2_Exp to ensure RIP-relative access in 64-bit ASM
    G_EXP_LN2_INV : array [0..1] of Double = (1.44269504088896340, 1.44269504088896340);
    G_EXP_LN2_HI  : array [0..1] of Double = (0.693147180369123816, 0.693147180369123816);
    G_EXP_LN2_LO  : array [0..1] of Double = (1.9082149292705877e-10, 1.9082149292705877e-10);
@@ -65,147 +94,170 @@ const
    G_EXP_P4 : array [0..1] of Double = (0.041666666666666664, 0.041666666666666664);
    G_EXP_P5 : array [0..1] of Double = (0.008333333333333333, 0.008333333333333333);
    G_EXP_P6 : array [0..1] of Double = (0.0013888888888888889, 0.0013888888888888889);
-   G_EXP_1023 : array [0..1] of Int64 = (1023, 1023);
    G_EXP_MIN_CLAMP : array [0..1] of Double = (-708.0, -708.0);
    G_EXP_MAX_CLAMP : array [0..1] of Double = (709.0, 709.0);
 
 // ------------------
-// ------------------ SSE2 ASM Helpers (Win64) ------------------
+// ------------------ SSE2 ASM Helpers ------------------
 // ------------------
 
-procedure SSE2_Add(p1, p2, pr : PDouble; count : NativeInt);
+procedure SSE2_Add(p1, p2, pRes : PDouble; count : NativeInt);
 asm
    .noframe
-   test r9, r9; jle @done; mov rax, r9; shr rax, 1; jz @tail
+   test r9, r9; jle @done
+   mov rax, r9; shr rax, 1; jz @tail
 @loop:
    movupd xmm0, [rcx]; movupd xmm1, [rdx]; addpd xmm0, xmm1; movupd [r8], xmm0
    add rcx, 16; add rdx, 16; add r8, 16; dec rax; jnz @loop
 @tail:
-   and r9, 1; jz @done; movsd xmm0, qword ptr [rcx]; addsd xmm0, qword ptr [rdx]; movsd qword ptr [r8], xmm0
+   and r9, 1; jz @done
+   movsd xmm0, [rcx]; addsd xmm0, [rdx]; movsd [r8], xmm0
 @done:
 end;
 
-procedure SSE2_Sub(p1, p2, pr : PDouble; count : NativeInt);
+procedure SSE2_Sub(p1, p2, pRes : PDouble; count : NativeInt);
 asm
    .noframe
-   test r9, r9; jle @done; mov rax, r9; shr rax, 1; jz @tail
+   test r9, r9; jle @done
+   mov rax, r9; shr rax, 1; jz @tail
 @loop:
    movupd xmm0, [rcx]; movupd xmm1, [rdx]; subpd xmm0, xmm1; movupd [r8], xmm0
    add rcx, 16; add rdx, 16; add r8, 16; dec rax; jnz @loop
 @tail:
-   and r9, 1; jz @done; movsd xmm0, qword ptr [rcx]; subsd xmm0, qword ptr [rdx]; movsd qword ptr [r8], xmm0
+   and r9, 1; jz @done
+   movsd xmm0, [rcx]; subsd xmm0, [rdx]; movsd [r8], xmm0
 @done:
 end;
 
-procedure SSE2_Mul(p1, p2, pr : PDouble; count : NativeInt);
+procedure SSE2_Mul(p1, p2, pRes : PDouble; count : NativeInt);
 asm
    .noframe
-   test r9, r9; jle @done; mov rax, r9; shr rax, 1; jz @tail
+   test r9, r9; jle @done
+   mov rax, r9; shr rax, 1; jz @tail
 @loop:
    movupd xmm0, [rcx]; movupd xmm1, [rdx]; mulpd xmm0, xmm1; movupd [r8], xmm0
    add rcx, 16; add rdx, 16; add r8, 16; dec rax; jnz @loop
 @tail:
-   and r9, 1; jz @done; movsd xmm0, qword ptr [rcx]; mulsd xmm0, qword ptr [rdx]; movsd qword ptr [r8], xmm0
+   and r9, 1; jz @done
+   movsd xmm0, [rcx]; mulsd xmm0, [rdx]; movsd [r8], xmm0
 @done:
 end;
 
-procedure SSE2_Div(p1, p2, pr : PDouble; count : NativeInt);
+procedure SSE2_Div(p1, p2, pRes : PDouble; count : NativeInt);
 asm
    .noframe
-   test r9, r9; jle @done; mov rax, r9; shr rax, 1; jz @tail
+   test r9, r9; jle @done
+   mov rax, r9; shr rax, 1; jz @tail
 @loop:
    movupd xmm0, [rcx]; movupd xmm1, [rdx]; divpd xmm0, xmm1; movupd [r8], xmm0
    add rcx, 16; add rdx, 16; add r8, 16; dec rax; jnz @loop
 @tail:
-   and r9, 1; jz @done; movsd xmm0, qword ptr [rcx]; divsd xmm0, qword ptr [rdx]; movsd qword ptr [r8], xmm0
+   and r9, 1; jz @done
+   movsd xmm0, [rcx]; divsd xmm0, [rdx]; movsd [r8], xmm0
 @done:
 end;
 
-procedure SSE2_ReLU(p1, pr : PDouble; count : NativeInt);
+procedure SSE2_ReLU(p1, pRes : PDouble; count : NativeInt);
 asm
    .noframe
-   test r8, r8; jle @done; xorpd xmm1, xmm1; mov rax, r8; shr rax, 1; jz @tail
+   test r8, r8; jle @done
+   xorpd xmm1, xmm1
+   mov rax, r8; shr rax, 1; jz @tail
 @loop:
    movupd xmm0, [rcx]; maxpd xmm0, xmm1; movupd [rdx], xmm0
    add rcx, 16; add rdx, 16; dec rax; jnz @loop
 @tail:
-   and r8, 1; jz @done; movsd xmm0, qword ptr [rcx]; maxsd xmm0, xmm1; movsd qword ptr [rdx], xmm0
+   and r8, 1; jz @done
+   movsd xmm0, [rcx]; maxsd xmm0, xmm1; movsd [rdx], xmm0
 @done:
 end;
 
 procedure SSE2_AddScaled(pSrc : PDouble; scalar : Double; pDst : PDouble; count : NativeInt);
 asm
    .noframe
-   test r9, r9; jle @done; movsd xmm2, xmm1; unpcklpd xmm2, xmm2; mov rax, r9; shr rax, 1; jz @tail
+   test r9, r9; jle @done
+   movsd xmm2, xmm1; unpcklpd xmm2, xmm2
+   mov rax, r9; shr rax, 1; jz @tail
 @loop:
    movupd xmm0, [rcx]; mulpd xmm0, xmm2; movupd xmm3, [r8]; addpd xmm3, xmm0; movupd [r8], xmm3
    add rcx, 16; add r8, 16; dec rax; jnz @loop
 @tail:
-   and r9, 1; jz @done; movsd xmm0, qword ptr [rcx]; mulsd xmm0, xmm2; addsd xmm0, qword ptr [r8]; movsd qword ptr [r8], xmm0
+   and r9, 1; jz @done
+   movsd xmm0, [rcx]; mulsd xmm0, xmm2; addsd xmm0, [r8]; movsd [r8], xmm0
 @done:
 end;
 
 procedure SSE2_MulAdd(pSrc, pWeights, pDst : PDouble; count : NativeInt);
 asm
    .noframe
-   test r9, r9; jle @done; mov rax, r9; shr rax, 1; jz @tail
+   test r9, r9; jle @done
+   mov rax, r9; shr rax, 1; jz @tail
 @loop:
    movupd xmm0, [rcx]; movupd xmm1, [rdx]; mulpd xmm0, xmm1; movupd xmm2, [r8]; addpd xmm2, xmm0; movupd [r8], xmm2
    add rcx, 16; add rdx, 16; add r8, 16; dec rax; jnz @loop
 @tail:
-   and r9, 1; jz @done; movsd xmm0, qword ptr [rcx]; mulsd xmm0, qword ptr [rdx]; addsd xmm0, qword ptr [r8]; movsd qword ptr [r8], xmm0
+   and r9, 1; jz @done
+   movsd xmm0, [rcx]; mulsd xmm0, [rdx]; addsd xmm0, [r8]; movsd [r8], xmm0
 @done:
 end;
 
-procedure SSE2_Max(p1, pr : PDouble; count : NativeInt);
+procedure SSE2_Max(pSrc, pDst : PDouble; count : NativeInt);
 asm
    .noframe
-   test r8, r8; jle @done; mov rax, r8; shr rax, 1; jz @tail
+   test r8, r8; jle @done
+   mov rax, r8; shr rax, 1; jz @tail
 @loop:
-   movupd xmm0, [rcx]; movupd xmm1, [rdx]; maxpd xmm0, xmm1; movupd [rdx], xmm0
+   movupd xmm0, [rcx]; maxpd xmm0, [rdx]; movupd [rdx], xmm0
    add rcx, 16; add rdx, 16; dec rax; jnz @loop
 @tail:
-   and r8, 1; jz @done; movsd xmm0, qword ptr [rcx]; maxsd xmm0, qword ptr [rdx]; movsd qword ptr [rdx], xmm0
+   and r8, 1; jz @done
+   movsd xmm0, [rcx]; maxsd xmm0, [rdx]; movsd [rdx], xmm0
 @done:
 end;
 
 procedure SSE2_Copy(pSrc, pDst : PDouble; count : NativeInt);
 asm
    .noframe
-   test r8, r8; jle @done; mov rax, r8; shr rax, 1; jz @tail
+   test r8, r8; jle @done
+   mov rax, r8; shr rax, 1; jz @tail
 @loop:
    movupd xmm0, [rcx]; movupd [rdx], xmm0
    add rcx, 16; add rdx, 16; dec rax; jnz @loop
 @tail:
-   and r8, 1; jz @done; movsd xmm0, qword ptr [rcx]; movsd qword ptr [rdx], xmm0
+   and r8, 1; jz @done
+   movsd xmm0, [rcx]; movsd [rdx], xmm0
 @done:
 end;
 
 procedure SSE2_CvtPS2PDContiguous(pSrc : PSingle; pDst : PDouble; count : NativeInt);
 asm
    .noframe
-   test r8, r8; jle @done; mov rax, r8; shr rax, 1; jz @tail
+   test r8, r8; jle @done
+   mov rax, r8; shr rax, 1; jz @tail
 @loop:
    cvtps2pd xmm0, qword ptr [rcx]; movupd [rdx], xmm0
    add rcx, 8; add rdx, 16; dec rax; jnz @loop
 @tail:
-   and r8, 1; jz @done; cvtss2sd xmm0, dword ptr [rcx]; movsd qword ptr [rdx], xmm0
+   and r8, 1; jz @done
+   cvtss2sd xmm0, dword ptr [rcx]; movsd [rdx], xmm0
 @done:
 end;
 
 procedure SSE2_CvtPD2PSContiguous(pSrc : PDouble; pDst : PSingle; count : NativeInt);
 asm
    .noframe
-   test r8, r8; jle @done; mov rax, r8; shr rax, 1; jz @tail
+   test r8, r8; jle @done
+   mov rax, r8; shr rax, 1; jz @tail
 @loop:
    cvtpd2ps xmm0, [rcx]; movlps [rdx], xmm0
    add rcx, 16; add rdx, 8; dec rax; jnz @loop
 @tail:
-   and r8, 1; jz @done; cvtsd2ss xmm0, qword ptr [rcx]; movss dword ptr [rdx], xmm0
+   and r8, 1; jz @done
+   cvtsd2ss xmm0, [rcx]; movss dword ptr [rdx], xmm0
 @done:
 end;
 
-procedure SSE2_ReLU6(p1, pr : PDouble; count : NativeInt);
+procedure SSE2_ReLU6(p1, pRes : PDouble; count : NativeInt);
 const
    c0 : array [0..1] of Double = (0.0, 0.0);
    c6 : array [0..1] of Double = (6.0, 6.0);
@@ -218,11 +270,12 @@ asm
    movupd xmm0, [rcx]; maxpd xmm0, xmm1; minpd xmm0, xmm2; movupd [rdx], xmm0
    add rcx, 16; add rdx, 16; dec rax; jnz @loop
 @tail:
-   and r8, 1; jz @done; movsd xmm0, qword ptr [rcx]; maxsd xmm0, xmm1; minsd xmm0, xmm2; movsd qword ptr [rdx], xmm0
+   and r8, 1; jz @done
+   movsd xmm0, [rcx]; maxsd xmm0, xmm1; minsd xmm0, xmm2; movsd [rdx], xmm0
 @done:
 end;
 
-procedure SSE2_HardSigmoid(p1, pr : PDouble; count : NativeInt);
+procedure SSE2_HardSigmoid(p1, pRes : PDouble; count : NativeInt);
 const
    c0 : array [0..1] of Double = (0.0, 0.0);
    c1 : array [0..1] of Double = (1.0, 1.0);
@@ -237,11 +290,12 @@ asm
    movupd xmm0, [rcx]; addpd xmm0, xmm3; mulpd xmm0, xmm4; maxpd xmm0, xmm1; minpd xmm0, xmm2; movupd [rdx], xmm0
    add rcx, 16; add rdx, 16; dec rax; jnz @loop
 @tail:
-   and r8, 1; jz @done; movsd xmm0, qword ptr [rcx]; addsd xmm0, xmm3; mulsd xmm0, xmm4; maxsd xmm0, xmm1; minsd xmm0, xmm2; movsd qword ptr [rdx], xmm0
+   and r8, 1; jz @done
+   movsd xmm0, [rcx]; addsd xmm0, xmm3; mulsd xmm0, xmm4; maxsd xmm0, xmm1; minsd xmm0, xmm2; movsd [rdx], xmm0
 @done:
 end;
 
-procedure SSE2_HardSwish(p1, pr : PDouble; count : NativeInt);
+procedure SSE2_HardSwish(p1, pRes : PDouble; count : NativeInt);
 const
    c0 : array [0..1] of Double = (0.0, 0.0);
    c3 : array [0..1] of Double = (3.0, 3.0);
@@ -253,35 +307,24 @@ asm
    movupd xmm1, [c0]; movupd xmm2, [c3]; movupd xmm3, [c6]; movupd xmm4, [cInv6]
    mov rax, r8; shr rax, 1; jz @tail
 @loop:
-   movupd xmm0, [rcx]; movapd xmm5, xmm0
-   addpd xmm0, xmm2; maxpd xmm0, xmm1; minpd xmm0, xmm3
-   mulpd xmm0, xmm5; mulpd xmm0, xmm4; movupd [rdx], xmm0
+   movupd xmm0, [rcx]; movapd xmm5, xmm0; addpd xmm0, xmm2; maxpd xmm0, xmm1; minpd xmm0, xmm3; mulpd xmm0, xmm5; mulpd xmm0, xmm4; movupd [rdx], xmm0
    add rcx, 16; add rdx, 16; dec rax; jnz @loop
 @tail:
-   and r8, 1; jz @done; movsd xmm0, qword ptr [rcx]; movapd xmm5, xmm0
-   addsd xmm0, xmm2; maxsd xmm0, xmm1; minsd xmm0, xmm3
-   mulsd xmm0, xmm5; mulsd xmm0, xmm4; movsd qword ptr [rdx], xmm0
+   and r8, 1; jz @done
+   movsd xmm0, [rcx]; movapd xmm5, xmm0; addsd xmm0, xmm2; maxsd xmm0, xmm1; minsd xmm0, xmm3; mulsd xmm0, xmm5; mulsd xmm0, xmm4; movsd [rdx], xmm0
 @done:
 end;
 
-procedure SSE2_Exp(p1, pr : PDouble; count : NativeInt);
+procedure SSE2_Exp(p1, pRes : PDouble; count : NativeInt);
 asm
    .noframe
-   test r8, r8
-   jle @done
-   push rsi
-   lea r9, [G_EXP_LN2_INV]
-   lea r10, [G_EXP_LN2_HI]
-   lea r11, [G_EXP_LN2_LO]
-   mov rax, r8
-   shr rax, 1
-   jz @tail
+   test r8, r8; jle @done
+   push rsi; lea r9, [G_EXP_LN2_INV]; lea r10, [G_EXP_LN2_HI]; lea r11, [G_EXP_LN2_LO]
+   mov rax, r8; shr rax, 1; jz @tail
 @loop:
-   movupd xmm0, [rcx]
-   lea rsi, [G_EXP_MIN_CLAMP]; movupd xmm1, [rsi]; maxpd xmm0, xmm1
+   movupd xmm0, [rcx]; lea rsi, [G_EXP_MIN_CLAMP]; movupd xmm1, [rsi]; maxpd xmm0, xmm1
    lea rsi, [G_EXP_MAX_CLAMP]; movupd xmm1, [rsi]; minpd xmm0, xmm1
-   movupd xmm1, [r9]; mulpd xmm1, xmm0
-   cvtpd2dq xmm2, xmm1; cvtdq2pd xmm1, xmm2
+   movupd xmm1, [r9]; mulpd xmm1, xmm0; cvtpd2dq xmm2, xmm1; cvtdq2pd xmm1, xmm2
    movapd xmm3, xmm1; movupd xmm4, [r10]; mulpd xmm3, xmm4; subpd xmm0, xmm3
    movapd xmm3, xmm1; movupd xmm4, [r11]; mulpd xmm3, xmm4; subpd xmm0, xmm3 
    lea rsi, [G_EXP_P6]; movupd xmm3, [rsi]; mulpd xmm3, xmm0
@@ -293,20 +336,15 @@ asm
    lea rsi, [G_EXP_P0]; movupd xmm4, [rsi]; addpd xmm3, xmm4
    movd r9d, xmm2; psrldq xmm2, 4; movd r10d, xmm2
    movsxd rsi, r9d; add rsi, 1023; shl rsi, 52; movq xmm1, rsi
-   movsxd rsi, r10d; add rsi, 1023; shl rsi, 52; movq xmm4, rsi
-   punpcklqdq xmm1, xmm4
-   mulpd xmm3, xmm1
+   movsxd rsi, r10d; add rsi, 1023; shl rsi, 52; movq xmm4, rsi; punpcklqdq xmm1, xmm4; mulpd xmm3, xmm1
    movupd [rdx], xmm3
    lea r9, [G_EXP_LN2_INV]; lea r10, [G_EXP_LN2_HI]; lea r11, [G_EXP_LN2_LO]
    add rcx, 16; add rdx, 16; dec rax; jnz @loop
 @tail:
-   and r8, 1
-   jz @finish
-   movsd xmm0, [rcx]
-   lea rsi, [G_EXP_MIN_CLAMP]; movsd xmm1, [rsi]; maxsd xmm0, xmm1
+   and r8, 1; jz @finish
+   movsd xmm0, [rcx]; lea rsi, [G_EXP_MIN_CLAMP]; movsd xmm1, [rsi]; maxsd xmm0, xmm1
    lea rsi, [G_EXP_MAX_CLAMP]; movsd xmm1, [rsi]; minsd xmm0, xmm1
-   movsd xmm1, [r9]; mulsd xmm1, xmm0
-   cvtsd2si rax, xmm1; cvtsi2sd xmm1, rax
+   movsd xmm1, [r9]; mulsd xmm1, xmm0; cvtsd2si rax, xmm1; cvtsi2sd xmm1, rax
    movsd xmm3, xmm1; mulsd xmm3, [r10]; subsd xmm0, xmm3
    movsd xmm3, xmm1; mulsd xmm3, [r11]; subsd xmm0, xmm3
    lea rsi, [G_EXP_P6]; movsd xmm3, [rsi]; mulsd xmm3, xmm0
@@ -316,36 +354,87 @@ asm
    lea rsi, [G_EXP_P2]; movsd xmm4, [rsi]; addsd xmm3, xmm4; mulsd xmm3, xmm0
    lea rsi, [G_EXP_P1]; movsd xmm4, [rsi]; addsd xmm3, xmm4; mulsd xmm3, xmm0
    lea rsi, [G_EXP_P0]; movsd xmm4, [rsi]; addsd xmm3, xmm4
-   add rax, 1023; shl rax, 52; movq xmm1, rax
-   mulsd xmm3, xmm1; movsd [rdx], xmm3
+   add rax, 1023; shl rax, 52; movq xmm1, rax; mulsd xmm3, xmm1; movsd [rdx], xmm3
 @finish:
    pop rsi
 @done:
 end;
 
-procedure SSE2_Sigmoid(p1, pr : PDouble; count : NativeInt);
-var
-   i : NativeInt;
-   c1 : Double;
+procedure SSE2_Sigmoid(p1, pRes : PDouble; count : NativeInt);
+var i : NativeInt;
 begin
    if count <= 0 then Exit;
-   for i := 0 to count - 1 do
-      pr[i] := -p1[i];
-   SSE2_Exp(pr, pr, count);
-   c1 := 1.0;
-   for i := 0 to count - 1 do
-      pr[i] := 1.0 / (c1 + pr[i]);
+   for i := 0 to count - 1 do pRes[i] := -p1[i];
+   SSE2_Exp(pRes, pRes, count);
+   for i := 0 to count - 1 do pRes[i] := 1.0 / (1.0 + pRes[i]);
 end;
 
-procedure SSE2_MulScaled(pSrc : PDouble; scalar : Double; pDst : PDouble; count : NativeInt);
+procedure SSE2_MulScaled(p1 : PDouble; scale : Double; pRes : PDouble; count : NativeInt);
 asm
    .noframe
-   test r9, r9; jle @done; movsd xmm2, xmm1; unpcklpd xmm2, xmm2; mov rax, r9; shr rax, 1; jz @tail
+   test r9, r9; jle @done
+   unpcklpd xmm1, xmm1
+   mov rax, r9; shr rax, 1; jz @tail
 @loop:
-   movupd xmm0, [rcx]; mulpd xmm0, xmm2; movupd [r8], xmm0
+   movupd xmm0, [rcx]; mulpd xmm0, xmm1; movupd [r8], xmm0
    add rcx, 16; add r8, 16; dec rax; jnz @loop
 @tail:
-   and r9, 1; jz @done; movsd xmm0, qword ptr [rcx]; mulsd xmm0, xmm2; movsd qword ptr [r8], xmm0
+   and r9, 1; jz @done
+   movsd xmm0, [rcx]; mulsd xmm0, xmm1; movsd [r8], xmm0
+@done:
+end;
+
+procedure SSE2_BilinearInterpolate(p00, p01, p10, p11, pRes : PDouble; fw, fh : Double; count : NativeInt);
+asm
+   .noframe
+   mov rax, [rsp+40] // pRes
+   mov r10, [rsp+64] // count
+   test r10, r10; jle @done
+   movsd xmm4, [rsp+48] // fw
+   unpcklpd xmm4, xmm4
+   movsd xmm5, [rsp+56] // fh
+   unpcklpd xmm5, xmm5
+   
+   mov r11, r10; shr r11, 1; jz @tail
+@loop:
+   movupd xmm0, [rcx]    // p00
+   movupd xmm1, [rdx]    // p01
+   subpd xmm1, xmm0      // p01-p00
+   mulpd xmm1, xmm4      // (p01-p00)*fw
+   addpd xmm0, xmm1      // v0 = p00 + (p01-p00)*fw
+   
+   movupd xmm2, [r8]     // p10
+   movupd xmm3, [r9]     // p11
+   subpd xmm3, xmm2      // p11-p10
+   mulpd xmm3, xmm4      // (p11-p10)*fw
+   addpd xmm2, xmm3      // v1 = p10 + (p11-p10)*fw
+   
+   subpd xmm2, xmm0      // v1-v0
+   mulpd xmm2, xmm5      // (v1-v0)*fh
+   addpd xmm0, xmm2      // val = v0 + (v1-v0)*fh
+   
+   movupd [rax], xmm0
+   
+   add rcx, 16; add rdx, 16; add r8, 16; add r9, 16; add rax, 16; dec r11; jnz @loop
+@tail:
+   and r10, 1; jz @done
+   movsd xmm0, [rcx]
+   movsd xmm1, [rdx]
+   subsd xmm1, xmm0
+   mulsd xmm1, xmm4
+   addsd xmm0, xmm1
+   
+   movsd xmm2, [r8]
+   movsd xmm3, [r9]
+   subsd xmm3, xmm2
+   mulsd xmm3, xmm4
+   addsd xmm2, xmm3
+   
+   subsd xmm2, xmm0
+   mulsd xmm2, xmm5
+   addsd xmm0, xmm2
+   
+   movsd [rax], xmm0
 @done:
 end;
 
@@ -353,14 +442,15 @@ procedure SSE2_MaxVector(pSrc : PDouble; count : NativeInt; var maxV : Double);
 asm
    .noframe
    test rdx, rdx; jle @done
-   movsd xmm0, qword ptr [rcx]; unpcklpd xmm0, xmm0
+   movsd xmm0, [rcx]; unpcklpd xmm0, xmm0
    mov rax, rdx; shr rax, 1; jz @tail
 @loop:
-   movupd xmm1, [rcx]; maxpd xmm0, xmm1; add rcx, 16; dec rax; jnz @loop
+   movupd xmm1, [rcx]; maxpd xmm0, xmm1
+   add rcx, 16; dec rax; jnz @loop
 @tail:
    movhlps xmm1, xmm0; maxsd xmm0, xmm1
    and rdx, 1; jz @finish
-   maxsd xmm0, qword ptr [rcx]
+   maxsd xmm0, [rcx]
 @finish:
    movsd [r8], xmm0
 @done:
@@ -369,15 +459,15 @@ end;
 procedure SSE2_SumVector(pSrc : PDouble; count : NativeInt; var sum : Double);
 asm
    .noframe
-   xorpd xmm0, xmm0
-   test rdx, rdx; jle @done
+   xorpd xmm0, xmm0; test rdx, rdx; jle @done
    mov rax, rdx; shr rax, 1; jz @tail
 @loop:
-   movupd xmm1, [rcx]; addpd xmm0, xmm1; add rcx, 16; dec rax; jnz @loop
+   movupd xmm1, [rcx]; addpd xmm0, xmm1
+   add rcx, 16; dec rax; jnz @loop
 @tail:
    movhlps xmm1, xmm0; addsd xmm0, xmm1
    and rdx, 1; jz @finish
-   addsd xmm0, qword ptr [rcx]
+   addsd xmm0, [rcx]
 @finish:
    movsd [r8], xmm0
 @done:
@@ -387,585 +477,624 @@ end;
 // ------------------ TKCLSSE2Backend ------------------
 // ------------------
 
-function TKCLSSE2Backend.GetValue(const ABuffer : TKCLStridedBufferDescriptor; const AIndex : TKCLDimensions) : Double;
+constructor TKCLSSE2Backend.Create;
+begin
+   inherited Create;
+   FAllowJIT := True;
+end;
+
+function TKCLSSE2Backend.GetValue(const ABuf : TKCLStridedBufferDescriptor; const AIdx : TKCLDimensions) : Double;
 var
-   idx : Integer;
-   offset : NativeInt;
-   p : PByte;
+   idx : Integer; offset : NativeInt; p : PByte;
 begin
    offset := 0;
-   for idx := 0 to High(AIndex) do
-      offset := offset + AIndex[idx] * ABuffer.Strides[idx];
-   p := PByte(ABuffer.BasePointer) + offset;
-   case ABuffer.DataType of
+   for idx := 0 to High(AIdx) do offset := offset + AIdx[idx] * ABuf.Strides[idx];
+   p := PByte(ABuf.BasePointer) + offset;
+   case ABuf.DataType of
       dtInt8 : Result := PInt8(p)^;
       dtFloat16 : Result := HalfToFloat(PHalfFloat(p)^);
       dtFloat32 : Result := PSingle(p)^;
-   else Result := 0;
-   end;
+   else Result := 0; end;
 end;
 
-procedure TKCLSSE2Backend.SetValue(const ABuffer : TKCLStridedBufferDescriptor; const AIndex : TKCLDimensions; AValue : Double);
+procedure TKCLSSE2Backend.SetValue(const ABuf : TKCLStridedBufferDescriptor; const AIdx : TKCLDimensions; AValue : Double);
 var
-   idx : Integer;
-   offset : NativeInt;
-   p : PByte;
+   idx : Integer; offset : NativeInt; p : PByte;
 begin
    offset := 0;
-   for idx := 0 to High(AIndex) do
-      offset := offset + AIndex[idx] * ABuffer.Strides[idx];
-   p := PByte(ABuffer.BasePointer) + offset;
-   case ABuffer.DataType of
+   for idx := 0 to High(AIdx) do offset := offset + AIdx[idx] * ABuf.Strides[idx];
+   p := PByte(ABuf.BasePointer) + offset;
+   case ABuf.DataType of
       dtInt8 : PInt8(p)^ := Max(-128, Min(127, Round(AValue)));
       dtFloat16 : PHalfFloat(p)^ := FloatToHalf(AValue);
       dtFloat32 : PSingle(p)^ := AValue;
    end;
 end;
 
+function TKCLSSE2Backend.FlatIndex(const AIdx, ADims : TKCLDimensions) : Integer;
+var idx, mult : Integer;
+begin
+   Result := 0; mult := 1;
+   for idx := High(AIdx) downto 0 do begin Result := Result + AIdx[idx] * mult; mult := mult * ADims[idx]; end;
+end;
+
+procedure TKCLSSE2Backend.IndexFromFlat(AFlat : Integer; const ADims : TKCLDimensions; var AIdx : TKCLDimensions);
+var idx : Integer;
+begin
+   if Length(AIdx) <> Length(ADims) then SetLength(AIdx, Length(ADims));
+   for idx := High(AIdx) downto 0 do begin
+      if ADims[idx] > 0 then begin AIdx[idx] := AFlat mod ADims[idx]; AFlat := AFlat div ADims[idx]; end else AIdx[idx] := 0;
+   end;
+end;
+
+function TKCLSSE2Backend.IsContiguous(const ABuf : TKCLStridedBufferDescriptor) : Boolean;
+var idx : Integer; sz : NativeInt;
+begin
+   sz := 1;
+   case ABuf.DataType of dtInt8 : sz := 1; dtFloat16 : sz := 2; dtFloat32 : sz := 4; end;
+   for idx := High(ABuf.Dimensions) downto 0 do begin if ABuf.Strides[idx] <> sz then Exit(False); sz := sz * ABuf.Dimensions[idx]; end;
+   Result := True;
+end;
+
+procedure TKCLSSE2Backend.VisitNode(ANode : TKCLNode);
+var idx : Integer;
+begin
+   if FVisited.ContainsKey(ANode) then Exit;
+   if FVisiting.ContainsKey(ANode) then raise EdwsKCLException.Create('KCL: Cycle');
+   FVisiting.Add(ANode, True);
+   for idx := 0 to High(ANode.Inputs) do VisitNode(ANode.Inputs[idx]);
+   FVisiting.Remove(ANode);
+   FVisited.Add(ANode, True);
+   FSortedNodes.Add(ANode);
+end;
+
+procedure TKCLSSE2Backend.VerifyOutputs;
+var
+   j, i, outIdx : Integer;
+   outNode : TKCLNode;
+   outBuf : TKCLStridedBufferDescriptor;
+begin
+   for j := 0 to High(FKernel.Outputs) do begin
+      outNode := FKernel.Outputs[j];
+      outIdx := FNodeToBufferIdx[outNode];
+      outBuf := FBuffers[Length(FKernel.Inputs) + j];
+      if Length(FNodeDims[outIdx]) <> Length(outBuf.Dimensions) then
+         EdwsKCLException.RaiseSpatialDomainLengthMismatch(Length(FNodeDims[outIdx]), Length(outBuf.Dimensions));
+      for i := 0 to High(FNodeDims[outIdx]) do
+         if FNodeDims[outIdx][i] <> outBuf.Dimensions[i] then
+            EdwsKCLException.RaiseSpatialDomainSizeMismatch(i, FNodeDims[outIdx][i], outBuf.Dimensions[i]);
+   end;
+end;
+
+procedure TKCLSSE2Backend.ProcessConstant(n : Integer; node : TKCLConstantNode);
+var i : Integer;
+begin
+   FNodeDims[n] := Copy(node.Dimensions);
+   FNodeTotalElements[n] := 1;
+   for i := 0 to High(FNodeDims[n]) do FNodeTotalElements[n] := FNodeTotalElements[n] * FNodeDims[n][i];
+   SetLength(FNodeBuffers[n], FNodeTotalElements[n]);
+   for i := 0 to FNodeTotalElements[n]-1 do FNodeBuffers[n][i] := node.Value;
+end;
+
+procedure TKCLSSE2Backend.ProcessInput(n : Integer; node : TKCLInputNode);
+var
+   dIn : TKCLStridedBufferDescriptor;
+   i : Integer;
+   lIdx : TKCLDimensions;
+begin
+   dIn := FBuffers[node.InputIndex];
+   FNodeDims[n] := Copy(dIn.Dimensions);
+   FNodeTotalElements[n] := 1;
+   for i := 0 to High(FNodeDims[n]) do FNodeTotalElements[n] := FNodeTotalElements[n] * FNodeDims[n][i];
+   SetLength(FNodeBuffers[n], FNodeTotalElements[n]);
+   if (dIn.DataType = dtFloat32) and IsContiguous(dIn) then
+      SSE2_CvtPS2PDContiguous(PSingle(dIn.BasePointer), Pointer(FNodeBuffers[n]), FNodeTotalElements[n])
+   else begin
+      SetLength(lIdx, Length(FNodeDims[n]));
+      for i := 0 to FNodeTotalElements[n]-1 do begin IndexFromFlat(i, FNodeDims[n], lIdx); FNodeBuffers[n][i] := GetValue(dIn, lIdx); end;
+   end;
+end;
+
+procedure TKCLSSE2Backend.ProcessConcat(n : Integer; node : TKCLConcatNode);
+var
+   axis, i, k, inputIdx, inIdx, inC, outC, curDimOffset : Integer;
+   dimsOut, dimsIn, lIdx, idxOut : TKCLDimensions;
+   totalOther : NativeInt;
+   pRes, pSrc : PDouble;
+begin
+   axis := node.Axis;
+   dimsOut := Copy(FNodeDims[FNodeToBufferIdx[node.Inputs[0]]]);
+   for k := 1 to High(node.Inputs) do dimsOut[axis] := dimsOut[axis] + FNodeDims[FNodeToBufferIdx[node.Inputs[k]]][axis];
+   FNodeDims[n] := dimsOut;
+   FNodeTotalElements[n] := 1;
+   for i := 0 to High(FNodeDims[n]) do FNodeTotalElements[n] := FNodeTotalElements[n] * FNodeDims[n][i];
+   SetLength(FNodeBuffers[n], FNodeTotalElements[n]);
+
+   if axis = High(dimsOut) then begin
+      totalOther := 1; for k := 0 to High(dimsOut)-1 do totalOther := totalOther * dimsOut[k];
+      outC := dimsOut[High(dimsOut)];
+      for k := 0 to totalOther - 1 do begin
+         pRes := PDouble(Pointer(FNodeBuffers[n])) + (k * outC);
+         curDimOffset := 0;
+         for inputIdx := 0 to High(node.Inputs) do begin
+            inIdx := FNodeToBufferIdx[node.Inputs[inputIdx]];
+            inC := FNodeDims[inIdx][High(dimsOut)];
+            pSrc := PDouble(Pointer(FNodeBuffers[inIdx])) + (k * inC);
+            System.Move(pSrc^, (pRes + curDimOffset)^, inC * SizeOf(Double));
+            curDimOffset := curDimOffset + inC;
+         end;
+      end;
+   end else begin
+      curDimOffset := 0;
+      for inputIdx := 0 to High(node.Inputs) do begin
+         inIdx := FNodeToBufferIdx[node.Inputs[inputIdx]];
+         dimsIn := FNodeDims[inIdx]; SetLength(lIdx, Length(dimsIn));
+         for i := 0 to FNodeTotalElements[inIdx]-1 do begin
+            IndexFromFlat(i, dimsIn, lIdx); idxOut := Copy(lIdx); idxOut[axis] := idxOut[axis] + curDimOffset;
+            FNodeBuffers[n][FlatIndex(idxOut, dimsOut)] := FNodeBuffers[inIdx][i];
+         end;
+         curDimOffset := curDimOffset + dimsIn[axis];
+      end;
+   end;
+end;
+
+procedure TKCLSSE2Backend.ProcessMap(n : Integer; node : TKCLMapNode);
+var
+   in1, in2, i : Integer;
+   total : NativeInt;
+   p1, p2, pRes : PDouble;
+   args : TDoubleDynArray;
+   dims : TKCLDimensions;
+begin
+   in1 := FNodeToBufferIdx[node.Inputs[0]];
+   dims := Copy(FNodeDims[in1]);
+
+   if (Length(node.Inputs) > 1) and not (node is TKCLConcatNode) then begin
+      var in2Idx := FNodeToBufferIdx[node.Inputs[1]];
+      var dims2 := FNodeDims[in2Idx];
+      if Length(dims) < Length(dims2) then begin
+         var oldDims := dims;
+         SetLength(dims, Length(dims2));
+         for i := 0 to High(dims) do dims[i] := 1;
+         for i := 0 to High(oldDims) do dims[High(dims) - High(oldDims) + i] := oldDims[i];
+      end;
+      for i := 0 to High(dims) do begin
+         var d2Idx := i - (Length(dims) - Length(dims2));
+         var d2 := 1; if d2Idx >= 0 then d2 := dims2[d2Idx];
+         if (dims[i] <> d2) and (dims[i] <> 1) and (d2 <> 1) then
+            EdwsKCLException.RaiseBroadcastingMismatch(i, dims[i], d2);
+         dims[i] := Max(dims[i], d2);
+      end;
+   end;
+
+   FNodeDims[n] := dims;
+   total := 1; for i := 0 to High(dims) do total := total * dims[i];
+   FNodeTotalElements[n] := total;
+   SetLength(FNodeBuffers[n], total);
+
+   p1 := PDouble(Pointer(FNodeBuffers[in1])); pRes := PDouble(Pointer(FNodeBuffers[n]));
+
+   if Length(node.Inputs) = 1 then begin
+      if node is TKCLReLUNode then SSE2_ReLU(p1, pRes, total)
+      else if node is TKCLSigmoidNode then SSE2_Sigmoid(p1, pRes, total)
+      else if node is TKCLReLU6Node then SSE2_ReLU6(p1, pRes, total)
+      else if node is TKCLHardSwishNode then SSE2_HardSwish(p1, pRes, total)
+      else if node is TKCLHardSigmoidNode then SSE2_HardSigmoid(p1, pRes, total)
+      else if node is TKCLExpNode then SSE2_Exp(p1, pRes, total)
+      else begin
+         SetLength(args, 2); args[1] := 0;
+         for i := 0 to total-1 do begin args[0] := FNodeBuffers[in1][i]; pRes[i] := node.Eval(args); end;
+      end;
+   end else begin
+      in2 := FNodeToBufferIdx[node.Inputs[1]];
+      if FNodeTotalElements[in2] = total then begin
+         p2 := PDouble(Pointer(FNodeBuffers[in2]));
+         if node is TKCLAddNode then SSE2_Add(p1, p2, pRes, total)
+         else if node is TKCLSubNode then SSE2_Sub(p1, p2, pRes, total)
+         else if node is TKCLMulNode then SSE2_Mul(p1, p2, pRes, total)
+         else if node is TKCLDivNode then SSE2_Div(p1, p2, pRes, total)
+         else begin
+            SetLength(args, 2);
+            for i := 0 to total-1 do begin args[0] := FNodeBuffers[in1][i]; args[1] := FNodeBuffers[in2][i]; pRes[i] := node.Eval(args); end;
+         end;
+      end else ProcessMapFallback(n, node);
+   end;
+end;
+
+procedure TKCLSSE2Backend.ProcessConv2D(n : Integer; node : TKCLConv2DNode);
+var
+   in1, inC, outC, inH, inW, outH, outW, hO, wO, ny, nx, stepY, stepX, k, i : Integer;
+   dims : TKCLDimensions;
+   pInput, pRes, pW, pB, pROut, pWBase : PDouble;
+   pad_h, pad_top, pad_w, pad_left, h_in_start, w_in_start : Integer;
+begin
+   in1 := FNodeToBufferIdx[node.Inputs[0]];
+   dims := Copy(FNodeDims[in1]);
+   if Length(dims) >= 3 then begin
+      dims[High(dims)-2] := (dims[High(dims)-2] + node.Stride - 1) div node.Stride;
+      dims[High(dims)-1] := (dims[High(dims)-1] + node.Stride - 1) div node.Stride;
+      dims[High(dims)] := Length(node.Bias);
+   end;
+   FNodeDims[n] := dims;
+   FNodeTotalElements[n] := 1; for i := 0 to High(dims) do FNodeTotalElements[n] := FNodeTotalElements[n] * dims[i];
+   SetLength(FNodeBuffers[n], FNodeTotalElements[n]);
+
+   inC := FNodeDims[in1][High(dims)]; outC := dims[High(dims)];
+   inH := FNodeDims[in1][High(dims)-2]; inW := FNodeDims[in1][High(dims)-1];
+   outH := dims[High(dims)-2]; outW := dims[High(dims)-1];
+   pInput := PDouble(Pointer(FNodeBuffers[in1])); pRes := PDouble(Pointer(FNodeBuffers[n]));
+   pW := PDouble(node.Weights); pB := PDouble(node.Bias);
+
+   if FAllowJIT and (node.KernelSize = 1) and (node.Stride = 1) then begin
+      if TKCLWin64JITBackend.Execute(FKernel, node, pInput, pRes, pW, pB, FNodeTotalElements[n] div outC, inC, outC) then Exit;
+   end;
+
+   if Length(node.Bias) <> outC then
+      raise Exception.CreateFmt('Bias length mismatch: expected %d, got %d', [outC, Length(node.Bias)]);
+   if Length(node.Weights) <> node.KernelSize * node.KernelSize * inC * outC then
+      raise Exception.CreateFmt('Weights length mismatch: expected %d, got %d', [node.KernelSize * node.KernelSize * inC * outC, Length(node.Weights)]);
+
+   for i := 0 to (FNodeTotalElements[n] div outC) - 1 do SSE2_Copy(pB, pRes + (i * outC), outC);
+   pad_h := Max(0, (outH - 1) * node.Stride + node.KernelSize - inH); pad_top := pad_h div 2;
+   pad_w := Max(0, (outW - 1) * node.Stride + node.KernelSize - inW); pad_left := pad_w div 2;
+
+   for hO := 0 to outH - 1 do begin
+      h_in_start := hO * node.Stride - pad_top;
+      for wO := 0 to outW - 1 do begin
+         w_in_start := wO * node.Stride - pad_left; pROut := pRes + (hO * outW + wO) * outC;
+         for stepY := 0 to node.KernelSize - 1 do begin
+            ny := h_in_start + stepY;
+            if (ny >= 0) and (ny < inH) then begin
+               for stepX := 0 to node.KernelSize - 1 do begin
+                  nx := w_in_start + stepX;
+                  if (nx >= 0) and (nx < inW) then begin
+                     pWBase := pW + ((stepY * node.KernelSize + stepX) * inC * outC);
+                     for k := 0 to inC - 1 do SSE2_AddScaled(pWBase + (k * outC), (pInput + (ny * inW * inC) + (nx * inC) + k)^, pROut, outC);
+                  end;
+               end;
+            end;
+         end;
+      end;
+   end;
+end;
+
+procedure TKCLSSE2Backend.ProcessConv2DTranspose(n : Integer; node : TKCLConv2DTransposeNode);
+var
+   in1Idx, inC, outC, inH, inW, outH, outW, h_out, w_out, ky, kx, cIn, cOut, ny, nx : Integer;
+   pad_h, pad_top, pad_w, pad_left, h_in_f, w_in_f : Integer;
+   dimsIn, dimsOut, indices, nIndices : TKCLDimensions;
+   sum : Double;
+   pWeights : PDouble;
+   wIdx : NativeInt;
+begin
+   in1Idx := FNodeToBufferIdx[node.Inputs[0]];
+   dimsIn := FNodeDims[in1Idx];
+   dimsOut := Copy(dimsIn);
+   if Length(dimsOut) >= 3 then begin
+      dimsOut[High(dimsOut)-2] := dimsOut[High(dimsOut)-2] * node.Stride;
+      dimsOut[High(dimsOut)-1] := dimsOut[High(dimsOut)-1] * node.Stride;
+      dimsOut[High(dimsOut)] := Length(node.Bias);
+   end;
+   FNodeDims[n] := dimsOut;
+   FNodeTotalElements[n] := 1; for var i := 0 to High(dimsOut) do FNodeTotalElements[n] := FNodeTotalElements[n] * dimsOut[i];
+   SetLength(FNodeBuffers[n], FNodeTotalElements[n]);
+
+   inC := dimsIn[High(dimsIn)]; outC := dimsOut[High(dimsOut)];
+   inH := dimsIn[High(dimsIn)-2]; inW := dimsIn[High(dimsIn)-1];
+   outH := dimsOut[High(dimsOut)-2]; outW := dimsOut[High(dimsOut)-1];
+   
+   pWeights := PDouble(node.Weights);
+
+   pad_h := Max(0, (inH - 1) * node.Stride + node.KernelSize - outH);
+   pad_top := pad_h div 2;
+   pad_w := Max(0, (inW - 1) * node.Stride + node.KernelSize - outW);
+   pad_left := pad_w div 2;
+
+   SetLength(indices, Length(dimsOut));
+   for var i := 0 to FNodeTotalElements[n] - 1 do begin
+      IndexFromFlat(i, dimsOut, indices);
+      sum := 0.0;
+      if Length(dimsOut) >= 3 then begin
+         cOut := indices[High(dimsOut)];
+         h_out := indices[High(dimsOut)-2];
+         w_out := indices[High(dimsOut)-1];
+
+         if cOut < Length(node.Bias) then sum := node.Bias[cOut];
+
+         for ky := 0 to node.KernelSize - 1 do begin
+            h_in_f := (h_out + pad_top - ky);
+            if (h_in_f >= 0) and (h_in_f mod node.Stride = 0) then begin
+               ny := h_in_f div node.Stride;
+               if (ny >= 0) and (ny < inH) then begin
+                  for kx := 0 to node.KernelSize - 1 do begin
+                     w_in_f := (w_out + pad_left - kx);
+                     if (w_in_f >= 0) and (w_in_f mod node.Stride = 0) then begin
+                        nx := w_in_f div node.Stride;
+                        if (nx >= 0) and (nx < inW) then begin
+                           for cIn := 0 to inC - 1 do begin
+                              nIndices := Copy(indices);
+                              nIndices[High(dimsIn)-2] := ny;
+                              nIndices[High(dimsIn)-1] := nx;
+                              nIndices[High(dimsIn)] := cIn;
+                              
+                              wIdx := NativeInt(((ky * node.KernelSize + kx) * inC + cIn)) * outC + cOut;
+                              sum := sum + FNodeBuffers[in1Idx][FlatIndex(nIndices, dimsIn)] * pWeights[wIdx];
+                           end;
+                        end;
+                     end;
+                  end;
+               end;
+            end;
+         end;
+      end;
+      FNodeBuffers[n][i] := sum;
+   end;
+end;
+
+procedure TKCLSSE2Backend.ProcessDepthwiseConv2D(n : Integer; node : TKCLDepthwiseConv2DNode);
+var
+   in1, inC, outH, outW, inH, inW, hO, wO, ny, nx, stepY, stepX, i : Integer;
+   dims : TKCLDimensions;
+   pInput, pRes, pW, pB, pROut : PDouble;
+   pad_h, pad_top, pad_w, pad_left, h_in_start, w_in_start : Integer;
+begin
+   in1 := FNodeToBufferIdx[node.Inputs[0]];
+   dims := Copy(FNodeDims[in1]);
+   if Length(dims) >= 3 then begin
+      dims[High(dims)-2] := (dims[High(dims)-2] + node.Stride - 1) div node.Stride;
+      dims[High(dims)-1] := (dims[High(dims)-1] + node.Stride - 1) div node.Stride;
+   end;
+   FNodeDims[n] := dims;
+   FNodeTotalElements[n] := 1; for i := 0 to High(dims) do FNodeTotalElements[n] := FNodeTotalElements[n] * dims[i];
+   SetLength(FNodeBuffers[n], FNodeTotalElements[n]);
+   inC := FNodeDims[in1][High(dims)]; outH := dims[High(dims)-2]; outW := dims[High(dims)-1];
+   inH := FNodeDims[in1][High(dims)-2]; inW := FNodeDims[in1][High(dims)-1];
+   pInput := PDouble(Pointer(FNodeBuffers[in1])); pRes := PDouble(Pointer(FNodeBuffers[n]));
+   pW := PDouble(node.Weights); pB := PDouble(node.Bias);
+   for i := 0 to (FNodeTotalElements[n] div inC) - 1 do SSE2_Copy(pB, pRes + (i * inC), inC);
+   pad_h := Max(0, (outH - 1) * node.Stride + node.KernelSize - inH); pad_top := pad_h div 2;
+   pad_w := Max(0, (outW - 1) * node.Stride + node.KernelSize - inW); pad_left := pad_w div 2;
+   for hO := 0 to outH - 1 do begin
+      h_in_start := hO * node.Stride - pad_top;
+      for wO := 0 to outW - 1 do begin
+         w_in_start := wO * node.Stride - pad_left; pROut := pRes + (hO * outW + wO) * inC;
+         for stepY := 0 to node.KernelSize - 1 do begin
+            ny := h_in_start + stepY;
+            if (ny >= 0) and (ny < inH) then begin
+               for stepX := 0 to node.KernelSize - 1 do begin
+                  nx := w_in_start + stepX;
+                  if (nx >= 0) and (nx < inW) then SSE2_MulAdd(pInput + (ny * inW * inC) + (nx * inC), pW + ((stepY * node.KernelSize + stepX) * inC), pROut, inC);
+               end;
+            end;
+         end;
+      end;
+   end;
+end;
+
+procedure TKCLSSE2Backend.ProcessSoftMax(n : Integer; node : TKCLSoftMaxNode);
+var
+   in1, axis, axisSize, k, loopA, i : Integer;
+   dims : TKCLDimensions;
+   totalOther : NativeInt;
+   p1, pRes : PDouble;
+   maxV, sumE, vVal, val : Double;
+   baseI : TKCLDimensions;
+begin
+   in1 := FNodeToBufferIdx[node.Inputs[0]]; dims := Copy(FNodeDims[in1]);
+   FNodeDims[n] := dims; FNodeTotalElements[n] := FNodeTotalElements[in1]; SetLength(FNodeBuffers[n], FNodeTotalElements[n]);
+   axis := node.Axis; axisSize := dims[axis];
+   totalOther := 1; for k := 0 to High(dims) do if k<>axis then totalOther := totalOther * dims[k];
+   if axis = High(dims) then begin
+      for i := 0 to totalOther - 1 do begin
+         p1 := PDouble(Pointer(FNodeBuffers[in1])) + (i * axisSize); pRes := PDouble(Pointer(FNodeBuffers[n])) + (i * axisSize);
+         SSE2_MaxVector(p1, axisSize, maxV);
+         for loopA := 0 to axisSize - 1 do pRes[loopA] := p1[loopA] - maxV;
+         SSE2_Exp(pRes, pRes, axisSize); SSE2_SumVector(pRes, axisSize, sumE);
+         vVal := 1.0 / sumE; for loopA := 0 to axisSize-1 do pRes[loopA] := pRes[loopA] * vVal;
+      end;
+   end else begin
+      SetLength(baseI, Length(dims));
+      for i := 0 to totalOther-1 do begin
+         var tempVal := i; 
+         for k := High(dims) downto 0 do 
+            if k <> axis then begin baseI[k] := tempVal mod dims[k]; tempVal := tempVal div dims[k]; end 
+            else baseI[k] := 0;
+         maxV := -1e30;
+         for loopA := 0 to axisSize-1 do begin 
+            baseI[axis] := loopA; val := FNodeBuffers[in1][FlatIndex(baseI, dims)]; 
+            if val > maxV then maxV := val; 
+         end;
+         sumE := 0;
+         for loopA := 0 to axisSize-1 do begin 
+            baseI[axis] := loopA; sumE := sumE + Exp(FNodeBuffers[in1][FlatIndex(baseI, dims)] - maxV); 
+         end;
+         for loopA := 0 to axisSize-1 do begin 
+            baseI[axis] := loopA; FNodeBuffers[n][FlatIndex(baseI, dims)] := Exp(FNodeBuffers[in1][FlatIndex(baseI, dims)] - maxV) / sumE; 
+         end;
+      end;
+   end;
+end;
+
+procedure TKCLSSE2Backend.ProcessResizeBilinear(n : Integer; node : TKCLResizeBilinearNode);
+var
+   i, in1, inC, inH, inW, outH, outW, k, hO, wO, h0, h1, w0, w1, rank : Integer;
+   dims, dOutDims, lIdx : TKCLDimensions;
+   pInput, pRes, pROut, pInBaseH0, pInBaseH1 : PDouble;
+   scaleH, scaleW, h_in, w_in, fh, fw : Double;
+   totalOther : NativeInt;
+begin
+   in1 := FNodeToBufferIdx[node.Inputs[0]]; dims := FNodeDims[in1];
+   dOutDims := Copy(dims);
+   rank := Length(dims);
+   if rank >= 3 then begin
+      dOutDims[rank-3] := node.TargetHeight;
+      dOutDims[rank-2] := node.TargetWidth;
+   end;
+   FNodeDims[n] := dOutDims; FNodeTotalElements[n] := 1; for i := 0 to High(dOutDims) do FNodeTotalElements[n] := FNodeTotalElements[n] * dOutDims[i];
+   SetLength(FNodeBuffers[n], FNodeTotalElements[n]);
+
+   if rank >= 3 then begin
+      inC := dims[rank-1]; inH := dims[rank-3]; inW := dims[rank-2];
+      outH := dOutDims[rank-3]; outW := dOutDims[rank-2];
+      pInput := PDouble(Pointer(FNodeBuffers[in1])); pRes := PDouble(Pointer(FNodeBuffers[n]));
+      
+      if node.AlignCorners and (outH > 1) then scaleH := (inH - 1) / (outH - 1) else scaleH := inH / outH;
+      if node.AlignCorners and (outW > 1) then scaleW := (inW - 1) / (outW - 1) else scaleW := inW / outW;
+      
+      totalOther := 1; for k := 0 to rank - 4 do totalOther := totalOther * dOutDims[k];
+      
+      for k := 0 to totalOther - 1 do begin
+         var pInBaseBatch := pInput + (k * inH * inW * inC); var pResBaseBatch := pRes + (k * outH * outW * inC);
+         for hO := 0 to outH - 1 do begin
+            if node.HalfPixelCenters then h_in := Max(0.0, (hO + 0.5) * scaleH - 0.5) else h_in := hO * scaleH;
+            h0 := Floor(h_in); h1 := Min(h0 + 1, inH - 1); fh := h_in - h0;
+            pInBaseH0 := pInBaseBatch + (h0 * inW * inC); pInBaseH1 := pInBaseBatch + (h1 * inW * inC);
+            for wO := 0 to outW - 1 do begin
+               if node.HalfPixelCenters then w_in := Max(0.0, (wO + 0.5) * scaleW - 0.5) else w_in := wO * scaleW;
+               w0 := Floor(w_in); w1 := Min(w0 + 1, inW - 1); fw := w_in - w0;
+               pROut := pResBaseBatch + (hO * outW + wO) * inC;
+               SSE2_BilinearInterpolate(pInBaseH0 + (w0 * inC), pInBaseH0 + (w1 * inC), pInBaseH1 + (w0 * inC), pInBaseH1 + (w1 * inC), pROut, fw, fh, inC);
+            end;
+         end;
+      end;
+   end else begin
+      SetLength(lIdx, Length(dOutDims));
+      for i := 0 to FNodeTotalElements[n] - 1 do begin IndexFromFlat(i, dOutDims, lIdx); FNodeBuffers[n][i] := FNodeBuffers[in1][FlatIndex(lIdx, dims)]; end;
+   end;
+end;
+
+procedure TKCLSSE2Backend.ProcessMaxPool2D(n : Integer; node : TKCLMaxPool2DNode);
+var
+   in1, inC, outH, outW, inH, inW, hO, wO, ny, nx, stepY, stepX, i : Integer;
+   dims : TKCLDimensions;
+   pInput, pRes, pROut : PDouble;
+   pad_h, pad_top, pad_w, pad_left, h_in_start, w_in_start : Integer;
+begin
+   in1 := FNodeToBufferIdx[node.Inputs[0]]; dims := Copy(FNodeDims[in1]);
+   if Length(dims) >= 3 then begin
+      dims[High(dims)-2] := (dims[High(dims)-2] + node.Stride - 1) div node.Stride;
+      dims[High(dims)-1] := (dims[High(dims)-1] + node.Stride - 1) div node.Stride;
+   end;
+   FNodeDims[n] := dims; FNodeTotalElements[n] := 1; for i := 0 to High(dims) do FNodeTotalElements[n] := FNodeTotalElements[n] * dims[i];
+   SetLength(FNodeBuffers[n], FNodeTotalElements[n]);
+   inC := FNodeDims[in1][High(dims)]; inH := FNodeDims[in1][High(dims)-2]; inW := FNodeDims[in1][High(dims)-1];
+   outH := dims[High(dims)-2]; outW := dims[High(dims)-1];
+   pInput := PDouble(Pointer(FNodeBuffers[in1])); pRes := PDouble(Pointer(FNodeBuffers[n]));
+   for i := 0 to FNodeTotalElements[n]-1 do FNodeBuffers[n][i] := -1e30;
+   pad_h := Max(0, (outH - 1) * node.Stride + node.KernelSize - inH); pad_top := pad_h div 2;
+   pad_w := Max(0, (outW - 1) * node.Stride + node.KernelSize - inW); pad_left := pad_w div 2;
+   for hO := 0 to outH - 1 do begin
+      h_in_start := hO * node.Stride - pad_top;
+      for wO := 0 to outW - 1 do begin
+         w_in_start := wO * node.Stride - pad_left; pROut := pRes + (hO * outW + wO) * inC;
+         for stepY := 0 to node.KernelSize - 1 do begin
+            ny := h_in_start + stepY;
+            if (ny >= 0) and (ny < inH) then begin
+               for stepX := 0 to node.KernelSize - 1 do begin
+                  nx := w_in_start + stepX; if (nx >= 0) and (nx < inW) then SSE2_Max(pInput + (ny * inW * inC) + (nx * inC), pROut, inC);
+               end;
+            end;
+         end;
+      end;
+   end;
+end;
+
+procedure TKCLSSE2Backend.ProcessGlobalAvgPool(n : Integer; node : TKCLGlobalAvgPoolNode);
+var i, ny, nx, inC, inH, inW : Integer; pInput, pRes : PDouble; vVal, sumVal : Double;
+begin
+   var in1 := FNodeToBufferIdx[node.Inputs[0]]; var dims := Copy(FNodeDims[in1]);
+   if Length(dims) >= 3 then begin dims[High(dims)-2] := 1; dims[High(dims)-1] := 1; end;
+   FNodeDims[n] := dims; FNodeTotalElements[n] := 1; for i := 0 to High(dims) do FNodeTotalElements[n] := FNodeTotalElements[n] * dims[i];
+   SetLength(FNodeBuffers[n], FNodeTotalElements[n]);
+   if Length(FNodeDims[in1]) >= 3 then begin
+      inC := FNodeDims[in1][High(dims)]; inH := FNodeDims[in1][High(dims)-2]; inW := FNodeDims[in1][High(dims)-1];
+      pInput := PDouble(Pointer(FNodeBuffers[in1])); pRes := PDouble(Pointer(FNodeBuffers[n]));
+      for i := 0 to inC - 1 do pRes[i] := 0;
+      for ny := 0 to inH - 1 do for nx := 0 to inW - 1 do SSE2_Add(pInput + (ny * inW + nx) * inC, pRes, pRes, inC);
+      vVal := 1.0 / (inH * inW); for i := 0 to inC - 1 do pRes[i] := pRes[i] * vVal;
+   end else begin
+      sumVal := 0; 
+      for i := 0 to FNodeTotalElements[in1]-1 do sumVal := sumVal + FNodeBuffers[in1][i];
+      if FNodeTotalElements[in1] > 0 then sumVal := sumVal / FNodeTotalElements[in1];
+      for i := 0 to FNodeTotalElements[n]-1 do FNodeBuffers[n][i] := sumVal;
+   end;
+end;
+
+procedure TKCLSSE2Backend.ProcessMapFallback(n : Integer; node : TKCLMapNode);
+var
+   dims, inDims, idxIn, lIdx : TKCLDimensions;
+   args : TDoubleDynArray;
+   i, k, j, inIdx, jOut : Integer;
+begin
+   dims := FNodeDims[n]; SetLength(lIdx, Length(dims));
+   SetLength(args, Length(node.Inputs));
+   for i := 0 to FNodeTotalElements[n]-1 do begin
+      IndexFromFlat(i, dims, lIdx);
+      for k := 0 to High(node.Inputs) do begin
+         inIdx := FNodeToBufferIdx[node.Inputs[k]]; inDims := FNodeDims[inIdx];
+         SetLength(idxIn, Length(inDims));
+         for j := 0 to High(inDims) do begin
+            jOut := j + (Length(dims) - Length(inDims));
+            if inDims[j] = 1 then idxIn[j] := 0 else idxIn[j] := lIdx[jOut];
+         end;
+         args[k] := FNodeBuffers[inIdx][FlatIndex(idxIn, inDims)];
+      end;
+      FNodeBuffers[n][i] := node.Eval(args);
+   end;
+end;
+
 procedure TKCLSSE2Backend.Execute(AKernel : TKCLKernel; const ABuffers : array of TKCLStridedBufferDescriptor);
 var
-   nodeDims : array of TKCLDimensions;
-   nodeTotalElements : array of NativeInt;
-   nodeBuffers : array of TDoubleDynArray;
-   nodeToBufferIdx : TDictionary<TKCLNode, Integer>;
    savedMask : TArithmeticExceptionMask;
-   sortedNodes : TList<TKCLNode>;
-   visiting : TDictionary<TKCLNode, Boolean>;
-   visited : TDictionary<TKCLNode, Boolean>;
-   
-   n, i, j, k, loopA, stepX, stepY, hO, wO, inputCount, outputCount, nx, ny, inC, outC, inH, inW, outH, outW, kS, in1, in2Idx, axisIdxLocal : Integer;
-   axisIdxNative, axisSize, totalOther, totalElems, total, inKIdx, oIdx : NativeInt;
-   h0, h1, w0, w1 : Integer;
-   p1, p2, pr, pI, pW, pB, pWBase, pIBase, pIBaseY, pROut : PDouble;
-   tempVal : NativeInt;
-   sumVal, resVal, vVal, maxV, sumE, scaleH, scaleW, h_in, w_in, fh, fw, v0, v1 : Double;
-   lIdx, idx1, idx2, baseI, c00, c01, c10, c11, dims, dims1, dims2, dOutDims, dimsOutLocal : TKCLDimensions;
-   args : TDoubleDynArray;
+   n, j, oIdx, i : Integer;
    node : TKCLNode;
-   cv : TKCLConv2DNode;
-   dw : TKCLDepthwiseConv2DNode;
-   mp : TKCLMaxPool2DNode;
-   sm : TKCLSoftMaxNode;
-   rs : TKCLResizeBilinearNode;
-   dIn, dO_ : TKCLStridedBufferDescriptor;
-   curDimOffset : NativeInt;
-   pad_h, pad_top, pad_w, pad_left, h_in_start, w_in_start : Integer;
-
-   function FlatIndex(const AIdx : TKCLDimensions; const ADims : TKCLDimensions) : Integer;
-   var
-      idx, mult : Integer;
-   begin
-      Result := 0; mult := 1;
-      for idx := High(AIdx) downto 0 do begin
-         Result := Result + AIdx[idx] * mult;
-         mult := mult * ADims[idx];
-      end;
-   end;
-
-   procedure IndexFromFlat(AFlat : Integer; const ADims : TKCLDimensions; var AIdx : TKCLDimensions);
-   var
-      idx : Integer;
-   begin
-      if Length(AIdx) <> Length(ADims) then SetLength(AIdx, Length(ADims));
-      for idx := High(AIdx) downto 0 do begin
-         if ADims[idx] > 0 then begin
-            AIdx[idx] := AFlat mod ADims[idx];
-            AFlat := AFlat div ADims[idx];
-         end else AIdx[idx] := 0;
-      end;
-   end;
-
-   function IsContiguous(const ABuf : TKCLStridedBufferDescriptor) : Boolean;
-   var
-      idx : Integer;
-      sz : NativeInt;
-   begin
-      sz := 1;
-      case ABuf.DataType of
-         dtInt8 : sz := 1;
-         dtFloat16 : sz := 2;
-         dtFloat32 : sz := 4;
-      end;
-      for idx := High(ABuf.Dimensions) downto 0 do begin
-         if ABuf.Strides[idx] <> sz then Exit(False);
-         sz := sz * ABuf.Dimensions[idx];
-      end;
-      Result := True;
-   end;
-
-   procedure VisitNode(ANode : TKCLNode);
-   var
-      idx : Integer;
-   begin
-      if visited.ContainsKey(ANode) then Exit;
-      if visiting.ContainsKey(ANode) then raise EdwsKCLException.Create('KCL: Cycle');
-      visiting.Add(ANode, True);
-      for idx := 0 to High(ANode.Inputs) do VisitNode(ANode.Inputs[idx]);
-      visiting.Remove(ANode);
-      visited.Add(ANode, True);
-      sortedNodes.Add(ANode);
-   end;
-
-   procedure SSE2_SetBias(pDst, pBias : PDouble; totalElements, outC : NativeInt);
-   var
-      idx : NativeInt;
-   begin
-      if outC <= 0 then Exit;
-      for idx := 0 to (totalElements div outC) - 1 do
-         SSE2_Copy(pBias, pDst + (idx * outC), outC);
-   end;
-
+   outBuf : TKCLStridedBufferDescriptor;
+   dims, lIdx : TKCLDimensions;
 begin
-   if Length(ABuffers) = 0 then Exit;
-   inputCount := Length(AKernel.Inputs);
-   outputCount := Length(AKernel.Outputs);
+   FKernel := AKernel;
+   SetLength(FBuffers, Length(ABuffers)); for n := 0 to High(ABuffers) do FBuffers[n] := ABuffers[n];
+   if Length(FBuffers) = 0 then Exit;
 
    savedMask := SetExceptionMask([exInvalidOp, exDenormalized, exZeroDivide, exOverflow, exUnderflow, exPrecision]);
    try
-      sortedNodes := TList<TKCLNode>.Create;
-      visiting := TDictionary<TKCLNode, Boolean>.Create;
-      visited := TDictionary<TKCLNode, Boolean>.Create;
+      FSortedNodes := TList<TKCLNode>.Create;
+      FVisiting := TDictionary<TKCLNode, Boolean>.Create;
+      FVisited := TDictionary<TKCLNode, Boolean>.Create;
+      FNodeToBufferIdx := TDictionary<TKCLNode, Integer>.Create;
       try
-         for j := 0 to High(AKernel.Outputs) do VisitNode(AKernel.Outputs[j]);
-         SetLength(nodeDims, sortedNodes.Count);
-         SetLength(nodeTotalElements, sortedNodes.Count);
-         SetLength(nodeBuffers, sortedNodes.Count);
-         nodeToBufferIdx := TDictionary<TKCLNode, Integer>.Create;
-         try
-            for n := 0 to sortedNodes.Count - 1 do begin
-               node := sortedNodes[n];
-               nodeToBufferIdx.Add(node, n);
-               if node is TKCLConstantNode then nodeDims[n] := Copy(TKCLConstantNode(node).Dimensions)
-               else if node is TKCLInputNode then nodeDims[n] := Copy(ABuffers[TKCLInputNode(node).InputIndex].Dimensions)
-               else if node is TKCLMapNode then begin
-                  dims := Copy(nodeDims[nodeToBufferIdx[node.Inputs[0]]]);
-                  if (Length(node.Inputs) > 1) and not (node is TKCLConcatNode) then begin
-                     dims2 := nodeDims[nodeToBufferIdx[node.Inputs[1]]];
-                     if Length(dims) < Length(dims2) then begin
-                        lIdx := dims; SetLength(dims, Length(dims2));
-                        for i := 0 to High(dims) do dims[i] := 1;
-                        for i := 0 to High(lIdx) do dims[High(dims)-High(lIdx)+i] := lIdx[i];
-                     end;
-                     for i := 0 to High(dims) do begin
-                        k := i - (Length(dims)-Length(dims2));
-                        tempVal := 1; if k >= 0 then tempVal := dims2[k];
-                        if (dims[i] <> tempVal) and (dims[i] <> 1) and (tempVal <> 1) then
-                           EdwsKCLException.RaiseBroadcastingMismatch(i, dims[i], tempVal);
-                        dims[i] := Max(dims[i], tempVal);
-                     end;
-                  end;
-                  nodeDims[n] := dims;
-                  if node is TKCLConcatNode then begin
-                     axisIdxLocal := TKCLConcatNode(node).Axis;
-                     for k := 1 to High(node.Inputs) do nodeDims[n][axisIdxLocal] := nodeDims[n][axisIdxLocal] + nodeDims[nodeToBufferIdx[node.Inputs[k]]][axisIdxLocal];
-                  end;
-               end else if node is TKCLConv2DNode then begin
-                  dims := Copy(nodeDims[nodeToBufferIdx[node.Inputs[0]]]);
-                  cv := TKCLConv2DNode(node);
-                  if Length(dims) >= 3 then begin
-                     dims[High(dims)-2] := (dims[High(dims)-2] + cv.Stride - 1) div cv.Stride;
-                     dims[High(dims)-1] := (dims[High(dims)-1] + cv.Stride - 1) div cv.Stride;
-                     dims[High(dims)] := Length(cv.Bias);
-                  end;
-                  nodeDims[n] := dims;
-               end else if node is TKCLConv2DTransposeNode then begin
-                  dims := Copy(nodeDims[nodeToBufferIdx[node.Inputs[0]]]);
-                  var cvtNode := TKCLConv2DTransposeNode(node);
-                  var st := cvtNode.Stride;
-                  if Length(dims) >= 3 then begin
-                     var dimH := High(dims) - 2;
-                     var dimW := High(dims) - 1;
-                     outC := Length(cvtNode.Bias);
-                     dims[dimH] := dims[dimH] * st;
-                     dims[dimW] := dims[dimW] * st;
-                     dims[High(dims)] := outC;
-                  end;
-                  nodeDims[n] := dims;
-               end else if node is TKCLDepthwiseConv2DNode then begin
-                  dims := Copy(nodeDims[nodeToBufferIdx[node.Inputs[0]]]);
-                  dw := TKCLDepthwiseConv2DNode(node);
-                  if Length(dims) >= 3 then begin
-                     dims[High(dims)-2] := (dims[High(dims)-2] + dw.Stride - 1) div dw.Stride;
-                     dims[High(dims)-1] := (dims[High(dims)-1] + dw.Stride - 1) div dw.Stride;
-                  end;
-                  nodeDims[n] := dims;
-               end else if node is TKCLResizeBilinearNode then begin
-                  dims := Copy(nodeDims[nodeToBufferIdx[node.Inputs[0]]]);
-                  if Length(dims) >= 3 then begin
-                     dims[High(dims)-2] := TKCLResizeBilinearNode(node).TargetHeight;
-                     dims[High(dims)-1] := TKCLResizeBilinearNode(node).TargetWidth;
-                  end;
-                  nodeDims[n] := dims;
-               end else if node is TKCLMaxPool2DNode then begin
-                  dims := Copy(nodeDims[nodeToBufferIdx[node.Inputs[0]]]);
-                  mp := TKCLMaxPool2DNode(node);
-                  if Length(dims) >= 3 then begin
-                     dims[High(dims)-2] := (dims[High(dims)-2] + mp.Stride - 1) div mp.Stride;
-                     dims[High(dims)-1] := (dims[High(dims)-1] + mp.Stride - 1) div mp.Stride;
-                  end;
-                  nodeDims[n] := dims;
-               end else if node is TKCLGlobalAvgPoolNode then begin
-                  dims := Copy(nodeDims[nodeToBufferIdx[node.Inputs[0]]]);
-                  if Length(dims) >= 3 then begin dims[High(dims)-2] := 1; dims[High(dims)-1] := 1; end;
-                  nodeDims[n] := dims;
-               end else nodeDims[n] := Copy(nodeDims[nodeToBufferIdx[node.Inputs[0]]]);
+         for j := 0 to High(FKernel.Outputs) do VisitNode(FKernel.Outputs[j]);
+         SetLength(FNodeDims, FSortedNodes.Count); SetLength(FNodeTotalElements, FSortedNodes.Count); SetLength(FNodeBuffers, FSortedNodes.Count);
 
-               totalElems := 1;
-               for i := 0 to High(nodeDims[n]) do totalElems := totalElems * nodeDims[n][i];
-               nodeTotalElements[n] := totalElems; SetLength(nodeBuffers[n], totalElems);
+         for n := 0 to FSortedNodes.Count - 1 do begin
+            node := FSortedNodes[n]; FNodeToBufferIdx.Add(node, n);
+            if node is TKCLConstantNode then ProcessConstant(n, TKCLConstantNode(node))
+            else if node is TKCLInputNode then ProcessInput(n, TKCLInputNode(node))
+            else if node is TKCLConcatNode then ProcessConcat(n, TKCLConcatNode(node))
+            else if node is TKCLConv2DNode then ProcessConv2D(n, TKCLConv2DNode(node))
+            else if node is TKCLConv2DTransposeNode then ProcessConv2DTranspose(n, TKCLConv2DTransposeNode(node))
+            else if node is TKCLDepthwiseConv2DNode then ProcessDepthwiseConv2D(n, TKCLDepthwiseConv2DNode(node))
+            else if node is TKCLSoftMaxNode then ProcessSoftMax(n, TKCLSoftMaxNode(node))
+            else if node is TKCLResizeBilinearNode then ProcessResizeBilinear(n, TKCLResizeBilinearNode(node))
+            else if node is TKCLMaxPool2DNode then ProcessMaxPool2D(n, TKCLMaxPool2DNode(node))
+            else if node is TKCLGlobalAvgPoolNode then ProcessGlobalAvgPool(n, TKCLGlobalAvgPoolNode(node))
+            else if node is TKCLMapNode then ProcessMap(n, TKCLMapNode(node))
+            else raise Exception.CreateFmt('Node %s is not supported by SSE2 backend', [node.ClassName]);
+         end;
+
+         VerifyOutputs;
+
+         for j := 0 to High(FKernel.Outputs) do begin
+            oIdx := FNodeToBufferIdx[FKernel.Outputs[j]]; outBuf := FBuffers[Length(FKernel.Inputs) + j];
+            if (outBuf.DataType = dtFloat32) and IsContiguous(outBuf) then
+               SSE2_CvtPD2PSContiguous(PDouble(Pointer(FNodeBuffers[oIdx])), PSingle(outBuf.BasePointer), FNodeTotalElements[oIdx])
+            else begin
+               dims := FNodeDims[oIdx]; SetLength(lIdx, Length(dims));
+               for i := 0 to FNodeTotalElements[oIdx]-1 do begin IndexFromFlat(i, dims, lIdx); SetValue(outBuf, lIdx, FNodeBuffers[oIdx][i]); end;
             end;
-
-            // Output verification
-            for j := 0 to High(AKernel.Outputs) do begin
-               var outNode := AKernel.Outputs[j];
-               var outIdx := nodeToBufferIdx[outNode];
-               var outBuf := ABuffers[inputCount + j];
-               if Length(nodeDims[outIdx]) <> Length(outBuf.Dimensions) then
-                  EdwsKCLException.RaiseSpatialDomainLengthMismatch(Length(nodeDims[outIdx]), Length(outBuf.Dimensions));
-               for i := 0 to High(nodeDims[outIdx]) do
-                  if nodeDims[outIdx][i] <> outBuf.Dimensions[i] then
-                     EdwsKCLException.RaiseSpatialDomainSizeMismatch(i, nodeDims[outIdx][i], outBuf.Dimensions[i]);
-            end;
-
-            for n := 0 to sortedNodes.Count - 1 do begin
-               node := sortedNodes[n];
-               total := nodeTotalElements[n]; if total = 0 then Continue;
-               if node is TKCLConstantNode then begin
-                  sumVal := TKCLConstantNode(node).Value; for i := 0 to total-1 do nodeBuffers[n][i] := sumVal;
-               end else if node is TKCLInputNode then begin
-                  dIn := ABuffers[TKCLInputNode(node).InputIndex];
-                  if (dIn.DataType = dtFloat32) and IsContiguous(dIn) then
-                     SSE2_CvtPS2PDContiguous(PSingle(dIn.BasePointer), Pointer(nodeBuffers[n]), total)
-                  else begin
-                     dims := nodeDims[n]; SetLength(lIdx, Length(dims));
-                     for i := 0 to total-1 do begin IndexFromFlat(i, dims, lIdx); nodeBuffers[n][i] := GetValue(dIn, lIdx); end;
-                  end;
-               end else if node is TKCLConcatNode then begin
-                  axisIdxLocal := TKCLConcatNode(node).Axis;
-                  curDimOffset := 0; dimsOutLocal := nodeDims[n];
-                  for k := 0 to High(node.Inputs) do begin
-                     inKIdx := nodeToBufferIdx[node.Inputs[k]];
-                     dims1 := nodeDims[inKIdx]; SetLength(idx1, Length(dims1));
-                     for i := 0 to nodeTotalElements[inKIdx] - 1 do begin
-                        IndexFromFlat(i, dims1, idx1);
-                        dims2 := Copy(idx1); SetLength(dims2, Length(dimsOutLocal));
-                        dims2[axisIdxLocal] := dims2[axisIdxLocal] + curDimOffset;
-                        nodeBuffers[n][FlatIndex(dims2, dimsOutLocal)] := nodeBuffers[inKIdx][i];
-                     end;
-                     curDimOffset := curDimOffset + dims1[axisIdxLocal];
-                  end;
-               end else if node is TKCLMapNode then begin
-                  in1 := nodeToBufferIdx[node.Inputs[0]];
-                  in2Idx := -1; if Length(node.Inputs) > 1 then in2Idx := nodeToBufferIdx[node.Inputs[1]];
-                  if (in2Idx = -1) or ((nodeTotalElements[in1] = total) and (nodeTotalElements[in2Idx] = total)) then begin
-                     p1 := Pointer(nodeBuffers[in1]); pr := Pointer(nodeBuffers[n]);
-                     if in2Idx = -1 then begin
-                        if node is TKCLReLUNode then SSE2_ReLU(p1, pr, total)
-                        else if node is TKCLSigmoidNode then SSE2_Sigmoid(p1, pr, total)
-                        else if node is TKCLReLU6Node then SSE2_ReLU6(p1, pr, total)
-                        else if node is TKCLHardSwishNode then SSE2_HardSwish(p1, pr, total)
-                        else if node is TKCLHardSigmoidNode then SSE2_HardSigmoid(p1, pr, total)
-                        else if node is TKCLExpNode then SSE2_Exp(p1, pr, total)
-                        else begin
-                           SetLength(args, 2); args[1] := 0;
-                           for i := 0 to total-1 do begin args[0] := p1[i]; pr[i] := TKCLMapNode(node).Eval(args); end;
-                        end;
-                     end else begin
-                        p2 := Pointer(nodeBuffers[in2Idx]);
-                        if node is TKCLAddNode then SSE2_Add(p1, p2, pr, total)
-                        else if node is TKCLSubNode then SSE2_Sub(p1, p2, pr, total)
-                        else if node is TKCLMulNode then SSE2_Mul(p1, p2, pr, total)
-                        else if node is TKCLDivNode then SSE2_Div(p1, p2, pr, total)
-                        else begin
-                           SetLength(args, 2);
-                           for i := 0 to total-1 do begin args[0] := p1[i]; args[1] := p2[i]; pr[i] := TKCLMapNode(node).Eval(args); end;
-                        end;
-                     end;
-                  end else begin
-                     dims := nodeDims[n]; in1 := nodeToBufferIdx[node.Inputs[0]]; dims1 := nodeDims[in1]; dims2 := nodeDims[in2Idx];
-                     SetLength(lIdx, Length(dims)); SetLength(idx1, Length(dims1)); SetLength(idx2, Length(dims2));
-                     SetLength(args, 2);
-                     for i := 0 to total-1 do begin
-                        IndexFromFlat(i, dims, lIdx);
-                        for k := 0 to High(idx1) do begin j := k+(Length(dims)-Length(dims1)); if dims1[k]=1 then idx1[k]:=0 else idx1[k]:=lIdx[j]; end;
-                        for k := 0 to High(idx2) do begin j := k+(Length(dims)-Length(dims2)); if dims2[k]=1 then idx2[k]:=0 else idx2[k]:=lIdx[j]; end;
-                        args[0] := nodeBuffers[in1][FlatIndex(idx1, dims1)]; args[1] := nodeBuffers[in2Idx][FlatIndex(idx2, dims2)];
-                        nodeBuffers[n][i] := TKCLMapNode(node).Eval(args);
-                     end;
-                  end;
-               end else if node is TKCLConv2DNode then begin
-                  cv := TKCLConv2DNode(node); in1 := nodeToBufferIdx[node.Inputs[0]];
-                  dims := nodeDims[in1]; dOutDims := nodeDims[n];
-                  inC := dims[High(dims)]; outC := dOutDims[High(dOutDims)];
-                  inH := dims[High(dims)-2]; inW := dims[High(dims)-1];
-                  outH := dOutDims[High(dOutDims)-2]; outW := dOutDims[High(dOutDims)-1];
-                  kS := cv.KernelSize;
-                  pI := Pointer(nodeBuffers[in1]); pr := Pointer(nodeBuffers[n]);
-                  pW := Pointer(cv.Weights); pB := Pointer(cv.Bias);
-                  for i := 0 to (total div outC) - 1 do
-                     for j := 0 to outC - 1 do
-                        pr[i * outC + j] := pB[j];
-                  
-                  pad_h := Max(0, (outH - 1) * cv.Stride + kS - inH);
-                  pad_top := pad_h div 2;
-                  pad_w := Max(0, (outW - 1) * cv.Stride + kS - inW);
-                  pad_left := pad_w div 2;
-
-                  for hO := 0 to outH - 1 do begin
-                     h_in_start := hO * cv.Stride - pad_top;
-                     for wO := 0 to outW - 1 do begin
-                        w_in_start := wO * cv.Stride - pad_left;
-                        pROut := pr + (hO * outW + wO) * outC;
-                        for stepY := 0 to kS - 1 do begin
-                           ny := h_in_start + stepY;
-                           if (ny >= 0) and (ny < inH) then begin
-                              pIBaseY := pI + (ny * inW * inC);
-                              for stepX := 0 to kS - 1 do begin
-                                 nx := w_in_start + stepX;
-                                 if (nx >= 0) and (nx < inW) then begin
-                                    pWBase := pW + ((stepY * kS + stepX) * inC * outC);
-                                    pIBase := pIBaseY + (nx * inC);
-                                    for k := 0 to inC - 1 do
-                                       SSE2_AddScaled(pWBase + (k * outC), (pIBase + k)^, pROut, outC);
-                                 end;
-                              end;
-                           end;
-                        end;
-                     end;
-                  end;
-               end else if node is TKCLConv2DTransposeNode then begin
-                  in1 := nodeToBufferIdx[node.Inputs[0]];
-                  var cvtNode := TKCLConv2DTransposeNode(node);
-                  kS := cvtNode.KernelSize;
-                  var st := cvtNode.Stride;
-                  dims1 := nodeDims[in1];
-                  inC := dims1[High(dims1)];
-                  dOutDims := nodeDims[n];
-                  outC := dOutDims[High(dOutDims)];
-                  
-                  for i := 0 to total - 1 do begin
-                     IndexFromFlat(i, dOutDims, lIdx);
-                     sumVal := 0.0;
-                     if Length(dOutDims) >= 3 then begin
-                        var cOut := lIdx[High(dOutDims)];
-                        var dimH := High(dOutDims) - 2;
-                        var dimW := High(dOutDims) - 1;
-                        var h_out := lIdx[dimH];
-                        var w_out := lIdx[dimW];
-                        
-                        pad_h := Max(0, (dims1[dimH] - 1) * st + kS - dOutDims[dimH]);
-                        pad_top := pad_h div 2;
-                        pad_w := Max(0, (dims1[dimW] - 1) * st + kS - dOutDims[dimW]);
-                        pad_left := pad_w div 2;
-                        
-                        if cOut < Length(cvtNode.Bias) then sumVal := cvtNode.Bias[cOut];
-                        
-                        for stepY := 0 to kS - 1 do begin
-                           var h_in_f := (h_out + pad_top - stepY);
-                           if (h_in_f >= 0) and (h_in_f mod st = 0) then begin
-                              ny := h_in_f div st;
-                              if (ny >= 0) and (ny < dims1[dimH]) then begin
-                                 for stepX := 0 to kS - 1 do begin
-                                    var w_in_f := (w_out + pad_left - stepX);
-                                    if (w_in_f >= 0) and (w_in_f mod st = 0) then begin
-                                       nx := w_in_f div st;
-                                       if (nx >= 0) and (nx < dims1[dimW]) then begin
-                                          for var cInIdx := 0 to inC - 1 do begin
-                                             idx1 := Copy(lIdx);
-                                             idx1[dimH] := ny;
-                                             idx1[dimW] := nx;
-                                             idx1[High(dOutDims)] := cInIdx;
-                                             
-                                             var wIdx := ((stepY * kS + stepX) * inC + cInIdx) * outC + cOut;
-                                             if wIdx < Length(cvtNode.Weights) then
-                                                sumVal := sumVal + nodeBuffers[in1][FlatIndex(idx1, dims1)] * cvtNode.Weights[wIdx];
-                                          end;
-                                       end;
-                                    end;
-                                 end;
-                              end;
-                           end;
-                        end;
-                     end;
-                     nodeBuffers[n][i] := sumVal;
-                  end;
-               end else if node is TKCLDepthwiseConv2DNode then begin
-                  dw := TKCLDepthwiseConv2DNode(node); in1 := nodeToBufferIdx[node.Inputs[0]];
-                  dims := nodeDims[in1]; dOutDims := nodeDims[n];
-                  inC := dims[High(dims)];
-                  inH := dims[High(dims)-2]; inW := dims[High(dims)-1];
-                  outH := dOutDims[High(dOutDims)-2]; outW := dOutDims[High(dOutDims)-1];
-                  kS := dw.KernelSize;
-                  pI := Pointer(nodeBuffers[in1]); pr := Pointer(nodeBuffers[n]);
-                  pW := Pointer(dw.Weights); pB := Pointer(dw.Bias);
-                  for i := 0 to (total div inC) - 1 do
-                     for j := 0 to inC - 1 do
-                        pr[i * inC + j] := pB[j];
-                  
-                  pad_h := Max(0, (outH - 1) * dw.Stride + kS - inH);
-                  pad_top := pad_h div 2;
-                  pad_w := Max(0, (outW - 1) * dw.Stride + kS - inW);
-                  pad_left := pad_w div 2;
-
-                  for hO := 0 to outH - 1 do begin
-                     h_in_start := hO * dw.Stride - pad_top;
-                     for wO := 0 to outW - 1 do begin
-                        w_in_start := wO * dw.Stride - pad_left;
-                        pROut := pr + (hO * outW + wO) * inC;
-                        for stepY := 0 to kS - 1 do begin
-                           ny := h_in_start + stepY;
-                           if (ny >= 0) and (ny < inH) then begin
-                              pIBaseY := pI + (ny * inW * inC);
-                              for stepX := 0 to kS - 1 do begin
-                                 nx := w_in_start + stepX;
-                                 if (nx >= 0) and (nx < inW) then begin
-                                    pWBase := pW + ((stepY * kS + stepX) * inC);
-                                    pIBase := pIBaseY + (nx * inC);
-                                    SSE2_MulAdd(pIBase, pWBase, pROut, inC);
-                                 end;
-                              end;
-                           end;
-                        end;
-                     end;
-                  end;
-               end else if node is TKCLSoftMaxNode then begin
-                  in1 := nodeToBufferIdx[node.Inputs[0]]; sm := TKCLSoftMaxNode(node);
-                  dims := nodeDims[in1]; axisIdxNative := sm.Axis; axisSize := dims[axisIdxNative];
-                  totalOther := 1; for k := 0 to High(dims) do if k<>axisIdxNative then totalOther := totalOther * dims[k];
-                  
-                  if axisIdxNative = High(dims) then begin
-                     // Fast path: SoftMax along the last (contiguous) dimension
-                     for i := 0 to totalOther - 1 do begin
-                        p1 := PDouble(nodeBuffers[in1]) + (i * axisSize);
-                        pr := PDouble(nodeBuffers[n]) + (i * axisSize);
-                        
-                        SSE2_MaxVector(p1, axisSize, maxV);
-                        
-                        // temp = exp(x - maxV)
-                        for loopA := 0 to axisSize - 1 do
-                           pr[loopA] := p1[loopA] - maxV;
-                        SSE2_Exp(pr, pr, axisSize);
-                        
-                        SSE2_SumVector(pr, axisSize, sumE);
-                        
-                        // x = temp / sumE
-                        vVal := 1.0 / sumE;
-                        SSE2_MulScaled(pr, vVal, pr, axisSize);
-                     end;
-                  end else begin
-                     SetLength(baseI, Length(dims));
-                     for i := 0 to totalOther-1 do begin
-                        tempVal := i; for k := High(dims) downto 0 do if k<>axisIdxNative then begin baseI[k] := tempVal mod dims[k]; tempVal := tempVal div dims[k]; end else baseI[k]:=0;
-                        maxV := -1e30; for loopA := 0 to axisSize-1 do begin baseI[axisIdxNative]:=loopA; vVal := nodeBuffers[in1][FlatIndex(baseI, dims)]; if vVal > maxV then maxV := vVal; end;
-                        sumE := 0; for loopA := 0 to axisSize-1 do begin baseI[axisIdxNative]:=loopA; sumE := sumE + Exp(nodeBuffers[in1][FlatIndex(baseI, dims)]-maxV); end;
-                        for loopA := 0 to axisSize-1 do begin baseI[axisIdxNative]:=loopA; nodeBuffers[n][FlatIndex(baseI, dims)] := Exp(nodeBuffers[in1][FlatIndex(baseI, dims)]-maxV)/sumE; end;
-                     end;
-                  end;
-               end else if node is TKCLResizeBilinearNode then begin
-                  rs := TKCLResizeBilinearNode(node); in1 := nodeToBufferIdx[node.Inputs[0]];
-                  dims := nodeDims[in1];
-                  dimsOutLocal := nodeDims[n]; SetLength(lIdx, Length(dimsOutLocal));
-                  for i := 0 to total-1 do begin
-                     IndexFromFlat(i, dimsOutLocal, lIdx); resVal := 0;
-                     if Length(dimsOutLocal) >= 3 then begin
-                        axisIdxLocal := High(dimsOutLocal)-2; stepX := High(dimsOutLocal)-1; 
-                        
-                        if rs.AlignCorners and (dimsOutLocal[axisIdxLocal] > 1) then scaleH := (dims[axisIdxLocal] - 1) / (dimsOutLocal[axisIdxLocal] - 1)
-                        else scaleH := dims[axisIdxLocal] / dimsOutLocal[axisIdxLocal];
-                        
-                        if rs.AlignCorners and (dimsOutLocal[stepX] > 1) then scaleW := (dims[stepX] - 1) / (dimsOutLocal[stepX] - 1)
-                        else scaleW := dims[stepX] / dimsOutLocal[stepX];
-                        
-                        if rs.HalfPixelCenters then begin
-                           h_in := Max(0.0, (lIdx[axisIdxLocal] + 0.5) * scaleH - 0.5);
-                           w_in := Max(0.0, (lIdx[stepX] + 0.5) * scaleW - 0.5);
-                        end else begin
-                           h_in := lIdx[axisIdxLocal]*scaleH; 
-                           w_in := lIdx[stepX]*scaleW; 
-                        end;
-                        
-                        h0 := Floor(h_in); h1 := Min(h0+1, dims[axisIdxLocal]-1);
-                        w0 := Floor(w_in); w1 := Min(w0+1, dims[stepX]-1); fh := h_in-h0; fw := w_in-w0;
-                        SetLength(c00, Length(dims)); for k := 0 to High(dims) do c00[k] := lIdx[k]; c00[axisIdxLocal]:=h0; c00[stepX]:=w0;
-                        SetLength(c01, Length(dims)); for k := 0 to High(dims) do c01[k] := lIdx[k]; c01[axisIdxLocal]:=h0; c01[stepX]:=w1;
-                        SetLength(c10, Length(dims)); for k := 0 to High(dims) do c10[k] := lIdx[k]; c10[axisIdxLocal]:=h1; c10[stepX]:=w0;
-                        SetLength(c11, Length(dims)); for k := 0 to High(dims) do c11[k] := lIdx[k]; c11[axisIdxLocal]:=h1; c11[stepX]:=w1;
-                        v0 := nodeBuffers[in1][FlatIndex(c00, dims)]*(1-fw) + nodeBuffers[in1][FlatIndex(c01, dims)]*fw;
-                        v1 := nodeBuffers[in1][FlatIndex(c10, dims)]*(1-fw) + nodeBuffers[in1][FlatIndex(c11, dims)]*fw;
-                        resVal := v0*(1-fh) + v1*fh;
-                     end;
-                     nodeBuffers[n][i] := resVal;
-                  end;
-               end else if node is TKCLMaxPool2DNode then begin
-                  mp := TKCLMaxPool2DNode(node); in1 := nodeToBufferIdx[node.Inputs[0]];
-                  dims := nodeDims[in1]; dOutDims := nodeDims[n];
-                  inC := dims[High(dims)];
-                  inH := dims[High(dims)-2]; inW := dims[High(dims)-1];
-                  outH := dOutDims[High(dOutDims)-2]; outW := dOutDims[High(dOutDims)-1];
-                  kS := mp.KernelSize;
-                  pI := Pointer(nodeBuffers[in1]); pr := Pointer(nodeBuffers[n]);
-                  for i := 0 to total - 1 do pr[i] := -1e30;
-                  
-                  pad_h := Max(0, (outH - 1) * mp.Stride + kS - inH);
-                  pad_top := pad_h div 2;
-                  pad_w := Max(0, (outW - 1) * mp.Stride + kS - inW);
-                  pad_left := pad_w div 2;
-
-                  for hO := 0 to outH - 1 do begin
-                     h_in_start := hO * mp.Stride - pad_top;
-                     for wO := 0 to outW - 1 do begin
-                        w_in_start := wO * mp.Stride - pad_left;
-                        pROut := pr + (hO * outW + wO) * inC;
-                        for stepY := 0 to kS - 1 do begin
-                           ny := h_in_start + stepY;
-                           if (ny >= 0) and (ny < inH) then begin
-                              pIBaseY := pI + (ny * inW * inC);
-                              for stepX := 0 to kS - 1 do begin
-                                 nx := w_in_start + stepX;
-                                 if (nx >= 0) and (nx < inW) then begin
-                                    pIBase := pIBaseY + (nx * inC);
-                                    SSE2_Max(pIBase, pROut, inC);
-                                 end;
-                              end;
-                           end;
-                        end;
-                     end;
-                  end;
-               end else if node is TKCLGlobalAvgPoolNode then begin
-                  in1 := nodeToBufferIdx[node.Inputs[0]];
-                  dims := nodeDims[in1];
-                  if Length(dims) >= 3 then begin
-                     inC := dims[High(dims)];
-                     inH := dims[High(dims)-2]; inW := dims[High(dims)-1];
-                     pI := Pointer(nodeBuffers[in1]); pr := Pointer(nodeBuffers[n]);
-                     for i := 0 to total - 1 do pr[i] := 0;
-                     for ny := 0 to inH - 1 do begin
-                        for nx := 0 to inW - 1 do begin
-                           pIBase := pI + (ny * inW + nx) * inC;
-                           SSE2_Add(pIBase, pr, pr, inC);
-                        end;
-                     end;
-                     vVal := 1.0 / (inH * inW);
-                     for i := 0 to total - 1 do pr[i] := pr[i] * vVal;
-                  end else begin
-                     sumVal := 0; for i := 0 to nodeTotalElements[in1]-1 do sumVal := sumVal + nodeBuffers[in1][i];
-                     if nodeTotalElements[in1] > 0 then sumVal := sumVal / nodeTotalElements[in1];
-                     for i := 0 to total-1 do nodeBuffers[n][i] := sumVal;
-                  end;
-               end;
-            end;
-
-            for j := 0 to High(AKernel.Outputs) do begin
-               oIdx := nodeToBufferIdx[AKernel.Outputs[j]]; dO_ := ABuffers[inputCount+j];
-               if (dO_.DataType = dtFloat32) and IsContiguous(dO_) then
-                  SSE2_CvtPD2PSContiguous(Pointer(nodeBuffers[oIdx]), PSingle(dO_.BasePointer), nodeTotalElements[oIdx])
-               else begin
-                  dimsOutLocal := nodeDims[oIdx]; SetLength(lIdx, Length(dimsOutLocal));
-                  for i := 0 to nodeTotalElements[oIdx]-1 do begin IndexFromFlat(i, dimsOutLocal, lIdx); SetValue(dO_, lIdx, nodeBuffers[oIdx][i]); end;
-               end;
-            end;
-         finally nodeToBufferIdx.Free; end;
-      finally sortedNodes.Free; visiting.Free; visited.Free; end;
+         end;
+      finally
+         FNodeToBufferIdx.Free; FSortedNodes.Free; FVisiting.Free; FVisited.Free;
+      end;
    finally SetExceptionMask(savedMask); end;
 end;
 

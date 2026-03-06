@@ -11,9 +11,9 @@ program dwsRunner;
 
 
 uses
-  Windows,
-  Classes,
-  SysUtils,
+  Winapi.Windows,
+  System.Classes,
+  System.SysUtils,
   dwsXPlatform,
   dwsComp,
   dwsCompiler,
