@@ -84,7 +84,9 @@ type
          procedure _vmovups_ptr_indexed;
          procedure _vmovupd_ptr_reg;
          procedure _vmovups_ptr_reg;
+         procedure _vmovsd_ptr;
          procedure _vfma;
+         procedure _vzeroupper;
          procedure _vpround;
    end;
 
@@ -1650,6 +1652,9 @@ begin
    FStream._vbroadcastsd_ptr_reg(ymm9, gprRCX, 123);
    FStream._vbroadcastsd_ptr_reg(ymm2, gprR8, 123456);
    FStream._vbroadcastsd_ptr_reg(ymm8, gprR9, -5);
+   FStream._vbroadcastsd_ptr_indexed(ymm0, gprRAX, gprRAX, 1, 0);
+   FStream._vbroadcastsd_ptr_indexed(ymm8, gprRAX, gprRCX, 1, 1);
+   FStream._vbroadcastsd_ptr_indexed(ymm9, gprRCX, gprRDI, 2, 12);
    CheckEquals(  ''
                + 'vbroadcastsd ymm0, xmm0'#13#10
                + 'vbroadcastsd ymm1, xmm2'#13#10
@@ -1658,6 +1663,9 @@ begin
                + 'vbroadcastsd ymm9, qword ptr [rcx+7Bh]'#13#10
                + 'vbroadcastsd ymm2, qword ptr [r8+0001E240h]'#13#10
                + 'vbroadcastsd ymm8, qword ptr [r9-05h]'#13#10
+               + 'vbroadcastsd ymm0, qword ptr [rax+rax]'#13#10
+               + 'vbroadcastsd ymm8, qword ptr [rax+rcx+01h]'#13#10
+               + 'vbroadcastsd ymm9, qword ptr [rcx+rdi*2+0Ch]'#13#10
                , DisasmStream);
 
    FStream._vbroadcastss(ymm0, xmm0);
@@ -1909,6 +1917,28 @@ begin
                , DisasmStream);
 end;
 
+// _vmovsd_ptr
+//
+procedure TJITx86_64Tests._vmovsd_ptr;
+begin
+   FStream._vmovsd_reg_ptr_reg(xmm0, gprRAX, 0);
+   FStream._vmovsd_reg_ptr_reg(xmm8, gprRBP, 1);
+   FStream._vmovsd_reg_ptr_reg(xmm1, gprRDX, 123456);
+   FStream._vmovsd_ptr_reg_reg(gprRAX, 0, xmm0);
+   FStream._vmovsd_ptr_reg_reg(gprRBP, 1, xmm2);
+   FStream._vmovsd_ptr_reg_reg(gprRDX, 123456, xmm1);
+   FStream._vmovsd_ptr_reg_reg(gprRBP, -$d0, xmm3);
+   CheckEquals(  ''
+               + 'vmovsd xmm0, qword ptr [rax]'#13#10
+               + 'vmovsd xmm8, qword ptr [rbp+01h]'#13#10
+               + 'vmovsd xmm1, qword ptr [rdx+0001E240h]'#13#10
+               + 'vmovsd qword ptr [rax], xmm0'#13#10
+               + 'vmovsd qword ptr [rbp+01h], xmm2'#13#10
+               + 'vmovsd qword ptr [rdx+0001E240h], xmm1'#13#10
+               + 'vmovsd qword ptr [rbp-000000D0h], xmm3'#13#10
+               , DisasmStream);
+end;
+
 // _vfma
 //
 procedure TJITx86_64Tests._vfma;
@@ -1925,6 +1955,16 @@ begin
    FStream._vfmadd_ps(213, ymm10, ymm8, ymm3);
    FStream._vfmadd_ps(231, ymm11, ymm10, ymm12);
 
+   FStream._vfmadd231pd_ptr_reg(ymm0, ymm1, gprRAX, 0);
+   FStream._vfmadd231pd_ptr_reg(ymm9, ymm10, gprR8, 16);
+   FStream._vfmadd231pd_ptr_reg(ymm2, ymm11, gprRCX, -8);
+   FStream._vfmadd231pd_ptr_reg(ymm15, ymm15, gprR15, 64);
+
+   FStream._vfmadd231pd_ptr_reg(xmm0, xmm1, gprRAX, 0);
+   FStream._vfmadd231pd_ptr_reg(xmm9, xmm10, gprR8, 16);
+   FStream._vfmadd231sd_ptr_reg(xmm2, xmm11, gprRCX, -8);
+   FStream._vfmadd231sd_ptr_reg(xmm15, xmm15, gprR15, 64);
+
    CheckEquals(  ''
                + 'vfmadd231pd ymm0, ymm1, ymm2'#13#10
                + 'vfmadd213pd ymm9, ymm0, ymm0'#13#10
@@ -1936,6 +1976,26 @@ begin
                + 'vfmadd132ps ymm1, ymm9, ymm1'#13#10
                + 'vfmadd213ps ymm10, ymm8, ymm3'#13#10
                + 'vfmadd231ps ymm11, ymm10, ymm12'#13#10
+               + 'vfmadd231pd ymm0, ymm1, ymmword ptr [rax]'#13#10
+               + 'vfmadd231pd ymm9, ymm10, ymmword ptr [r8+10h]'#13#10
+               + 'vfmadd231pd ymm2, ymm11, ymmword ptr [rcx-08h]'#13#10
+               + 'vfmadd231pd ymm15, ymm15, ymmword ptr [r15+40h]'#13#10
+               + 'vfmadd231pd xmm0, xmm1, xmmword ptr [rax]'#13#10
+               + 'vfmadd231pd xmm9, xmm10, xmmword ptr [r8+10h]'#13#10
+               + 'vfmadd231sd xmm2, xmm11, xmmword ptr [rcx-08h]'#13#10
+               + 'vfmadd231sd xmm15, xmm15, xmmword ptr [r15+40h]'#13#10
+               , DisasmStream);
+end;
+
+// _vzeroupper
+//
+procedure TJITx86_64Tests._vzeroupper;
+begin
+   FStream._vzeroupper;
+   FStream._vzeroall;
+   CheckEquals(  ''
+               + 'vzeroupper'#13#10
+               + 'vzeroall'#13#10
                , DisasmStream);
 end;
 

@@ -317,8 +317,8 @@ begin
          fixup.Write(outStream);
          fixup:=fixup.Next;
       end;
-      if prevLocation<Length(rawCode) then
-         outStream.Write(rawCode[prevLocation], rawCodeLength-prevLocation);
+      if prevLocation < rawCodeLength then
+         outStream.Write(rawCode[prevLocation], rawCodeLength - prevLocation);
    finally
       FreeMem(rawCode);
    end;
