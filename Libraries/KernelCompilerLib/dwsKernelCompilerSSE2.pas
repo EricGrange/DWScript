@@ -51,6 +51,8 @@ implementation
 // ------------------ TSSE2CompilerDispatchMethod ------------------
 // ------------------
 
+// ExecuteDispatch
+//
 procedure TSSE2CompilerDispatchMethod.ExecuteDispatch(AKernel : TKCLKernel; const ABuffers : array of TKCLStridedBufferDescriptor);
 begin
    var backend := TKCLSSE2Backend.Create;

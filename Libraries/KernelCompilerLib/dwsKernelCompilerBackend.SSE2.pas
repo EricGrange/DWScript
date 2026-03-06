@@ -18,6 +18,10 @@
 {**********************************************************************}
 unit dwsKernelCompilerBackend.SSE2;
 
+// Note: The SSE2 backend is designed as a fast, highly-optimized fallback
+// for machines without advanced instruction sets (AVX/AVX2/FMA).
+// For maximum performance on modern hardware, use the JIT backend.
+
 {$I dws.inc}
 {$POINTERMATH ON}
 
@@ -33,7 +37,7 @@ uses
 
 type
    TKCLSSE2Backend = class
-   private
+   protected
       // Execution state
       FKernel : TKCLKernel;
       FBuffers : TArray<TKCLStridedBufferDescriptor>;
@@ -44,7 +48,6 @@ type
       FSortedNodes : TList<TKCLNode>;
       FVisiting : TDictionary<TKCLNode, Boolean>;
       FVisited : TDictionary<TKCLNode, Boolean>;
-      FAllowJIT : Boolean;
 
       function GetValue(const ABuf : TKCLStridedBufferDescriptor; const AIdx : TKCLDimensions) : Double;
       procedure SetValue(const ABuf : TKCLStridedBufferDescriptor; const AIdx : TKCLDimensions; AValue : Double);
@@ -60,7 +63,8 @@ type
       procedure ProcessInput(n : Integer; node : TKCLInputNode);
       procedure ProcessConcat(n : Integer; node : TKCLConcatNode);
       procedure ProcessMap(n : Integer; node : TKCLMapNode);
-      procedure ProcessConv2D(n : Integer; node : TKCLConv2DNode);
+      procedure ProcessConv2D(n : Integer; node : TKCLConv2DNode); virtual;
+      procedure ProcessConv2DSSE2(n : Integer; node : TKCLConv2DNode);
       procedure ProcessConv2DTranspose(n : Integer; node : TKCLConv2DTransposeNode);
       procedure ProcessDepthwiseConv2D(n : Integer; node : TKCLDepthwiseConv2DNode);
       procedure ProcessSoftMax(n : Integer; node : TKCLSoftMaxNode);
@@ -71,14 +75,25 @@ type
 
    public
       constructor Create;
+      destructor Destroy; override;
       procedure Execute(AKernel : TKCLKernel; const ABuffers : array of TKCLStridedBufferDescriptor);
-      property AllowJIT : Boolean read FAllowJIT write FAllowJIT;
+   end;
+
+   TKCLJITBackend = class(TKCLSSE2Backend)
+   protected
+      procedure ProcessConv2D(n : Integer; node : TKCLConv2DNode); override;
    end;
 
 procedure SSE2_CvtPS2PDContiguous(pSrc : PSingle; pDst : PDouble; count : NativeInt);
 procedure SSE2_CvtPD2PSContiguous(pSrc : PDouble; pDst : PSingle; count : NativeInt);
 
+// ------------------------------------------------------------------
+// ------------------------------------------------------------------
+// ------------------------------------------------------------------
 implementation
+// ------------------------------------------------------------------
+// ------------------------------------------------------------------
+// ------------------------------------------------------------------
 
 type
    PInt8 = ^ShortInt;
@@ -101,6 +116,8 @@ const
 // ------------------ SSE2 ASM Helpers ------------------
 // ------------------
 
+// SSE2_Add
+//
 procedure SSE2_Add(p1, p2, pRes : PDouble; count : NativeInt);
 asm
    .noframe
@@ -115,6 +132,8 @@ asm
 @done:
 end;
 
+// SSE2_Sub
+//
 procedure SSE2_Sub(p1, p2, pRes : PDouble; count : NativeInt);
 asm
    .noframe
@@ -129,6 +148,8 @@ asm
 @done:
 end;
 
+// SSE2_Mul
+//
 procedure SSE2_Mul(p1, p2, pRes : PDouble; count : NativeInt);
 asm
    .noframe
@@ -143,6 +164,8 @@ asm
 @done:
 end;
 
+// SSE2_Div
+//
 procedure SSE2_Div(p1, p2, pRes : PDouble; count : NativeInt);
 asm
    .noframe
@@ -157,6 +180,8 @@ asm
 @done:
 end;
 
+// SSE2_ReLU
+//
 procedure SSE2_ReLU(p1, pRes : PDouble; count : NativeInt);
 asm
    .noframe
@@ -172,6 +197,8 @@ asm
 @done:
 end;
 
+// SSE2_AddScaled
+//
 procedure SSE2_AddScaled(pSrc : PDouble; scalar : Double; pDst : PDouble; count : NativeInt);
 asm
    .noframe
@@ -187,6 +214,8 @@ asm
 @done:
 end;
 
+// SSE2_MulAdd
+//
 procedure SSE2_MulAdd(pSrc, pWeights, pDst : PDouble; count : NativeInt);
 asm
    .noframe
@@ -201,6 +230,8 @@ asm
 @done:
 end;
 
+// SSE2_Max
+//
 procedure SSE2_Max(pSrc, pDst : PDouble; count : NativeInt);
 asm
    .noframe
@@ -215,6 +246,8 @@ asm
 @done:
 end;
 
+// SSE2_Copy
+//
 procedure SSE2_Copy(pSrc, pDst : PDouble; count : NativeInt);
 asm
    .noframe
@@ -229,6 +262,8 @@ asm
 @done:
 end;
 
+// SSE2_CvtPS2PDContiguous
+//
 procedure SSE2_CvtPS2PDContiguous(pSrc : PSingle; pDst : PDouble; count : NativeInt);
 asm
    .noframe
@@ -243,6 +278,8 @@ asm
 @done:
 end;
 
+// SSE2_CvtPD2PSContiguous
+//
 procedure SSE2_CvtPD2PSContiguous(pSrc : PDouble; pDst : PSingle; count : NativeInt);
 asm
    .noframe
@@ -257,6 +294,8 @@ asm
 @done:
 end;
 
+// SSE2_ReLU6
+//
 procedure SSE2_ReLU6(p1, pRes : PDouble; count : NativeInt);
 const
    c0 : array [0..1] of Double = (0.0, 0.0);
@@ -275,6 +314,8 @@ asm
 @done:
 end;
 
+// SSE2_HardSigmoid
+//
 procedure SSE2_HardSigmoid(p1, pRes : PDouble; count : NativeInt);
 const
    c0 : array [0..1] of Double = (0.0, 0.0);
@@ -295,6 +336,8 @@ asm
 @done:
 end;
 
+// SSE2_HardSwish
+//
 procedure SSE2_HardSwish(p1, pRes : PDouble; count : NativeInt);
 const
    c0 : array [0..1] of Double = (0.0, 0.0);
@@ -315,6 +358,8 @@ asm
 @done:
 end;
 
+// SSE2_Exp
+//
 procedure SSE2_Exp(p1, pRes : PDouble; count : NativeInt);
 asm
    .noframe
@@ -360,6 +405,8 @@ asm
 @done:
 end;
 
+// SSE2_Sigmoid
+//
 procedure SSE2_Sigmoid(p1, pRes : PDouble; count : NativeInt);
 var i : NativeInt;
 begin
@@ -369,6 +416,8 @@ begin
    for i := 0 to count - 1 do pRes[i] := 1.0 / (1.0 + pRes[i]);
 end;
 
+// SSE2_MulScaled
+//
 procedure SSE2_MulScaled(p1 : PDouble; scale : Double; pRes : PDouble; count : NativeInt);
 asm
    .noframe
@@ -384,6 +433,8 @@ asm
 @done:
 end;
 
+// SSE2_BilinearInterpolate
+//
 procedure SSE2_BilinearInterpolate(p00, p01, p10, p11, pRes : PDouble; fw, fh : Double; count : NativeInt);
 asm
    .noframe
@@ -438,6 +489,8 @@ asm
 @done:
 end;
 
+// SSE2_MaxVector
+//
 procedure SSE2_MaxVector(pSrc : PDouble; count : NativeInt; var maxV : Double);
 asm
    .noframe
@@ -456,6 +509,8 @@ asm
 @done:
 end;
 
+// SSE2_SumVector
+//
 procedure SSE2_SumVector(pSrc : PDouble; count : NativeInt; var sum : Double);
 asm
    .noframe
@@ -477,12 +532,22 @@ end;
 // ------------------ TKCLSSE2Backend ------------------
 // ------------------
 
+// Create
+//
 constructor TKCLSSE2Backend.Create;
 begin
    inherited Create;
-   FAllowJIT := True;
 end;
 
+// Destroy
+//
+destructor TKCLSSE2Backend.Destroy;
+begin
+   inherited;
+end;
+
+// GetValue
+//
 function TKCLSSE2Backend.GetValue(const ABuf : TKCLStridedBufferDescriptor; const AIdx : TKCLDimensions) : Double;
 var
    idx : Integer; offset : NativeInt; p : PByte;
@@ -497,6 +562,8 @@ begin
    else Result := 0; end;
 end;
 
+// SetValue
+//
 procedure TKCLSSE2Backend.SetValue(const ABuf : TKCLStridedBufferDescriptor; const AIdx : TKCLDimensions; AValue : Double);
 var
    idx : Integer; offset : NativeInt; p : PByte;
@@ -511,6 +578,8 @@ begin
    end;
 end;
 
+// FlatIndex
+//
 function TKCLSSE2Backend.FlatIndex(const AIdx, ADims : TKCLDimensions) : Integer;
 var idx, mult : Integer;
 begin
@@ -518,6 +587,8 @@ begin
    for idx := High(AIdx) downto 0 do begin Result := Result + AIdx[idx] * mult; mult := mult * ADims[idx]; end;
 end;
 
+// IndexFromFlat
+//
 procedure TKCLSSE2Backend.IndexFromFlat(AFlat : Integer; const ADims : TKCLDimensions; var AIdx : TKCLDimensions);
 var idx : Integer;
 begin
@@ -527,6 +598,8 @@ begin
    end;
 end;
 
+// IsContiguous
+//
 function TKCLSSE2Backend.IsContiguous(const ABuf : TKCLStridedBufferDescriptor) : Boolean;
 var idx : Integer; sz : NativeInt;
 begin
@@ -536,6 +609,8 @@ begin
    Result := True;
 end;
 
+// VisitNode
+//
 procedure TKCLSSE2Backend.VisitNode(ANode : TKCLNode);
 var idx : Integer;
 begin
@@ -548,6 +623,8 @@ begin
    FSortedNodes.Add(ANode);
 end;
 
+// VerifyOutputs
+//
 procedure TKCLSSE2Backend.VerifyOutputs;
 var
    j, i, outIdx : Integer;
@@ -566,6 +643,8 @@ begin
    end;
 end;
 
+// ProcessConstant
+//
 procedure TKCLSSE2Backend.ProcessConstant(n : Integer; node : TKCLConstantNode);
 var i : Integer;
 begin
@@ -576,6 +655,8 @@ begin
    for i := 0 to FNodeTotalElements[n]-1 do FNodeBuffers[n][i] := node.Value;
 end;
 
+// ProcessInput
+//
 procedure TKCLSSE2Backend.ProcessInput(n : Integer; node : TKCLInputNode);
 var
    dIn : TKCLStridedBufferDescriptor;
@@ -595,6 +676,8 @@ begin
    end;
 end;
 
+// ProcessConcat
+//
 procedure TKCLSSE2Backend.ProcessConcat(n : Integer; node : TKCLConcatNode);
 var
    axis, i, k, inputIdx, inIdx, inC, outC, curDimOffset : Integer;
@@ -638,6 +721,8 @@ begin
    end;
 end;
 
+// ProcessMap
+//
 procedure TKCLSSE2Backend.ProcessMap(n : Integer; node : TKCLMapNode);
 var
    in1, in2, i : Integer;
@@ -701,12 +786,12 @@ begin
    end;
 end;
 
+// ProcessConv2D
+//
 procedure TKCLSSE2Backend.ProcessConv2D(n : Integer; node : TKCLConv2DNode);
 var
-   in1, inC, outC, inH, inW, outH, outW, hO, wO, ny, nx, stepY, stepX, k, i : Integer;
+   in1, i : Integer;
    dims : TKCLDimensions;
-   pInput, pRes, pW, pB, pROut, pWBase : PDouble;
-   pad_h, pad_top, pad_w, pad_left, h_in_start, w_in_start : Integer;
 begin
    in1 := FNodeToBufferIdx[node.Inputs[0]];
    dims := Copy(FNodeDims[in1]);
@@ -719,15 +804,23 @@ begin
    FNodeTotalElements[n] := 1; for i := 0 to High(dims) do FNodeTotalElements[n] := FNodeTotalElements[n] * dims[i];
    SetLength(FNodeBuffers[n], FNodeTotalElements[n]);
 
-   inC := FNodeDims[in1][High(dims)]; outC := dims[High(dims)];
-   inH := FNodeDims[in1][High(dims)-2]; inW := FNodeDims[in1][High(dims)-1];
-   outH := dims[High(dims)-2]; outW := dims[High(dims)-1];
+   ProcessConv2DSSE2(n, node);
+end;
+
+// ProcessConv2DSSE2
+//
+procedure TKCLSSE2Backend.ProcessConv2DSSE2(n: Integer; node: TKCLConv2DNode);
+var
+   in1, inC, outC, inH, inW, outH, outW, hO, wO, ny, nx, stepY, stepX, k, i : Integer;
+   pInput, pRes, pW, pB, pROut, pWBase : PDouble;
+   pad_h, pad_top, pad_w, pad_left, h_in_start, w_in_start : Integer;
+begin
+   in1 := FNodeToBufferIdx[node.Inputs[0]];
+   inC := FNodeDims[in1][High(FNodeDims[in1])]; outC := Length(node.Bias);
+   inH := FNodeDims[in1][High(FNodeDims[in1])-2]; inW := FNodeDims[in1][High(FNodeDims[in1])-1];
+   outH := FNodeDims[n][High(FNodeDims[n])-2]; outW := FNodeDims[n][High(FNodeDims[n])-1];
    pInput := PDouble(Pointer(FNodeBuffers[in1])); pRes := PDouble(Pointer(FNodeBuffers[n]));
    pW := PDouble(node.Weights); pB := PDouble(node.Bias);
-
-   if FAllowJIT and (node.KernelSize = 1) and (node.Stride = 1) then begin
-      if TKCLWin64JITBackend.Execute(FKernel, node, pInput, pRes, pW, pB, FNodeTotalElements[n] div outC, inC, outC) then Exit;
-   end;
 
    if Length(node.Bias) <> outC then
       raise Exception.CreateFmt('Bias length mismatch: expected %d, got %d', [outC, Length(node.Bias)]);
@@ -758,6 +851,8 @@ begin
    end;
 end;
 
+// ProcessConv2DTranspose
+//
 procedure TKCLSSE2Backend.ProcessConv2DTranspose(n : Integer; node : TKCLConv2DTransposeNode);
 var
    in1Idx, inC, outC, inH, inW, outH, outW, h_out, w_out, ky, kx, cIn, cOut, ny, nx : Integer;
@@ -831,6 +926,8 @@ begin
    end;
 end;
 
+// ProcessDepthwiseConv2D
+//
 procedure TKCLSSE2Backend.ProcessDepthwiseConv2D(n : Integer; node : TKCLDepthwiseConv2DNode);
 var
    in1, inC, outH, outW, inH, inW, hO, wO, ny, nx, stepY, stepX, i : Integer;
@@ -871,6 +968,8 @@ begin
    end;
 end;
 
+// ProcessSoftMax
+//
 procedure TKCLSSE2Backend.ProcessSoftMax(n : Integer; node : TKCLSoftMaxNode);
 var
    in1, axis, axisSize, k, loopA, i : Integer;
@@ -915,6 +1014,8 @@ begin
    end;
 end;
 
+// ProcessResizeBilinear
+//
 procedure TKCLSSE2Backend.ProcessResizeBilinear(n : Integer; node : TKCLResizeBilinearNode);
 var
    i, in1, inC, inH, inW, outH, outW, k, hO, wO, h0, h1, w0, w1, rank : Integer;
@@ -963,6 +1064,8 @@ begin
    end;
 end;
 
+// ProcessMaxPool2D
+//
 procedure TKCLSSE2Backend.ProcessMaxPool2D(n : Integer; node : TKCLMaxPool2DNode);
 var
    in1, inC, outH, outW, inH, inW, hO, wO, ny, nx, stepY, stepX, i : Integer;
@@ -991,7 +1094,7 @@ begin
             ny := h_in_start + stepY;
             if (ny >= 0) and (ny < inH) then begin
                for stepX := 0 to node.KernelSize - 1 do begin
-                  nx := w_in_start + stepX; if (nx >= 0) and (nx < inW) then SSE2_Max(pInput + (ny * inW * inC) + (nx * inC), pROut, inC);
+                  nx := w_in_start + stepX; if (nx >= 0) and (nx < inW) then SSE2_Max(pInput + (ny * inW + nx) * inC, pROut, inC);
                end;
             end;
          end;
@@ -999,6 +1102,8 @@ begin
    end;
 end;
 
+// ProcessGlobalAvgPool
+//
 procedure TKCLSSE2Backend.ProcessGlobalAvgPool(n : Integer; node : TKCLGlobalAvgPoolNode);
 var i, ny, nx, inC, inH, inW : Integer; pInput, pRes : PDouble; vVal, sumVal : Double;
 begin
@@ -1020,6 +1125,8 @@ begin
    end;
 end;
 
+// ProcessMapFallback
+//
 procedure TKCLSSE2Backend.ProcessMapFallback(n : Integer; node : TKCLMapNode);
 var
    dims, inDims, idxIn, lIdx : TKCLDimensions;
@@ -1043,6 +1150,8 @@ begin
    end;
 end;
 
+// Execute
+//
 procedure TKCLSSE2Backend.Execute(AKernel : TKCLKernel; const ABuffers : array of TKCLStridedBufferDescriptor);
 var
    savedMask : TArithmeticExceptionMask;
@@ -1096,6 +1205,41 @@ begin
          FNodeToBufferIdx.Free; FSortedNodes.Free; FVisiting.Free; FVisited.Free;
       end;
    finally SetExceptionMask(savedMask); end;
+end;
+
+// ------------------
+// ------------------ TKCLJITBackend ------------------
+// ------------------
+
+// ProcessConv2D
+//
+procedure TKCLJITBackend.ProcessConv2D(n: Integer; node: TKCLConv2DNode);
+begin
+   var in1Idx := FNodeToBufferIdx[node.Inputs[0]];
+   var dims := Copy(FNodeDims[in1Idx]);
+   if Length(dims) >= 3 then begin
+      dims[High(dims)-2] := (dims[High(dims)-2] + node.Stride - 1) div node.Stride;
+      dims[High(dims)-1] := (dims[High(dims)-1] + node.Stride - 1) div node.Stride;
+      dims[High(dims)] := Length(node.Bias);
+   end;
+   FNodeDims[n] := dims;
+   var total := 1; for var i := 0 to High(dims) do total := total * dims[i];
+   FNodeTotalElements[n] := total;
+   SetLength(FNodeBuffers[n], total);
+
+   if (node.KernelSize = 1) and (node.Stride = 1) then begin
+      var outC := Length(node.Bias);
+      var inC := FNodeDims[in1Idx][High(FNodeDims[in1Idx])];
+      var pInput := PDouble(Pointer(FNodeBuffers[in1Idx])); 
+      var pRes := PDouble(Pointer(FNodeBuffers[n]));
+      var pW := PDouble(node.Weights); 
+      var pB := PDouble(node.Bias);
+
+      if TKCLWin64JITBackend.Execute(FKernel, node, pInput, pRes, pW, pB, total div outC, inC, outC) then 
+         Exit;
+   end;
+   
+   ProcessConv2DSSE2(n, node);
 end;
 
 end.

@@ -25,16 +25,23 @@ interface
 uses
    System.Classes, System.SysUtils, System.Generics.Collections, System.Math,
    Winapi.Windows,
-   dwsUtils, dwsKernelCompilerCommon;
+   dwsUtils, dwsKernelCompilerCommon, dwsXPlatform,
+   dwsJITx86Intrinsics, dwsJITFixups, dwsJITx86_64;
 
 type
+   TFixupLocationHelper = class
+      Stream : TStream;
+      constructor Create(aStream : TStream);
+      function GetLocation : Integer;
+   end;
+
    TKCLMicroKernel = procedure(pIn, pOut, pWeights, pBias: PDouble; totalPixels: NativeInt);
 
    TKCLCompiledKernel = class
    public
       Code : Pointer;
       Size : NativeInt;
-      Weights : TDoubleDynArray; // Transposed weights [tile, k, channel_in_tile]
+      Weights : TDoubleDynArray; // Transposed weights
       constructor Create(ACode : Pointer; ASize : NativeInt);
       destructor Destroy; override;
    end;
@@ -52,18 +59,45 @@ type
       class function Execute(AKernel : TKCLKernel; ANode : TKCLNode; pIn, pOut, pWeights, pBias: PDouble; totalPixels: NativeInt; inC, outC : Integer) : Boolean;
    end;
 
+// ------------------------------------------------------------------
+// ------------------------------------------------------------------
+// ------------------------------------------------------------------
 implementation
+// ------------------------------------------------------------------
+// ------------------------------------------------------------------
+// ------------------------------------------------------------------
+
+// ------------------
+// ------------------ TFixupLocationHelper ------------------
+// ------------------
+
+// Create
+//
+constructor TFixupLocationHelper.Create(aStream : TStream);
+begin
+   Stream := aStream;
+end;
+
+// GetLocation
+//
+function TFixupLocationHelper.GetLocation : Integer;
+begin
+   Result := Stream.Position;
+end;
 
 // ------------------
 // ------------------ TKCLCompiledKernel ------------------
 // ------------------
 
+// Create
+//
 constructor TKCLCompiledKernel.Create(ACode : Pointer; ASize : NativeInt);
 begin
-   Code := ACode;
-   Size := ASize;
+   Code := ACode; Size := ASize;
 end;
 
+// Destroy
+//
 destructor TKCLCompiledKernel.Destroy;
 begin
    if Code <> nil then VirtualFree(Code, 0, MEM_RELEASE);
@@ -74,17 +108,19 @@ end;
 // ------------------ TKCLOptimizationData ------------------
 // ------------------
 
+// Create
+//
 constructor TKCLOptimizationData.Create;
 begin
    CompiledKernels := TDictionary<TKCLNode, TKCLCompiledKernel>.Create;
-end;
+ end;
 
+// Destroy
+//
 destructor TKCLOptimizationData.Destroy;
-var
-   compiled : TKCLCompiledKernel;
+var compiled : TKCLCompiledKernel;
 begin
-   for compiled in CompiledKernels.Values do
-      compiled.Free;
+   for compiled in CompiledKernels.Values do compiled.Free;
    CompiledKernels.Free;
    inherited;
 end;
@@ -93,130 +129,197 @@ end;
 // ------------------ TKCLWin64JITBackend ------------------
 // ------------------
 
+// Compile
+//
 class function TKCLWin64JITBackend.Compile(AKernel : TKCLKernel; ANode : TKCLNode; inC, outC : Integer) : TKCLCompiledKernel;
 var
-   ms : TMemoryStream;
-   tileCount, tile, curTileSize, i : Integer;
+   j : Tx86_64_WriteOnlyStream;
    ptr : Pointer;
-   pixelLoopPos, kLoopPos, epiloguePos, jmpEpiloguePos : Int64;
-
-   procedure Emit(b : Byte);
-   begin
-      ms.Write(b, 1);
-   end;
-
-   procedure EmitBytes(const b : array of Byte);
-   begin
-      ms.Write(b[0], Length(b));
-   end;
-
-   procedure EmitD(d : Integer);
-   begin
-      ms.Write(d, 4);
-   end;
-
-   procedure EmitModRM(mod_, reg, rm : Byte);
-   begin
-      Emit((mod_ shl 6) or ((reg and 7) shl 3) or (rm and 7));
-   end;
-
+   jmpTailPatch, jmpEpiloguePatch, pixel4LoopPos, tailLoopPos, kLoopPos, kLoop1Pos : Integer;
+   i, p, tileCount, tile, curTileSize, cOffset, ymmIdx : Integer;
+   nChan : Integer;
+   accReg, inReg : Integer;
+   pOutRegs : array[0..3] of TgpRegister64;
+   b : TBytes;
+   allocSize : Integer;
 begin
-   ms := TMemoryStream.Create;
+   j := Tx86_64_WriteOnlyStream.Create;
    try
       // Prologue
-      Emit($55); EmitBytes([$48, $89, $E5]); // push rbp; mov rbp, rsp
-      
-      // Save shadow space
-      EmitBytes([$48, $83, $EC, $20]); // sub rsp, 32
+      j._push_reg(gprRBP); j._mov_reg_reg(gprRBP, gprRSP);
+      j._push_reg(gprRBX); j._push_reg(gprRDI); j._push_reg(gprR12); j._push_reg(gprR13); j._push_reg(gprR14); j._push_reg(gprR15);
+      j._sub_reg_imm(gprRSP, 160);
+      for i := 0 to 9 do j._vmovups_ptr_reg_reg(gprRSP, i * 16, TxmmRegister(i + 6)); // VMOVUPS [rsp + i*16], xmm(i+6)
 
-      // Use R10 for totalPixels
-      EmitBytes([$4C, $8B, $55, $30]); // mov r10, [rbp+48]
-      
-      // Zero-pixel check
-      EmitBytes([$4D, $85, $D2]); // test r10, r10
-      EmitBytes([$0F, $84]); // jz (rel32)
-      jmpEpiloguePos := ms.Position;
-      EmitD(0);
+      j._mov_reg_qword_ptr_reg(gprRDI, gprRBP, 48); // mov rdi, [rbp+48] // totalPixels
 
-      pixelLoopPos := ms.Position;
+      // 4-Pixel Loop
+      pixel4LoopPos := j.Size;
+      j._cmp_reg_imm(gprRDI, 4);
+      j._jump(flagsB, $10000); jmpTailPatch := j.Size - 4; // Forward jump dummy
+
+      j._mov_reg_reg(gprR13, gprRCX);
+      j._add_reg_imm(gprR13, inC * 8);
+      j._mov_reg_reg(gprR14, gprR13);
+      j._add_reg_imm(gprR14, inC * 8);
+      j._mov_reg_reg(gprR15, gprR14);
+      j._add_reg_imm(gprR15, inC * 8);
+
+      j._mov_reg_reg(gprR10, gprRDX);
+      j._add_reg_imm(gprR10, outC * 8);
+      j._mov_reg_reg(gprR11, gprR10);
+      j._add_reg_imm(gprR11, outC * 8);
+      j._mov_reg_reg(gprR12, gprR11);
+      j._add_reg_imm(gprR12, outC * 8);
+
       tileCount := (outC + 7) div 8;
       for tile := 0 to tileCount - 1 do begin
          curTileSize := Min(8, outC - tile * 8);
-         
-         // Accumulators: XMM0-XMM3 (using pairs for 8 channels)
-         // Load Bias
-         for i := 0 to (curTileSize div 2) - 1 do begin
-            Emit($66); Emit($41); Emit($0F); Emit($10); EmitModRM($02, i, 1); EmitD((tile * 8 + i * 2) * 8); // XMMi = Bias
-         end;
-         if (curTileSize mod 2) <> 0 then begin
-            Emit($F2); Emit($41); Emit($0F); Emit($10); EmitModRM($02, 4, 1); EmitD((tile * 8 + curTileSize - 1) * 8);
+
+         cOffset := 0; ymmIdx := 0;
+         while cOffset < curTileSize do begin
+            nChan := Min(4, curTileSize - cOffset); if nChan = 3 then nChan := 2;
+            if nChan = 4 then j._vmovupd_ptr_reg(TymmRegister(ymmIdx), gprR9, tile*64 + cOffset*8)
+            else if nChan >= 2 then j._vmovups_ptr_reg(TxmmRegister(ymmIdx), gprR9, tile*64 + cOffset*8)
+            else j._vmovsd_reg_ptr_reg(TxmmRegister(ymmIdx), gprR9, tile*64 + cOffset*8);
+            for p := 1 to 3 do begin
+               if nChan = 4 then j._vmovapd_reg_reg(TymmRegister(ymmIdx + p*2), TymmRegister(ymmIdx))
+               else j._vmovapd_reg_reg(TymmRegister(ymmIdx + p*2), TymmRegister(ymmIdx)); // DWScript uses ymm overload automatically
+            end;
+            cOffset := cOffset + nChan; ymmIdx := ymmIdx + 1;
          end;
 
-         // K loop over input channels
-         EmitBytes([$4D, $89, $C3]); // mov r11, r8 (Weights pointer)
-         if tile > 0 then begin EmitBytes([$49, $81, $C3]); EmitD(tile * 8 * inC * 8); end;
-         
-         EmitBytes([$48, $31, $C0]); // xor rax, rax (k = 0)
-         kLoopPos := ms.Position;
-         
-         // Load input value into XMM5 and broadcast: MOVSD XMM5, [RCX + RAX*8]
-         EmitBytes([$F2, $0F, $10, $2C]); Emit($C1); 
-         EmitBytes([$66, $0F, $14, $ED]); // UNPCKLPD XMM5, XMM5
+         j._mov_reg_reg(gprRBX, gprR8);
+         if tile > 0 then j._add_reg_imm(gprRBX, tile * 8 * inC * 8);
+         j._xor_reg_reg(gprRAX, gprRAX);
 
-         // Accumulate using contiguous weights
-         for i := 0 to (curTileSize div 2) - 1 do begin
-            Emit($66); Emit($41); Emit($0F); Emit($10); EmitModRM($02, 6, 3); EmitD(i * 2 * 8); // XMM6 = Weights from R11
-            Emit($66); Emit($0F); Emit($59); EmitModRM($03, 6, 5); // XMM6 *= XMM5
-            Emit($66); Emit($0F); Emit($58); EmitModRM($03, i, 6); // XMMi += XMM6
-         end;
-         if (curTileSize mod 2) <> 0 then begin
-            Emit($F2); Emit($41); Emit($0F); Emit($10); EmitModRM($02, 6, 3); EmitD((curTileSize - 1) * 8);
-            Emit($F2); Emit($0F); Emit($59); EmitModRM($03, 6, 5);
-            Emit($F2); Emit($0F); Emit($58); EmitModRM($03, 4, 6);
+         kLoopPos := j.Size;
+
+         j._vbroadcastsd_ptr_indexed(ymm8, gprRCX, gprRAX, 8, 0);
+         j._vbroadcastsd_ptr_indexed(ymm9, gprR13, gprRAX, 8, 0);
+         j._vbroadcastsd_ptr_indexed(ymm10, gprR14, gprRAX, 8, 0);
+         j._vbroadcastsd_ptr_indexed(ymm11, gprR15, gprRAX, 8, 0);
+
+         cOffset := 0; ymmIdx := 0;
+         while cOffset < curTileSize do begin
+            nChan := Min(4, curTileSize - cOffset); if nChan = 3 then nChan := 2;
+            for p := 0 to 3 do begin
+               accReg := ymmIdx + p*2; inReg := 8 + p;
+               if nChan = 4 then j._vfmadd231pd_ptr_reg(TymmRegister(accReg), TymmRegister(inReg), gprRBX, cOffset*8)
+               else if nChan >= 2 then j._vfmadd231pd_ptr_reg(TxmmRegister(accReg), TxmmRegister(inReg), gprRBX, cOffset*8)
+               else j._vfmadd231sd_ptr_reg(TxmmRegister(accReg), TxmmRegister(inReg), gprRBX, cOffset*8);
+            end;
+            cOffset := cOffset + nChan; ymmIdx := ymmIdx + 1;
          end;
 
-         EmitBytes([$49, $83, $C3, $40]); // next weights
-         EmitBytes([$48, $FF, $C0]); // inc rax
-         EmitBytes([$48, $81, $F8]); EmitD(inC); EmitBytes([$0F, $82]); EmitD(kLoopPos - (ms.Position + 4));
+         j._add_reg_imm(gprRBX, 64);
+         j._add_reg_imm(gprRAX, 1);
+         j._cmp_reg_imm(gprRAX, inC);
+         j._jump(flagsB, kLoopPos - j.Size);
 
-         // Store results
-         EmitBytes([$48, $89, $D0]); // mov rax, rdx
-         if tile > 0 then begin EmitBytes([$48, $05]); EmitD(tile * 8 * 8); end;
-         for i := 0 to (curTileSize div 2) - 1 do begin
-            Emit($66); Emit($0F); Emit($11); EmitModRM($02, i, 0); EmitD(i * 2 * 8);
-         end;
-         if (curTileSize mod 2) <> 0 then begin
-            Emit($F2); Emit($0F); Emit($11); EmitModRM($02, 4, 0); EmitD((curTileSize - 1) * 8);
+         pOutRegs[0] := gprRDX; pOutRegs[1] := gprR10; pOutRegs[2] := gprR11; pOutRegs[3] := gprR12;
+         cOffset := 0; ymmIdx := 0;
+         while cOffset < curTileSize do begin
+            nChan := Min(4, curTileSize - cOffset); if nChan = 3 then nChan := 2;
+            for p := 0 to 3 do begin
+               accReg := ymmIdx + p*2;
+               if nChan = 4 then j._vmovupd_ptr_reg_reg(pOutRegs[p], tile*64 + cOffset*8, TymmRegister(accReg))
+               else if nChan >= 2 then j._vmovups_ptr_reg_reg(pOutRegs[p], tile*64 + cOffset*8, TxmmRegister(accReg))
+               else j._vmovsd_ptr_reg_reg(pOutRegs[p], tile*64 + cOffset*8, TxmmRegister(accReg));
+            end;
+            cOffset := cOffset + nChan; ymmIdx := ymmIdx + 1;
          end;
       end;
 
-      // Pixel loop increments
-      EmitBytes([$48, $81, $C1]); EmitD(inC * 8); // rcx += inC*8
-      EmitBytes([$48, $81, $C2]); EmitD(outC * 8); // rdx += outC*8
-      
-      EmitBytes([$4C, $8B, $55, $30]); EmitBytes([$49, $FF, $CA]); EmitBytes([$4C, $89, $55, $30]); // totalPixels -= 1
-      EmitBytes([$0F, $85]); EmitD(pixelLoopPos - (ms.Position + 4));
+      j._add_reg_imm(gprRCX, inC * 8 * 4);
+      j._add_reg_imm(gprRDX, outC * 8 * 4);
+      j._sub_reg_imm(gprRDI, 4);
+      j._jump(flagsNE, pixel4LoopPos - j.Size);
+
+      // Tail Pixel Loop (1 pixel)
+      var curTailPos := j.Size;
+
+      j._test_reg_reg(gprRDI, gprRDI);
+      j._jump(flagsE, $10000); jmpEpiloguePatch := j.Size - 4;
+
+      tailLoopPos := j.Size;
+      for tile := 0 to tileCount - 1 do begin
+         curTileSize := Min(8, outC - tile * 8);
+         cOffset := 0; ymmIdx := 0;
+         while cOffset < curTileSize do begin
+            nChan := Min(4, curTileSize - cOffset); if nChan = 3 then nChan := 2;
+            if nChan = 4 then j._vmovupd_ptr_reg(TymmRegister(ymmIdx), gprR9, tile*64 + cOffset*8)
+            else if nChan >= 2 then j._vmovups_ptr_reg(TxmmRegister(ymmIdx), gprR9, tile*64 + cOffset*8)
+            else j._vmovsd_reg_ptr_reg(TxmmRegister(ymmIdx), gprR9, tile*64 + cOffset*8);
+            cOffset := cOffset + nChan; ymmIdx := ymmIdx + 1;
+         end;
+
+         j._mov_reg_reg(gprRBX, gprR8);
+         if tile > 0 then j._add_reg_imm(gprRBX, tile * 8 * inC * 8);
+         j._xor_reg_reg(gprRAX, gprRAX);
+
+         kLoop1Pos := j.Size;
+         j._vbroadcastsd_ptr_indexed(ymm8, gprRCX, gprRAX, 8, 0);
+
+         cOffset := 0; ymmIdx := 0;
+         while cOffset < curTileSize do begin
+            nChan := Min(4, curTileSize - cOffset); if nChan = 3 then nChan := 2;
+            if nChan = 4 then j._vfmadd231pd_ptr_reg(TymmRegister(ymmIdx), TymmRegister(8), gprRBX, cOffset*8)
+            else if nChan >= 2 then j._vfmadd231pd_ptr_reg(TxmmRegister(ymmIdx), TxmmRegister(8), gprRBX, cOffset*8)
+            else j._vfmadd231sd_ptr_reg(TxmmRegister(ymmIdx), TxmmRegister(8), gprRBX, cOffset*8);
+            cOffset := cOffset + nChan; ymmIdx := ymmIdx + 1;
+         end;
+
+         j._add_reg_imm(gprRBX, 64);
+         j._add_reg_imm(gprRAX, 1);
+         j._cmp_reg_imm(gprRAX, inC);
+         j._jump(flagsB, kLoop1Pos - j.Size);
+
+         cOffset := 0; ymmIdx := 0;
+         while cOffset < curTileSize do begin
+            nChan := Min(4, curTileSize - cOffset); if nChan = 3 then nChan := 2;
+            if nChan = 4 then j._vmovupd_ptr_reg_reg(gprRDX, tile*64 + cOffset*8, TymmRegister(ymmIdx))
+            else if nChan >= 2 then j._vmovups_ptr_reg_reg(gprRDX, tile*64 + cOffset*8, TxmmRegister(ymmIdx))
+            else j._vmovsd_ptr_reg_reg(gprRDX, tile*64 + cOffset*8, TxmmRegister(ymmIdx));
+            cOffset := cOffset + nChan; ymmIdx := ymmIdx + 1;
+         end;
+      end;
+      j._add_reg_imm(gprRCX, inC * 8); j._add_reg_imm(gprRDX, outC * 8);
+      j._sub_reg_imm(gprRDI, 1);
+      j._jump(flagsNE, tailLoopPos - j.Size);
 
       // Epilogue
-      epiloguePos := ms.Position;
-      ms.Position := jmpEpiloguePos; EmitD(epiloguePos - (jmpEpiloguePos + 4));
-      ms.Position := epiloguePos;
+      var curEpiloguePos := j.Size;
 
-      EmitBytes([$48, $83, $C4, $20]); // add rsp, 32
-      Emit($5D); // pop rbp
-      Emit($C3); // ret
+      j._vzeroupper;
 
-      ptr := VirtualAlloc(nil, ms.Size, MEM_COMMIT or MEM_RESERVE, PAGE_EXECUTE_READWRITE);
-      Move(ms.Memory^, ptr^, ms.Size);
-      Result := TKCLCompiledKernel.Create(ptr, ms.Size);
-   finally
-      ms.Free;
-   end;
+      for i := 0 to 9 do j._vmovups_ptr_reg(TxmmRegister(i + 6), gprRSP, i * 16); // VMOVUPS xmm(i+6), [rsp + i*16]
+      j._add_reg_imm(gprRSP, 160);
+      j._pop_reg(gprR15); j._pop_reg(gprR14); j._pop_reg(gprR13); j._pop_reg(gprR12); j._pop_reg(gprRDI); j._pop_reg(gprRBX);
+      j._pop_reg(gprRBP); j._ret;
+
+      b := j.ToBytes;
+
+      // Patch forward jumps
+      PInteger(@b[jmpTailPatch])^ := curTailPos - (jmpTailPatch + 4);
+      PInteger(@b[jmpEpiloguePatch])^ := curEpiloguePos - (jmpEpiloguePatch + 4);
+
+      allocSize := (Length(b) + 4095) and not 4095;
+      ptr := VirtualAlloc(nil, allocSize, MEM_COMMIT or MEM_RESERVE, PAGE_EXECUTE_READWRITE);
+      if ptr = nil then raise Exception.Create('Failed to allocate JIT memory');
+      Move(b[0], ptr^, Length(b));
+      FlushInstructionCache(GetCurrentProcess, ptr, Length(b));
+      Result := TKCLCompiledKernel.Create(ptr, allocSize);
+   finally j.Free; end;
 end;
 
+// Execute
+//
 class function TKCLWin64JITBackend.Execute(AKernel : TKCLKernel; ANode : TKCLNode; pIn, pOut, pWeights, pBias: PDouble; totalPixels: NativeInt; inC, outC : Integer) : Boolean;
 begin
    Result := False;
+   if not (cpuFMA in Win64CPUFeatures) or not (cpuAVX in Win64CPUFeatures) then Exit;
+
    TMonitor.Enter(AKernel);
    try
       var optData := TKCLOptimizationData(AKernel.OptimizationData);
@@ -227,7 +330,7 @@ begin
       if not optData.CompiledKernels.TryGetValue(ANode, compiled) then begin
          compiled := Compile(AKernel, ANode, inC, outC);
          if compiled <> nil then begin
-            SetLength(compiled.Weights, ((outC + 7) div 8) * inC * 8);
+            SetLength(compiled.Weights, ((outC + 7) div 8) * 8 * inC);
             for var t := 0 to ((outC + 7) div 8) - 1 do begin
                for var k := 0 to inC - 1 do begin
                   for var c := 0 to 7 do begin
