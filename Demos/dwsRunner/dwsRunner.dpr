@@ -1,3 +1,18 @@
+{**********************************************************************}
+{                                                                      }
+{    "The contents of this file are subject to the Mozilla Public      }
+{    License Version 1.1 (the "License"); you may not use this         }
+{    file except in compliance with the License. You may obtain        }
+{    a copy of the License at http://www.mozilla.org/MPL/              }
+{                                                                      }
+{    Software distributed under the License is distributed on an       }
+{    "AS IS" basis, WITHOUT WARRANTY OF ANY KIND, either express       }
+{    or implied. See the License for the specific language             }
+{    governing rights and limitations under the License.               }
+{                                                                      }
+{    Current maintainer: Eric Grange                                   }
+{                                                                      }
+{**********************************************************************}
 program dwsRunner;
 
 {$SetPEFlags $0001}
@@ -8,196 +23,14 @@ program dwsRunner;
 {$ENDIF}
 {$APPTYPE CONSOLE}
 
-
-
 uses
   Winapi.Windows,
   System.Classes,
   System.SysUtils,
-  dwsXPlatform,
-  dwsComp,
-  dwsCompiler,
-  dwsExprs,
   dwsUtils,
-  dwsFunctions,
   SynZip,
-  dwsMathFunctions,
-  dwsStringFunctions,
-  dwsTimeFunctions,
-  dwsVariantFunctions,
-  dwsFileFunctions,
-  dwsBigIntegerFunctions.GMP,
-  dwsMPIR.Bundle,
-  dwsClassesLibModule,
-  dwsZipLibModule,
-  dwsEncodingLibModule,
-  dwsCryptoLibModule,
-  dwsWebLibModule,
-  dwsDatabaseLibModule,
-  dwsSystemInfoLibModule,
-  dwsKernelCompilerLibModule,
-  dwsGraphicLibrary,
-  dwsTurboJPEG.Bundle,
-  dwsComConnector,
-  dwsJSONConnector,
-  dwsSynSQLiteDatabase,
-  dwsErrors,
-  dwsRunnerProject in 'dwsRunnerProject.pas';
-
-function CreateScript : TDelphiWebScript;
-begin
-   Result:=TDelphiWebScript.Create(nil);
-
-   TdwsComConnector.Create(Result).Script:=Result;
-   TdwsJSONLibModule.Create(Result).Script:=Result;
-   TdwsClassesLib.Create(Result).dwsUnit.Script:=Result;
-   TdwsEncodingLib.Create(Result).dwsEncoding.Script:=Result;
-   TdwsCryptoLib.Create(Result).dwsCrypto.Script:=Result;
-   TdwsZipLib.Create(Result).dwsZip.Script:=Result;
-   TdwsWebLib.Create(Result).dwsWeb.Script:=Result;
-   TdwsDatabaseLib.Create(Result).dwsDatabase.Script:=Result;
-   TdwsSystemInfoLibModule.Create(Result).Script:=Result;
-   TdwsKernelCompilerLib.Create(Result).dwsKernelCompilerUnit.Script:=Result;
-end;
-
-procedure WriteHeader;
-begin
-   Writeln('dwsRunner - sample code runner for DWScript');
-   Writeln('');
-end;
-
-{$WARN SYMBOL_PLATFORM OFF}
-
-procedure MakeExe;
-var
-   zw : TZipWrite;
-   sourceName, zipFileName, exeName : String;
-   hUpdate : THandle;
-   buf : RawByteString;
-   fs : TFileStream;
-   zip : TZipProject;
-   prog : IdwsProgram;
-   script : TDelphiWebScript;
-   searchRec : TSearchRec;
-   found : Integer;
-begin
-   WriteHeader;
-
-   if ParamCount<2 then begin
-      Writeln('Missing zipfile name');
-      Exit;
-   end;
-
-   sourceName:=ParamStr(2);
-   WriteLn('...Starting make for "', sourceName, '"');
-
-   if not StrEndsWith(sourceName, '.zip') then begin
-      zipFileName:=ChangeFileExt(sourceName, '.zip');
-      WriteLn('...Zipping to "', zipFileName, '"');
-      zw:=TZipWrite.Create(zipFileName);
-      try
-         if DirectoryExists(sourceName) then begin
-            sourceName:=IncludeTrailingPathDelimiter(sourceName);
-            found:=FindFirst(sourceName+'*.*', faArchive or faReadOnly, searchRec);
-            while found=0 do begin
-               zw.AddDeflated(sourceName+searchRec.Name, True, 9);
-               found:=FindNext(searchRec);
-            end;
-            FindClose(searchRec);
-         end else zw.AddDeflated(sourceName, True, 9);
-      finally
-         zw.Free;
-      end;
-   end else begin
-      zipFileName:=sourceName;
-   end;
-   if ParamCount>2 then
-      exeName:=ParamStr(3)
-   else exeName:=ChangeFileExt(zipFileName, '.exe');
-
-   zip:=TZipProject.Create(zipFileName);
-   script:=CreateScript;
-   try
-      prog:=script.Compile(zip.Attach(script));
-      try
-         if prog.Msgs.Count>0 then begin
-            WriteLn('...Compiled with ', prog.Msgs.Count, ' message(s):');
-            WriteLn(prog.Msgs.AsInfo);
-            if prog.Msgs.HasErrors then begin
-               Write('...Generation aborted');
-               Exit;
-            end;
-         end else begin
-            WriteLn('...Compiled without errors.');
-         end;
-      finally
-         prog:=nil;
-      end;
-   finally
-      script.Free;
-      zip.Free;
-   end;
-
-   if not FileCopy(ParamStr(0), exeName, False) then begin
-      Writeln('...Failed to create "', exeName, '"');
-   end;
-
-   fs:=TFileStream.Create(zipFileName, fmOpenRead or fmShareDenyNone);
-   try
-      SetLength(buf, fs.Size);
-      if Length(buf)<>0 then
-         fs.Read(buf[1], Length(buf));
-   finally
-      fs.Free;
-   end;
-
-   hUpdate:=BeginUpdateResource(PChar(exeName), False);
-   try
-      UpdateResource(hUpdate, RT_RCDATA, 'SCRIPT', 0, Pointer(buf), Length(buf));
-   finally
-      EndUpdateResource(hUpdate, False);
-   end;
-
-   WriteLn('..."', exeName, '" generated successfully!');
-end;
-
-procedure RunRunner(project : TRunnerProject; paramOffset : Integer; embedded : Boolean);
-var
-   script : TDelphiWebScript;
-   prog : IdwsProgram;
-   exec : IdwsProgramExecution;
-   source : String;
-   params : array of Variant;
-   i : Integer;
-begin
-   script:=CreateScript;
-   try
-      source:=project.Attach(script);
-
-      prog:=script.Compile(source);
-
-      if prog.Msgs.Count>0 then begin
-         if prog.Msgs.HasErrors or not embedded then
-            Writeln(prog.Msgs.AsInfo);
-         if prog.Msgs.HasErrors then Exit;
-      end;
-
-      SetLength(params, ParamCount-paramOffset+2);
-      params[0]:=ParamStr(0);
-      for i:=paramOffset to ParamCount do
-         params[i-paramOffset+1]:=ParamStr(i);
-
-      exec:=prog.ExecuteParam(params);
-      Writeln(exec.Result.ToString);
-      if exec.Msgs.Count>0 then
-         Writeln(exec.Msgs.AsInfo);
-      
-      exec:=nil;
-      prog:=nil;
-   finally
-      script.Free;
-   end;
-end;
+  dwsRunnerProject in 'dwsRunnerProject.pas',
+  dwsRunnerUtils in 'dwsRunnerUtils.pas';
 
 var
    fileName : String;
@@ -205,51 +38,195 @@ var
    zr : TZipRead;
    embedded : Boolean;
    paramOffset : Integer;
+   defines : TStringList;
+   includePaths : TStringList;
+   timeoutMs : Integer;
+   interval : Integer;
+   i : Integer;
+   arg : String;
+
 begin
    zr:=TZipRead.Create(HInstance, 'SCRIPT', RT_RCDATA);
-   if zr.Count=0 then begin
-      FreeAndNil(zr);
-      project:=nil;
-      paramOffset:=2;
-      embedded:=False;
-   end else begin
+   if zr.Count<>0 then begin
       project:=TZipProject.Create(zr);
       paramOffset:=1;
       embedded:=True;
+      try
+         RunRunner(project, paramOffset, embedded, nil, 0);
+      finally
+         project.Free;
+      end;
+      Exit;
    end;
+   FreeAndNil(zr);
 
-   if project=nil then begin
-      if ParamCount<1 then begin
+   defines := TStringList.Create;
+   includePaths := TStringList.Create;
+   try
+      timeoutMs := 0;
+      interval := 10;
+
+      i := 1;
+      while i <= ParamCount do begin
+         arg := ParamStr(i);
+         if (arg = '-I') then begin
+            Inc(i);
+            if i <= ParamCount then includePaths.Add(ParamStr(i));
+         end else if StrBeginsWith(arg, '-I') then begin
+            includePaths.Add(Copy(arg, 3, MaxInt));
+         end else if (arg = '-D') then begin
+            Inc(i);
+            if i <= ParamCount then defines.Add(ParamStr(i));
+         end else if StrBeginsWith(arg, '-D') then begin
+            defines.Add(Copy(arg, 3, MaxInt));
+         end else if arg = '--timeout' then begin
+            Inc(i);
+            if i <= ParamCount then timeoutMs := StrToIntDef(ParamStr(i), 0);
+         end else if arg = '--interval' then begin
+            Inc(i);
+            if i <= ParamCount then interval := StrToIntDef(ParamStr(i), 10);
+         end else break; 
+         Inc(i);
+      end;
+
+      if i > ParamCount then begin
          WriteHeader;
-         Writeln('Run a simple script with:');
-         Writeln('   dwsRunner <sourcefile> [param1] [param2] ... [paramN]');
+         Writeln('Usage: dwsRunner [options] <sourcefile|zipfile|directory> [args]');
+         Writeln('       dwsRunner [options] eval "code" [args]');
+         Writeln('       dwsRunner [options] check <sourcefile|zipfile|directory>');
+         Writeln('       dwsRunner [options] deps <sourcefile|zipfile|directory>');
+         Writeln('       dwsRunner [options] profile <sourcefile|zipfile|directory>');
+         Writeln('       dwsRunner make <sourcefile|zipfile> [exeName]');
          Writeln('');
-         Writeln('Run a zip project with (starts from "main.pas" in the zip):');
-         Writeln('   dwsRunner <zipfile> [param1] [param2] ... [paramN]');
-         Writeln('');
-         Writeln('Bundle a zip project into an executable:');
-         Writeln('   dwsRunner make <zipFile|sourcefile> [exeName]');
+         Writeln('Options:');
+         Writeln('  -c, eval "code"      Program passed in as string');
+         Writeln('  check                Check script syntax/compilation without executing');
+         Writeln('  deps                 List all script dependencies (units and includes)');
+         Writeln('  profile              Profile script execution using sampling');
+         Writeln('  make                 Bundle a project into a standalone executable');
+         Writeln('  -I <path>            Add directory to include paths');
+         Writeln('  -D <symbol>          Define a conditional compilation symbol');
+         Writeln('  --timeout <ms>       Set maximum execution time in milliseconds');
+         Writeln('  --interval <ms>      Set sampling interval for profiler (default 10ms)');
          Exit;
       end;
-      fileName:=ParamStr(1);
-      if fileName='make' then begin
-         MakeExe;
-         exit;
-      end;
-      if FileExists(fileName) then
+
+      fileName := ParamStr(i);
+      Inc(i);
+      paramOffset := i;
+
+      if (fileName='-c') or (fileName='eval') then begin
+         if paramOffset > ParamCount then begin
+            Writeln('Missing code string after ', fileName);
+            Exit;
+         end;
+         project := TStringProject.Create(ParamStr(paramOffset));
+         Inc(paramOffset);
+      end else if fileName='make' then begin
+         MakeExe(paramOffset);
+         Exit;
+      end else if fileName='check' then begin
+         if paramOffset > ParamCount then begin
+            Writeln('Missing filename after check');
+            Exit;
+         end;
+         fileName := ParamStr(paramOffset);
+         if FileExists(fileName) then begin
+            if StrEndsWith(fileName, '.zip') then
+               project := TZipProject.Create(fileName)
+            else project := TFileProject.Create(fileName);
+         end else if DirectoryExists(fileName) then
+            project := TDirectoryProject.Create(fileName)
+         else begin
+            Writeln('File "', fileName, '" not found.');
+            Exit;
+         end;
+         try
+            project.IncludePaths.Assign(includePaths);
+            DoCheck(project, defines, timeoutMs);
+         finally
+            project.Free;
+         end;
+         Exit;
+      end else if fileName='deps' then begin
+         if paramOffset > ParamCount then begin
+            Writeln('Missing filename after deps');
+            Exit;
+         end;
+         fileName := ParamStr(paramOffset);
+         if (fileName='-c') or (fileName='eval') then begin
+            Inc(paramOffset);
+            if paramOffset > ParamCount then begin
+               Writeln('Missing code string after ', fileName);
+               Exit;
+            end;
+            project := TStringProject.Create(ParamStr(paramOffset));
+         end else if FileExists(fileName) then begin
+            if StrEndsWith(fileName, '.zip') then
+               project := TZipProject.Create(fileName)
+            else project := TFileProject.Create(fileName);
+         end else if DirectoryExists(fileName) then
+            project := TDirectoryProject.Create(fileName)
+         else begin
+            Writeln('File "', fileName, '" not found.');
+            Exit;
+         end;
+         try
+            project.IncludePaths.Assign(includePaths);
+            DoDeps(project, defines);
+         finally
+            project.Free;
+         end;
+         Exit;
+      end else if fileName='profile' then begin
+         if paramOffset > ParamCount then begin
+            Writeln('Missing filename after profile');
+            Exit;
+         end;
+         fileName := ParamStr(paramOffset);
+         if (fileName='-c') or (fileName='eval') then begin
+            Inc(paramOffset);
+            if paramOffset > ParamCount then begin
+               Writeln('Missing code string after ', fileName);
+               Exit;
+            end;
+            project := TStringProject.Create(ParamStr(paramOffset));
+         end else if FileExists(fileName) then begin
+            if StrEndsWith(fileName, '.zip') then
+               project := TZipProject.Create(fileName)
+            else project := TFileProject.Create(fileName);
+         end else if DirectoryExists(fileName) then
+            project := TDirectoryProject.Create(fileName)
+         else begin
+            Writeln('File "', fileName, '" not found.');
+            Exit;
+         end;
+         try
+            project.IncludePaths.Assign(includePaths);
+            DoProfile(project, paramOffset, defines, interval);
+         finally
+            project.Free;
+         end;
+         Exit;
+      end else if FileExists(fileName) then begin
          if StrEndsWith(fileName, '.zip') then
-            project:=TZipProject.Create(fileName)
-         else project:=TFileProject.Create(fileName)
-      else if DirectoryExists(fileName) then
-         project:=TDirectoryProject.Create(fileName)
+            project := TZipProject.Create(fileName)
+         else project := TFileProject.Create(fileName)
+      end else if DirectoryExists(fileName) then
+         project := TDirectoryProject.Create(fileName)
       else begin
          Writeln('File "', fileName, '" not found.');
          Exit;
       end;
-   end;
-   try
-      RunRunner(project, paramOffset, embedded);
+
+      try
+         project.IncludePaths.Assign(includePaths);
+         RunRunner(project, paramOffset, False, defines, timeoutMs);
+      finally
+         project.Free;
+      end;
    finally
-      project.Free;
+      defines.Free;
+      includePaths.Free;
    end;
 end.
