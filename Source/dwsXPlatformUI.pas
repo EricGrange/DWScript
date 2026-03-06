@@ -31,7 +31,7 @@ unit dwsXPlatformUI;
 
 interface
 
-uses Windows, Forms, Classes, SysUtils;
+uses Windows, {$ifndef CONSOLE} Forms, {$endif} Classes, SysUtils;
 
 procedure ProcessApplicationMessages(sleepMilliSeconds : Integer);
 
@@ -46,14 +46,15 @@ implementation
 // ProcessApplicationMessages
 //
 procedure ProcessApplicationMessages(sleepMilliSeconds : Integer);
-var
-   msg: TMsg;
 begin
+   {$ifndef CONSOLE}
+   var msg: TMsg;
    if PeekMessage(msg, 0, 0, 0, PM_NOREMOVE) then begin
       Application.HandleMessage;
       if PeekMessage(msg, 0, 0, 0, PM_NOREMOVE) then
          Application.ProcessMessages;
    end;
+   {$endif}
    if sleepMilliSeconds>0 then
       Sleep(sleepMilliSeconds);
 end;
