@@ -83,8 +83,11 @@ type
          procedure _vmovupd_ptr_indexed;
          procedure _vmovups_ptr_indexed;
          procedure _vmovupd_ptr_reg;
-         procedure _vmovups_ptr_reg;
+         procedure _vmovups_ptr;
+         procedure _vmovups_ptr_ymm;
          procedure _vmovsd_ptr;
+         procedure _vmovss_ptr;
+         procedure _vhigh_reg_vex;
          procedure _vfma;
          procedure _vzeroupper;
          procedure _vpround;
@@ -1895,9 +1898,9 @@ begin
                , DisasmStream);
 end;
 
-// _vmovups_ptr_reg
+// _vmovups_ptr_ymm
 //
-procedure TJITx86_64Tests._vmovups_ptr_reg;
+procedure TJITx86_64Tests._vmovups_ptr_ymm;
 begin
    FStream._vmovups_ptr_reg(ymm0, gprRAX, 0);
    FStream._vmovups_ptr_reg(ymm8, gprRBP, 1);
@@ -1914,6 +1917,55 @@ begin
                + 'vmovups ymmword ptr [rbp+01h], ymm8'#13#10
                + 'vmovups ymmword ptr [rdx+0001E240h], ymm1'#13#10
                + 'vmovups ymmword ptr [rbp-000000D0h], ymm9'#13#10
+               , DisasmStream);
+end;
+
+// _vmovups_ptr
+//
+procedure TJITx86_64Tests._vmovups_ptr;
+begin
+   FStream._vmovups_ptr_reg(xmm0, gprRAX, 0);
+   FStream._vmovups_ptr_reg(xmm8, gprR8, 16);
+   FStream._vmovups_ptr_reg(xmm15, gprR15, -1);
+   FStream._vmovups_ptr_reg_reg(gprRAX, 0, xmm0);
+   FStream._vmovups_ptr_reg_reg(gprR8, 16, xmm8);
+   FStream._vmovups_ptr_reg_reg(gprR15, -1, xmm15);
+   CheckEquals(  ''
+               + 'vmovups xmm0, xmmword ptr [rax]'#13#10
+               + 'vmovups xmm8, xmmword ptr [r8+10h]'#13#10
+               + 'vmovups xmm15, xmmword ptr [r15-01h]'#13#10
+               + 'vmovups xmmword ptr [rax], xmm0'#13#10
+               + 'vmovups xmmword ptr [r8+10h], xmm8'#13#10
+               + 'vmovups xmmword ptr [r15-01h], xmm15'#13#10
+               , DisasmStream);
+end;
+
+// _vmovss_ptr
+//
+procedure TJITx86_64Tests._vmovss_ptr;
+begin
+   FStream._vmovss_reg_ptr_reg(xmm0, gprRAX, 0);
+   FStream._vmovss_reg_ptr_reg(xmm8, gprR8, 4);
+   FStream._vmovss_ptr_reg_reg(gprRAX, 0, xmm0);
+   FStream._vmovss_ptr_reg_reg(gprR8, 4, xmm2); // use xmm2 to avoid BeaEngine bug
+   CheckEquals(  ''
+               + 'vmovss xmm0, dword ptr [rax]'#13#10
+               + 'vmovss xmm8, dword ptr [r8+04h]'#13#10
+               + 'vmovss dword ptr [rax], xmm0'#13#10
+               + 'vmovss dword ptr [r8+04h], xmm2'#13#10
+               , DisasmStream);
+end;
+
+// _vhigh_reg_vex
+//
+procedure TJITx86_64Tests._vhigh_reg_vex;
+begin
+   // Test the fix for _vex_dq_modRMSIB_reg_ptr_indexed with high regs
+   FStream._vbroadcastsd_ptr_indexed(ymm0, gprR13, gprR14, 8, 0);
+   FStream._vbroadcastsd_ptr_indexed(ymm15, gprR8, gprR9, 1, 123);
+   CheckEquals(  ''
+               + 'vbroadcastsd ymm0, qword ptr [r13+r14*8+00h]'#13#10
+               + 'vbroadcastsd ymm15, qword ptr [r8+r9+7Bh]'#13#10
                , DisasmStream);
 end;
 
