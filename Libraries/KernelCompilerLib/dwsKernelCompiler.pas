@@ -106,6 +106,10 @@ type
       procedure Execute(info : TProgramInfo; var externalObject : TObject); override;
    end;
 
+   TStridedBufferPermuteMethod = class(TInternalMethod)
+      procedure Execute(info : TProgramInfo; var externalObject : TObject); override;
+   end;
+
    TKernelAddInputMethod = class(TInternalMethod)
       procedure Execute(info : TProgramInfo; var externalObject : TObject); override;
    end;
@@ -550,6 +554,55 @@ begin
    if not IsContiguous(wrapper.FDescriptor) then raise EdwsKCLException.Create('KCL: Buffer must be contiguous for bulk array I/O.');
    var srcPtr := PSingle(wrapper.FDescriptor.BasePointer);
    for var i := 0 to totalElems - 1 do argDest.AsFloat[i] := srcPtr[i];
+end;
+
+procedure TStridedBufferPermuteMethod.Execute(info : TProgramInfo; var externalObject : TObject);
+var
+   wrapper : TKCLStridedBufferWrapper;
+   orderArr : IScriptDynArray;
+   rank, i : Integer;
+   order : TArray<Integer>;
+   oldDims : TKCLDimensions;
+   oldStrides : TArray<NativeInt>;
+   newDims : TKCLDimensions;
+   newStrides : TArray<NativeInt>;
+   seen : TArray<Boolean>;
+begin
+   wrapper := TKCLStridedBufferWrapper(externalObject);
+   orderArr := info.ParamAsScriptDynArray[0];
+   rank := Length(wrapper.FDescriptor.Dimensions);
+
+   if orderArr.ArrayLength <> rank then
+      raise EdwsKCLException.CreateFmt('Permute: order length %d does not match rank %d',
+         [orderArr.ArrayLength, rank]);
+
+   SetLength(order, rank);
+   SetLength(seen, rank);
+   for i := 0 to rank - 1 do begin
+      order[i] := orderArr.AsInteger[i];
+      if (order[i] < 0) or (order[i] >= rank) then
+         raise EdwsKCLException.CreateFmt('Permute: index %d out of range [0, %d)', [order[i], rank]);
+      if seen[order[i]] then
+         raise EdwsKCLException.CreateFmt('Permute: duplicate index %d', [order[i]]);
+      seen[order[i]] := True;
+   end;
+
+   SetLength(oldDims, rank);
+   SetLength(oldStrides, rank);
+   for i := 0 to rank - 1 do begin
+      oldDims[i] := wrapper.FDescriptor.Dimensions[i];
+      oldStrides[i] := wrapper.FDescriptor.Strides[i];
+   end;
+
+   SetLength(newDims, rank);
+   SetLength(newStrides, rank);
+   for i := 0 to rank - 1 do begin
+      newDims[i] := oldDims[order[i]];
+      newStrides[i] := oldStrides[order[i]];
+   end;
+
+   wrapper.FDescriptor.Dimensions := newDims;
+   wrapper.FDescriptor.Strides := newStrides;
 end;
 
 // ------------------
@@ -1107,6 +1160,7 @@ begin
    TStridedBufferGetDataMethod.Create(mkFunction, [], 'GetData', ['indices', 'array of Integer'], 'Float', clsStridedBuffer, cvPublic, unitTable, True);
    TStridedBufferGetBulkDataMethod.Create(mkProcedure, [], 'GetData', ['dest', 'ByteBuffer', 'destOffset', 'Integer', 'elementCount', 'Integer', 'dataType', SYS_KCL_DATATYPE], '', clsStridedBuffer, cvPublic, unitTable, True);
    TStridedBufferGetArrayDataMethod.Create(mkProcedure, [], 'GetData', ['var dest', 'array of Float'], '', clsStridedBuffer, cvPublic, unitTable, True);
+   TStridedBufferPermuteMethod.Create(mkProcedure, [], 'Permute', ['order', 'array of Integer'], '', clsStridedBuffer, cvPublic, unitTable, True);
 
    TKernelCreateMethod.Create(mkConstructor, [], 'Create', [], '', clsKernel, cvPublic, unitTable);
    TKernelAddInputMethod.Create(mkFunction, [], 'AddInput', ['name', 'String'], SYS_KCL_NODE, clsKernel, cvPublic, unitTable);
