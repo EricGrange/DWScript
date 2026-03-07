@@ -83,6 +83,10 @@ type
     procedure DoEvalAsString(const args : TExprBaseListExec; var Result : String); override;
   end;
 
+  TFormatFloatFunc = class(TInternalMagicStringFunction)
+    procedure DoEvalAsString(const args : TExprBaseListExec; var Result : String); override;
+  end;
+
   TStrToFloatFunc = class(TInternalMagicFloatFunction)
     procedure DoEvalAsFloat(const args : TExprBaseListExec; var Result : Double); override;
   end;
@@ -573,6 +577,13 @@ begin
          Result:=Format('%.0f', [v]);
       end else Result:=Format('%.*f', [p, v]);
    end;
+end;
+
+{ TFormatFloatFunc }
+
+procedure TFormatFloatFunc.DoEvalAsString(const args : TExprBaseListExec; var Result : String);
+begin
+   Result := FormatFloat(args.AsString[0], args.AsFloat[1]);
 end;
 
 { TStrToFloatFunc }
@@ -1478,6 +1489,7 @@ initialization
 
    RegisterInternalStringFunction(TFloatToStrFunc, 'FloatToStr', ['f', SYS_FLOAT], [iffStateLess, iffOverloaded], 'ToString');
    RegisterInternalStringFunction(TFloatToStrPFunc, 'FloatToStr', ['f', SYS_FLOAT, 'p', SYS_INTEGER], [iffStateLess, iffOverloaded], 'ToString');
+   RegisterInternalStringFunction(TFormatFloatFunc, 'FormatFloat', ['fmt', SYS_STRING, 'v', SYS_FLOAT], [iffStateLess]);
    RegisterInternalFloatFunction(TStrToFloatFunc, 'StrToFloat', ['str', SYS_STRING], [iffStateLess], 'ToFloat');
    RegisterInternalFloatFunction(TStrToFloatDefFunc, 'StrToFloatDef', ['str', SYS_STRING, 'def', SYS_FLOAT], [iffStateLess], 'ToFloatDef');
    RegisterInternalFloatFunction(TVarToFloatDefFunc, 'VarToFloatDef', ['val', SYS_VARIANT, 'def', SYS_FLOAT], [iffStateLess]);
