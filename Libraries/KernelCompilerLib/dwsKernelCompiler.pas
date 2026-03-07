@@ -530,7 +530,7 @@ begin
    if selfObj is TScriptDynamicNativeFloatArray then begin
       var nbElems, stride : NativeInt;
       var srcPtr := TScriptDynamicNativeFloatArray(selfObj).AsPDouble(nbElems, stride);
-      if stride = 1 then begin
+      if stride = SizeOf(Double) then begin
 {$IFDEF WIN64_ASM}
          SSE2_CvtPD2PSContiguous(srcPtr, destPtr, len);
 {$ELSE}
@@ -557,6 +557,19 @@ begin
    if wrapper.FDescriptor.DataType <> dtFloat32 then raise EdwsKCLException.Create('KCL: Bulk Pascal array I/O currently supports Float32 only.');
    if not IsContiguous(wrapper.FDescriptor) then raise EdwsKCLException.Create('KCL: Buffer must be contiguous for bulk array I/O.');
    var srcPtr := PSingle(wrapper.FDescriptor.BasePointer);
+   var selfObj := argDest.GetSelf;
+   if selfObj is TScriptDynamicNativeFloatArray then begin
+      var nbElems, stride : NativeInt;
+      var destPtr := TScriptDynamicNativeFloatArray(selfObj).AsPDouble(nbElems, stride);
+      if stride = SizeOf(Double) then begin
+{$IFDEF WIN64_ASM}
+         SSE2_CvtPS2PDContiguous(srcPtr, destPtr, totalElems);
+{$ELSE}
+         for var i := 0 to totalElems - 1 do destPtr[i] := srcPtr[i];
+{$ENDIF}
+         Exit;
+      end;
+   end;
    for var i := 0 to totalElems - 1 do argDest.AsFloat[i] := srcPtr[i];
 end;
 
@@ -906,6 +919,26 @@ begin
    info.ResultAsVariant := scriptObj as IUnknown;
 end;
 
+// ExtractDoubleArray
+//
+procedure ExtractDoubleArray(arg : IScriptDynArray; var dest : TDoubleDynArray);
+begin
+   var len := arg.ArrayLength;
+   SetLength(dest, len);
+   if len = 0 then Exit;
+   var selfObj := arg.GetSelf;
+   if selfObj is TScriptDynamicNativeFloatArray then begin
+      var nbElems, stride : NativeInt;
+      var srcPtr := TScriptDynamicNativeFloatArray(selfObj).AsPDouble(nbElems, stride);
+      if stride = SizeOf(Double) then begin
+         //PrintLn('Using Move path for ' + IntToStr(len) + ' elements');
+         Move(srcPtr^, dest[0], len * SizeOf(Double));
+         Exit;
+      end;
+   end;
+   for var i := 0 to len - 1 do dest[i] := arg.AsFloat[i];
+end;
+
 // ------------------
 // ------------------ TKernelAddConv2DMethod ------------------
 // ------------------
@@ -916,12 +949,8 @@ procedure TKernelAddConv2DMethod.Execute(info : TProgramInfo; var externalObject
 begin
    var wrapper := TKCLKernelWrapper(externalObject);
    var in1 := TKCLNodeWrapper(info.ParamAsScriptObj[0].ExternalObject);
-   var argWeights := info.ParamAsScriptDynArray[1];
-   var weights : TDoubleDynArray; SetLength(weights, argWeights.ArrayLength);
-   for var i := 0 to High(weights) do weights[i] := argWeights.AsFloat[i];
-   var argBias := info.ParamAsScriptDynArray[2];
-   var bias : TDoubleDynArray; SetLength(bias, argBias.ArrayLength);
-   for var i := 0 to High(bias) do bias[i] := argBias.AsFloat[i];
+   var weights : TDoubleDynArray; ExtractDoubleArray(info.ParamAsScriptDynArray[1], weights);
+   var bias : TDoubleDynArray; ExtractDoubleArray(info.ParamAsScriptDynArray[2], bias);
    var node := TKCLConv2DNode.Create('conv2d', [in1.FNode], weights, bias, info.ParamAsInteger[3], info.ParamAsInteger[4]);
    wrapper.FKernel.AddNode(node);
    var classSym := info.FindSymbolInUnits(SYS_KCL_NODE) as TClassSymbol;
@@ -940,12 +969,8 @@ procedure TKernelAddDepthwiseConv2DMethod.Execute(info : TProgramInfo; var exter
 begin
    var wrapper := TKCLKernelWrapper(externalObject);
    var in1 := TKCLNodeWrapper(info.ParamAsScriptObj[0].ExternalObject);
-   var argWeights := info.ParamAsScriptDynArray[1];
-   var weights : TDoubleDynArray; SetLength(weights, argWeights.ArrayLength);
-   for var i := 0 to High(weights) do weights[i] := argWeights.AsFloat[i];
-   var argBias := info.ParamAsScriptDynArray[2];
-   var bias : TDoubleDynArray; SetLength(bias, argBias.ArrayLength);
-   for var i := 0 to High(bias) do bias[i] := argBias.AsFloat[i];
+   var weights : TDoubleDynArray; ExtractDoubleArray(info.ParamAsScriptDynArray[1], weights);
+   var bias : TDoubleDynArray; ExtractDoubleArray(info.ParamAsScriptDynArray[2], bias);
    var node := TKCLDepthwiseConv2DNode.Create('dwconv2d', [in1.FNode], weights, bias, info.ParamAsInteger[3], info.ParamAsInteger[4]);
    wrapper.FKernel.AddNode(node);
    var classSym := info.FindSymbolInUnits(SYS_KCL_NODE) as TClassSymbol;
@@ -1060,12 +1085,8 @@ procedure TKernelAddConv2DTransposeMethod.Execute(info : TProgramInfo; var exter
 begin
    var wrapper := TKCLKernelWrapper(externalObject);
    var in1 := TKCLNodeWrapper(info.ParamAsScriptObj[0].ExternalObject);
-   var argWeights := info.ParamAsScriptDynArray[1];
-   var weights : TDoubleDynArray; SetLength(weights, argWeights.ArrayLength);
-   for var i := 0 to High(weights) do weights[i] := argWeights.AsFloat[i];
-   var argBias := info.ParamAsScriptDynArray[2];
-   var bias : TDoubleDynArray; SetLength(bias, argBias.ArrayLength);
-   for var i := 0 to High(bias) do bias[i] := argBias.AsFloat[i];
+   var weights : TDoubleDynArray; ExtractDoubleArray(info.ParamAsScriptDynArray[1], weights);
+   var bias : TDoubleDynArray; ExtractDoubleArray(info.ParamAsScriptDynArray[2], bias);
    var node := TKCLConv2DTransposeNode.Create('conv2d_transpose', [in1.FNode], weights, bias, info.ParamAsInteger[3], info.ParamAsInteger[4]);
    wrapper.FKernel.AddNode(node);
    var scriptObj := info.FindSymbolInUnits(SYS_KCL_NODE) as TClassSymbol;
