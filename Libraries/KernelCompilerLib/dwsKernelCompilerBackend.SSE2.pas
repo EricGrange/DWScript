@@ -62,7 +62,7 @@ type
       procedure ProcessConstant(n : Integer; node : TKCLConstantNode);
       procedure ProcessInput(n : Integer; node : TKCLInputNode);
       procedure ProcessConcat(n : Integer; node : TKCLConcatNode);
-      procedure ProcessMap(n : Integer; node : TKCLMapNode);
+      procedure ProcessMap(n : Integer; node : TKCLMapNode); virtual;
       procedure ProcessConv2D(n : Integer; node : TKCLConv2DNode); virtual;
       procedure ProcessConv2DSSE2(n : Integer; node : TKCLConv2DNode);
       procedure ProcessConv2DTranspose(n : Integer; node : TKCLConv2DTransposeNode); virtual;
@@ -81,6 +81,7 @@ type
 
    TKCLJITBackend = class(TKCLSSE2Backend)
    protected
+      procedure ProcessMap(n : Integer; node : TKCLMapNode); override;
       procedure ProcessConv2D(n : Integer; node : TKCLConv2DNode); override;
       procedure ProcessConv2DTranspose(n : Integer; node : TKCLConv2DTransposeNode); override;
    end;
@@ -1345,6 +1346,37 @@ end;
 procedure TKCLJITBackend.ProcessConv2DTranspose(n : Integer; node : TKCLConv2DTransposeNode);
 begin
    inherited;
+end;
+
+procedure TKCLJITBackend.ProcessMap(n : Integer; node : TKCLMapNode);
+var
+   in1, in2 : Integer;
+   total : NativeInt;
+   p1, p2, pRes : PDouble;
+   params : array[0..1] of Double;
+begin
+   if (node is TKCLAddNode) or (node is TKCLMulNode) then begin
+      in1 := FNodeToBufferIdx[node.Inputs[0]];
+      in2 := FNodeToBufferIdx[node.Inputs[1]];
+      total := 1; for var i := 0 to High(FNodeDims[n]) do total := total * FNodeDims[n][i];
+      if (FNodeTotalElements[in1] = total) and (FNodeTotalElements[in2] = total) then begin
+         p1 := PDouble(Pointer(FNodeBuffers[in1]));
+         p2 := PDouble(Pointer(FNodeBuffers[in2]));
+         pRes := PDouble(Pointer(FNodeBuffers[n]));
+         if TKCLWin64JITBackend.ExecuteMap(FKernel, node, p1, pRes, p2, nil, total) then Exit;
+      end;
+   end else if node is TKCLDequantizeNode then begin
+      in1 := FNodeToBufferIdx[node.Inputs[0]];
+      total := 1; for var i := 0 to High(FNodeDims[n]) do total := total * FNodeDims[n][i];
+      if FNodeTotalElements[in1] = total then begin
+         p1 := PDouble(Pointer(FNodeBuffers[in1]));
+         pRes := PDouble(Pointer(FNodeBuffers[n]));
+         params[0] := TKCLDequantizeNode(node).Scale;
+         params[1] := TKCLDequantizeNode(node).ZeroPoint;
+         if TKCLWin64JITBackend.ExecuteMap(FKernel, node, p1, pRes, nil, @params[0], total) then Exit;
+      end;
+   end;
+   inherited ProcessMap(n, node);
 end;
 
 end.

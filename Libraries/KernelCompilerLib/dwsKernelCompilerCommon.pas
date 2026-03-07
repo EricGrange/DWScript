@@ -102,6 +102,17 @@ type
       function Eval(const AInputs : TDoubleDynArray) : Double; override;
    end;
 
+   TKCLDequantizeNode = class(TKCLMapNode)
+   private
+      FScale : Double;
+      FZeroPoint : Double;
+   public
+      constructor Create(const AInputs : TKCLNodes; AScale, AZeroPoint : Double); reintroduce;
+      function Eval(const AInputs : TDoubleDynArray) : Double; override;
+      property Scale : Double read FScale;
+      property ZeroPoint : Double read FZeroPoint;
+   end;
+
    TKCLDivNode = class(TKCLMapNode)
    public
       function Eval(const AInputs : TDoubleDynArray) : Double; override;
@@ -425,6 +436,24 @@ function TKCLMulNode.Eval(const AInputs : TDoubleDynArray) : Double; begin Resul
 // Eval
 //
 function TKCLSubNode.Eval(const AInputs : TDoubleDynArray) : Double; begin Result := AInputs[0] - AInputs[1]; end;
+
+// ------------------
+// ------------------ TKCLDequantizeNode ------------------
+// ------------------
+
+constructor TKCLDequantizeNode.Create(const AInputs : TKCLNodes; AScale, AZeroPoint : Double);
+begin
+   inherited Create('dequantize', AInputs);
+   FScale := AScale;
+   FZeroPoint := AZeroPoint;
+end;
+
+// Eval
+//
+function TKCLDequantizeNode.Eval(const AInputs : TDoubleDynArray) : Double;
+begin
+   Result := (AInputs[0] - FZeroPoint) * FScale;
+end;
 
 // ------------------
 // ------------------ TKCLDivNode ------------------

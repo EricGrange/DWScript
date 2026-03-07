@@ -1729,12 +1729,18 @@ begin
    FStream._v_op_pd(xmm_minpd, ymm1, ymm12, ymm5);
    FStream._v_op_pd(xmm_maxpd, ymm8, ymm0, ymm12);
    FStream._v_op_pd(xmm_subpd, ymm2, ymm11, ymm13);
+   FStream._vaddpd(ymm8, ymm9, ymm10);
+   FStream._vmulpd(ymm15, ymm0, ymm9);
+   FStream._vsubpd(ymm2, ymm11, ymm13);
    CheckEquals(  ''
                + 'vxorpd ymm0, ymm1, ymm2'#13#10
                + 'vaddpd ymm8, ymm9, ymm10'#13#10
                + 'vmulpd ymm15, ymm0, ymm9'#13#10
                + 'vminpd ymm1, ymm12, ymm5'#13#10
                + 'vmaxpd ymm8, ymm0, ymm12'#13#10
+               + 'vsubpd ymm2, ymm11, ymm13'#13#10
+               + 'vaddpd ymm8, ymm9, ymm10'#13#10
+               + 'vmulpd ymm15, ymm0, ymm9'#13#10
                + 'vsubpd ymm2, ymm11, ymm13'#13#10
                , DisasmStream);
 end;

@@ -126,6 +126,10 @@ type
       procedure Execute(info : TProgramInfo; var externalObject : TObject); override;
    end;
 
+   TKernelAddDequantizeMethod = class(TInternalMethod)
+      procedure Execute(info : TProgramInfo; var externalObject : TObject); override;
+   end;
+
    TKernelAddDivMethod = class(TInternalMethod)
       procedure Execute(info : TProgramInfo; var externalObject : TObject); override;
    end;
@@ -701,6 +705,24 @@ begin
 end;
 
 // ------------------
+// ------------------ TKernelAddDequantizeMethod ------------------
+// ------------------
+
+// Execute
+//
+procedure TKernelAddDequantizeMethod.Execute(info : TProgramInfo; var externalObject : TObject);
+begin
+   var wrapper := TKCLKernelWrapper(externalObject);
+   var in1 := TKCLNodeWrapper(info.ParamAsScriptObj[0].ExternalObject);
+   var node := TKCLDequantizeNode.Create([in1.FNode], info.ParamAsFloat[1], info.ParamAsFloat[2]);
+   wrapper.FKernel.AddNode(node);
+   var classSym := info.FindSymbolInUnits(SYS_KCL_NODE) as TClassSymbol;
+   var scriptObj := TScriptObjInstance.Create(classSym, info.Execution as TdwsProgramExecution);
+   scriptObj.ExternalObject := TKCLNodeWrapper.Create(node);
+   info.ResultAsVariant := scriptObj as IUnknown;
+end;
+
+// ------------------
 // ------------------ TKernelAddDivMethod ------------------
 // ------------------
 
@@ -1167,6 +1189,7 @@ begin
    TKernelAddAddMethod.Create(mkFunction, [], 'AddAdd', ['in1', SYS_KCL_NODE, 'in2', SYS_KCL_NODE], SYS_KCL_NODE, clsKernel, cvPublic, unitTable);
    TKernelAddMulMethod.Create(mkFunction, [], 'AddMul', ['in1', SYS_KCL_NODE, 'in2', SYS_KCL_NODE], SYS_KCL_NODE, clsKernel, cvPublic, unitTable);
    TKernelAddSubMethod.Create(mkFunction, [], 'AddSub', ['in1', SYS_KCL_NODE, 'in2', SYS_KCL_NODE], SYS_KCL_NODE, clsKernel, cvPublic, unitTable);
+   TKernelAddDequantizeMethod.Create(mkFunction, [], 'AddDequantize', ['input', SYS_KCL_NODE, 'scale', 'Float', 'zeroPoint', 'Float'], SYS_KCL_NODE, clsKernel, cvPublic, unitTable);
    TKernelAddDivMethod.Create(mkFunction, [], 'AddDiv', ['in1', SYS_KCL_NODE, 'in2', SYS_KCL_NODE], SYS_KCL_NODE, clsKernel, cvPublic, unitTable);
    TKernelAddSigmoidMethod.Create(mkFunction, [], 'AddSigmoid', ['in1', SYS_KCL_NODE], SYS_KCL_NODE, clsKernel, cvPublic, unitTable);
    TKernelAddHardSigmoidMethod.Create(mkFunction, [], 'AddHardSigmoid', ['in1', SYS_KCL_NODE], SYS_KCL_NODE, clsKernel, cvPublic, unitTable);

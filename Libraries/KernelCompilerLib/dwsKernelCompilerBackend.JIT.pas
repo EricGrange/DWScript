@@ -70,12 +70,16 @@ type
          inChannels, outChannels : Integer; act : TKCLActivation = actNone) : TKCLCompiledKernel;
       class function CompileKxK(AKernel : TKCLKernel; ANode : TKCLNode;
          inChannels, outChannels, K, inW, stride : Integer; act : TKCLActivation = actNone) : TKCLCompiledKernel;
+      class function CompileMap(AKernel : TKCLKernel; ANode : TKCLMapNode) : TKCLCompiledKernel;
+
       class function Execute(AKernel : TKCLKernel; ANode : TKCLNode;
          pIn, pOut, pWeights, pBias: PDouble; totalPixels: NativeInt;
          inChannels, outChannels : Integer; act : TKCLActivation = actNone) : Boolean;
       class function ExecuteKxK(AKernel : TKCLKernel; ANode : TKCLNode;
          pIn, pOut, pWeights, pBias: PDouble; totalPixels: NativeInt;
          inChannels, outChannels, K, inW, stride : Integer; act : TKCLActivation = actNone) : Boolean;
+      class function ExecuteMap(AKernel : TKCLKernel; ANode : TKCLMapNode;
+         pIn, pOut, pIn2, pParams: PDouble; totalElements: NativeInt) : Boolean;
    end;
 
 // ------------------------------------------------------------------
@@ -570,6 +574,126 @@ begin
       end;
       if compiled <> nil then begin
          TKCLMicroKernel(compiled.Code)(pIn, pOut, @compiled.Weights[0], pBias, totalPixels);
+         Result := True;
+      end;
+   finally TMonitor.Exit(AKernel); end;
+end;
+
+// ------------------
+// CompileMap — pointwise Map operations (Add, Mul, Dequantize)
+// ------------------
+class function TKCLWin64JITBackend.CompileMap(AKernel : TKCLKernel; ANode : TKCLMapNode) : TKCLCompiledKernel;
+var
+   j : Tx86_64_WriteOnlyStream;
+   ptr : Pointer;
+   b : TBytes;
+   allocSize : Integer;
+   jmpTailPatch, jmpEpiloguePatch, jmpTailDonePatch, pixel4LoopPos, tailLoopPos : Integer;
+   curTailPos, curEpiloguePos : Integer;
+begin
+   j := Tx86_64_WriteOnlyStream.Create;
+   try
+      EmitPrologue(j);
+      // rcx = pIn1, rdx = pOut, r8 = pIn2, r9 = pParams (scale/zeroPoint)
+      j._mov_reg_qword_ptr_reg(gprRDI, gprRBP, 48); // totalElements
+
+      j._test_reg_reg(gprRDI, gprRDI);
+      j._jump(flagsE, $10000); jmpEpiloguePatch := j.Size - 4;
+
+      j._cmp_reg_imm(gprRDI, 4);
+      j._jump(flagsB, $10000); jmpTailPatch := j.Size - 4;
+
+      if ANode is TKCLDequantizeNode then begin
+         j._vmovsd_reg_ptr_reg(xmm12, gprR9, 0); j._vbroadcastsd(ymm12, xmm12);
+         j._vmovsd_reg_ptr_reg(xmm13, gprR9, 8); j._vbroadcastsd(ymm13, xmm13);
+      end;
+
+      pixel4LoopPos := j.Size;
+
+      j._vmovupd_ptr_reg(ymm0, gprRCX, 0);
+      if ANode is TKCLAddNode then begin
+         j._vmovupd_ptr_reg(ymm1, gprR8, 0);
+         j._vaddpd(ymm0, ymm0, ymm1);
+      end else if ANode is TKCLMulNode then begin
+         j._vmovupd_ptr_reg(ymm1, gprR8, 0);
+         j._vmulpd(ymm0, ymm0, ymm1);
+      end else if ANode is TKCLDequantizeNode then begin
+         j._vsubpd(ymm0, ymm0, ymm13);
+         j._vmulpd(ymm0, ymm0, ymm12);
+      end;
+
+      j._vmovupd_ptr_reg_reg(gprRDX, 0, ymm0);
+
+      j._add_reg_imm(gprRCX, 32);
+      j._add_reg_imm(gprRDX, 32);
+      if not (ANode is TKCLDequantizeNode) then j._add_reg_imm(gprR8, 32);
+
+      j._sub_reg_imm(gprRDI, 4);
+      j._cmp_reg_imm(gprRDI, 4);
+      j._jump(flagsAE, pixel4LoopPos - j.Size);
+
+      curTailPos := j.Size;
+      j._test_reg_reg(gprRDI, gprRDI);
+      j._jump(flagsE, $10000); jmpTailDonePatch := j.Size - 4;
+
+      tailLoopPos := j.Size;
+      j._vmovsd_reg_ptr_reg(xmm0, gprRCX, 0);
+      if ANode is TKCLAddNode then begin
+         j._vmovsd_reg_ptr_reg(xmm1, gprR8, 0);
+         j._vaddpd(ymm0, ymm0, ymm1);
+      end else if ANode is TKCLMulNode then begin
+         j._vmovsd_reg_ptr_reg(xmm1, gprR8, 0);
+         j._vmulpd(ymm0, ymm0, ymm1);
+      end else if ANode is TKCLDequantizeNode then begin
+         j._vsubpd(ymm0, ymm0, ymm13);
+         j._vmulpd(ymm0, ymm0, ymm12);
+      end;
+
+      j._vmovsd_ptr_reg_reg(gprRDX, 0, xmm0);
+
+      j._add_reg_imm(gprRCX, 8);
+      j._add_reg_imm(gprRDX, 8);
+      if not (ANode is TKCLDequantizeNode) then j._add_reg_imm(gprR8, 8);
+
+      j._sub_reg_imm(gprRDI, 1);
+      j._jump(flagsNE, tailLoopPos - j.Size);
+
+      curEpiloguePos := j.Size;
+      EmitEpilogue(j);
+
+      b := j.ToBytes;
+      PInteger(@b[jmpTailPatch])^ := curTailPos - (jmpTailPatch + 4);
+      PInteger(@b[jmpEpiloguePatch])^ := curEpiloguePos - (jmpEpiloguePatch + 4);
+      PInteger(@b[jmpTailDonePatch])^ := curEpiloguePos - (jmpTailDonePatch + 4);
+
+      allocSize := (Length(b) + 4095) and not 4095;
+      ptr := VirtualAlloc(nil, allocSize, MEM_COMMIT or MEM_RESERVE, PAGE_EXECUTE_READWRITE);
+      Move(b[0], ptr^, Length(b));
+      FlushInstructionCache(GetCurrentProcess, ptr, Length(b));
+      Result := TKCLCompiledKernel.Create(ptr, allocSize);
+   finally j.Free; end;
+end;
+
+class function TKCLWin64JITBackend.ExecuteMap(AKernel : TKCLKernel; ANode : TKCLMapNode;
+   pIn, pOut, pIn2, pParams: PDouble; totalElements: NativeInt) : Boolean;
+begin
+   Result := False;
+   if not (cpuAVX in Win64CPUFeatures) then Exit;
+   TMonitor.Enter(AKernel);
+   try
+      var optData := TKCLOptimizationData(AKernel.OptimizationData);
+      if optData = nil then begin
+         optData := TKCLOptimizationData.Create; AKernel.OptimizationData := optData;
+      end;
+      var compiled : TKCLCompiledKernel;
+      if not optData.CompiledKernels.TryGetValue(ANode, compiled) then begin
+         if (ANode is TKCLAddNode) or (ANode is TKCLMulNode) or (ANode is TKCLDequantizeNode) then begin
+            compiled := CompileMap(AKernel, ANode);
+            if compiled <> nil then optData.CompiledKernels.Add(ANode, compiled);
+         end else Exit;
+      end;
+      if compiled <> nil then begin
+         TKCLMicroKernel(compiled.Code)(pIn, pOut, pIn2, pParams, totalElements);
          Result := True;
       end;
    finally TMonitor.Exit(AKernel); end;

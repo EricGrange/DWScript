@@ -587,6 +587,8 @@ type
          procedure _vaddps(dest, src1, src2 : TxmmRegister); overload;
          procedure _vaddps(dest, src1, src2 : TymmRegister); overload;
          procedure _vaddpd(dest, src1, src2 : TymmRegister); overload;
+         procedure _vmulpd(dest, src1, src2 : TymmRegister); overload;
+         procedure _vsubpd(dest, src1, src2 : TymmRegister); overload;
 
          procedure _vmulps(dest, src1, src2 : TxmmRegister); overload;
          procedure _vmulps(dest, src1, src2 : TymmRegister); overload;
@@ -3861,6 +3863,20 @@ end;
 procedure Tx86_64_WriteOnlyStream._vaddpd(dest, src1, src2 : TymmRegister);
 begin
    _v_op_pd(xmm_addpd, dest, src1, src2);
+end;
+
+// _vmulpd
+//
+procedure Tx86_64_WriteOnlyStream._vmulpd(dest, src1, src2 : TymmRegister);
+begin
+   _v_op_pd(xmm_mulpd, dest, src1, src2);
+end;
+
+// _vsubpd
+//
+procedure Tx86_64_WriteOnlyStream._vsubpd(dest, src1, src2 : TymmRegister);
+begin
+   _v_op_pd(xmm_subpd, dest, src1, src2);
 end;
 
 // _vaddps
