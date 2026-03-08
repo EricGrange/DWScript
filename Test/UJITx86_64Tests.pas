@@ -1755,6 +1755,10 @@ begin
    FStream._v_op_ps(xmm_minps, ymm1, ymm12, ymm5);
    FStream._v_op_ps(xmm_maxps, ymm8, ymm0, ymm12);
    FStream._v_op_ps(xmm_subps, ymm2, ymm11, ymm13);
+   FStream._vxorps(ymm0, ymm1, ymm2);
+   FStream._vaddps(ymm8, ymm9, ymm10);
+   FStream._vmulps(ymm15, ymm0, ymm9);
+   FStream._vmaxps(ymm8, ymm0, ymm12);
    CheckEquals(  ''
                + 'vxorps ymm0, ymm1, ymm2'#13#10
                + 'vaddps ymm8, ymm9, ymm10'#13#10
@@ -1762,6 +1766,10 @@ begin
                + 'vminps ymm1, ymm12, ymm5'#13#10
                + 'vmaxps ymm8, ymm0, ymm12'#13#10
                + 'vsubps ymm2, ymm11, ymm13'#13#10
+               + 'vxorps ymm0, ymm1, ymm2'#13#10
+               + 'vaddps ymm8, ymm9, ymm10'#13#10
+               + 'vmulps ymm15, ymm0, ymm9'#13#10
+               + 'vmaxps ymm8, ymm0, ymm12'#13#10
                , DisasmStream);
 end;
 
