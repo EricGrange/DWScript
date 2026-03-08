@@ -738,10 +738,8 @@ begin
       j._test_reg_reg(gprRDI, gprRDI);
       j._jump(flagsE, $10000); jmpEpiloguePatch := j.Size - 4;
 
-      j._cmp_reg_imm(gprRDI, 4);
-      j._jump(flagsB, $10000); jmpTailPatch := j.Size - 4;
-
-      // Setup constants for unary activations
+      // Setup constants before the tail-skip check, since the tail loop
+      // also uses these registers
       if isUnary then begin
          j._vxorps(ymm12);   // 0.0
          if (ANode is TKCLReLU6Node) or (ANode is TKCLHardSwishNode) then begin
@@ -764,6 +762,9 @@ begin
          j._vmovsd_reg_ptr_reg(xmm12, gprR9, 0); j._vbroadcastsd(ymm12, xmm12);
          j._vmovsd_reg_ptr_reg(xmm13, gprR9, 8); j._vbroadcastsd(ymm13, xmm13);
       end;
+
+      j._cmp_reg_imm(gprRDI, 4);
+      j._jump(flagsB, $10000); jmpTailPatch := j.Size - 4;
 
       // === 4-element main loop (ymm = 4 doubles) ===
       pixel4LoopPos := j.Size;
