@@ -39,6 +39,13 @@ type
 
    TKCLActivation = (actNone, actReLU, actReLU6, actHardSwish);
 
+   TKCLFusionInfo = record
+      Activation : TKCLActivation;
+      ActivationNode : TKCLNode;
+      AddNode : TKCLNode;
+      ResidualInput : TKCLNode; // the non-conv input of the Add
+   end;
+
    TKCLCompiledKernel = class
    public
       Code : Pointer;
@@ -49,9 +56,35 @@ type
       destructor Destroy; override;
    end;
 
+   // 32-byte aligned workspace allocator for intra-layer temporaries.
+   // Allocates a single large chunk and sub-allocates from it, avoiding
+   // per-node dynamic array overhead and ensuring AVX alignment.
+   TKCLAlignedWorkspace = class
+   private
+      FBasePtr : Pointer;    // Original allocation (unaligned)
+      FAlignedPtr : PByte;   // 32-byte aligned start
+      FCapacity : NativeInt; // Total usable bytes
+      FOffset : NativeInt;   // Current allocation offset
+   public
+      constructor Create(ATotalBytes : NativeInt);
+      destructor Destroy; override;
+      function Allocate(ABytes : NativeInt) : PDouble;
+      procedure Reset;
+      property Capacity : NativeInt read FCapacity;
+   end;
+
+   TKCLBatchEntry = record
+      Code : Pointer;
+      pIn, pOut, pIn2, pParams : PDouble;
+      Count : NativeInt;
+   end;
+   TKCLBatchEntries = TArray<TKCLBatchEntry>;
+
    TKCLOptimizationData = class
    public
       CompiledKernels : TDictionary<TKCLNode, TKCLCompiledKernel>;
+      Workspace : TKCLAlignedWorkspace;
+      Prepared : Boolean;
       constructor Create;
       destructor Destroy; override;
    end;
@@ -80,6 +113,13 @@ type
          inChannels, outChannels, K, inW, stride : Integer; act : TKCLActivation = actNone) : Boolean;
       class function ExecuteMap(AKernel : TKCLKernel; ANode : TKCLMapNode;
          pIn, pOut, pIn2, pParams: PDouble; totalElements: NativeInt) : Boolean;
+
+      class procedure PrepareGraph(AKernel : TKCLKernel; ASortedNodes : TList<TKCLNode>;
+         ANodeToBufferIdx : TDictionary<TKCLNode, Integer>;
+         ANodeDims : TArray<TKCLDimensions>;
+         AFusionMap : TDictionary<TKCLNode, TKCLFusionInfo>);
+
+      class procedure FlushBatch(const ABatch : TKCLBatchEntries; ACount : Integer);
    end;
 
 // ------------------------------------------------------------------
@@ -91,6 +131,40 @@ begin Stream := aStream; end;
 
 function TFixupLocationHelper.GetLocation : Integer;
 begin Result := Stream.Position; end;
+
+// ------------------
+// TKCLAlignedWorkspace
+// ------------------
+
+constructor TKCLAlignedWorkspace.Create(ATotalBytes : NativeInt);
+begin
+   // Allocate with 31 bytes extra for alignment
+   FBasePtr := GetMemory(ATotalBytes + 31);
+   FAlignedPtr := PByte((NativeUInt(FBasePtr) + 31) and not NativeUInt(31));
+   FCapacity := ATotalBytes;
+   FOffset := 0;
+end;
+
+destructor TKCLAlignedWorkspace.Destroy;
+begin
+   if FBasePtr <> nil then FreeMemory(FBasePtr);
+   inherited;
+end;
+
+function TKCLAlignedWorkspace.Allocate(ABytes : NativeInt) : PDouble;
+begin
+   // Round up to 32-byte alignment
+   ABytes := (ABytes + 31) and not NativeInt(31);
+   if FOffset + ABytes > FCapacity then
+      raise Exception.Create('KCL: Aligned workspace exhausted');
+   Result := PDouble(FAlignedPtr + FOffset);
+   Inc(FOffset, ABytes);
+end;
+
+procedure TKCLAlignedWorkspace.Reset;
+begin
+   FOffset := 0;
+end;
 
 constructor TKCLCompiledKernel.Create(ACode : Pointer; ASize : NativeInt);
 begin Code := ACode; Size := ASize; Activation := actNone; end;
@@ -108,6 +182,7 @@ destructor TKCLOptimizationData.Destroy;
 begin
    for var compiled in CompiledKernels.Values do compiled.Free;
    CompiledKernels.Free;
+   Workspace.Free;
    inherited;
 end;
 
@@ -551,16 +626,29 @@ end;
 class function TKCLWin64JITBackend.Execute(AKernel : TKCLKernel; ANode : TKCLNode;
    pIn, pOut, pWeights, pBias: PDouble; totalPixels: NativeInt;
    inChannels, outChannels : Integer; act : TKCLActivation) : Boolean;
+var
+   optData : TKCLOptimizationData;
+   compiled : TKCLCompiledKernel;
 begin
    Result := False;
    if not (cpuFMA in Win64CPUFeatures) or not (cpuAVX in Win64CPUFeatures) then Exit;
+
+   // Fast path: if already prepared, skip TMonitor entirely
+   optData := TKCLOptimizationData(AKernel.OptimizationData);
+   if (optData <> nil) and optData.Prepared then begin
+      if optData.CompiledKernels.TryGetValue(ANode, compiled) then begin
+         TKCLMicroKernel(compiled.Code)(pIn, pOut, @compiled.Weights[0], pBias, totalPixels);
+         Result := True;
+      end;
+      Exit;
+   end;
+
    TMonitor.Enter(AKernel);
    try
-      var optData := TKCLOptimizationData(AKernel.OptimizationData);
+      optData := TKCLOptimizationData(AKernel.OptimizationData);
       if optData = nil then begin
          optData := TKCLOptimizationData.Create; AKernel.OptimizationData := optData;
       end;
-      var compiled : TKCLCompiledKernel;
       if not optData.CompiledKernels.TryGetValue(ANode, compiled) then begin
          compiled := Compile(AKernel, ANode, inChannels, outChannels, act);
          if compiled <> nil then begin
@@ -578,16 +666,29 @@ end;
 class function TKCLWin64JITBackend.ExecuteKxK(AKernel : TKCLKernel; ANode : TKCLNode;
    pIn, pOut, pWeights, pBias: PDouble; totalPixels: NativeInt;
    inChannels, outChannels, K, inW, stride : Integer; act : TKCLActivation) : Boolean;
+var
+   optData : TKCLOptimizationData;
+   compiled : TKCLCompiledKernel;
 begin
    Result := False;
    if not (cpuFMA in Win64CPUFeatures) or not (cpuAVX in Win64CPUFeatures) then Exit;
+
+   // Fast path: if already prepared, skip TMonitor entirely
+   optData := TKCLOptimizationData(AKernel.OptimizationData);
+   if (optData <> nil) and optData.Prepared then begin
+      if optData.CompiledKernels.TryGetValue(ANode, compiled) then begin
+         TKCLMicroKernel(compiled.Code)(pIn, pOut, @compiled.Weights[0], pBias, totalPixels);
+         Result := True;
+      end;
+      Exit;
+   end;
+
    TMonitor.Enter(AKernel);
    try
-      var optData := TKCLOptimizationData(AKernel.OptimizationData);
+      optData := TKCLOptimizationData(AKernel.OptimizationData);
       if optData = nil then begin
          optData := TKCLOptimizationData.Create; AKernel.OptimizationData := optData;
       end;
-      var compiled : TKCLCompiledKernel;
       if not optData.CompiledKernels.TryGetValue(ANode, compiled) then begin
          compiled := CompileKxK(AKernel, ANode, inChannels, outChannels, K, inW, stride, act);
          if compiled <> nil then begin
@@ -603,8 +704,18 @@ begin
 end;
 
 // ------------------
-// CompileMap — pointwise Map operations (Add, Mul, Dequantize)
+// CompileMap — pointwise Map operations (Add, Sub, Mul, ReLU, ReLU6, HardSwish, Dequantize)
 // ------------------
+// ABI: procedure(pIn1:rcx, pOut:rdx, pIn2:r8, pParams:r9; totalElements:[rbp+48])
+//
+// Register map for unary activations:
+//   ymm12 : constant 0.0 (ReLU, ReLU6, HardSwish)
+//   ymm13 : constant 6.0 (ReLU6, HardSwish)
+//   ymm14 : constant 3.0 (HardSwish)
+//   ymm15 : constant 1/6 (HardSwish)
+// Register map for Dequantize:
+//   ymm12 : scale (broadcast)
+//   ymm13 : zeroPoint (broadcast)
 class function TKCLWin64JITBackend.CompileMap(AKernel : TKCLKernel; ANode : TKCLMapNode) : TKCLCompiledKernel;
 var
    j : Tx86_64_WriteOnlyStream;
@@ -613,7 +724,11 @@ var
    allocSize : Integer;
    jmpTailPatch, jmpEpiloguePatch, jmpTailDonePatch, pixel4LoopPos, tailLoopPos : Integer;
    curTailPos, curEpiloguePos : Integer;
+   isUnary, hasPIn2 : Boolean;
 begin
+   isUnary := (ANode is TKCLReLUNode) or (ANode is TKCLReLU6Node) or (ANode is TKCLHardSwishNode);
+   hasPIn2 := (ANode is TKCLAddNode) or (ANode is TKCLSubNode) or (ANode is TKCLMulNode);
+
    j := Tx86_64_WriteOnlyStream.Create;
    try
       EmitPrologue(j);
@@ -626,20 +741,55 @@ begin
       j._cmp_reg_imm(gprRDI, 4);
       j._jump(flagsB, $10000); jmpTailPatch := j.Size - 4;
 
-      if ANode is TKCLDequantizeNode then begin
+      // Setup constants for unary activations
+      if isUnary then begin
+         j._vxorps(ymm12);   // 0.0
+         if (ANode is TKCLReLU6Node) or (ANode is TKCLHardSwishNode) then begin
+            j._mov_reg_imm(gprRAX, $4018000000000000); // 6.0
+            j._push_reg(gprRAX);
+            j._vbroadcastsd_ptr_reg(ymm13, gprRSP, 0);
+            j._pop_reg(gprRAX);
+         end;
+         if ANode is TKCLHardSwishNode then begin
+            j._mov_reg_imm(gprRAX, $4008000000000000); // 3.0
+            j._push_reg(gprRAX);
+            j._vbroadcastsd_ptr_reg(ymm14, gprRSP, 0);
+            j._pop_reg(gprRAX);
+            j._mov_reg_imm(gprRAX, $3FC5555555555555); // 1/6.0
+            j._push_reg(gprRAX);
+            j._vbroadcastsd_ptr_reg(ymm15, gprRSP, 0);
+            j._pop_reg(gprRAX);
+         end;
+      end else if ANode is TKCLDequantizeNode then begin
          j._vmovsd_reg_ptr_reg(xmm12, gprR9, 0); j._vbroadcastsd(ymm12, xmm12);
          j._vmovsd_reg_ptr_reg(xmm13, gprR9, 8); j._vbroadcastsd(ymm13, xmm13);
       end;
 
+      // === 4-element main loop (ymm = 4 doubles) ===
       pixel4LoopPos := j.Size;
 
       j._vmovupd_ptr_reg(ymm0, gprRCX, 0);
       if ANode is TKCLAddNode then begin
          j._vmovupd_ptr_reg(ymm1, gprR8, 0);
          j._vaddpd(ymm0, ymm0, ymm1);
+      end else if ANode is TKCLSubNode then begin
+         j._vmovupd_ptr_reg(ymm1, gprR8, 0);
+         j._vsubpd(ymm0, ymm0, ymm1);
       end else if ANode is TKCLMulNode then begin
          j._vmovupd_ptr_reg(ymm1, gprR8, 0);
          j._vmulpd(ymm0, ymm0, ymm1);
+      end else if ANode is TKCLReLUNode then begin
+         j._v_op_pd(xmm_maxpd, ymm0, ymm0, ymm12);
+      end else if ANode is TKCLReLU6Node then begin
+         j._v_op_pd(xmm_maxpd, ymm0, ymm0, ymm12);
+         j._v_op_pd(xmm_minpd, ymm0, ymm0, ymm13);
+      end else if ANode is TKCLHardSwishNode then begin
+         // HardSwish: x * max(0, min(6, x+3)) / 6
+         j._vaddpd(ymm1, ymm0, ymm14);               // ymm1 = x + 3
+         j._v_op_pd(xmm_maxpd, ymm1, ymm1, ymm12);   // ymm1 = max(0, x+3)
+         j._v_op_pd(xmm_minpd, ymm1, ymm1, ymm13);   // ymm1 = min(6, max(0, x+3))
+         j._vmulpd(ymm0, ymm0, ymm1);                 // ymm0 = x * clamp
+         j._vmulpd(ymm0, ymm0, ymm15);                // ymm0 = x * clamp / 6
       end else if ANode is TKCLDequantizeNode then begin
          j._vsubpd(ymm0, ymm0, ymm13);
          j._vmulpd(ymm0, ymm0, ymm12);
@@ -649,12 +799,13 @@ begin
 
       j._add_reg_imm(gprRCX, 32);
       j._add_reg_imm(gprRDX, 32);
-      if not (ANode is TKCLDequantizeNode) then j._add_reg_imm(gprR8, 32);
+      if hasPIn2 then j._add_reg_imm(gprR8, 32);
 
       j._sub_reg_imm(gprRDI, 4);
       j._cmp_reg_imm(gprRDI, 4);
       j._jump(flagsAE, pixel4LoopPos - j.Size);
 
+      // === Tail loop (1 element) ===
       curTailPos := j.Size;
       j._test_reg_reg(gprRDI, gprRDI);
       j._jump(flagsE, $10000); jmpTailDonePatch := j.Size - 4;
@@ -664,9 +815,23 @@ begin
       if ANode is TKCLAddNode then begin
          j._vmovsd_reg_ptr_reg(xmm1, gprR8, 0);
          j._vaddpd(ymm0, ymm0, ymm1);
+      end else if ANode is TKCLSubNode then begin
+         j._vmovsd_reg_ptr_reg(xmm1, gprR8, 0);
+         j._vsubpd(ymm0, ymm0, ymm1);
       end else if ANode is TKCLMulNode then begin
          j._vmovsd_reg_ptr_reg(xmm1, gprR8, 0);
          j._vmulpd(ymm0, ymm0, ymm1);
+      end else if ANode is TKCLReLUNode then begin
+         j._v_op_pd(xmm_maxpd, ymm0, ymm0, ymm12);
+      end else if ANode is TKCLReLU6Node then begin
+         j._v_op_pd(xmm_maxpd, ymm0, ymm0, ymm12);
+         j._v_op_pd(xmm_minpd, ymm0, ymm0, ymm13);
+      end else if ANode is TKCLHardSwishNode then begin
+         j._vaddpd(ymm1, ymm0, ymm14);
+         j._v_op_pd(xmm_maxpd, ymm1, ymm1, ymm12);
+         j._v_op_pd(xmm_minpd, ymm1, ymm1, ymm13);
+         j._vmulpd(ymm0, ymm0, ymm1);
+         j._vmulpd(ymm0, ymm0, ymm15);
       end else if ANode is TKCLDequantizeNode then begin
          j._vsubpd(ymm0, ymm0, ymm13);
          j._vmulpd(ymm0, ymm0, ymm12);
@@ -676,7 +841,7 @@ begin
 
       j._add_reg_imm(gprRCX, 8);
       j._add_reg_imm(gprRDX, 8);
-      if not (ANode is TKCLDequantizeNode) then j._add_reg_imm(gprR8, 8);
+      if hasPIn2 then j._add_reg_imm(gprR8, 8);
 
       j._sub_reg_imm(gprRDI, 1);
       j._jump(flagsNE, tailLoopPos - j.Size);
@@ -699,18 +864,33 @@ end;
 
 class function TKCLWin64JITBackend.ExecuteMap(AKernel : TKCLKernel; ANode : TKCLMapNode;
    pIn, pOut, pIn2, pParams: PDouble; totalElements: NativeInt) : Boolean;
+var
+   optData : TKCLOptimizationData;
+   compiled : TKCLCompiledKernel;
 begin
    Result := False;
    if not (cpuAVX in Win64CPUFeatures) then Exit;
+
+   // Fast path: if already prepared, skip TMonitor entirely
+   optData := TKCLOptimizationData(AKernel.OptimizationData);
+   if (optData <> nil) and optData.Prepared then begin
+      if optData.CompiledKernels.TryGetValue(ANode, compiled) then begin
+         TKCLMicroKernel(compiled.Code)(pIn, pOut, pIn2, pParams, totalElements);
+         Result := True;
+      end;
+      Exit;
+   end;
+
    TMonitor.Enter(AKernel);
    try
-      var optData := TKCLOptimizationData(AKernel.OptimizationData);
+      optData := TKCLOptimizationData(AKernel.OptimizationData);
       if optData = nil then begin
          optData := TKCLOptimizationData.Create; AKernel.OptimizationData := optData;
       end;
-      var compiled : TKCLCompiledKernel;
       if not optData.CompiledKernels.TryGetValue(ANode, compiled) then begin
-         if (ANode is TKCLAddNode) or (ANode is TKCLMulNode) or (ANode is TKCLDequantizeNode) then begin
+         if (ANode is TKCLAddNode) or (ANode is TKCLSubNode) or (ANode is TKCLMulNode)
+            or (ANode is TKCLReLUNode) or (ANode is TKCLReLU6Node) or (ANode is TKCLHardSwishNode)
+            or (ANode is TKCLDequantizeNode) then begin
             compiled := CompileMap(AKernel, ANode);
             if compiled <> nil then optData.CompiledKernels.Add(ANode, compiled);
          end else Exit;
@@ -720,6 +900,140 @@ begin
          Result := True;
       end;
    finally TMonitor.Exit(AKernel); end;
+end;
+
+// ------------------
+// PrepareGraph — pre-compile all JIT kernels during graph preparation
+// ------------------
+// This eliminates TMonitor/Dictionary overhead (~2ms) from the hot execution path.
+// After preparation, Execute/ExecuteKxK/ExecuteMap use the lock-free fast path.
+class procedure TKCLWin64JITBackend.PrepareGraph(AKernel : TKCLKernel;
+   ASortedNodes : TList<TKCLNode>;
+   ANodeToBufferIdx : TDictionary<TKCLNode, Integer>;
+   ANodeDims : TArray<TKCLDimensions>;
+   AFusionMap : TDictionary<TKCLNode, TKCLFusionInfo>);
+
+   function NodeToActivation(node : TKCLNode) : TKCLActivation;
+   begin
+      if node is TKCLReLUNode then Result := actReLU
+      else if node is TKCLReLU6Node then Result := actReLU6
+      else if node is TKCLHardSwishNode then Result := actHardSwish
+      else Result := actNone;
+   end;
+
+var
+   optData : TKCLOptimizationData;
+   node : TKCLNode;
+   compiled : TKCLCompiledKernel;
+   convNode : TKCLConv2DNode;
+   mapNode : TKCLMapNode;
+   fusion : TKCLFusionInfo;
+   act : TKCLActivation;
+   inIdx, inChannels, outChannels, inH, inW, outH, outW : Integer;
+   pad_h, pad_top, pad_w, pad_left, hFirst, hLast, wFirst, wLast : Integer;
+   hasFusion : Boolean;
+   hasResidual : Boolean;
+begin
+   if not (cpuFMA in Win64CPUFeatures) or not (cpuAVX in Win64CPUFeatures) then Exit;
+
+   TMonitor.Enter(AKernel);
+   try
+      optData := TKCLOptimizationData(AKernel.OptimizationData);
+      if optData = nil then begin
+         optData := TKCLOptimizationData.Create;
+         AKernel.OptimizationData := optData;
+      end;
+
+      for var n := 0 to ASortedNodes.Count - 1 do begin
+         node := ASortedNodes[n];
+
+         // Pre-compile Conv2D kernels
+         if node is TKCLConv2DNode then begin
+            convNode := TKCLConv2DNode(node);
+            if optData.CompiledKernels.ContainsKey(node) then Continue;
+
+            inIdx := ANodeToBufferIdx[convNode.Inputs[0]];
+            inChannels := ANodeDims[inIdx][High(ANodeDims[inIdx])];
+            outChannels := Length(convNode.Bias);
+
+            // Determine fusion activation
+            act := actNone;
+            hasResidual := False;
+            hasFusion := (AFusionMap <> nil) and AFusionMap.TryGetValue(node, fusion);
+            if hasFusion then begin
+               act := fusion.Activation;
+               hasResidual := fusion.ResidualInput <> nil;
+            end;
+
+            if (convNode.KernelSize = 1) and (convNode.Stride = 1) then begin
+               // Pointwise 1x1
+               var jitAct := act;
+               if hasResidual then jitAct := actNone;
+               compiled := Compile(AKernel, node, inChannels, outChannels, jitAct);
+               if compiled <> nil then begin
+                  compiled.Weights := TransposeWeightsPointwise(
+                     PDouble(convNode.Weights), inChannels, outChannels);
+                  optData.CompiledKernels.Add(node, compiled);
+               end;
+            end else if (convNode.KernelSize > 1) and (Length(ANodeDims[inIdx]) >= 3) then begin
+               // KxK convolution — pre-compile if interior region exists
+               inH := ANodeDims[inIdx][High(ANodeDims[inIdx])-2];
+               inW := ANodeDims[inIdx][High(ANodeDims[inIdx])-1];
+               outH := (inH + convNode.Stride - 1) div convNode.Stride;
+               outW := (inW + convNode.Stride - 1) div convNode.Stride;
+               pad_h := Max(0, (outH - 1) * convNode.Stride + convNode.KernelSize - inH);
+               pad_top := pad_h div 2;
+               pad_w := Max(0, (outW - 1) * convNode.Stride + convNode.KernelSize - inW);
+               pad_left := pad_w div 2;
+               hFirst := (pad_top + convNode.Stride - 1) div convNode.Stride;
+               hLast := (inH + pad_top - convNode.KernelSize) div convNode.Stride;
+               wFirst := (pad_left + convNode.Stride - 1) div convNode.Stride;
+               wLast := (inW + pad_left - convNode.KernelSize) div convNode.Stride;
+
+               if (hFirst <= hLast) and (wFirst <= wLast) then begin
+                  var kxkAct := act;
+                  if hasResidual then kxkAct := actNone;
+                  compiled := CompileKxK(AKernel, node, inChannels, outChannels,
+                     convNode.KernelSize, inW, convNode.Stride, kxkAct);
+                  if compiled <> nil then begin
+                     compiled.Weights := TransposeWeightsKxK(
+                        PDouble(convNode.Weights), inChannels, outChannels, convNode.KernelSize);
+                     optData.CompiledKernels.Add(node, compiled);
+                  end;
+               end;
+            end;
+         end
+
+         // Pre-compile Map kernels
+         else if node is TKCLMapNode then begin
+            mapNode := TKCLMapNode(node);
+            if optData.CompiledKernels.ContainsKey(node) then Continue;
+            if (mapNode is TKCLAddNode) or (mapNode is TKCLSubNode) or (mapNode is TKCLMulNode)
+               or (mapNode is TKCLReLUNode) or (mapNode is TKCLReLU6Node) or (mapNode is TKCLHardSwishNode)
+               or (mapNode is TKCLDequantizeNode) then begin
+               compiled := CompileMap(AKernel, mapNode);
+               if compiled <> nil then
+                  optData.CompiledKernels.Add(node, compiled);
+            end;
+         end;
+      end;
+
+      optData.Prepared := True;
+   finally TMonitor.Exit(AKernel); end;
+end;
+
+// ------------------
+// FlushBatch — execute a batch of pre-compiled map kernels in a tight loop
+// ------------------
+// Eliminates per-node dispatch overhead (type checking, dictionary lookup, function setup)
+// for sequential map operations. Each entry in the batch is a pre-resolved
+// (code, pIn, pOut, pIn2, pParams, count) tuple.
+class procedure TKCLWin64JITBackend.FlushBatch(const ABatch : TKCLBatchEntries; ACount : Integer);
+var
+   i : Integer;
+begin
+   for i := 0 to ACount - 1 do
+      TKCLMicroKernel(ABatch[i].Code)(ABatch[i].pIn, ABatch[i].pOut, ABatch[i].pIn2, ABatch[i].pParams, ABatch[i].Count);
 end;
 
 end.
