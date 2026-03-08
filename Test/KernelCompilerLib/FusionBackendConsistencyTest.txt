@@ -1,0 +1,4 @@
+Conv2D 1x1 + ReLU: PASS
+Conv2D 1x1 + Add + ReLU: PASS
+Conv2D 3x3 + ReLU6: PASS
+Conv2D 3x3 + Add + ReLU: PASS

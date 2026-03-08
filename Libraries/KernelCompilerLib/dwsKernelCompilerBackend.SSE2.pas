@@ -36,6 +36,14 @@ uses
    dwsUtils, dwsKernelCompilerCommon, dwsKernelCompilerBackend.JIT;
 
 type
+
+   TKCLFusionInfo = record
+      Activation : TKCLActivation;
+      ActivationNode : TKCLNode;
+      AddNode : TKCLNode;
+      ResidualInput : TKCLNode; // the non-conv input of the Add
+   end;
+
    TKCLSSE2Backend = class
    protected
       // Execution state
@@ -49,22 +57,28 @@ type
       FVisiting : TDictionary<TKCLNode, Boolean>;
       FVisited : TDictionary<TKCLNode, Boolean>;
 
+      // Fusion state
+      FFusionMap : TDictionary<TKCLNode, TKCLFusionInfo>;
+      FFusedNodes : TDictionary<TKCLNode, Boolean>;
+
       function GetValue(const ABuf : TKCLStridedBufferDescriptor; const AIdx : TKCLDimensions) : Double;
       procedure SetValue(const ABuf : TKCLStridedBufferDescriptor; const AIdx : TKCLDimensions; AValue : Double);
-      
+
       function FlatIndex(const AIdx : TKCLDimensions; const ADims : TKCLDimensions) : Integer;
       procedure IndexFromFlat(AFlat : Integer; const ADims : TKCLDimensions; var AIdx : TKCLDimensions);
       function IsContiguous(const ABuf : TKCLStridedBufferDescriptor) : Boolean;
-      
+
       procedure VisitNode(ANode : TKCLNode);
       procedure VerifyOutputs;
-      
+      procedure AnalyzeFusion;
+
       procedure ProcessConstant(n : Integer; node : TKCLConstantNode);
       procedure ProcessInput(n : Integer; node : TKCLInputNode);
       procedure ProcessConcat(n : Integer; node : TKCLConcatNode);
       procedure ProcessMap(n : Integer; node : TKCLMapNode); virtual;
       procedure ProcessConv2D(n : Integer; node : TKCLConv2DNode); virtual;
-      procedure ProcessConv2DSSE2(n : Integer; node : TKCLConv2DNode);
+      procedure ProcessConv2DSSE2(n : Integer; node : TKCLConv2DNode;
+         act : TKCLActivation = actNone; pResidual : PDouble = nil);
       procedure ProcessConv2DTranspose(n : Integer; node : TKCLConv2DTransposeNode); virtual;
       procedure ProcessDepthwiseConv2D(n : Integer; node : TKCLDepthwiseConv2DNode);
       procedure ProcessSoftMax(n : Integer; node : TKCLSoftMaxNode);
@@ -72,6 +86,8 @@ type
       procedure ProcessMaxPool2D(n : Integer; node : TKCLMaxPool2DNode);
       procedure ProcessGlobalAvgPool(n : Integer; node : TKCLGlobalAvgPoolNode);
       procedure ProcessMapFallback(n : Integer; node : TKCLMapNode);
+
+      procedure ApplyActivationInPlace(pBuf : PDouble; count : NativeInt; act : TKCLActivation);
 
    public
       constructor Create;
@@ -643,6 +659,124 @@ begin
    FSortedNodes.Add(ANode);
 end;
 
+// AnalyzeFusion
+//
+procedure TKCLSSE2Backend.AnalyzeFusion;
+
+   function NodeToActivation(node : TKCLNode) : TKCLActivation;
+   begin
+      if node is TKCLReLUNode then Result := actReLU
+      else if node is TKCLReLU6Node then Result := actReLU6
+      else if node is TKCLHardSwishNode then Result := actHardSwish
+      else Result := actNone;
+   end;
+
+   function IsOutputNode(node : TKCLNode) : Boolean;
+   begin
+      for var i := 0 to High(FKernel.Outputs) do
+         if FKernel.Outputs[i] = node then Exit(True);
+      Result := False;
+   end;
+
+var
+   consumerCount : TDictionary<TKCLNode, Integer>;
+   consumers : TDictionary<TKCLNode, TKCLNode>;
+   node, consumer, addConsumer : TKCLNode;
+   fusion : TKCLFusionInfo;
+   act : TKCLActivation;
+   i, j : Integer;
+begin
+   FFusionMap := TDictionary<TKCLNode, TKCLFusionInfo>.Create;
+   FFusedNodes := TDictionary<TKCLNode, Boolean>.Create;
+
+   // Build consumer maps: count how many nodes consume each node,
+   // and if exactly one, record which node that is
+   consumerCount := TDictionary<TKCLNode, Integer>.Create;
+   consumers := TDictionary<TKCLNode, TKCLNode>.Create;
+   try
+      for i := 0 to FSortedNodes.Count - 1 do begin
+         node := FSortedNodes[i];
+         for j := 0 to High(node.Inputs) do begin
+            var inputNode := node.Inputs[j];
+            var cnt : Integer;
+            if consumerCount.TryGetValue(inputNode, cnt) then begin
+               consumerCount[inputNode] := cnt + 1;
+               consumers.Remove(inputNode); // more than one consumer
+            end else begin
+               consumerCount.Add(inputNode, 1);
+               consumers.Add(inputNode, node);
+            end;
+         end;
+      end;
+
+      // Detect fusion patterns for Conv2D nodes
+      for i := 0 to FSortedNodes.Count - 1 do begin
+         node := FSortedNodes[i];
+         if not (node is TKCLConv2DNode) then Continue;
+
+         // Check if Conv2D has exactly one consumer
+         if not consumers.TryGetValue(node, consumer) then Continue;
+
+         // Pattern 1: Conv2D + Activation
+         act := NodeToActivation(consumer);
+         if act <> actNone then begin
+            fusion.Activation := act;
+            fusion.ActivationNode := consumer;
+            fusion.AddNode := nil;
+            fusion.ResidualInput := nil;
+            FFusionMap.Add(node, fusion);
+            FFusedNodes.Add(consumer, True);
+            Continue;
+         end;
+
+         // Pattern 2: Conv2D + Add + Activation
+         if consumer is TKCLAddNode then begin
+            // Determine which Add input is the Conv2D and which is the residual
+            var addNode := TKCLAddNode(consumer);
+            var residualInput : TKCLNode;
+            if addNode.Inputs[0] = node then
+               residualInput := addNode.Inputs[1]
+            else if addNode.Inputs[1] = node then
+               residualInput := addNode.Inputs[0]
+            else Continue;
+
+            // Residual must be computed before the Conv2D in topological order
+            var resPos := FSortedNodes.IndexOf(residualInput);
+            if resPos >= i then Continue;
+
+            // The Add must also be a single-use node (not an output itself)
+            if not consumers.TryGetValue(addNode, addConsumer) then Continue;
+            if IsOutputNode(addNode) then Continue;
+
+            act := NodeToActivation(addConsumer);
+            if act <> actNone then begin
+               fusion.Activation := act;
+               fusion.ActivationNode := addConsumer;
+               fusion.AddNode := addNode;
+               fusion.ResidualInput := residualInput;
+               FFusionMap.Add(node, fusion);
+               FFusedNodes.Add(addNode, True);
+               FFusedNodes.Add(addConsumer, True);
+            end;
+         end;
+      end;
+   finally
+      consumerCount.Free;
+      consumers.Free;
+   end;
+end;
+
+// ApplyActivationInPlace
+//
+procedure TKCLSSE2Backend.ApplyActivationInPlace(pBuf : PDouble; count : NativeInt; act : TKCLActivation);
+begin
+   case act of
+      actReLU: SSE2_ReLU(pBuf, pBuf, count);
+      actReLU6: SSE2_ReLU6(pBuf, pBuf, count);
+      actHardSwish: SSE2_HardSwish(pBuf, pBuf, count);
+   end;
+end;
+
 // VerifyOutputs
 //
 procedure TKCLSSE2Backend.VerifyOutputs;
@@ -812,6 +946,9 @@ procedure TKCLSSE2Backend.ProcessConv2D(n : Integer; node : TKCLConv2DNode);
 var
    in1, i : Integer;
    dims : TKCLDimensions;
+   fusion : TKCLFusionInfo;
+   act : TKCLActivation;
+   pResidual : PDouble;
 begin
    in1 := FNodeToBufferIdx[node.Inputs[0]];
    dims := Copy(FNodeDims[in1]);
@@ -824,12 +961,39 @@ begin
    FNodeTotalElements[n] := 1; for i := 0 to High(dims) do FNodeTotalElements[n] := FNodeTotalElements[n] * dims[i];
    SetLength(FNodeBuffers[n], FNodeTotalElements[n]);
 
-   ProcessConv2DSSE2(n, node);
+   act := actNone;
+   pResidual := nil;
+   if (FFusionMap <> nil) and FFusionMap.TryGetValue(node, fusion) then begin
+      act := fusion.Activation;
+      if fusion.ResidualInput <> nil then begin
+         var resIdx := FNodeToBufferIdx[fusion.ResidualInput];
+         pResidual := PDouble(Pointer(FNodeBuffers[resIdx]));
+      end;
+   end;
+
+   ProcessConv2DSSE2(n, node, act, pResidual);
+
+   // Alias fused nodes to Conv2D output
+   if (FFusionMap <> nil) and FFusionMap.TryGetValue(node, fusion) then begin
+      if fusion.AddNode <> nil then begin
+         var addIdx := FNodeToBufferIdx[fusion.AddNode];
+         FNodeDims[addIdx] := FNodeDims[n];
+         FNodeTotalElements[addIdx] := FNodeTotalElements[n];
+         FNodeBuffers[addIdx] := FNodeBuffers[n];
+      end;
+      if fusion.ActivationNode <> nil then begin
+         var actIdx := FNodeToBufferIdx[fusion.ActivationNode];
+         FNodeDims[actIdx] := FNodeDims[n];
+         FNodeTotalElements[actIdx] := FNodeTotalElements[n];
+         FNodeBuffers[actIdx] := FNodeBuffers[n];
+      end;
+   end;
 end;
 
 // ProcessConv2DSSE2
 //
-procedure TKCLSSE2Backend.ProcessConv2DSSE2(n: Integer; node: TKCLConv2DNode);
+procedure TKCLSSE2Backend.ProcessConv2DSSE2(n: Integer; node: TKCLConv2DNode;
+   act : TKCLActivation; pResidual : PDouble);
 var
    in1, inChannels, outChannels, inH, inW, outH, outW, hO, wO, ny, nx, stepY, stepX, k, i : Integer;
    pInput, pRes, pW, pB, pROut, pWBase : PDouble;
@@ -869,6 +1033,14 @@ begin
          end;
       end;
    end;
+
+   // Apply fused residual add
+   if pResidual <> nil then
+      SSE2_Add(pRes, pResidual, pRes, FNodeTotalElements[n]);
+
+   // Apply fused activation
+   if act <> actNone then
+      ApplyActivationInPlace(pRes, FNodeTotalElements[n], act);
 end;
 
 // ProcessConv2DTranspose
@@ -1187,8 +1359,20 @@ begin
          for j := 0 to High(FKernel.Outputs) do VisitNode(FKernel.Outputs[j]);
          SetLength(FNodeDims, FSortedNodes.Count); SetLength(FNodeTotalElements, FSortedNodes.Count); SetLength(FNodeBuffers, FSortedNodes.Count);
 
+         // Register buffer indices first so fusion analysis can reference them
+         for n := 0 to FSortedNodes.Count - 1 do
+            FNodeToBufferIdx.Add(FSortedNodes[n], n);
+
+         // Analyze fusion opportunities
+         AnalyzeFusion;
+
          for n := 0 to FSortedNodes.Count - 1 do begin
-            node := FSortedNodes[n]; FNodeToBufferIdx.Add(node, n);
+            node := FSortedNodes[n];
+
+            // Skip nodes that have been fused into another operation
+            if (FFusedNodes <> nil) and FFusedNodes.ContainsKey(node) then
+               Continue;
+
             if node is TKCLConstantNode then ProcessConstant(n, TKCLConstantNode(node))
             else if node is TKCLInputNode then ProcessInput(n, TKCLInputNode(node))
             else if node is TKCLConcatNode then ProcessConcat(n, TKCLConcatNode(node))
@@ -1215,6 +1399,8 @@ begin
             end;
          end;
       finally
+         FFusionMap.Free; FFusedNodes.Free;
+         FFusionMap := nil; FFusedNodes := nil;
          FNodeToBufferIdx.Free; FSortedNodes.Free; FVisiting.Free; FVisited.Free;
       end;
    finally SetExceptionMask(savedMask); end;
@@ -1235,6 +1421,10 @@ var
    pInput, pRes, pW, pB : PDouble;
    ny, nx : Integer;
    pROut, pWBase : PDouble;
+   fusion : TKCLFusionInfo;
+   act : TKCLActivation;
+   pResidual : PDouble;
+   hasFusion : Boolean;
 begin
    in1Idx := FNodeToBufferIdx[node.Inputs[0]];
    var dims := Copy(FNodeDims[in1Idx]);
@@ -1248,6 +1438,18 @@ begin
    FNodeTotalElements[n] := total;
    SetLength(FNodeBuffers[n], total);
 
+   // Check fusion info
+   act := actNone;
+   pResidual := nil;
+   hasFusion := (FFusionMap <> nil) and FFusionMap.TryGetValue(node, fusion);
+   if hasFusion then begin
+      act := fusion.Activation;
+      if fusion.ResidualInput <> nil then begin
+         var resIdx := FNodeToBufferIdx[fusion.ResidualInput];
+         pResidual := PDouble(Pointer(FNodeBuffers[resIdx]));
+      end;
+   end;
+
    outChannels := Length(node.Bias);
    inChannels := FNodeDims[in1Idx][High(FNodeDims[in1Idx])];
    pInput := PDouble(Pointer(FNodeBuffers[in1Idx]));
@@ -1255,14 +1457,39 @@ begin
    pW := PDouble(node.Weights);
    pB := PDouble(node.Bias);
 
-   // Case 1: Pointwise (1x1, stride=1) → batched pixel JIT
+   // Case 1: Pointwise (1x1, stride=1) -> batched pixel JIT
    if (node.KernelSize = 1) and (node.Stride = 1) then begin
+      // When residual is present, do not fuse activation into JIT;
+      // apply residual and activation after the convolution instead
+      var jitAct := act;
+      if pResidual <> nil then jitAct := actNone;
       if TKCLWin64JITBackend.Execute(FKernel, node, pInput, pRes, pW, pB,
-            total div outChannels, inChannels, outChannels) then
+            total div outChannels, inChannels, outChannels, jitAct) then begin
+         if pResidual <> nil then begin
+            SSE2_Add(pRes, pResidual, pRes, total);
+            if act <> actNone then
+               ApplyActivationInPlace(pRes, total, act);
+         end;
+         // Alias fused nodes
+         if hasFusion then begin
+            if fusion.AddNode <> nil then begin
+               var addIdx := FNodeToBufferIdx[fusion.AddNode];
+               FNodeDims[addIdx] := FNodeDims[n];
+               FNodeTotalElements[addIdx] := FNodeTotalElements[n];
+               FNodeBuffers[addIdx] := FNodeBuffers[n];
+            end;
+            if fusion.ActivationNode <> nil then begin
+               var actIdx := FNodeToBufferIdx[fusion.ActivationNode];
+               FNodeDims[actIdx] := FNodeDims[n];
+               FNodeTotalElements[actIdx] := FNodeTotalElements[n];
+               FNodeBuffers[actIdx] := FNodeBuffers[n];
+            end;
+         end;
          Exit;
+      end;
    end
 
-   // Case 2: k×k with JIT interior rows + SSE2 borders
+   // Case 2: k*k with JIT interior rows + SSE2 borders
    else if (node.KernelSize > 1) and (Length(dims) >= 3) then begin
       inH := FNodeDims[in1Idx][High(dims)-2]; inW := FNodeDims[in1Idx][High(dims)-1];
       outH := dims[High(dims)-2]; outW := dims[High(dims)-1];
@@ -1309,10 +1536,12 @@ begin
             end;
          end;
 
+         // When residual is present, do not fuse activation into JIT;
+         // apply both residual and activation after all conv pixels are computed
+         var kxkAct := act;
+         if pResidual <> nil then kxkAct := actNone;
+
          // Interior rows: JIT micro-kernel per row
-         // Each call processes interiorW consecutive pixels along a row.
-         // pIn = top-left of receptive field for first interior pixel in row.
-         // The kernel advances pIn by stride*inChannels*8 per pixel.
          for hO := hFirst to hLast do begin
             var pInRow := pInput + ((hO * node.Stride - pad_top) * inW
                                    + (wFirst * node.Stride - pad_left)) * inChannels;
@@ -1320,8 +1549,8 @@ begin
 
             if not TKCLWin64JITBackend.ExecuteKxK(FKernel, node,
                   pInRow, pOutRow, pW, pB,
-                  interiorW, inChannels, outChannels, node.KernelSize, inW, node.Stride) then begin
-               // JIT unavailable — SSE2 fallback for interior
+                  interiorW, inChannels, outChannels, node.KernelSize, inW, node.Stride, kxkAct) then begin
+               // JIT unavailable - SSE2 fallback for interior
                for wO := 0 to interiorW - 1 do begin
                   var pIn1 := pInRow + wO * node.Stride * inChannels;
                   var pOut1 := pOutRow + wO * outChannels;
@@ -1336,11 +1565,61 @@ begin
                end;
             end;
          end;
+
+         // Apply fused residual and activation to all pixels
+         if pResidual <> nil then
+            SSE2_Add(pRes, pResidual, pRes, total);
+         if (pResidual <> nil) and (act <> actNone) then
+            ApplyActivationInPlace(pRes, total, act)
+         else if (pResidual = nil) and (act <> actNone) then begin
+            // Activation was already applied to interior pixels by JIT;
+            // apply only to border pixels
+            for hO := 0 to outH - 1 do begin
+               for wO := 0 to outW - 1 do begin
+                  if (hO >= hFirst) and (hO <= hLast) and (wO >= wFirst) and (wO <= wLast) then
+                     Continue;
+                  var pixelOff := (hO * outW + wO) * outChannels;
+                  ApplyActivationInPlace(pRes + pixelOff, outChannels, act);
+               end;
+            end;
+         end;
+
+         // Alias fused nodes
+         if hasFusion then begin
+            if fusion.AddNode <> nil then begin
+               var addIdx := FNodeToBufferIdx[fusion.AddNode];
+               FNodeDims[addIdx] := FNodeDims[n];
+               FNodeTotalElements[addIdx] := FNodeTotalElements[n];
+               FNodeBuffers[addIdx] := FNodeBuffers[n];
+            end;
+            if fusion.ActivationNode <> nil then begin
+               var actIdx := FNodeToBufferIdx[fusion.ActivationNode];
+               FNodeDims[actIdx] := FNodeDims[n];
+               FNodeTotalElements[actIdx] := FNodeTotalElements[n];
+               FNodeBuffers[actIdx] := FNodeBuffers[n];
+            end;
+         end;
          Exit;
       end;
    end;
 
-   ProcessConv2DSSE2(n, node);
+   ProcessConv2DSSE2(n, node, act, pResidual);
+
+   // Alias fused nodes
+   if hasFusion then begin
+      if fusion.AddNode <> nil then begin
+         var addIdx := FNodeToBufferIdx[fusion.AddNode];
+         FNodeDims[addIdx] := FNodeDims[n];
+         FNodeTotalElements[addIdx] := FNodeTotalElements[n];
+         FNodeBuffers[addIdx] := FNodeBuffers[n];
+      end;
+      if fusion.ActivationNode <> nil then begin
+         var actIdx := FNodeToBufferIdx[fusion.ActivationNode];
+         FNodeDims[actIdx] := FNodeDims[n];
+         FNodeTotalElements[actIdx] := FNodeTotalElements[n];
+         FNodeBuffers[actIdx] := FNodeBuffers[n];
+      end;
+   end;
 end;
 
 procedure TKCLJITBackend.ProcessConv2DTranspose(n : Integer; node : TKCLConv2DTransposeNode);

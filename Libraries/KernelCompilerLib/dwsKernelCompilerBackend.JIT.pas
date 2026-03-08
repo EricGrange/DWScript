@@ -149,8 +149,24 @@ begin
       actReLU6: begin
          j._vxorps(ymm12);
          j._mov_reg_imm(gprRAX, $4018000000000000); // IEEE754 double 6.0
-         j._mov_reg_reg(xmm13, gprRAX);
-         j._vbroadcastsd(ymm13, xmm13);
+         j._push_reg(gprRAX);
+         j._vbroadcastsd_ptr_reg(ymm13, gprRSP, 0);
+         j._pop_reg(gprRAX);
+      end;
+      actHardSwish: begin
+         j._vxorps(ymm12);
+         j._mov_reg_imm(gprRAX, $4018000000000000); // 6.0
+         j._push_reg(gprRAX);
+         j._vbroadcastsd_ptr_reg(ymm13, gprRSP, 0);
+         j._pop_reg(gprRAX);
+         j._mov_reg_imm(gprRAX, $4008000000000000); // 3.0
+         j._push_reg(gprRAX);
+         j._vbroadcastsd_ptr_reg(ymm14, gprRSP, 0);
+         j._pop_reg(gprRAX);
+         j._mov_reg_imm(gprRAX, $3FC5555555555555); // 1/6.0
+         j._push_reg(gprRAX);
+         j._vbroadcastsd_ptr_reg(ymm15, gprRSP, 0);
+         j._pop_reg(gprRAX);
       end;
    end;
 end;
@@ -167,6 +183,13 @@ begin
       actReLU6: begin
          j._v_op_pd(xmm_maxpd, TymmRegister(accReg), TymmRegister(accReg), ymm12);
          j._v_op_pd(xmm_minpd, TymmRegister(accReg), TymmRegister(accReg), ymm13);
+      end;
+      actHardSwish: begin
+         j._vaddpd(ymm8, TymmRegister(accReg), ymm14);
+         j._v_op_pd(xmm_maxpd, ymm8, ymm8, ymm12);
+         j._v_op_pd(xmm_minpd, ymm8, ymm8, ymm13);
+         j._vmulpd(TymmRegister(accReg), TymmRegister(accReg), ymm8);
+         j._vmulpd(TymmRegister(accReg), TymmRegister(accReg), ymm15);
       end;
    end;
 end;
