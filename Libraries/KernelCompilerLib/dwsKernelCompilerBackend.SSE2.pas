@@ -33,7 +33,7 @@ interface
 
 uses
    System.Classes, System.SysUtils, System.Math, System.Generics.Collections,
-   dwsUtils, dwsKernelCompilerCommon, dwsKernelCompilerBackend.JIT;
+   dwsUtils, dwsKernelCompilerCommon, dwsXPlatform, dwsKernelCompilerBackend.JIT;
 
 type
 
@@ -1641,15 +1641,8 @@ begin
    if (node.KernelSize = 1) and (node.Stride = 1) then begin
       // When residual is present, do not fuse activation into JIT;
       // apply residual and activation after the convolution instead
-      var jitAct := act;
-      if pResidual <> nil then jitAct := actNone;
-      if TKCLWin64JITBackend.Execute(FKernel, node, pInput, pRes, pW, pB,
-            total div outChannels, inChannels, outChannels, jitAct) then begin
-         if pResidual <> nil then begin
-            SSE2_Add(pRes, pResidual, pRes, total);
-            if act <> actNone then
-               ApplyActivationInPlace(pRes, total, act);
-         end;
+      if TKCLWin64JITBackend.Execute(FKernel, node, pInput, pRes, pW, pB, pResidual,
+            total div outChannels, inChannels, outChannels, act) then begin
          // Alias fused nodes
          if hasFusion then begin
             if fusion.AddNode <> nil then begin
@@ -1716,20 +1709,22 @@ begin
             end;
          end;
 
-         // When residual is present, do not fuse activation into JIT;
-         // apply both residual and activation after all conv pixels are computed
-         var kxkAct := act;
-         if pResidual <> nil then kxkAct := actNone;
+         var jitSupported := (cpuFMA in Win64CPUFeatures) and (cpuAVX in Win64CPUFeatures);
+         var resTotal := total;
+         if pResidual <> nil then resTotal := FNodeTotalElements[FNodeToBufferIdx[fusion.ResidualInput]];
 
          // Interior rows: JIT micro-kernel per row
          for hO := hFirst to hLast do begin
             var pInRow := pInput + ((hO * node.Stride - pad_top) * inW
                                    + (wFirst * node.Stride - pad_left)) * inChannels;
             var pOutRow := pRes + (hO * outW + wFirst) * outChannels;
+            var pResRow := pResidual;
+            if (pResRow <> nil) and (resTotal >= total) then
+               pResRow := pResRow + (hO * outW + wFirst) * outChannels;
 
             if not TKCLWin64JITBackend.ExecuteKxK(FKernel, node,
-                  pInRow, pOutRow, pW, pB,
-                  interiorW, inChannels, outChannels, node.KernelSize, inW, node.Stride, kxkAct) then begin
+                  pInRow, pOutRow, pW, pB, pResRow,
+                  interiorW, inChannels, outChannels, node.KernelSize, inW, node.Stride, act) then begin
                // JIT unavailable - SSE2 fallback for interior
                for wO := 0 to interiorW - 1 do begin
                   var pIn1 := pInRow + wO * node.Stride * inChannels;
@@ -1746,20 +1741,17 @@ begin
             end;
          end;
 
-         // Apply fused residual and activation to all pixels
-         if pResidual <> nil then
-            SSE2_Add(pRes, pResidual, pRes, total);
-         if (pResidual <> nil) and (act <> actNone) then
-            ApplyActivationInPlace(pRes, total, act)
-         else if (pResidual = nil) and (act <> actNone) then begin
-            // Activation was already applied to interior pixels by JIT;
-            // apply only to border pixels
+         // Apply fused residual and activation to border pixels (or all pixels if no JIT)
+         if (pResidual <> nil) or (act <> actNone) then begin
             for hO := 0 to outH - 1 do begin
                for wO := 0 to outW - 1 do begin
-                  if (hO >= hFirst) and (hO <= hLast) and (wO >= wFirst) and (wO <= wLast) then
+                  if jitSupported and (hO >= hFirst) and (hO <= hLast) and (wO >= wFirst) and (wO <= wLast) then
                      Continue;
                   var pixelOff := (hO * outW + wO) * outChannels;
-                  ApplyActivationInPlace(pRes + pixelOff, outChannels, act);
+                  if pResidual <> nil then
+                     SSE2_Add(pRes + pixelOff, pResidual + (pixelOff mod resTotal), pRes + pixelOff, outChannels);
+                  if act <> actNone then
+                     ApplyActivationInPlace(pRes + pixelOff, outChannels, act);
                end;
             end;
          end;

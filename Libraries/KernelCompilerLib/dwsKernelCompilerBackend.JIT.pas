@@ -35,7 +35,7 @@ type
       function GetLocation : Integer;
    end;
 
-   TKCLMicroKernel = procedure(pIn, pOut, pWeights, pBias: PDouble; totalPixels: NativeInt);
+   TKCLMicroKernel = procedure(pIn, pOut, pWeights, pBias, pResidual: PDouble; totalPixels: NativeInt);
 
    TKCLActivation = (actNone, actReLU, actReLU6, actHardSwish);
 
@@ -100,16 +100,16 @@ type
       class function TransposeWeightsKxK(pWeights : PDouble; inChannels, outChannels, K : Integer) : TDoubleDynArray;
    public
       class function Compile(AKernel : TKCLKernel; ANode : TKCLNode;
-         inChannels, outChannels : Integer; act : TKCLActivation = actNone) : TKCLCompiledKernel;
+         inChannels, outChannels : Integer; act : TKCLActivation = actNone; hasResidual : Boolean = False; residualBroadcast : Boolean = False) : TKCLCompiledKernel;
       class function CompileKxK(AKernel : TKCLKernel; ANode : TKCLNode;
-         inChannels, outChannels, K, inW, stride : Integer; act : TKCLActivation = actNone) : TKCLCompiledKernel;
+         inChannels, outChannels, K, inW, stride : Integer; act : TKCLActivation = actNone; hasResidual : Boolean = False; residualBroadcast : Boolean = False) : TKCLCompiledKernel;
       class function CompileMap(AKernel : TKCLKernel; ANode : TKCLMapNode) : TKCLCompiledKernel;
 
       class function Execute(AKernel : TKCLKernel; ANode : TKCLNode;
-         pIn, pOut, pWeights, pBias: PDouble; totalPixels: NativeInt;
+         pIn, pOut, pWeights, pBias, pResidual: PDouble; totalPixels: NativeInt;
          inChannels, outChannels : Integer; act : TKCLActivation = actNone) : Boolean;
       class function ExecuteKxK(AKernel : TKCLKernel; ANode : TKCLNode;
-         pIn, pOut, pWeights, pBias: PDouble; totalPixels: NativeInt;
+         pIn, pOut, pWeights, pBias, pResidual: PDouble; totalPixels: NativeInt;
          inChannels, outChannels, K, inW, stride : Integer; act : TKCLActivation = actNone) : Boolean;
       class function ExecuteMap(AKernel : TKCLKernel; ANode : TKCLMapNode;
          pIn, pOut, pIn2, pParams: PDouble; totalElements: NativeInt) : Boolean;
@@ -193,6 +193,7 @@ end;
 class procedure TKCLWin64JITBackend.EmitPrologue(j : Tx86_64_WriteOnlyStream);
 begin
    j._push_reg(gprRBP); j._mov_reg_reg(gprRBP, gprRSP);
+   j._push_reg(gprRSI);
    j._push_reg(gprRBX); j._push_reg(gprRDI); j._push_reg(gprR12);
    j._push_reg(gprR13); j._push_reg(gprR14); j._push_reg(gprR15);
    j._sub_reg_imm(gprRSP, 160);
@@ -208,6 +209,7 @@ begin
    j._add_reg_imm(gprRSP, 160);
    j._pop_reg(gprR15); j._pop_reg(gprR14); j._pop_reg(gprR13);
    j._pop_reg(gprR12); j._pop_reg(gprRDI); j._pop_reg(gprRBX);
+   j._pop_reg(gprRSI);
    j._pop_reg(gprRBP); j._ret;
 end;
 
@@ -321,7 +323,7 @@ end;
 //   rdx/r10/r11/r12 : pOut for pixels 0..3
 //   rbx : weight row ptr;  rax : channel counter;  rdi : pixel counter
 class function TKCLWin64JITBackend.Compile(AKernel : TKCLKernel; ANode : TKCLNode;
-   inChannels, outChannels : Integer; act : TKCLActivation) : TKCLCompiledKernel;
+   inChannels, outChannels : Integer; act : TKCLActivation; hasResidual : Boolean; residualBroadcast : Boolean) : TKCLCompiledKernel;
 var
    j : Tx86_64_WriteOnlyStream;
    ptr : Pointer;
@@ -336,7 +338,8 @@ begin
    j := Tx86_64_WriteOnlyStream.Create;
    try
       EmitPrologue(j);
-      j._mov_reg_qword_ptr_reg(gprRDI, gprRBP, 48);
+      j._mov_reg_qword_ptr_reg(gprRDI, gprRBP, 56);
+      if hasResidual then j._mov_reg_qword_ptr_reg(gprRSI, gprRBP, 48);
       tileCount := (outChannels + 7) div 8;
 
       if act <> actNone then
@@ -405,6 +408,14 @@ begin
             nChan := Min(4, curTileSize - cOffset); if nChan = 3 then nChan := 2;
             for p := 0 to 3 do begin
                accReg := ymmIdx + p*2;
+               if hasResidual then begin
+                  j._mov_reg_reg(gprRAX, gprRSI);
+                  if (not residualBroadcast) and (p > 0) then j._add_reg_imm(gprRAX, p * outChannels * 8);
+                  if nChan = 4 then j._vmovupd_ptr_reg(ymm8, gprRAX, tile*64 + cOffset*8)
+                  else if nChan >= 2 then j._vmovups_ptr_reg(xmm8, gprRAX, tile*64 + cOffset*8)
+                  else j._vmovsd_reg_ptr_reg(xmm8, gprRAX, tile*64 + cOffset*8);
+                  j._vaddpd(TymmRegister(accReg), TymmRegister(accReg), ymm8);
+               end;
                if act <> actNone then EmitActivationApply(j, act, accReg);
                if nChan = 4 then j._vmovupd_ptr_reg_reg(pOutRegs[p], tile*64 + cOffset*8, TymmRegister(accReg))
                else if nChan >= 2 then j._vmovups_ptr_reg_reg(pOutRegs[p], tile*64 + cOffset*8, TxmmRegister(accReg))
@@ -417,6 +428,8 @@ begin
 
       j._add_reg_imm(gprRCX, inChannels * 8 * 4);
       j._add_reg_imm(gprRDX, outChannels * 8 * 4);
+      if hasResidual and not residualBroadcast then
+         j._add_reg_imm(gprRSI, outChannels * 8 * 4);
       j._sub_reg_imm(gprRDI, 4);
       j._jump(flagsNE, pixel4LoopPos - j.Size);
 
@@ -464,6 +477,12 @@ begin
          cOffset := 0; ymmIdx := 0;
          while cOffset < curTileSize do begin
             nChan := Min(4, curTileSize - cOffset); if nChan = 3 then nChan := 2;
+            if hasResidual then begin
+               if nChan = 4 then j._vmovupd_ptr_reg(ymm8, gprRSI, tile*64 + cOffset*8)
+               else if nChan >= 2 then j._vmovups_ptr_reg(xmm8, gprRSI, tile*64 + cOffset*8)
+               else j._vmovsd_reg_ptr_reg(xmm8, gprRSI, tile*64 + cOffset*8);
+               j._vaddpd(TymmRegister(ymmIdx), TymmRegister(ymmIdx), ymm8);
+            end;
             if act <> actNone then EmitActivationApply(j, act, ymmIdx);
             if nChan = 4 then j._vmovupd_ptr_reg_reg(gprRDX, tile*64 + cOffset*8, TymmRegister(ymmIdx))
             else if nChan >= 2 then j._vmovups_ptr_reg_reg(gprRDX, tile*64 + cOffset*8, TxmmRegister(ymmIdx))
@@ -475,6 +494,8 @@ begin
 
       j._add_reg_imm(gprRCX, inChannels * 8);
       j._add_reg_imm(gprRDX, outChannels * 8);
+      if hasResidual and not residualBroadcast then
+         j._add_reg_imm(gprRSI, outChannels * 8);
       j._sub_reg_imm(gprRDI, 1);
       j._jump(flagsNE, tailLoopPos - j.Size);
 
@@ -512,7 +533,7 @@ end;
 //   rax     : inChannels loop counter
 //   rdi     : pixel counter
 class function TKCLWin64JITBackend.CompileKxK(AKernel : TKCLKernel; ANode : TKCLNode;
-   inChannels, outChannels, K, inW, stride : Integer; act : TKCLActivation) : TKCLCompiledKernel;
+   inChannels, outChannels, K, inW, stride : Integer; act : TKCLActivation; hasResidual : Boolean; residualBroadcast : Boolean) : TKCLCompiledKernel;
 var
    j : Tx86_64_WriteOnlyStream;
    ptr : Pointer;
@@ -527,7 +548,8 @@ begin
    j := Tx86_64_WriteOnlyStream.Create;
    try
       EmitPrologue(j);
-      j._mov_reg_qword_ptr_reg(gprRDI, gprRBP, 48);
+      j._mov_reg_qword_ptr_reg(gprRDI, gprRBP, 56);
+      if hasResidual then j._mov_reg_qword_ptr_reg(gprRSI, gprRBP, 48);
 
       tileCount := (outChannels + 7) div 8;
       inRowStride := inW * inChannels * 8;
@@ -589,6 +611,12 @@ begin
          cOffset := 0; ymmIdx := 0;
          while cOffset < curTileSize do begin
             nChan := Min(4, curTileSize - cOffset); if nChan = 3 then nChan := 2;
+            if hasResidual then begin
+               if nChan = 4 then j._vmovupd_ptr_reg(ymm8, gprRSI, tile*64 + cOffset*8)
+               else if nChan >= 2 then j._vmovups_ptr_reg(xmm8, gprRSI, tile*64 + cOffset*8)
+               else j._vmovsd_reg_ptr_reg(xmm8, gprRSI, tile*64 + cOffset*8);
+               j._vaddpd(TymmRegister(ymmIdx), TymmRegister(ymmIdx), ymm8);
+            end;
             if act <> actNone then EmitActivationApply(j, act, ymmIdx);
             if nChan = 4 then j._vmovupd_ptr_reg_reg(gprRDX, tile*64 + cOffset*8, TymmRegister(ymmIdx))
             else if nChan >= 2 then j._vmovups_ptr_reg_reg(gprRDX, tile*64 + cOffset*8, TxmmRegister(ymmIdx))
@@ -600,6 +628,8 @@ begin
 
       j._add_reg_imm(gprRCX, stride * inChannels * 8);
       j._add_reg_imm(gprRDX, outChannels * 8);
+      if hasResidual and not residualBroadcast then
+         j._add_reg_imm(gprRSI, outChannels * 8);
       j._sub_reg_imm(gprRDI, 1);
       j._jump(flagsNE, pixelLoopPos - j.Size);
 
@@ -624,7 +654,7 @@ end;
 // ------------------
 
 class function TKCLWin64JITBackend.Execute(AKernel : TKCLKernel; ANode : TKCLNode;
-   pIn, pOut, pWeights, pBias: PDouble; totalPixels: NativeInt;
+   pIn, pOut, pWeights, pBias, pResidual: PDouble; totalPixels: NativeInt;
    inChannels, outChannels : Integer; act : TKCLActivation) : Boolean;
 var
    optData : TKCLOptimizationData;
@@ -637,7 +667,7 @@ begin
    optData := TKCLOptimizationData(AKernel.OptimizationData);
    if (optData <> nil) and optData.Prepared then begin
       if optData.CompiledKernels.TryGetValue(ANode, compiled) then begin
-         TKCLMicroKernel(compiled.Code)(pIn, pOut, @compiled.Weights[0], pBias, totalPixels);
+         TKCLMicroKernel(compiled.Code)(pIn, pOut, @compiled.Weights[0], pBias, pResidual, totalPixels);
          Result := True;
       end;
       Exit;
@@ -657,14 +687,14 @@ begin
          end;
       end;
       if compiled <> nil then begin
-         TKCLMicroKernel(compiled.Code)(pIn, pOut, @compiled.Weights[0], pBias, totalPixels);
+         TKCLMicroKernel(compiled.Code)(pIn, pOut, @compiled.Weights[0], pBias, pResidual, totalPixels);
          Result := True;
       end;
    finally TMonitor.Exit(AKernel); end;
 end;
 
 class function TKCLWin64JITBackend.ExecuteKxK(AKernel : TKCLKernel; ANode : TKCLNode;
-   pIn, pOut, pWeights, pBias: PDouble; totalPixels: NativeInt;
+   pIn, pOut, pWeights, pBias, pResidual: PDouble; totalPixels: NativeInt;
    inChannels, outChannels, K, inW, stride : Integer; act : TKCLActivation) : Boolean;
 var
    optData : TKCLOptimizationData;
@@ -677,7 +707,7 @@ begin
    optData := TKCLOptimizationData(AKernel.OptimizationData);
    if (optData <> nil) and optData.Prepared then begin
       if optData.CompiledKernels.TryGetValue(ANode, compiled) then begin
-         TKCLMicroKernel(compiled.Code)(pIn, pOut, @compiled.Weights[0], pBias, totalPixels);
+         TKCLMicroKernel(compiled.Code)(pIn, pOut, @compiled.Weights[0], pBias, pResidual, totalPixels);
          Result := True;
       end;
       Exit;
@@ -697,7 +727,7 @@ begin
          end;
       end;
       if compiled <> nil then begin
-         TKCLMicroKernel(compiled.Code)(pIn, pOut, @compiled.Weights[0], pBias, totalPixels);
+         TKCLMicroKernel(compiled.Code)(pIn, pOut, @compiled.Weights[0], pBias, pResidual, totalPixels);
          Result := True;
       end;
    finally TMonitor.Exit(AKernel); end;
@@ -733,7 +763,7 @@ begin
    try
       EmitPrologue(j);
       // rcx = pIn1, rdx = pOut, r8 = pIn2, r9 = pParams (scale/zeroPoint)
-      j._mov_reg_qword_ptr_reg(gprRDI, gprRBP, 48); // totalElements
+      j._mov_reg_qword_ptr_reg(gprRDI, gprRBP, 56); // totalElements
 
       j._test_reg_reg(gprRDI, gprRDI);
       j._jump(flagsE, $10000); jmpEpiloguePatch := j.Size - 4;
@@ -876,7 +906,7 @@ begin
    optData := TKCLOptimizationData(AKernel.OptimizationData);
    if (optData <> nil) and optData.Prepared then begin
       if optData.CompiledKernels.TryGetValue(ANode, compiled) then begin
-         TKCLMicroKernel(compiled.Code)(pIn, pOut, pIn2, pParams, totalElements);
+         TKCLMicroKernel(compiled.Code)(pIn, pOut, pIn2, pParams, nil, totalElements);
          Result := True;
       end;
       Exit;
@@ -897,7 +927,7 @@ begin
          end else Exit;
       end;
       if compiled <> nil then begin
-         TKCLMicroKernel(compiled.Code)(pIn, pOut, pIn2, pParams, totalElements);
+         TKCLMicroKernel(compiled.Code)(pIn, pOut, pIn2, pParams, nil, totalElements);
          Result := True;
       end;
    finally TMonitor.Exit(AKernel); end;
@@ -960,17 +990,24 @@ begin
             // Determine fusion activation
             act := actNone;
             hasResidual := False;
+            var residualBroadcast := False;
             hasFusion := (AFusionMap <> nil) and AFusionMap.TryGetValue(node, fusion);
             if hasFusion then begin
                act := fusion.Activation;
                hasResidual := fusion.ResidualInput <> nil;
+               if hasResidual then begin
+                  var resDims := ANodeDims[ANodeToBufferIdx[fusion.ResidualInput]];
+                  var convDims := ANodeDims[n];
+                  // If residual has fewer elements than output, we assume broadcasting
+                  var resTotal : NativeInt := 1; for var d := 0 to High(resDims) do resTotal := resTotal * resDims[d];
+                  var outTotal : NativeInt := 1; for var d := 0 to High(convDims) do outTotal := outTotal * convDims[d];
+                  residualBroadcast := resTotal < outTotal;
+               end;
             end;
 
             if (convNode.KernelSize = 1) and (convNode.Stride = 1) then begin
                // Pointwise 1x1
-               var jitAct := act;
-               if hasResidual then jitAct := actNone;
-               compiled := Compile(AKernel, node, inChannels, outChannels, jitAct);
+               compiled := Compile(AKernel, node, inChannels, outChannels, act, hasResidual, residualBroadcast);
                if compiled <> nil then begin
                   compiled.Weights := TransposeWeightsPointwise(
                      PDouble(convNode.Weights), inChannels, outChannels);
@@ -992,10 +1029,8 @@ begin
                wLast := (inW + pad_left - convNode.KernelSize) div convNode.Stride;
 
                if (hFirst <= hLast) and (wFirst <= wLast) then begin
-                  var kxkAct := act;
-                  if hasResidual then kxkAct := actNone;
                   compiled := CompileKxK(AKernel, node, inChannels, outChannels,
-                     convNode.KernelSize, inW, convNode.Stride, kxkAct);
+                     convNode.KernelSize, inW, convNode.Stride, act, hasResidual, residualBroadcast);
                   if compiled <> nil then begin
                      compiled.Weights := TransposeWeightsKxK(
                         PDouble(convNode.Weights), inChannels, outChannels, convNode.KernelSize);
@@ -1034,7 +1069,7 @@ var
    i : Integer;
 begin
    for i := 0 to ACount - 1 do
-      TKCLMicroKernel(ABatch[i].Code)(ABatch[i].pIn, ABatch[i].pOut, ABatch[i].pIn2, ABatch[i].pParams, ABatch[i].Count);
+      TKCLMicroKernel(ABatch[i].Code)(ABatch[i].pIn, ABatch[i].pOut, ABatch[i].pIn2, ABatch[i].pParams, nil, ABatch[i].Count);
 end;
 
 end.
