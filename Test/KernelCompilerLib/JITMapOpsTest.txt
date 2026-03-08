@@ -1,0 +1,6 @@
+Sub: PASS
+ReLU: PASS
+ReLU6: PASS
+HardSwish: PASS
+MapChain (Add+ReLU+ReLU6): PASS
+CachedDispatch: PASS

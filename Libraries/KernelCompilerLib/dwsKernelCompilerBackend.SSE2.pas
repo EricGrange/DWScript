@@ -37,13 +37,6 @@ uses
 
 type
 
-   TKCLFusionInfo = record
-      Activation : TKCLActivation;
-      ActivationNode : TKCLNode;
-      AddNode : TKCLNode;
-      ResidualInput : TKCLNode; // the non-conv input of the Add
-   end;
-
    TKCLSSE2Backend = class
    protected
       // Execution state
@@ -74,20 +67,23 @@ type
 
       procedure ProcessConstant(n : Integer; node : TKCLConstantNode);
       procedure ProcessInput(n : Integer; node : TKCLInputNode);
-      procedure ProcessConcat(n : Integer; node : TKCLConcatNode);
+      procedure ProcessConcat(n : Integer; node : TKCLConcatNode); virtual;
       procedure ProcessMap(n : Integer; node : TKCLMapNode); virtual;
       procedure ProcessConv2D(n : Integer; node : TKCLConv2DNode); virtual;
       procedure ProcessConv2DSSE2(n : Integer; node : TKCLConv2DNode;
          act : TKCLActivation = actNone; pResidual : PDouble = nil);
       procedure ProcessConv2DTranspose(n : Integer; node : TKCLConv2DTransposeNode); virtual;
-      procedure ProcessDepthwiseConv2D(n : Integer; node : TKCLDepthwiseConv2DNode);
-      procedure ProcessSoftMax(n : Integer; node : TKCLSoftMaxNode);
-      procedure ProcessResizeBilinear(n : Integer; node : TKCLResizeBilinearNode);
-      procedure ProcessMaxPool2D(n : Integer; node : TKCLMaxPool2DNode);
-      procedure ProcessGlobalAvgPool(n : Integer; node : TKCLGlobalAvgPoolNode);
+      procedure ProcessDepthwiseConv2D(n : Integer; node : TKCLDepthwiseConv2DNode); virtual;
+      procedure ProcessSoftMax(n : Integer; node : TKCLSoftMaxNode); virtual;
+      procedure ProcessResizeBilinear(n : Integer; node : TKCLResizeBilinearNode); virtual;
+      procedure ProcessMaxPool2D(n : Integer; node : TKCLMaxPool2DNode); virtual;
+      procedure ProcessGlobalAvgPool(n : Integer; node : TKCLGlobalAvgPoolNode); virtual;
       procedure ProcessMapFallback(n : Integer; node : TKCLMapNode);
 
       procedure ApplyActivationInPlace(pBuf : PDouble; count : NativeInt; act : TKCLActivation);
+
+      procedure PrepareNodes; virtual;
+      procedure FinalizeNodes; virtual;
 
    public
       constructor Create;
@@ -96,10 +92,24 @@ type
    end;
 
    TKCLJITBackend = class(TKCLSSE2Backend)
+   private
+      FBatch : TKCLBatchEntries;
+      FBatchCount : Integer;
+      procedure FlushMapBatch;
+      procedure EnqueueMapBatch(compiled : TKCLCompiledKernel;
+         p1, pRes, p2, pParams : PDouble; total : NativeInt);
    protected
+      procedure PrepareNodes; override;
+      procedure FinalizeNodes; override;
       procedure ProcessMap(n : Integer; node : TKCLMapNode); override;
       procedure ProcessConv2D(n : Integer; node : TKCLConv2DNode); override;
       procedure ProcessConv2DTranspose(n : Integer; node : TKCLConv2DTransposeNode); override;
+      procedure ProcessConcat(n : Integer; node : TKCLConcatNode); override;
+      procedure ProcessDepthwiseConv2D(n : Integer; node : TKCLDepthwiseConv2DNode); override;
+      procedure ProcessSoftMax(n : Integer; node : TKCLSoftMaxNode); override;
+      procedure ProcessResizeBilinear(n : Integer; node : TKCLResizeBilinearNode); override;
+      procedure ProcessMaxPool2D(n : Integer; node : TKCLMaxPool2DNode); override;
+      procedure ProcessGlobalAvgPool(n : Integer; node : TKCLGlobalAvgPoolNode); override;
    end;
 
 procedure SSE2_CvtPS2PDContiguous(pSrc : PSingle; pDst : PDouble; count : NativeInt);
@@ -777,6 +787,20 @@ begin
    end;
 end;
 
+// PrepareNodes — virtual hook for subclasses to pre-compile before execution
+//
+procedure TKCLSSE2Backend.PrepareNodes;
+begin
+   // Base SSE2 backend: no preparation needed
+end;
+
+// FinalizeNodes — virtual hook for subclasses to finalize before output
+//
+procedure TKCLSSE2Backend.FinalizeNodes;
+begin
+   // Base SSE2 backend: no finalization needed
+end;
+
 // VerifyOutputs
 //
 procedure TKCLSSE2Backend.VerifyOutputs;
@@ -1366,6 +1390,9 @@ begin
          // Analyze fusion opportunities
          AnalyzeFusion;
 
+         // Pre-compile JIT kernels (no-op for SSE2-only backend)
+         PrepareNodes;
+
          for n := 0 to FSortedNodes.Count - 1 do begin
             node := FSortedNodes[n];
 
@@ -1387,6 +1414,7 @@ begin
             else raise Exception.CreateFmt('Node %s is not supported by SSE2 backend', [node.ClassName]);
          end;
 
+         FinalizeNodes;
          VerifyOutputs;
 
          for j := 0 to High(FKernel.Outputs) do begin
@@ -1410,6 +1438,155 @@ end;
 // ------------------ TKCLJITBackend ------------------
 // ------------------
 
+const
+   cMapBatchCapacity = 32;
+
+// FlushMapBatch — execute all enqueued map operations
+//
+procedure TKCLJITBackend.FlushMapBatch;
+begin
+   if FBatchCount > 0 then begin
+      TKCLWin64JITBackend.FlushBatch(FBatch, FBatchCount);
+      FBatchCount := 0;
+   end;
+end;
+
+// EnqueueMapBatch — add a map operation to the batch
+//
+procedure TKCLJITBackend.EnqueueMapBatch(compiled : TKCLCompiledKernel;
+   p1, pRes, p2, pParams : PDouble; total : NativeInt);
+begin
+   if FBatchCount >= cMapBatchCapacity then
+      FlushMapBatch;
+   if Length(FBatch) < cMapBatchCapacity then
+      SetLength(FBatch, cMapBatchCapacity);
+   FBatch[FBatchCount].Code := compiled.Code;
+   FBatch[FBatchCount].pIn := p1;
+   FBatch[FBatchCount].pOut := pRes;
+   FBatch[FBatchCount].pIn2 := p2;
+   FBatch[FBatchCount].pParams := pParams;
+   FBatch[FBatchCount].Count := total;
+   Inc(FBatchCount);
+end;
+
+// PrepareNodes — pre-compile all JIT kernels before execution
+//
+procedure TKCLJITBackend.PrepareNodes;
+begin
+   // Compute input dimensions for Conv2D nodes before pre-compilation
+   // Input nodes must have their dims set first
+   for var n := 0 to FSortedNodes.Count - 1 do begin
+      var node := FSortedNodes[n];
+      if node is TKCLInputNode then begin
+         var dIn := FBuffers[TKCLInputNode(node).InputIndex];
+         FNodeDims[n] := Copy(dIn.Dimensions);
+      end else if node is TKCLConstantNode then begin
+         FNodeDims[n] := Copy(TKCLConstantNode(node).Dimensions);
+      end else if node is TKCLConv2DNode then begin
+         var convNode := TKCLConv2DNode(node);
+         var in1Idx := FNodeToBufferIdx[convNode.Inputs[0]];
+         var dims := Copy(FNodeDims[in1Idx]);
+         if Length(dims) >= 3 then begin
+            dims[High(dims)-2] := (dims[High(dims)-2] + convNode.Stride - 1) div convNode.Stride;
+            dims[High(dims)-1] := (dims[High(dims)-1] + convNode.Stride - 1) div convNode.Stride;
+            dims[High(dims)] := Length(convNode.Bias);
+         end;
+         FNodeDims[n] := dims;
+      end else if node is TKCLConv2DTransposeNode then begin
+         var transNode := TKCLConv2DTransposeNode(node);
+         var in1Idx := FNodeToBufferIdx[transNode.Inputs[0]];
+         var dims := Copy(FNodeDims[in1Idx]);
+         if Length(dims) >= 3 then begin
+            dims[High(dims)-2] := dims[High(dims)-2] * transNode.Stride;
+            dims[High(dims)-1] := dims[High(dims)-1] * transNode.Stride;
+            dims[High(dims)] := Length(transNode.Bias);
+         end;
+         FNodeDims[n] := dims;
+      end else if node is TKCLDepthwiseConv2DNode then begin
+         var dwNode := TKCLDepthwiseConv2DNode(node);
+         var in1Idx := FNodeToBufferIdx[dwNode.Inputs[0]];
+         var dims := Copy(FNodeDims[in1Idx]);
+         if Length(dims) >= 3 then begin
+            dims[High(dims)-2] := (dims[High(dims)-2] + dwNode.Stride - 1) div dwNode.Stride;
+            dims[High(dims)-1] := (dims[High(dims)-1] + dwNode.Stride - 1) div dwNode.Stride;
+         end;
+         FNodeDims[n] := dims;
+      end else if node is TKCLMaxPool2DNode then begin
+         var poolNode := TKCLMaxPool2DNode(node);
+         var in1Idx := FNodeToBufferIdx[poolNode.Inputs[0]];
+         var dims := Copy(FNodeDims[in1Idx]);
+         if Length(dims) >= 3 then begin
+            dims[High(dims)-2] := (dims[High(dims)-2] + poolNode.Stride - 1) div poolNode.Stride;
+            dims[High(dims)-1] := (dims[High(dims)-1] + poolNode.Stride - 1) div poolNode.Stride;
+         end;
+         FNodeDims[n] := dims;
+      end else if node is TKCLGlobalAvgPoolNode then begin
+         var in1Idx := FNodeToBufferIdx[node.Inputs[0]];
+         var dims := Copy(FNodeDims[in1Idx]);
+         if Length(dims) >= 3 then begin
+            dims[High(dims)-2] := 1;
+            dims[High(dims)-1] := 1;
+         end;
+         FNodeDims[n] := dims;
+      end else if node is TKCLSoftMaxNode then begin
+         var in1Idx := FNodeToBufferIdx[node.Inputs[0]];
+         FNodeDims[n] := Copy(FNodeDims[in1Idx]);
+      end else if node is TKCLResizeBilinearNode then begin
+         var rsNode := TKCLResizeBilinearNode(node);
+         var in1Idx := FNodeToBufferIdx[rsNode.Inputs[0]];
+         var dims := Copy(FNodeDims[in1Idx]);
+         if Length(dims) >= 3 then begin
+            dims[High(dims)-2] := rsNode.TargetHeight;
+            dims[High(dims)-1] := rsNode.TargetWidth;
+         end;
+         FNodeDims[n] := dims;
+      end else if node is TKCLConcatNode then begin
+         var cNode := TKCLConcatNode(node);
+         var axis := cNode.Axis;
+         var dimsOut := Copy(FNodeDims[FNodeToBufferIdx[cNode.Inputs[0]]]);
+         for var k := 1 to High(cNode.Inputs) do begin
+            var inKIdx := FNodeToBufferIdx[cNode.Inputs[k]];
+            dimsOut[axis] := dimsOut[axis] + FNodeDims[inKIdx][axis];
+         end;
+         FNodeDims[n] := dimsOut;
+      end else if node is TKCLMapNode then begin
+         // For map nodes, propagate dims from first input
+         if Length(node.Inputs) > 0 then begin
+            var in1Idx := FNodeToBufferIdx[node.Inputs[0]];
+            FNodeDims[n] := Copy(FNodeDims[in1Idx]);
+         end;
+      end;
+   end;
+   TKCLWin64JITBackend.PrepareGraph(FKernel, FSortedNodes, FNodeToBufferIdx, FNodeDims, FFusionMap);
+
+   // Pre-calculate workspace size for all intermediate node buffers
+   var optData := TKCLOptimizationData(FKernel.OptimizationData);
+   if (optData <> nil) and (optData.Workspace = nil) then begin
+      var totalBytes : NativeInt := 0;
+      for var n := 0 to FSortedNodes.Count - 1 do begin
+         var node := FSortedNodes[n];
+         if node is TKCLInputNode then Continue; // inputs use external buffers
+         var dims := FNodeDims[n];
+         var elemCount : NativeInt := 1;
+         for var d := 0 to High(dims) do elemCount := elemCount * dims[d];
+         if elemCount > 0 then
+            totalBytes := totalBytes + ((elemCount * SizeOf(Double) + 31) and not NativeInt(31));
+      end;
+      if totalBytes > 0 then
+         optData.Workspace := TKCLAlignedWorkspace.Create(totalBytes);
+   end;
+end;
+
+// FinalizeNodes — flush remaining batch and reset workspace
+//
+procedure TKCLJITBackend.FinalizeNodes;
+begin
+   FlushMapBatch;
+   var optData := TKCLOptimizationData(FKernel.OptimizationData);
+   if (optData <> nil) and (optData.Workspace <> nil) then
+      optData.Workspace.Reset;
+end;
+
 // ProcessConv2D
 //
 procedure TKCLJITBackend.ProcessConv2D(n: Integer; node: TKCLConv2DNode);
@@ -1426,6 +1603,9 @@ var
    pResidual : PDouble;
    hasFusion : Boolean;
 begin
+   // Flush pending map batch before stencil operation (synchronization point)
+   FlushMapBatch;
+
    in1Idx := FNodeToBufferIdx[node.Inputs[0]];
    var dims := Copy(FNodeDims[in1Idx]);
    if Length(dims) >= 3 then begin
@@ -1624,6 +1804,43 @@ end;
 
 procedure TKCLJITBackend.ProcessConv2DTranspose(n : Integer; node : TKCLConv2DTransposeNode);
 begin
+   FlushMapBatch;
+   inherited;
+end;
+
+procedure TKCLJITBackend.ProcessConcat(n : Integer; node : TKCLConcatNode);
+begin
+   FlushMapBatch;
+   inherited;
+end;
+
+procedure TKCLJITBackend.ProcessDepthwiseConv2D(n : Integer; node : TKCLDepthwiseConv2DNode);
+begin
+   FlushMapBatch;
+   inherited;
+end;
+
+procedure TKCLJITBackend.ProcessSoftMax(n : Integer; node : TKCLSoftMaxNode);
+begin
+   FlushMapBatch;
+   inherited;
+end;
+
+procedure TKCLJITBackend.ProcessResizeBilinear(n : Integer; node : TKCLResizeBilinearNode);
+begin
+   FlushMapBatch;
+   inherited;
+end;
+
+procedure TKCLJITBackend.ProcessMaxPool2D(n : Integer; node : TKCLMaxPool2DNode);
+begin
+   FlushMapBatch;
+   inherited;
+end;
+
+procedure TKCLJITBackend.ProcessGlobalAvgPool(n : Integer; node : TKCLGlobalAvgPoolNode);
+begin
+   FlushMapBatch;
    inherited;
 end;
 
@@ -1632,22 +1849,78 @@ var
    in1, in2 : Integer;
    total : NativeInt;
    p1, p2, pRes : PDouble;
+   optData : TKCLOptimizationData;
+   compiled : TKCLCompiledKernel;
    params : array[0..1] of Double;
 begin
-   if (node is TKCLAddNode) or (node is TKCLMulNode) then begin
+   // Try batch path: if kernel is pre-compiled, enqueue instead of full dispatch
+   optData := TKCLOptimizationData(FKernel.OptimizationData);
+   if (optData <> nil) and optData.Prepared and optData.CompiledKernels.TryGetValue(node, compiled) then begin
+      if (node is TKCLAddNode) or (node is TKCLSubNode) or (node is TKCLMulNode) then begin
+         in1 := FNodeToBufferIdx[node.Inputs[0]];
+         in2 := FNodeToBufferIdx[node.Inputs[1]];
+         if (FNodeTotalElements[in1] > 0) and (FNodeTotalElements[in1] = FNodeTotalElements[in2]) then begin
+            total := FNodeTotalElements[in1];
+            // Allocate output buffer if not yet allocated
+            FNodeDims[n] := Copy(FNodeDims[in1]);
+            FNodeTotalElements[n] := total;
+            if Length(FNodeBuffers[n]) < total then SetLength(FNodeBuffers[n], total);
+            p1 := PDouble(Pointer(FNodeBuffers[in1]));
+            p2 := PDouble(Pointer(FNodeBuffers[in2]));
+            pRes := PDouble(Pointer(FNodeBuffers[n]));
+            EnqueueMapBatch(compiled, p1, pRes, p2, nil, total);
+            Exit;
+         end;
+      end else if (node is TKCLReLUNode) or (node is TKCLReLU6Node) or (node is TKCLHardSwishNode) then begin
+         in1 := FNodeToBufferIdx[node.Inputs[0]];
+         if FNodeTotalElements[in1] > 0 then begin
+            total := FNodeTotalElements[in1];
+            FNodeDims[n] := Copy(FNodeDims[in1]);
+            FNodeTotalElements[n] := total;
+            if Length(FNodeBuffers[n]) < total then SetLength(FNodeBuffers[n], total);
+            p1 := PDouble(Pointer(FNodeBuffers[in1]));
+            pRes := PDouble(Pointer(FNodeBuffers[n]));
+            EnqueueMapBatch(compiled, p1, pRes, nil, nil, total);
+            Exit;
+         end;
+      end;
+      // Note: Dequantize is not batched because it requires a pointer to params
+      // (scale/zeroPoint) which would be a dangling stack reference in the batch.
+      // It falls through to the individual dispatch path below.
+   end;
+
+   // Fall back to individual JIT dispatch
+   if (node is TKCLAddNode) or (node is TKCLSubNode) or (node is TKCLMulNode) then begin
       in1 := FNodeToBufferIdx[node.Inputs[0]];
       in2 := FNodeToBufferIdx[node.Inputs[1]];
-      total := 1; for var i := 0 to High(FNodeDims[n]) do total := total * FNodeDims[n][i];
-      if (FNodeTotalElements[in1] = total) and (FNodeTotalElements[in2] = total) then begin
+      if (FNodeTotalElements[in1] > 0) and (FNodeTotalElements[in1] = FNodeTotalElements[in2]) then begin
+         total := FNodeTotalElements[in1];
+         FNodeDims[n] := Copy(FNodeDims[in1]);
+         FNodeTotalElements[n] := total;
+         if Length(FNodeBuffers[n]) < total then SetLength(FNodeBuffers[n], total);
          p1 := PDouble(Pointer(FNodeBuffers[in1]));
          p2 := PDouble(Pointer(FNodeBuffers[in2]));
          pRes := PDouble(Pointer(FNodeBuffers[n]));
          if TKCLWin64JITBackend.ExecuteMap(FKernel, node, p1, pRes, p2, nil, total) then Exit;
       end;
+   end else if (node is TKCLReLUNode) or (node is TKCLReLU6Node) or (node is TKCLHardSwishNode) then begin
+      in1 := FNodeToBufferIdx[node.Inputs[0]];
+      if FNodeTotalElements[in1] > 0 then begin
+         total := FNodeTotalElements[in1];
+         FNodeDims[n] := Copy(FNodeDims[in1]);
+         FNodeTotalElements[n] := total;
+         if Length(FNodeBuffers[n]) < total then SetLength(FNodeBuffers[n], total);
+         p1 := PDouble(Pointer(FNodeBuffers[in1]));
+         pRes := PDouble(Pointer(FNodeBuffers[n]));
+         if TKCLWin64JITBackend.ExecuteMap(FKernel, node, p1, pRes, nil, nil, total) then Exit;
+      end;
    end else if node is TKCLDequantizeNode then begin
       in1 := FNodeToBufferIdx[node.Inputs[0]];
-      total := 1; for var i := 0 to High(FNodeDims[n]) do total := total * FNodeDims[n][i];
-      if FNodeTotalElements[in1] = total then begin
+      if FNodeTotalElements[in1] > 0 then begin
+         total := FNodeTotalElements[in1];
+         FNodeDims[n] := Copy(FNodeDims[in1]);
+         FNodeTotalElements[n] := total;
+         if Length(FNodeBuffers[n]) < total then SetLength(FNodeBuffers[n], total);
          p1 := PDouble(Pointer(FNodeBuffers[in1]));
          pRes := PDouble(Pointer(FNodeBuffers[n]));
          params[0] := TKCLDequantizeNode(node).Scale;
@@ -1655,6 +1928,7 @@ begin
          if TKCLWin64JITBackend.ExecuteMap(FKernel, node, p1, pRes, nil, @params[0], total) then Exit;
       end;
    end;
+   FlushMapBatch;
    inherited ProcessMap(n, node);
 end;
 
