@@ -91,11 +91,10 @@ type
 
    TKCLWin64JITBackend = class
    private
-      class procedure EmitPrologue(j : Tx86_64_WriteOnlyStream);
-      class procedure EmitEpilogue(j : Tx86_64_WriteOnlyStream);
-      class procedure EmitActivationSetup(j : Tx86_64_WriteOnlyStream; act : TKCLActivation);
-      class procedure EmitActivationApply(j : Tx86_64_WriteOnlyStream; act : TKCLActivation;
-         accReg : Integer);
+      class procedure EmitPrologue(j : Tx86_64_WriteOnlyStream); static;
+      class procedure EmitEpilogue(j : Tx86_64_WriteOnlyStream); static;
+      class procedure EmitActivationSetup(j : Tx86_64_WriteOnlyStream; act : TKCLActivation); static;
+      class procedure EmitActivationApply(j : Tx86_64_WriteOnlyStream; act : TKCLActivation; accReg : Integer); static;
       class function TransposeWeightsPointwise(pWeights : PDouble; inChannels, outChannels : Integer) : TDoubleDynArray;
       class function TransposeWeightsKxK(pWeights : PDouble; inChannels, outChannels, K : Integer) : TDoubleDynArray;
    public
@@ -123,7 +122,11 @@ type
    end;
 
 // ------------------------------------------------------------------
+// ------------------------------------------------------------------
+// ------------------------------------------------------------------
 implementation
+// ------------------------------------------------------------------
+// ------------------------------------------------------------------
 // ------------------------------------------------------------------
 
 constructor TFixupLocationHelper.Create(aStream : TStream);
@@ -190,6 +193,8 @@ end;
 // TKCLWin64JITBackend — helpers
 // ------------------
 
+// EmitPrologue
+//
 class procedure TKCLWin64JITBackend.EmitPrologue(j : Tx86_64_WriteOnlyStream);
 begin
    j._push_reg(gprRBP); j._mov_reg_reg(gprRBP, gprRSP);
@@ -201,6 +206,8 @@ begin
       j._vmovups_ptr_reg_reg(gprRSP, i * 16, TxmmRegister(i + 6));
 end;
 
+// EmitEpilogue
+//
 class procedure TKCLWin64JITBackend.EmitEpilogue(j : Tx86_64_WriteOnlyStream);
 begin
    j._vzeroupper;
@@ -693,6 +700,8 @@ begin
    finally TMonitor.Exit(AKernel); end;
 end;
 
+// ExecuteKxK
+//
 class function TKCLWin64JITBackend.ExecuteKxK(AKernel : TKCLKernel; ANode : TKCLNode;
    pIn, pOut, pWeights, pBias, pResidual: PDouble; totalPixels: NativeInt;
    inChannels, outChannels, K, inW, stride : Integer; act : TKCLActivation) : Boolean;
@@ -893,6 +902,8 @@ begin
    finally j.Free; end;
 end;
 
+// ExecuteMap
+//
 class function TKCLWin64JITBackend.ExecuteMap(AKernel : TKCLKernel; ANode : TKCLMapNode;
    pIn, pOut, pIn2, pParams: PDouble; totalElements: NativeInt) : Boolean;
 var

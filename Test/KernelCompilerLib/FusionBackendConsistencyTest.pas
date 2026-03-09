@@ -117,3 +117,108 @@ TKCLKernelCompiler.Dispatch(kD, [biD, boD_opt]);
 
 if CompareBuffers3D(boD_ref, boD_opt, 6, 6, 1, 'KxKResidual') then
    PrintLn('Conv2D 3x3 + Add + ReLU: PASS');
+
+// --- Pattern E: DepthwiseConv2D 3x3 + ReLU (depthwise activation fusion) ---
+var kE := TKCLKernel.Create;
+var inE := kE.AddInput('in');
+var wE : array of Float;
+wE.SetLength(9 * 3);
+for var i := 0 to wE.Length - 1 do wE[i] := 0.2 * ((i mod 5) - 2);
+var bE : array of Float := [0.1, -0.2, 0.3];
+var dwE := kE.AddDepthwiseConv2D(inE, wE, bE, 3, 1);
+var reluE := kE.AddReLU(dwE);
+kE.MarkOutput(reluE);
+
+var biE := TKCLStridedBuffer.Create(TKCLDataType.Float32, [5, 5, 3]);
+var boE_ref := TKCLStridedBuffer.Create(TKCLDataType.Float32, [5, 5, 3]);
+var boE_opt := TKCLStridedBuffer.Create(TKCLDataType.Float32, [5, 5, 3]);
+
+for var y := 0 to 4 do
+   for var x := 0 to 4 do
+      for var c := 0 to 2 do
+         biE.SetData([y, x, c], (y - 2) * 0.3 + (x - 2) * 0.5 + c * 0.6);
+
+TKCLReferenceCompiler.Dispatch(kE, [biE, boE_ref]);
+TKCLKernelCompiler.Dispatch(kE, [biE, boE_opt]);
+
+if CompareBuffers3D(boE_ref, boE_opt, 5, 5, 3, 'DWConvReLU') then
+   PrintLn('Depthwise 3x3 + ReLU: PASS');
+
+// --- Pattern F: DepthwiseConv2D 3x3 + Add + ReLU6 (depthwise residual fusion) ---
+var kF := TKCLKernel.Create;
+var inF := kF.AddInput('in');
+var wF : array of Float;
+wF.SetLength(9 * 2);
+for var i := 0 to wF.Length - 1 do wF[i] := 0.15;
+var bF : array of Float := [-0.5, 0.2];
+var dwF := kF.AddDepthwiseConv2D(inF, wF, bF, 3, 1);
+var addF := kF.AddAdd(dwF, inF);
+var relu6F := kF.AddReLU6(addF);
+kF.MarkOutput(relu6F);
+
+var biF := TKCLStridedBuffer.Create(TKCLDataType.Float32, [4, 4, 2]);
+var boF_ref := TKCLStridedBuffer.Create(TKCLDataType.Float32, [4, 4, 2]);
+var boF_opt := TKCLStridedBuffer.Create(TKCLDataType.Float32, [4, 4, 2]);
+
+for var y := 0 to 3 do
+   for var x := 0 to 3 do
+      for var c := 0 to 1 do
+         biF.SetData([y, x, c], (y * 4 + x) * 0.3 - 1.0 + c * 0.8);
+
+TKCLReferenceCompiler.Dispatch(kF, [biF, boF_ref]);
+TKCLKernelCompiler.Dispatch(kF, [biF, boF_opt]);
+
+if CompareBuffers3D(boF_ref, boF_opt, 4, 4, 2, 'DWResidual') then
+   PrintLn('Depthwise 3x3 + Add + ReLU6: PASS');
+
+// --- Pattern G: Add + ReLU (element-wise fusion) ---
+var kG := TKCLKernel.Create;
+var inG1 := kG.AddInput('a');
+var inG2 := kG.AddInput('b');
+var addG := kG.AddAdd(inG1, inG2);
+var reluG := kG.AddReLU(addG);
+kG.MarkOutput(reluG);
+
+var biG1 := TKCLStridedBuffer.Create(TKCLDataType.Float32, [3, 8, 4]);
+var biG2 := TKCLStridedBuffer.Create(TKCLDataType.Float32, [3, 8, 4]);
+var boG_ref := TKCLStridedBuffer.Create(TKCLDataType.Float32, [3, 8, 4]);
+var boG_opt := TKCLStridedBuffer.Create(TKCLDataType.Float32, [3, 8, 4]);
+
+for var y := 0 to 2 do
+   for var x := 0 to 7 do
+      for var c := 0 to 3 do begin
+         biG1.SetData([y, x, c], (y * 8 + x) * 0.2 - 3.0 + c * 0.5);
+         biG2.SetData([y, x, c], (y * 8 + x) * 0.1 + 1.0 - c * 0.3);
+      end;
+
+TKCLReferenceCompiler.Dispatch(kG, [biG1, biG2, boG_ref]);
+TKCLKernelCompiler.Dispatch(kG, [biG1, biG2, boG_opt]);
+
+if CompareBuffers3D(boG_ref, boG_opt, 3, 8, 4, 'AddReLU') then
+   PrintLn('Add + ReLU: PASS');
+
+// --- Pattern H: Mul + HardSwish (element-wise fusion) ---
+var kH := TKCLKernel.Create;
+var inH1 := kH.AddInput('a');
+var inH2 := kH.AddInput('b');
+var mulH := kH.AddMul(inH1, inH2);
+var hsH := kH.AddHardSwish(mulH);
+kH.MarkOutput(hsH);
+
+var biH1 := TKCLStridedBuffer.Create(TKCLDataType.Float32, [2, 6, 3]);
+var biH2 := TKCLStridedBuffer.Create(TKCLDataType.Float32, [2, 6, 3]);
+var boH_ref := TKCLStridedBuffer.Create(TKCLDataType.Float32, [2, 6, 3]);
+var boH_opt := TKCLStridedBuffer.Create(TKCLDataType.Float32, [2, 6, 3]);
+
+for var y := 0 to 1 do
+   for var x := 0 to 5 do
+      for var c := 0 to 2 do begin
+         biH1.SetData([y, x, c], (y * 6 + x) * 0.3 - 1.5 + c * 0.4);
+         biH2.SetData([y, x, c], (y * 6 + x) * 0.2 + 0.5 - c * 0.2);
+      end;
+
+TKCLReferenceCompiler.Dispatch(kH, [biH1, biH2, boH_ref]);
+TKCLKernelCompiler.Dispatch(kH, [biH1, biH2, boH_opt]);
+
+if CompareBuffers3D(boH_ref, boH_opt, 2, 6, 3, 'MulHardSwish') then
+   PrintLn('Mul + HardSwish: PASS');
