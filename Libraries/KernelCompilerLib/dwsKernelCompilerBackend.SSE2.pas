@@ -45,6 +45,7 @@ type
       FNodeDims : TArray<TKCLDimensions>;
       FNodeTotalElements : TArray<NativeInt>;
       FNodeBuffers : TArray<TDoubleDynArray>;
+      FNodePtrs : TArray<PDouble>;
       FNodeToBufferIdx : TDictionary<TKCLNode, Integer>;
       FSortedNodes : TList<TKCLNode>;
       FVisiting : TDictionary<TKCLNode, Boolean>;
@@ -61,6 +62,8 @@ type
       procedure IndexFromFlat(AFlat : Integer; const ADims : TKCLDimensions; var AIdx : TKCLDimensions);
       function IsContiguous(const ABuf : TKCLStridedBufferDescriptor) : Boolean;
 
+      function AllocateNodeBuffer(n: Integer; totalElements: NativeInt): PDouble; virtual;
+
       procedure VisitNode(ANode : TKCLNode);
       procedure VerifyOutputs;
       procedure AnalyzeFusion;
@@ -71,7 +74,7 @@ type
       procedure ProcessMap(n : Integer; node : TKCLMapNode); virtual;
       procedure ProcessConv2D(n : Integer; node : TKCLConv2DNode); virtual;
       procedure ProcessConv2DSSE2(n : Integer; node : TKCLConv2DNode;
-         act : TKCLActivation = actNone; pResidual : PDouble = nil);
+         act : TKCLActivation = actNone; pResidual : PDouble = nil; resTotal : NativeInt = 0);
       procedure ProcessConv2DTranspose(n : Integer; node : TKCLConv2DTransposeNode); virtual;
       procedure ProcessDepthwiseConv2D(n : Integer; node : TKCLDepthwiseConv2DNode); virtual;
       procedure ProcessSoftMax(n : Integer; node : TKCLSoftMaxNode); virtual;
@@ -97,8 +100,9 @@ type
       FBatchCount : Integer;
       procedure FlushMapBatch;
       procedure EnqueueMapBatch(compiled : TKCLCompiledKernel;
-         p1, pRes, p2, pParams : PDouble; total : NativeInt);
+         p1, pRes, p2, pParams, pIntermediate : PDouble; total : NativeInt);
    protected
+      function AllocateNodeBuffer(n: Integer; totalElements: NativeInt): PDouble; override;
       procedure PrepareNodes; override;
       procedure FinalizeNodes; override;
       procedure ProcessMap(n : Integer; node : TKCLMapNode); override;
@@ -657,6 +661,13 @@ end;
 
 // VisitNode
 //
+function TKCLSSE2Backend.AllocateNodeBuffer(n: Integer; totalElements: NativeInt): PDouble;
+begin
+   SetLength(FNodeBuffers[n], totalElements);
+   Result := PDouble(FNodeBuffers[n]);
+   FNodePtrs[n] := Result;
+end;
+
 procedure TKCLSSE2Backend.VisitNode(ANode : TKCLNode);
 var idx : Integer;
 begin
@@ -690,114 +701,149 @@ procedure TKCLSSE2Backend.AnalyzeFusion;
 
 var
    consumerCount : TDictionary<TKCLNode, Integer>;
-   consumers : TDictionary<TKCLNode, TKCLNode>;
+   nodeConsumers : TDictionary<TKCLNode, TList<TKCLNode>>;
    node, consumer, addConsumer : TKCLNode;
    fusion : TKCLFusionInfo;
    act : TKCLActivation;
    i, j : Integer;
+   list : TList<TKCLNode>;
 begin
    FFusionMap := TDictionary<TKCLNode, TKCLFusionInfo>.Create;
    FFusedNodes := TDictionary<TKCLNode, Boolean>.Create;
 
-   // Build consumer maps: count how many nodes consume each node,
-   // and if exactly one, record which node that is
    consumerCount := TDictionary<TKCLNode, Integer>.Create;
-   consumers := TDictionary<TKCLNode, TKCLNode>.Create;
+   nodeConsumers := TDictionary<TKCLNode, TList<TKCLNode>>.Create;
    try
+      // Build consumer maps
       for i := 0 to FSortedNodes.Count - 1 do begin
          node := FSortedNodes[i];
          for j := 0 to High(node.Inputs) do begin
             var inputNode := node.Inputs[j];
             var cnt : Integer;
-            if consumerCount.TryGetValue(inputNode, cnt) then begin
-               consumerCount[inputNode] := cnt + 1;
-               consumers.Remove(inputNode); // more than one consumer
-            end else begin
+            if consumerCount.TryGetValue(inputNode, cnt) then
+               consumerCount[inputNode] := cnt + 1
+            else
                consumerCount.Add(inputNode, 1);
-               consumers.Add(inputNode, node);
+
+            if not nodeConsumers.TryGetValue(inputNode, list) then begin
+               list := TList<TKCLNode>.Create;
+               nodeConsumers.Add(inputNode, list);
             end;
+            list.Add(node);
          end;
       end;
 
-      // Mark outputs as consumers
+      // Outputs count as consumers
       for i := 0 to High(FKernel.Outputs) do begin
          var outputNode := FKernel.Outputs[i];
          var cnt : Integer;
-         if consumerCount.TryGetValue(outputNode, cnt) then begin
-            consumerCount[outputNode] := cnt + 1;
-            consumers.Remove(outputNode); // more than one consumer
-         end else begin
+         if consumerCount.TryGetValue(outputNode, cnt) then
+            consumerCount[outputNode] := cnt + 1
+         else
             consumerCount.Add(outputNode, 1);
-         end;
       end;
 
-      // Detect fusion patterns
+      // Analyze from beginning to end
       for i := 0 to FSortedNodes.Count - 1 do begin
          node := FSortedNodes[i];
 
          if (node is TKCLConv2DNode) or (node is TKCLDepthwiseConv2DNode) then begin
-            if not consumers.TryGetValue(node, consumer) then Continue;
+            if not nodeConsumers.TryGetValue(node, list) then Continue;
 
-            // Conv/Depthwise + Activation
-            act := NodeToActivation(consumer);
-            if act <> actNone then begin
-               fusion.Activation := act;
-               fusion.ActivationNode := consumer;
-               fusion.AddNode := nil;
-               fusion.ResidualInput := nil;
-               FFusionMap.Add(node, fusion);
-               FFusedNodes.Add(consumer, True);
-               Continue;
-            end;
+            // Try each consumer until we find a valid fusion
+            for j := 0 to list.Count - 1 do begin
+               consumer := list[j];
+               
+               // Pattern 1: Conv + Add [+ Activation]
+               if (consumer is TKCLAddNode) and (consumerCount[consumer] = 1) then begin
+                  var addNode := TKCLAddNode(consumer);
+                  var residualInput : TKCLNode;
+                  if addNode.Inputs[0] = node then
+                     residualInput := addNode.Inputs[1]
+                  else if addNode.Inputs[1] = node then
+                     residualInput := addNode.Inputs[0]
+                  else Continue;
 
-            // Conv/Depthwise + Add + Activation
-            if consumer is TKCLAddNode then begin
-               var addNode := TKCLAddNode(consumer);
-               var residualInput : TKCLNode;
-               if addNode.Inputs[0] = node then
-                  residualInput := addNode.Inputs[1]
-               else if addNode.Inputs[1] = node then
-                  residualInput := addNode.Inputs[0]
-               else Continue;
+                  var resPos := FSortedNodes.IndexOf(residualInput);
+                  if (resPos >= i) and not (residualInput is TKCLConstantNode) then Continue;
 
-               var resPos := FSortedNodes.IndexOf(residualInput);
-               if resPos >= i then Continue;
+                  var addList : TList<TKCLNode>;
+                  if nodeConsumers.TryGetValue(addNode, addList) then begin
+                     addConsumer := nil;
+                     for var k := 0 to addList.Count - 1 do begin
+                        var ac := addList[k];
+                        if (NodeToActivation(ac) <> actNone) and (consumerCount[ac] = 1) then begin
+                           addConsumer := ac; Break;
+                        end;
+                     end;
 
-               if not consumers.TryGetValue(addNode, addConsumer) then Continue;
-               if IsOutputNode(addNode) then Continue;
+                     if addConsumer <> nil then begin
+                        act := NodeToActivation(addConsumer);
+                        fusion.Activation := act;
+                        fusion.ActivationNode := addConsumer;
+                        fusion.AddNode := addNode;
+                        fusion.ResidualInput := residualInput;
+                        fusion.HasMultipleConsumers := consumerCount[node] > 1;
+                        FFusionMap.Add(node, fusion);
+                        
+                        // Hide intermediate nodes
+                        FFusedNodes.AddOrSetValue(addNode, True);
+                        FFusedNodes.AddOrSetValue(addConsumer, True);
+                        Break; // Fusion found
+                     end;
+                  end;
 
-               act := NodeToActivation(addConsumer);
-               if act <> actNone then begin
-                  fusion.Activation := act;
-                  fusion.ActivationNode := addConsumer;
+                  // Just Add (no activation)
+                  fusion.Activation := actNone;
+                  fusion.ActivationNode := nil;
                   fusion.AddNode := addNode;
                   fusion.ResidualInput := residualInput;
+                  fusion.HasMultipleConsumers := consumerCount[node] > 1;
                   FFusionMap.Add(node, fusion);
-                  FFusedNodes.Add(addNode, True);
-                  FFusedNodes.Add(addConsumer, True);
+                  FFusedNodes.AddOrSetValue(addNode, True);
+                  Break; // Fusion found
+               end;
+
+               // Pattern 2: Conv + Activation
+               act := NodeToActivation(consumer);
+               if (act <> actNone) and (consumerCount[consumer] = 1) then begin
+                  fusion.Activation := act;
+                  fusion.ActivationNode := consumer;
+                  fusion.AddNode := nil;
+                  fusion.ResidualInput := nil;
+                  fusion.HasMultipleConsumers := consumerCount[node] > 1;
+                  FFusionMap.Add(node, fusion);
+                  FFusedNodes.AddOrSetValue(consumer, True);
+                  Break; // Fusion found
                end;
             end;
          end
 
-         // Element-wise (Add/Sub/Mul) + Activation
+         // Pattern 3: Element-wise (Add/Sub/Mul) + Activation
          else if (node is TKCLAddNode) or (node is TKCLSubNode) or (node is TKCLMulNode) then begin
             if FFusedNodes.ContainsKey(node) then Continue;
-            if not consumers.TryGetValue(node, consumer) then Continue;
+            if not nodeConsumers.TryGetValue(node, list) then Continue;
 
-            act := NodeToActivation(consumer);
-            if act <> actNone then begin
-               fusion.Activation := act;
-               fusion.ActivationNode := consumer;
-               fusion.AddNode := nil;
-               fusion.ResidualInput := nil;
-               FFusionMap.Add(node, fusion);
-               FFusedNodes.Add(consumer, True);
+            for j := 0 to list.Count - 1 do begin
+               consumer := list[j];
+               act := NodeToActivation(consumer);
+               if (act <> actNone) and (consumerCount[consumer] = 1) then begin
+                  fusion.Activation := act;
+                  fusion.ActivationNode := consumer;
+                  fusion.AddNode := nil;
+                  fusion.ResidualInput := nil;
+                  fusion.HasMultipleConsumers := consumerCount[node] > 1;
+                  FFusionMap.Add(node, fusion);
+                  FFusedNodes.AddOrSetValue(consumer, True);
+                  Break; // Fusion found
+               end;
             end;
          end;
       end;
    finally
       consumerCount.Free;
-      consumers.Free;
+      for list in nodeConsumers.Values do list.Free;
+      nodeConsumers.Free;
    end;
 end;
 
@@ -854,8 +900,8 @@ begin
    FNodeDims[n] := Copy(node.Dimensions);
    FNodeTotalElements[n] := 1;
    for i := 0 to High(FNodeDims[n]) do FNodeTotalElements[n] := FNodeTotalElements[n] * FNodeDims[n][i];
-   SetLength(FNodeBuffers[n], FNodeTotalElements[n]);
-   for i := 0 to FNodeTotalElements[n]-1 do FNodeBuffers[n][i] := node.Value;
+   AllocateNodeBuffer(n, FNodeTotalElements[n]);
+   for i := 0 to FNodeTotalElements[n]-1 do FNodePtrs[n][i] := node.Value;
 end;
 
 // ProcessInput
@@ -870,12 +916,12 @@ begin
    FNodeDims[n] := Copy(dIn.Dimensions);
    FNodeTotalElements[n] := 1;
    for i := 0 to High(FNodeDims[n]) do FNodeTotalElements[n] := FNodeTotalElements[n] * FNodeDims[n][i];
-   SetLength(FNodeBuffers[n], FNodeTotalElements[n]);
+   AllocateNodeBuffer(n, FNodeTotalElements[n]);
    if (dIn.DataType = dtFloat32) and IsContiguous(dIn) then
-      SSE2_CvtPS2PDContiguous(PSingle(dIn.BasePointer), Pointer(FNodeBuffers[n]), FNodeTotalElements[n])
+      SSE2_CvtPS2PDContiguous(PSingle(dIn.BasePointer), FNodePtrs[n], FNodeTotalElements[n])
    else begin
       SetLength(lIdx, Length(FNodeDims[n]));
-      for i := 0 to FNodeTotalElements[n]-1 do begin IndexFromFlat(i, FNodeDims[n], lIdx); FNodeBuffers[n][i] := GetValue(dIn, lIdx); end;
+      for i := 0 to FNodeTotalElements[n]-1 do begin IndexFromFlat(i, FNodeDims[n], lIdx); FNodePtrs[n][i] := GetValue(dIn, lIdx); end;
    end;
 end;
 
@@ -894,18 +940,18 @@ begin
    FNodeDims[n] := dimsOut;
    FNodeTotalElements[n] := 1;
    for i := 0 to High(FNodeDims[n]) do FNodeTotalElements[n] := FNodeTotalElements[n] * FNodeDims[n][i];
-   SetLength(FNodeBuffers[n], FNodeTotalElements[n]);
+   AllocateNodeBuffer(n, FNodeTotalElements[n]);
 
    if axis = High(dimsOut) then begin
       totalOther := 1; for k := 0 to High(dimsOut)-1 do totalOther := totalOther * dimsOut[k];
       outChannels := dimsOut[High(dimsOut)];
       for k := 0 to totalOther - 1 do begin
-         pRes := PDouble(Pointer(FNodeBuffers[n])) + (k * outChannels);
+         pRes := FNodePtrs[n] + (k * outChannels);
          curDimOffset := 0;
          for inputIdx := 0 to High(node.Inputs) do begin
             inIdx := FNodeToBufferIdx[node.Inputs[inputIdx]];
             inChannels := FNodeDims[inIdx][High(dimsOut)];
-            pSrc := PDouble(Pointer(FNodeBuffers[inIdx])) + (k * inChannels);
+            pSrc := FNodePtrs[inIdx] + (k * inChannels);
             System.Move(pSrc^, (pRes + curDimOffset)^, inChannels * SizeOf(Double));
             curDimOffset := curDimOffset + inChannels;
          end;
@@ -917,7 +963,7 @@ begin
          dimsIn := FNodeDims[inIdx]; SetLength(lIdx, Length(dimsIn));
          for i := 0 to FNodeTotalElements[inIdx]-1 do begin
             IndexFromFlat(i, dimsIn, lIdx); idxOut := Copy(lIdx); idxOut[axis] := idxOut[axis] + curDimOffset;
-            FNodeBuffers[n][FlatIndex(idxOut, dimsOut)] := FNodeBuffers[inIdx][i];
+            FNodePtrs[n][FlatIndex(idxOut, dimsOut)] := FNodePtrs[inIdx][i];
          end;
          curDimOffset := curDimOffset + dimsIn[axis];
       end;
@@ -958,9 +1004,9 @@ begin
    FNodeDims[n] := dims;
    total := 1; for i := 0 to High(dims) do total := total * dims[i];
    FNodeTotalElements[n] := total;
-   SetLength(FNodeBuffers[n], total);
+   AllocateNodeBuffer(n, total);
 
-   p1 := PDouble(Pointer(FNodeBuffers[in1])); pRes := PDouble(Pointer(FNodeBuffers[n]));
+   p1 := FNodePtrs[in1]; pRes := FNodePtrs[n];
 
    if Length(node.Inputs) = 1 then begin
       if node is TKCLReLUNode then SSE2_ReLU(p1, pRes, total)
@@ -971,19 +1017,19 @@ begin
       else if node is TKCLExpNode then SSE2_Exp(p1, pRes, total)
       else begin
          SetLength(args, 2); args[1] := 0;
-         for i := 0 to total-1 do begin args[0] := FNodeBuffers[in1][i]; pRes[i] := node.Eval(args); end;
+         for i := 0 to total-1 do begin args[0] := FNodePtrs[in1][i]; pRes[i] := node.Eval(args); end;
       end;
    end else begin
       in2 := FNodeToBufferIdx[node.Inputs[1]];
       if FNodeTotalElements[in2] = total then begin
-         p2 := PDouble(Pointer(FNodeBuffers[in2]));
+         p2 := FNodePtrs[in2];
          if node is TKCLAddNode then SSE2_Add(p1, p2, pRes, total)
          else if node is TKCLSubNode then SSE2_Sub(p1, p2, pRes, total)
          else if node is TKCLMulNode then SSE2_Mul(p1, p2, pRes, total)
          else if node is TKCLDivNode then SSE2_Div(p1, p2, pRes, total)
          else begin
             SetLength(args, 2);
-            for i := 0 to total-1 do begin args[0] := FNodeBuffers[in1][i]; args[1] := FNodeBuffers[in2][i]; pRes[i] := node.Eval(args); end;
+            for i := 0 to total-1 do begin args[0] := FNodePtrs[in1][i]; args[1] := FNodePtrs[in2][i]; pRes[i] := node.Eval(args); end;
          end;
       end else ProcessMapFallback(n, node);
    end;
@@ -991,12 +1037,23 @@ begin
    // Handle fused activation
    var fusion : TKCLFusionInfo;
    if (FFusionMap <> nil) and FFusionMap.TryGetValue(node, fusion) then begin
-      ApplyActivationInPlace(pRes, total, fusion.Activation);
-      if fusion.ActivationNode <> nil then begin
-         var actIdx := FNodeToBufferIdx[fusion.ActivationNode];
-         FNodeDims[actIdx] := FNodeDims[n];
-         FNodeTotalElements[actIdx] := FNodeTotalElements[n];
-         FNodeBuffers[actIdx] := FNodeBuffers[n];
+      if fusion.HasMultipleConsumers then begin
+         if fusion.ActivationNode <> nil then begin
+            var actIdx := FNodeToBufferIdx[fusion.ActivationNode];
+            FNodeDims[actIdx] := FNodeDims[n];
+            FNodeTotalElements[actIdx] := FNodeTotalElements[n];
+            var pAct := AllocateNodeBuffer(actIdx, total);
+            System.Move(pRes^, pAct^, total * SizeOf(Double));
+            ApplyActivationInPlace(pAct, total, fusion.Activation);
+         end;
+      end else begin
+         ApplyActivationInPlace(pRes, total, fusion.Activation);
+         if fusion.ActivationNode <> nil then begin
+            var actIdx := FNodeToBufferIdx[fusion.ActivationNode];
+            FNodeDims[actIdx] := FNodeDims[n];
+            FNodeTotalElements[actIdx] := FNodeTotalElements[n];
+            FNodeBuffers[actIdx] := FNodeBuffers[n]; FNodePtrs[actIdx] := FNodePtrs[n];
+         end;
       end;
    end;
 end;
@@ -1008,7 +1065,6 @@ var
    in1, i : Integer;
    dims : TKCLDimensions;
    fusion : TKCLFusionInfo;
-   act : TKCLActivation;
    pResidual : PDouble;
 begin
    in1 := FNodeToBufferIdx[node.Inputs[0]];
@@ -1020,33 +1076,68 @@ begin
    end;
    FNodeDims[n] := dims;
    FNodeTotalElements[n] := 1; for i := 0 to High(dims) do FNodeTotalElements[n] := FNodeTotalElements[n] * dims[i];
-   SetLength(FNodeBuffers[n], FNodeTotalElements[n]);
+   AllocateNodeBuffer(n, FNodeTotalElements[n]);
 
-   act := actNone;
    pResidual := nil;
+   var resTotal : NativeInt := 0;
    if (FFusionMap <> nil) and FFusionMap.TryGetValue(node, fusion) then begin
-      act := fusion.Activation;
       if fusion.ResidualInput <> nil then begin
          var resIdx := FNodeToBufferIdx[fusion.ResidualInput];
-         pResidual := PDouble(Pointer(FNodeBuffers[resIdx]));
+         pResidual := FNodePtrs[resIdx];
+         resTotal := FNodeTotalElements[resIdx];
       end;
    end;
 
-   ProcessConv2DSSE2(n, node, act, pResidual);
+   ProcessConv2DSSE2(n, node, actNone, nil, 0);
 
-   // Alias fused nodes to Conv2D output
+   // Handle fused nodes
    if (FFusionMap <> nil) and FFusionMap.TryGetValue(node, fusion) then begin
+      var pCurrentResult := FNodePtrs[n];
+      var currentTotal := FNodeTotalElements[n];
+      var currentBufIdx := n;
+
+      // Handle fused Add
       if fusion.AddNode <> nil then begin
          var addIdx := FNodeToBufferIdx[fusion.AddNode];
          FNodeDims[addIdx] := FNodeDims[n];
-         FNodeTotalElements[addIdx] := FNodeTotalElements[n];
-         FNodeBuffers[addIdx] := FNodeBuffers[n];
+         FNodeTotalElements[addIdx] := currentTotal;
+         
+         var pAdd : PDouble;
+         if fusion.HasMultipleConsumers then begin
+            pAdd := AllocateNodeBuffer(addIdx, currentTotal);
+            System.Move(pCurrentResult^, pAdd^, currentTotal * SizeOf(Double));
+         end else begin
+            FNodeBuffers[addIdx] := FNodeBuffers[currentBufIdx]; FNodePtrs[addIdx] := FNodePtrs[currentBufIdx];
+            pAdd := pCurrentResult;
+         end;
+
+         if (resTotal > 0) and (resTotal < currentTotal) then begin
+            var outChannels := Length(node.Bias);
+            for i := 0 to (currentTotal div outChannels) - 1 do
+               SSE2_Add(pAdd + i * outChannels, pResidual + ((i * outChannels) mod resTotal), pAdd + i * outChannels, outChannels);
+         end else begin
+            SSE2_Add(pAdd, pResidual, pAdd, currentTotal);
+         end;
+         pCurrentResult := pAdd;
+         currentBufIdx := addIdx;
       end;
+
+      // Handle fused activation
       if fusion.ActivationNode <> nil then begin
          var actIdx := FNodeToBufferIdx[fusion.ActivationNode];
          FNodeDims[actIdx] := FNodeDims[n];
-         FNodeTotalElements[actIdx] := FNodeTotalElements[n];
-         FNodeBuffers[actIdx] := FNodeBuffers[n];
+         FNodeTotalElements[actIdx] := currentTotal;
+
+         var pAct : PDouble;
+         if fusion.HasMultipleConsumers then begin
+            pAct := AllocateNodeBuffer(actIdx, currentTotal);
+            System.Move(pCurrentResult^, pAct^, currentTotal * SizeOf(Double));
+         end else begin
+            FNodeBuffers[actIdx] := FNodeBuffers[currentBufIdx]; FNodePtrs[actIdx] := FNodePtrs[currentBufIdx];
+            pAct := pCurrentResult;
+         end;
+
+         ApplyActivationInPlace(pAct, currentTotal, fusion.Activation);
       end;
    end;
 end;
@@ -1054,7 +1145,7 @@ end;
 // ProcessConv2DSSE2
 //
 procedure TKCLSSE2Backend.ProcessConv2DSSE2(n: Integer; node: TKCLConv2DNode;
-   act : TKCLActivation; pResidual : PDouble);
+   act : TKCLActivation; pResidual : PDouble; resTotal : NativeInt);
 var
    in1, inChannels, outChannels, inH, inW, outH, outW, hO, wO, ny, nx, stepY, stepX, k, i : Integer;
    pInput, pRes, pW, pB, pROut, pWBase : PDouble;
@@ -1064,7 +1155,7 @@ begin
    inChannels := FNodeDims[in1][High(FNodeDims[in1])]; outChannels := Length(node.Bias);
    inH := FNodeDims[in1][High(FNodeDims[in1])-2]; inW := FNodeDims[in1][High(FNodeDims[in1])-1];
    outH := FNodeDims[n][High(FNodeDims[n])-2]; outW := FNodeDims[n][High(FNodeDims[n])-1];
-   pInput := PDouble(Pointer(FNodeBuffers[in1])); pRes := PDouble(Pointer(FNodeBuffers[n]));
+   pInput := FNodePtrs[in1]; pRes := FNodePtrs[n];
    pW := PDouble(node.Weights); pB := PDouble(node.Bias);
 
    if Length(node.Bias) <> outChannels then
@@ -1095,9 +1186,15 @@ begin
       end;
    end;
 
-   // Apply fused residual add
-   if pResidual <> nil then
-      SSE2_Add(pRes, pResidual, pRes, FNodeTotalElements[n]);
+   // Apply fused residual add with broadcasting support
+   if pResidual <> nil then begin
+      if (resTotal > 0) and (resTotal < FNodeTotalElements[n]) then begin
+         for i := 0 to (FNodeTotalElements[n] div outChannels) - 1 do
+            SSE2_Add(pRes + i * outChannels, pResidual + ((i * outChannels) mod resTotal), pRes + i * outChannels, outChannels);
+      end else begin
+         SSE2_Add(pRes, pResidual, pRes, FNodeTotalElements[n]);
+      end;
+   end;
 
    // Apply fused activation
    if act <> actNone then
@@ -1126,15 +1223,15 @@ begin
    FNodeDims[n] := dimsOut;
    FNodeTotalElements[n] := 1;
    for i := 0 to High(dimsOut) do FNodeTotalElements[n] := FNodeTotalElements[n] * dimsOut[i];
-   SetLength(FNodeBuffers[n], FNodeTotalElements[n]);
+   AllocateNodeBuffer(n, FNodeTotalElements[n]);
 
    if Length(dimsOut) < 3 then Exit;
 
    inChannels := dimsIn[High(dimsIn)]; outChannels := dimsOut[High(dimsOut)];
    inH := dimsIn[High(dimsIn)-2]; inW := dimsIn[High(dimsIn)-1];
    outH := dimsOut[High(dimsOut)-2]; outW := dimsOut[High(dimsOut)-1];
-   pInput := PDouble(Pointer(FNodeBuffers[in1Idx]));
-   pRes := PDouble(Pointer(FNodeBuffers[n]));
+   pInput := FNodePtrs[in1Idx];
+   pRes := FNodePtrs[n];
    pW := PDouble(node.Weights);
    pB := PDouble(node.Bias);
 
@@ -1189,10 +1286,10 @@ begin
    end;
    FNodeDims[n] := dims;
    FNodeTotalElements[n] := 1; for i := 0 to High(dims) do FNodeTotalElements[n] := FNodeTotalElements[n] * dims[i];
-   SetLength(FNodeBuffers[n], FNodeTotalElements[n]);
+   AllocateNodeBuffer(n, FNodeTotalElements[n]);
    inChannels := FNodeDims[in1][High(dims)]; outH := dims[High(dims)-2]; outW := dims[High(dims)-1];
    inH := FNodeDims[in1][High(dims)-2]; inW := FNodeDims[in1][High(dims)-1];
-   pInput := PDouble(Pointer(FNodeBuffers[in1])); pRes := PDouble(Pointer(FNodeBuffers[n]));
+   pInput := FNodePtrs[in1]; pRes := FNodePtrs[n];
    pW := PDouble(node.Weights); pB := PDouble(node.Bias);
    for i := 0 to (FNodeTotalElements[n] div inChannels) - 1 do SSE2_Copy(pB, pRes + (i * inChannels), inChannels);
    pad_h := Max(0, (outH - 1) * node.Stride + node.KernelSize - inH); pad_top := pad_h div 2;
@@ -1216,23 +1313,45 @@ begin
    // Handle fusion
    var fusion : TKCLFusionInfo;
    if (FFusionMap <> nil) and FFusionMap.TryGetValue(node, fusion) then begin
-      if fusion.ResidualInput <> nil then
-         SSE2_Add(pRes, PDouble(Pointer(FNodeBuffers[FNodeToBufferIdx[fusion.ResidualInput]])), pRes, FNodeTotalElements[n]);
+      var pCurrentResult := FNodePtrs[n];
+      var currentTotal := FNodeTotalElements[n];
+      var currentBufIdx := n;
 
-      if fusion.Activation <> actNone then
-         ApplyActivationInPlace(pRes, FNodeTotalElements[n], fusion.Activation);
-
-      if fusion.AddNode <> nil then begin
+      if fusion.ResidualInput <> nil then begin
+         var resIdx := FNodeToBufferIdx[fusion.ResidualInput];
          var addIdx := FNodeToBufferIdx[fusion.AddNode];
          FNodeDims[addIdx] := FNodeDims[n];
-         FNodeTotalElements[addIdx] := FNodeTotalElements[n];
-         FNodeBuffers[addIdx] := FNodeBuffers[n];
+         FNodeTotalElements[addIdx] := currentTotal;
+
+         var pAdd : PDouble;
+         if fusion.HasMultipleConsumers then begin
+            pAdd := AllocateNodeBuffer(addIdx, currentTotal);
+            System.Move(pCurrentResult^, pAdd^, currentTotal * SizeOf(Double));
+         end else begin
+            FNodeBuffers[addIdx] := FNodeBuffers[currentBufIdx]; FNodePtrs[addIdx] := FNodePtrs[currentBufIdx];
+            pAdd := pCurrentResult;
+         end;
+
+         SSE2_Add(pAdd, FNodePtrs[resIdx], pAdd, currentTotal);
+         pCurrentResult := pAdd;
+         currentBufIdx := addIdx;
       end;
-      if fusion.ActivationNode <> nil then begin
+
+      if fusion.Activation <> actNone then begin
          var actIdx := FNodeToBufferIdx[fusion.ActivationNode];
          FNodeDims[actIdx] := FNodeDims[n];
-         FNodeTotalElements[actIdx] := FNodeTotalElements[n];
-         FNodeBuffers[actIdx] := FNodeBuffers[n];
+         FNodeTotalElements[actIdx] := currentTotal;
+
+         var pAct : PDouble;
+         if fusion.HasMultipleConsumers then begin
+            pAct := AllocateNodeBuffer(actIdx, currentTotal);
+            System.Move(pCurrentResult^, pAct^, currentTotal * SizeOf(Double));
+         end else begin
+            FNodeBuffers[actIdx] := FNodeBuffers[currentBufIdx]; FNodePtrs[actIdx] := FNodePtrs[currentBufIdx];
+            pAct := pCurrentResult;
+         end;
+
+         ApplyActivationInPlace(pAct, currentTotal, fusion.Activation);
       end;
    end;
 end;
@@ -1249,12 +1368,12 @@ var
    baseI : TKCLDimensions;
 begin
    in1 := FNodeToBufferIdx[node.Inputs[0]]; dims := Copy(FNodeDims[in1]);
-   FNodeDims[n] := dims; FNodeTotalElements[n] := FNodeTotalElements[in1]; SetLength(FNodeBuffers[n], FNodeTotalElements[n]);
+   FNodeDims[n] := dims; FNodeTotalElements[n] := FNodeTotalElements[in1]; AllocateNodeBuffer(n, FNodeTotalElements[n]);
    axis := node.Axis; axisSize := dims[axis];
    totalOther := 1; for k := 0 to High(dims) do if k<>axis then totalOther := totalOther * dims[k];
    if axis = High(dims) then begin
       for i := 0 to totalOther - 1 do begin
-         p1 := PDouble(Pointer(FNodeBuffers[in1])) + (i * axisSize); pRes := PDouble(Pointer(FNodeBuffers[n])) + (i * axisSize);
+         p1 := FNodePtrs[in1] + (i * axisSize); pRes := FNodePtrs[n] + (i * axisSize);
          SSE2_MaxVector(p1, axisSize, maxV);
          for loopA := 0 to axisSize - 1 do pRes[loopA] := p1[loopA] - maxV;
          SSE2_Exp(pRes, pRes, axisSize); SSE2_SumVector(pRes, axisSize, sumE);
@@ -1269,15 +1388,15 @@ begin
             else baseI[k] := 0;
          maxV := -1e30;
          for loopA := 0 to axisSize-1 do begin 
-            baseI[axis] := loopA; val := FNodeBuffers[in1][FlatIndex(baseI, dims)]; 
+            baseI[axis] := loopA; val := FNodePtrs[in1][FlatIndex(baseI, dims)]; 
             if val > maxV then maxV := val; 
          end;
          sumE := 0;
          for loopA := 0 to axisSize-1 do begin 
-            baseI[axis] := loopA; sumE := sumE + Exp(FNodeBuffers[in1][FlatIndex(baseI, dims)] - maxV); 
+            baseI[axis] := loopA; sumE := sumE + Exp(FNodePtrs[in1][FlatIndex(baseI, dims)] - maxV); 
          end;
          for loopA := 0 to axisSize-1 do begin 
-            baseI[axis] := loopA; FNodeBuffers[n][FlatIndex(baseI, dims)] := Exp(FNodeBuffers[in1][FlatIndex(baseI, dims)] - maxV) / sumE; 
+            baseI[axis] := loopA; FNodePtrs[n][FlatIndex(baseI, dims)] := Exp(FNodePtrs[in1][FlatIndex(baseI, dims)] - maxV) / sumE; 
          end;
       end;
    end;
@@ -1301,12 +1420,12 @@ begin
       dOutDims[rank-2] := node.TargetWidth;
    end;
    FNodeDims[n] := dOutDims; FNodeTotalElements[n] := 1; for i := 0 to High(dOutDims) do FNodeTotalElements[n] := FNodeTotalElements[n] * dOutDims[i];
-   SetLength(FNodeBuffers[n], FNodeTotalElements[n]);
+   AllocateNodeBuffer(n, FNodeTotalElements[n]);
 
    if rank >= 3 then begin
       inChannels := dims[rank-1]; inH := dims[rank-3]; inW := dims[rank-2];
       outH := dOutDims[rank-3]; outW := dOutDims[rank-2];
-      pInput := PDouble(Pointer(FNodeBuffers[in1])); pRes := PDouble(Pointer(FNodeBuffers[n]));
+      pInput := FNodePtrs[in1]; pRes := FNodePtrs[n];
       
       if node.AlignCorners and (outH > 1) then scaleH := (inH - 1) / (outH - 1) else scaleH := inH / outH;
       if node.AlignCorners and (outW > 1) then scaleW := (inW - 1) / (outW - 1) else scaleW := inW / outW;
@@ -1329,7 +1448,7 @@ begin
       end;
    end else begin
       SetLength(lIdx, Length(dOutDims));
-      for i := 0 to FNodeTotalElements[n] - 1 do begin IndexFromFlat(i, dOutDims, lIdx); FNodeBuffers[n][i] := FNodeBuffers[in1][FlatIndex(lIdx, dims)]; end;
+      for i := 0 to FNodeTotalElements[n] - 1 do begin IndexFromFlat(i, dOutDims, lIdx); FNodePtrs[n][i] := FNodePtrs[in1][FlatIndex(lIdx, dims)]; end;
    end;
 end;
 
@@ -1348,11 +1467,11 @@ begin
       dims[High(dims)-1] := (dims[High(dims)-1] + node.Stride - 1) div node.Stride;
    end;
    FNodeDims[n] := dims; FNodeTotalElements[n] := 1; for i := 0 to High(dims) do FNodeTotalElements[n] := FNodeTotalElements[n] * dims[i];
-   SetLength(FNodeBuffers[n], FNodeTotalElements[n]);
+   AllocateNodeBuffer(n, FNodeTotalElements[n]);
    inChannels := FNodeDims[in1][High(dims)]; inH := FNodeDims[in1][High(dims)-2]; inW := FNodeDims[in1][High(dims)-1];
    outH := dims[High(dims)-2]; outW := dims[High(dims)-1];
-   pInput := PDouble(Pointer(FNodeBuffers[in1])); pRes := PDouble(Pointer(FNodeBuffers[n]));
-   for i := 0 to FNodeTotalElements[n]-1 do FNodeBuffers[n][i] := -1e30;
+   pInput := FNodePtrs[in1]; pRes := FNodePtrs[n];
+   for i := 0 to FNodeTotalElements[n]-1 do FNodePtrs[n][i] := -1e30;
    pad_h := Max(0, (outH - 1) * node.Stride + node.KernelSize - inH); pad_top := pad_h div 2;
    pad_w := Max(0, (outW - 1) * node.Stride + node.KernelSize - inW); pad_left := pad_w div 2;
    for hO := 0 to outH - 1 do begin
@@ -1379,18 +1498,18 @@ begin
    var in1 := FNodeToBufferIdx[node.Inputs[0]]; var dims := Copy(FNodeDims[in1]);
    if Length(dims) >= 3 then begin dims[High(dims)-2] := 1; dims[High(dims)-1] := 1; end;
    FNodeDims[n] := dims; FNodeTotalElements[n] := 1; for i := 0 to High(dims) do FNodeTotalElements[n] := FNodeTotalElements[n] * dims[i];
-   SetLength(FNodeBuffers[n], FNodeTotalElements[n]);
+   AllocateNodeBuffer(n, FNodeTotalElements[n]);
    if Length(FNodeDims[in1]) >= 3 then begin
       inChannels := FNodeDims[in1][High(dims)]; inH := FNodeDims[in1][High(dims)-2]; inW := FNodeDims[in1][High(dims)-1];
-      pInput := PDouble(Pointer(FNodeBuffers[in1])); pRes := PDouble(Pointer(FNodeBuffers[n]));
+      pInput := FNodePtrs[in1]; pRes := FNodePtrs[n];
       for i := 0 to inChannels - 1 do pRes[i] := 0;
       for ny := 0 to inH - 1 do for nx := 0 to inW - 1 do SSE2_Add(pInput + (ny * inW + nx) * inChannels, pRes, pRes, inChannels);
       vVal := 1.0 / (inH * inW); for i := 0 to inChannels - 1 do pRes[i] := pRes[i] * vVal;
    end else begin
       sumVal := 0; 
-      for i := 0 to FNodeTotalElements[in1]-1 do sumVal := sumVal + FNodeBuffers[in1][i];
+      for i := 0 to FNodeTotalElements[in1]-1 do sumVal := sumVal + FNodePtrs[in1][i];
       if FNodeTotalElements[in1] > 0 then sumVal := sumVal / FNodeTotalElements[in1];
-      for i := 0 to FNodeTotalElements[n]-1 do FNodeBuffers[n][i] := sumVal;
+      for i := 0 to FNodeTotalElements[n]-1 do FNodePtrs[n][i] := sumVal;
    end;
 end;
 
@@ -1413,9 +1532,9 @@ begin
             jOut := j + (Length(dims) - Length(inDims));
             if inDims[j] = 1 then idxIn[j] := 0 else idxIn[j] := lIdx[jOut];
          end;
-         args[k] := FNodeBuffers[inIdx][FlatIndex(idxIn, inDims)];
+         args[k] := FNodePtrs[inIdx][FlatIndex(idxIn, inDims)];
       end;
-      FNodeBuffers[n][i] := node.Eval(args);
+      FNodePtrs[n][i] := node.Eval(args);
    end;
 end;
 
@@ -1441,7 +1560,7 @@ begin
       FNodeToBufferIdx := TDictionary<TKCLNode, Integer>.Create;
       try
          for j := 0 to High(FKernel.Outputs) do VisitNode(FKernel.Outputs[j]);
-         SetLength(FNodeDims, FSortedNodes.Count); SetLength(FNodeTotalElements, FSortedNodes.Count); SetLength(FNodeBuffers, FSortedNodes.Count);
+         SetLength(FNodeDims, FSortedNodes.Count); SetLength(FNodeTotalElements, FSortedNodes.Count); SetLength(FNodeBuffers, FSortedNodes.Count); SetLength(FNodePtrs, FSortedNodes.Count);
 
          // Register buffer indices first so fusion analysis can reference them
          for n := 0 to FSortedNodes.Count - 1 do
@@ -1453,16 +1572,27 @@ begin
          // Pre-compile JIT kernels (no-op for SSE2-only backend)
          PrepareNodes;
 
+         // Process zero-dependency nodes first (Inputs and Constants)
+         // This ensures their buffers are initialized if a later node fuses with them
+         // out-of-order during JIT execution.
          for n := 0 to FSortedNodes.Count - 1 do begin
             node := FSortedNodes[n];
+            if node is TKCLConstantNode then ProcessConstant(n, TKCLConstantNode(node))
+            else if node is TKCLInputNode then ProcessInput(n, TKCLInputNode(node));
+         end;
+
+         for n := 0 to FSortedNodes.Count - 1 do begin
+            node := FSortedNodes[n];
+            
+            // Skip zero-dependency nodes as they are already processed
+            if (node is TKCLConstantNode) or (node is TKCLInputNode) then
+               Continue;
 
             // Skip nodes that have been fused into another operation
             if (FFusedNodes <> nil) and FFusedNodes.ContainsKey(node) then
                Continue;
 
-            if node is TKCLConstantNode then ProcessConstant(n, TKCLConstantNode(node))
-            else if node is TKCLInputNode then ProcessInput(n, TKCLInputNode(node))
-            else if node is TKCLConcatNode then ProcessConcat(n, TKCLConcatNode(node))
+            if node is TKCLConcatNode then ProcessConcat(n, TKCLConcatNode(node))
             else if node is TKCLConv2DNode then ProcessConv2D(n, TKCLConv2DNode(node))
             else if node is TKCLConv2DTransposeNode then ProcessConv2DTranspose(n, TKCLConv2DTransposeNode(node))
             else if node is TKCLDepthwiseConv2DNode then ProcessDepthwiseConv2D(n, TKCLDepthwiseConv2DNode(node))
@@ -1480,10 +1610,10 @@ begin
          for j := 0 to High(FKernel.Outputs) do begin
             oIdx := FNodeToBufferIdx[FKernel.Outputs[j]]; outBuf := FBuffers[Length(FKernel.Inputs) + j];
             if (outBuf.DataType = dtFloat32) and IsContiguous(outBuf) then
-               SSE2_CvtPD2PSContiguous(PDouble(Pointer(FNodeBuffers[oIdx])), PSingle(outBuf.BasePointer), FNodeTotalElements[oIdx])
+               SSE2_CvtPD2PSContiguous(FNodePtrs[oIdx], PSingle(outBuf.BasePointer), FNodeTotalElements[oIdx])
             else begin
                dims := FNodeDims[oIdx]; SetLength(lIdx, Length(dims));
-               for i := 0 to FNodeTotalElements[oIdx]-1 do begin IndexFromFlat(i, dims, lIdx); SetValue(outBuf, lIdx, FNodeBuffers[oIdx][i]); end;
+               for i := 0 to FNodeTotalElements[oIdx]-1 do begin IndexFromFlat(i, dims, lIdx); SetValue(outBuf, lIdx, FNodePtrs[oIdx][i]); end;
             end;
          end;
       finally
@@ -1503,6 +1633,16 @@ const
 
 // FlushMapBatch — execute all enqueued map operations
 //
+function TKCLJITBackend.AllocateNodeBuffer(n: Integer; totalElements: NativeInt): PDouble;
+begin
+   var optData := TKCLOptimizationData(FKernel.OptimizationData);
+   if (optData <> nil) and (optData.Workspace <> nil) then begin
+      Result := optData.Workspace.Allocate(totalElements * SizeOf(Double));
+      FNodePtrs[n] := Result;
+   end else
+      Result := inherited AllocateNodeBuffer(n, totalElements);
+end;
+
 procedure TKCLJITBackend.FlushMapBatch;
 begin
    if FBatchCount > 0 then begin
@@ -1513,21 +1653,22 @@ end;
 
 // EnqueueMapBatch — add a map operation to the batch
 //
-procedure TKCLJITBackend.EnqueueMapBatch(compiled : TKCLCompiledKernel;
-   p1, pRes, p2, pParams : PDouble; total : NativeInt);
-begin
-   if FBatchCount >= cMapBatchCapacity then
-      FlushMapBatch;
-   if Length(FBatch) < cMapBatchCapacity then
-      SetLength(FBatch, cMapBatchCapacity);
-   FBatch[FBatchCount].Code := compiled.Code;
-   FBatch[FBatchCount].pIn := p1;
-   FBatch[FBatchCount].pOut := pRes;
-   FBatch[FBatchCount].pIn2 := p2;
-   FBatch[FBatchCount].pParams := pParams;
-   FBatch[FBatchCount].Count := total;
-   Inc(FBatchCount);
-end;
+   procedure TKCLJITBackend.EnqueueMapBatch(compiled : TKCLCompiledKernel;
+      p1, pRes, p2, pParams, pIntermediate : PDouble; total : NativeInt);
+   begin
+      if FBatchCount >= cMapBatchCapacity then
+         FlushMapBatch;
+      if Length(FBatch) < cMapBatchCapacity then
+         SetLength(FBatch, cMapBatchCapacity);
+      FBatch[FBatchCount].Code := compiled.Code;
+      FBatch[FBatchCount].pIn := p1;
+      FBatch[FBatchCount].pOut := pRes;
+      FBatch[FBatchCount].pIn2 := p2;
+      FBatch[FBatchCount].pParams := pParams;
+      FBatch[FBatchCount].pIntermediate := pIntermediate;
+      FBatch[FBatchCount].Count := total;
+      Inc(FBatchCount);
+   end;
 
 // PrepareNodes — pre-compile all JIT kernels before execution
 //
@@ -1610,10 +1751,26 @@ begin
          end;
          FNodeDims[n] := dimsOut;
       end else if node is TKCLMapNode then begin
-         // For map nodes, propagate dims from first input
+         // For map nodes, compute broadcasted dimensions
          if Length(node.Inputs) > 0 then begin
             var in1Idx := FNodeToBufferIdx[node.Inputs[0]];
-            FNodeDims[n] := Copy(FNodeDims[in1Idx]);
+            var dims := Copy(FNodeDims[in1Idx]);
+            if Length(node.Inputs) > 1 then begin
+               var in2Idx := FNodeToBufferIdx[node.Inputs[1]];
+               var dims2 := FNodeDims[in2Idx];
+               if Length(dims) < Length(dims2) then begin
+                  var oldDims := dims;
+                  SetLength(dims, Length(dims2));
+                  for var i := 0 to High(dims) do dims[i] := 1;
+                  for var i := 0 to High(oldDims) do dims[High(dims) - High(oldDims) + i] := oldDims[i];
+               end;
+               for var i := 0 to High(dims) do begin
+                  var d2Idx := i - (Length(dims) - Length(dims2));
+                  var d2 := 1; if d2Idx >= 0 then d2 := dims2[d2Idx];
+                  dims[i] := Max(dims[i], d2);
+               end;
+            end;
+            FNodeDims[n] := dims;
          end;
       end;
    end;
@@ -1621,19 +1778,22 @@ begin
 
    // Pre-calculate workspace size for all intermediate node buffers
    var optData := TKCLOptimizationData(FKernel.OptimizationData);
-   if (optData <> nil) and (optData.Workspace = nil) then begin
+   if optData <> nil then begin
       var totalBytes : NativeInt := 0;
       for var n := 0 to FSortedNodes.Count - 1 do begin
-         var node := FSortedNodes[n];
-         if node is TKCLInputNode then Continue; // inputs use external buffers
+         // all nodes need their working double buffers allocated
          var dims := FNodeDims[n];
          var elemCount : NativeInt := 1;
          for var d := 0 to High(dims) do elemCount := elemCount * dims[d];
          if elemCount > 0 then
             totalBytes := totalBytes + ((elemCount * SizeOf(Double) + 31) and not NativeInt(31));
       end;
-      if totalBytes > 0 then
-         optData.Workspace := TKCLAlignedWorkspace.Create(totalBytes);
+      if totalBytes > 0 then begin
+         if (optData.Workspace = nil) or (optData.Workspace.Capacity < totalBytes) then begin
+            if optData.Workspace <> nil then optData.Workspace.Free;
+            optData.Workspace := TKCLAlignedWorkspace.Create(totalBytes);
+         end;
+      end;
    end;
 end;
 
@@ -1661,6 +1821,7 @@ var
    fusion : TKCLFusionInfo;
    act : TKCLActivation;
    pResidual : PDouble;
+   resTotal : NativeInt;
    hasFusion : Boolean;
 begin
    // Flush pending map batch before stencil operation (synchronization point)
@@ -1676,46 +1837,65 @@ begin
    FNodeDims[n] := dims;
    total := 1; for var i := 0 to High(dims) do total := total * dims[i];
    FNodeTotalElements[n] := total;
-   SetLength(FNodeBuffers[n], total);
+   AllocateNodeBuffer(n, total);
 
    // Check fusion info
    act := actNone;
    pResidual := nil;
+   resTotal := total;
+   var hasResidual := False;
+   var residualBroadcast := False;
    hasFusion := (FFusionMap <> nil) and FFusionMap.TryGetValue(node, fusion);
    if hasFusion then begin
       act := fusion.Activation;
       if fusion.ResidualInput <> nil then begin
          var resIdx := FNodeToBufferIdx[fusion.ResidualInput];
-         pResidual := PDouble(Pointer(FNodeBuffers[resIdx]));
+         pResidual := FNodePtrs[resIdx];
+         resTotal := FNodeTotalElements[resIdx];
+         hasResidual := True;
+         residualBroadcast := resTotal < total;
       end;
    end;
 
    outChannels := Length(node.Bias);
    inChannels := FNodeDims[in1Idx][High(FNodeDims[in1Idx])];
-   pInput := PDouble(Pointer(FNodeBuffers[in1Idx]));
-   pRes := PDouble(Pointer(FNodeBuffers[n]));
+   pInput := FNodePtrs[in1Idx];
+   pRes := FNodePtrs[n];
    pW := PDouble(node.Weights);
    pB := PDouble(node.Bias);
 
    // Case 1: Pointwise (1x1, stride=1) -> batched pixel JIT
    if (node.KernelSize = 1) and (node.Stride = 1) then begin
-      // When residual is present, do not fuse activation into JIT;
-      // apply residual and activation after the convolution instead
-      if TKCLWin64JITBackend.Execute(FKernel, node, pInput, pRes, pW, pB, pResidual,
-            total div outChannels, inChannels, outChannels, act) then begin
+      var pOut : PDouble := pRes;
+      var pIntermediate : PDouble := nil;
+      if hasFusion and fusion.HasMultipleConsumers then begin
+         var actIdx : Integer;
+         if fusion.ActivationNode <> nil then
+            actIdx := FNodeToBufferIdx[fusion.ActivationNode]
+         else
+            actIdx := FNodeToBufferIdx[fusion.AddNode];
+         pOut := AllocateNodeBuffer(actIdx, total);
+         pIntermediate := pRes;
+      end;
+      if TKCLWin64JITBackend.Execute(FKernel, node, pInput, pOut, pW, pB, pResidual, pIntermediate,
+            total div outChannels, inChannels, outChannels, act, hasResidual, residualBroadcast) then begin
          // Alias fused nodes
          if hasFusion then begin
             if fusion.AddNode <> nil then begin
                var addIdx := FNodeToBufferIdx[fusion.AddNode];
                FNodeDims[addIdx] := FNodeDims[n];
                FNodeTotalElements[addIdx] := FNodeTotalElements[n];
-               FNodeBuffers[addIdx] := FNodeBuffers[n];
+               if not fusion.HasMultipleConsumers then begin
+                  FNodeBuffers[addIdx] := FNodeBuffers[n]; FNodePtrs[addIdx] := FNodePtrs[n];
+               end;
             end;
             if fusion.ActivationNode <> nil then begin
                var actIdx := FNodeToBufferIdx[fusion.ActivationNode];
                FNodeDims[actIdx] := FNodeDims[n];
                FNodeTotalElements[actIdx] := FNodeTotalElements[n];
-               FNodeBuffers[actIdx] := FNodeBuffers[n];
+               if not fusion.HasMultipleConsumers then begin
+                  FNodeBuffers[actIdx] := FNodeBuffers[n]; FNodePtrs[actIdx] := FNodePtrs[n];
+               end;
             end;
          end;
          Exit;
@@ -1739,8 +1919,18 @@ begin
       wFirst := (pad_left + node.Stride - 1) div node.Stride;
       wLast := (inW + pad_left - node.KernelSize) div node.Stride;
 
-      if (hFirst <= hLast) and (wFirst <= wLast) then begin
+            if (hFirst <= hLast) and (wFirst <= wLast) then begin
          var interiorW := wLast - wFirst + 1;
+         
+         var pFinalOut := pRes;
+         if hasFusion and fusion.HasMultipleConsumers then begin
+            var actIdx : Integer;
+            if fusion.ActivationNode <> nil then
+               actIdx := FNodeToBufferIdx[fusion.ActivationNode]
+            else
+               actIdx := FNodeToBufferIdx[fusion.AddNode];
+            pFinalOut := AllocateNodeBuffer(actIdx, total);
+         end;
 
          // Initialize all output with bias
          for var idx := 0 to (total div outChannels) - 1 do
@@ -1772,21 +1962,22 @@ begin
          end;
 
          var jitSupported := (cpuFMA in Win64CPUFeatures) and (cpuAVX in Win64CPUFeatures);
-         var resTotal := total;
-         if pResidual <> nil then resTotal := FNodeTotalElements[FNodeToBufferIdx[fusion.ResidualInput]];
 
          // Interior rows: JIT micro-kernel per row
          for hO := hFirst to hLast do begin
             var pInRow := pInput + ((hO * node.Stride - pad_top) * inW
                                    + (wFirst * node.Stride - pad_left)) * inChannels;
-            var pOutRow := pRes + (hO * outW + wFirst) * outChannels;
+            var pOutRow := pFinalOut + (hO * outW + wFirst) * outChannels;
+             var pIntermediateRow : PDouble := nil;
+             if pFinalOut <> pRes then pIntermediateRow := pRes + (hO * outW + wFirst) * outChannels;
             var pResRow := pResidual;
             if (pResRow <> nil) and (resTotal >= total) then
                pResRow := pResRow + (hO * outW + wFirst) * outChannels;
 
             if not TKCLWin64JITBackend.ExecuteKxK(FKernel, node,
-                  pInRow, pOutRow, pW, pB, pResRow,
-                  interiorW, inChannels, outChannels, node.KernelSize, inW, node.Stride, act) then begin
+                  pInRow, pOutRow, pW, pB, pResRow, pIntermediateRow,
+                  interiorW, inChannels, outChannels, node.KernelSize, inW, node.Stride, act,
+                  hasResidual, residualBroadcast) then begin
                // JIT unavailable - SSE2 fallback for interior
                for wO := 0 to interiorW - 1 do begin
                   var pIn1 := pInRow + wO * node.Stride * inChannels;
@@ -1810,10 +2001,23 @@ begin
                   if jitSupported and (hO >= hFirst) and (hO <= hLast) and (wO >= wFirst) and (wO <= wLast) then
                      Continue;
                   var pixelOff := (hO * outW + wO) * outChannels;
+                  
                   if pResidual <> nil then
-                     SSE2_Add(pRes + pixelOff, pResidual + (pixelOff mod resTotal), pRes + pixelOff, outChannels);
+                     SSE2_Add(pRes + pixelOff, pResidual + (pixelOff mod resTotal), pFinalOut + pixelOff, outChannels)
+                  else if pFinalOut <> pRes then
+                     SSE2_Copy(pRes + pixelOff, pFinalOut + pixelOff, outChannels);
+                     
                   if act <> actNone then
-                     ApplyActivationInPlace(pRes + pixelOff, outChannels, act);
+                     ApplyActivationInPlace(pFinalOut + pixelOff, outChannels, act);
+               end;
+            end;
+         end else if pFinalOut <> pRes then begin
+            for hO := 0 to outH - 1 do begin
+               for wO := 0 to outW - 1 do begin
+                  if jitSupported and (hO >= hFirst) and (hO <= hLast) and (wO >= wFirst) and (wO <= wLast) then
+                     Continue;
+                  var pixelOff := (hO * outW + wO) * outChannels;
+                  SSE2_Copy(pRes + pixelOff, pFinalOut + pixelOff, outChannels);
                end;
             end;
          end;
@@ -1824,20 +2028,24 @@ begin
                var addIdx := FNodeToBufferIdx[fusion.AddNode];
                FNodeDims[addIdx] := FNodeDims[n];
                FNodeTotalElements[addIdx] := FNodeTotalElements[n];
-               FNodeBuffers[addIdx] := FNodeBuffers[n];
+               if not fusion.HasMultipleConsumers then begin
+                  FNodeBuffers[addIdx] := FNodeBuffers[n]; FNodePtrs[addIdx] := FNodePtrs[n];
+               end;
             end;
             if fusion.ActivationNode <> nil then begin
                var actIdx := FNodeToBufferIdx[fusion.ActivationNode];
                FNodeDims[actIdx] := FNodeDims[n];
                FNodeTotalElements[actIdx] := FNodeTotalElements[n];
-               FNodeBuffers[actIdx] := FNodeBuffers[n];
+               if not fusion.HasMultipleConsumers then begin
+                  FNodeBuffers[actIdx] := FNodeBuffers[n]; FNodePtrs[actIdx] := FNodePtrs[n];
+               end;
             end;
          end;
          Exit;
       end;
    end;
 
-   ProcessConv2DSSE2(n, node, act, pResidual);
+   ProcessConv2DSSE2(n, node, act, pResidual, resTotal);
 
    // Alias fused nodes
    if hasFusion then begin
@@ -1845,13 +2053,17 @@ begin
          var addIdx := FNodeToBufferIdx[fusion.AddNode];
          FNodeDims[addIdx] := FNodeDims[n];
          FNodeTotalElements[addIdx] := FNodeTotalElements[n];
-         FNodeBuffers[addIdx] := FNodeBuffers[n];
+         if not fusion.HasMultipleConsumers then begin
+            FNodeBuffers[addIdx] := FNodeBuffers[n]; FNodePtrs[addIdx] := FNodePtrs[n];
+         end;
       end;
       if fusion.ActivationNode <> nil then begin
          var actIdx := FNodeToBufferIdx[fusion.ActivationNode];
          FNodeDims[actIdx] := FNodeDims[n];
          FNodeTotalElements[actIdx] := FNodeTotalElements[n];
-         FNodeBuffers[actIdx] := FNodeBuffers[n];
+         if not fusion.HasMultipleConsumers then begin
+            FNodeBuffers[actIdx] := FNodeBuffers[n]; FNodePtrs[actIdx] := FNodePtrs[n];
+         end;
       end;
    end;
 end;
@@ -1922,13 +2134,19 @@ var
    optData : TKCLOptimizationData;
    compiled : TKCLCompiledKernel;
    params : array[0..1] of Double;
+   fusion : TKCLFusionInfo;
+   hasFusion : Boolean;
+   act : TKCLActivation;
+   executed : Boolean;
 begin
-   // If this node has a fused activation, fall back to SSE2 base (which handles it)
-   if (FFusionMap <> nil) and FFusionMap.ContainsKey(node) then begin
-      FlushMapBatch;
-      inherited ProcessMap(n, node);
-      Exit;
+   hasFusion := False;
+   act := actNone;
+   if (FFusionMap <> nil) and FFusionMap.TryGetValue(node, fusion) then begin
+      hasFusion := True;
+      act := fusion.Activation;
    end;
+
+   executed := False;
 
    // Try batch path: if kernel is pre-compiled, enqueue instead of full dispatch
    optData := TKCLOptimizationData(FKernel.OptimizationData);
@@ -1941,12 +2159,18 @@ begin
             // Allocate output buffer if not yet allocated
             FNodeDims[n] := Copy(FNodeDims[in1]);
             FNodeTotalElements[n] := total;
-            if Length(FNodeBuffers[n]) < total then SetLength(FNodeBuffers[n], total);
-            p1 := PDouble(Pointer(FNodeBuffers[in1]));
-            p2 := PDouble(Pointer(FNodeBuffers[in2]));
-            pRes := PDouble(Pointer(FNodeBuffers[n]));
-            EnqueueMapBatch(compiled, p1, pRes, p2, nil, total);
-            Exit;
+            if FNodePtrs[n] = nil then AllocateNodeBuffer(n, total);
+            p1 := FNodePtrs[in1];
+            p2 := FNodePtrs[in2];
+            pRes := FNodePtrs[n];
+            var pOut : PDouble := pRes;
+            var pIntermediate : PDouble := nil;
+            if hasFusion and fusion.HasMultipleConsumers then begin
+               pOut := AllocateNodeBuffer(FNodeToBufferIdx[fusion.ActivationNode], total);
+               pIntermediate := pRes;
+            end;
+            EnqueueMapBatch(compiled, p1, pOut, p2, nil, pIntermediate, total);
+            executed := True;
          end;
       end else if (node is TKCLReLUNode) or (node is TKCLReLU6Node) or (node is TKCLHardSwishNode) then begin
          in1 := FNodeToBufferIdx[node.Inputs[0]];
@@ -1954,11 +2178,17 @@ begin
             total := FNodeTotalElements[in1];
             FNodeDims[n] := Copy(FNodeDims[in1]);
             FNodeTotalElements[n] := total;
-            if Length(FNodeBuffers[n]) < total then SetLength(FNodeBuffers[n], total);
-            p1 := PDouble(Pointer(FNodeBuffers[in1]));
-            pRes := PDouble(Pointer(FNodeBuffers[n]));
-            EnqueueMapBatch(compiled, p1, pRes, nil, nil, total);
-            Exit;
+            if FNodePtrs[n] = nil then AllocateNodeBuffer(n, total);
+            p1 := FNodePtrs[in1];
+            pRes := FNodePtrs[n];
+            var pOut : PDouble := pRes;
+            var pIntermediate : PDouble := nil;
+            if hasFusion and fusion.HasMultipleConsumers then begin
+               pOut := AllocateNodeBuffer(FNodeToBufferIdx[fusion.ActivationNode], total);
+               pIntermediate := pRes;
+            end;
+            EnqueueMapBatch(compiled, p1, pOut, nil, nil, pIntermediate, total);
+            executed := True;
          end;
       end;
       // Note: Dequantize is not batched because it requires a pointer to params
@@ -1966,47 +2196,79 @@ begin
       // It falls through to the individual dispatch path below.
    end;
 
-   // Fall back to individual JIT dispatch
-   if (node is TKCLAddNode) or (node is TKCLSubNode) or (node is TKCLMulNode) then begin
-      in1 := FNodeToBufferIdx[node.Inputs[0]];
-      in2 := FNodeToBufferIdx[node.Inputs[1]];
-      if (FNodeTotalElements[in1] > 0) and (FNodeTotalElements[in1] = FNodeTotalElements[in2]) then begin
-         total := FNodeTotalElements[in1];
-         FNodeDims[n] := Copy(FNodeDims[in1]);
-         FNodeTotalElements[n] := total;
-         if Length(FNodeBuffers[n]) < total then SetLength(FNodeBuffers[n], total);
-         p1 := PDouble(Pointer(FNodeBuffers[in1]));
-         p2 := PDouble(Pointer(FNodeBuffers[in2]));
-         pRes := PDouble(Pointer(FNodeBuffers[n]));
-         if TKCLWin64JITBackend.ExecuteMap(FKernel, node, p1, pRes, p2, nil, total) then Exit;
-      end;
-   end else if (node is TKCLReLUNode) or (node is TKCLReLU6Node) or (node is TKCLHardSwishNode) then begin
-      in1 := FNodeToBufferIdx[node.Inputs[0]];
-      if FNodeTotalElements[in1] > 0 then begin
-         total := FNodeTotalElements[in1];
-         FNodeDims[n] := Copy(FNodeDims[in1]);
-         FNodeTotalElements[n] := total;
-         if Length(FNodeBuffers[n]) < total then SetLength(FNodeBuffers[n], total);
-         p1 := PDouble(Pointer(FNodeBuffers[in1]));
-         pRes := PDouble(Pointer(FNodeBuffers[n]));
-         if TKCLWin64JITBackend.ExecuteMap(FKernel, node, p1, pRes, nil, nil, total) then Exit;
-      end;
-   end else if node is TKCLDequantizeNode then begin
-      in1 := FNodeToBufferIdx[node.Inputs[0]];
-      if FNodeTotalElements[in1] > 0 then begin
-         total := FNodeTotalElements[in1];
-         FNodeDims[n] := Copy(FNodeDims[in1]);
-         FNodeTotalElements[n] := total;
-         if Length(FNodeBuffers[n]) < total then SetLength(FNodeBuffers[n], total);
-         p1 := PDouble(Pointer(FNodeBuffers[in1]));
-         pRes := PDouble(Pointer(FNodeBuffers[n]));
-         params[0] := TKCLDequantizeNode(node).Scale;
-         params[1] := TKCLDequantizeNode(node).ZeroPoint;
-         if TKCLWin64JITBackend.ExecuteMap(FKernel, node, p1, pRes, nil, @params[0], total) then Exit;
+   if not executed then begin
+      // Fall back to individual JIT dispatch
+      if (node is TKCLAddNode) or (node is TKCLSubNode) or (node is TKCLMulNode) then begin
+         in1 := FNodeToBufferIdx[node.Inputs[0]];
+         in2 := FNodeToBufferIdx[node.Inputs[1]];
+         if (FNodeTotalElements[in1] > 0) and (FNodeTotalElements[in1] = FNodeTotalElements[in2]) then begin
+            total := FNodeTotalElements[in1];
+            FNodeDims[n] := Copy(FNodeDims[in1]);
+            FNodeTotalElements[n] := total;
+            if FNodePtrs[n] = nil then AllocateNodeBuffer(n, total);
+            p1 := FNodePtrs[in1];
+            p2 := FNodePtrs[in2];
+            pRes := FNodePtrs[n];
+                        var pOut : PDouble := pRes;
+            var pIntermediate : PDouble := nil;
+            if hasFusion and fusion.HasMultipleConsumers then begin
+               pOut := AllocateNodeBuffer(FNodeToBufferIdx[fusion.ActivationNode], total);
+               pIntermediate := pRes;
+            end;
+            if TKCLWin64JITBackend.ExecuteMap(FKernel, node, p1, pOut, p2, nil, pIntermediate, total, act) then executed := True;
+         end;
+      end else if (node is TKCLReLUNode) or (node is TKCLReLU6Node) or (node is TKCLHardSwishNode) then begin
+         in1 := FNodeToBufferIdx[node.Inputs[0]];
+         if FNodeTotalElements[in1] > 0 then begin
+            total := FNodeTotalElements[in1];
+            FNodeDims[n] := Copy(FNodeDims[in1]);
+            FNodeTotalElements[n] := total;
+            if FNodePtrs[n] = nil then AllocateNodeBuffer(n, total);
+            p1 := FNodePtrs[in1];
+            pRes := FNodePtrs[n];
+                        var pOut : PDouble := pRes;
+            var pIntermediate : PDouble := nil;
+            if hasFusion and fusion.HasMultipleConsumers then begin
+               pOut := AllocateNodeBuffer(FNodeToBufferIdx[fusion.ActivationNode], total);
+               pIntermediate := pRes;
+            end;
+            if TKCLWin64JITBackend.ExecuteMap(FKernel, node, p1, pOut, nil, nil, pIntermediate, total, act) then executed := True;
+         end;
+      end else if node is TKCLDequantizeNode then begin
+         in1 := FNodeToBufferIdx[node.Inputs[0]];
+         if FNodeTotalElements[in1] > 0 then begin
+            total := FNodeTotalElements[in1];
+            FNodeDims[n] := Copy(FNodeDims[in1]);
+            FNodeTotalElements[n] := total;
+            if FNodePtrs[n] = nil then AllocateNodeBuffer(n, total);
+            p1 := FNodePtrs[in1];
+            pRes := FNodePtrs[n];
+            params[0] := TKCLDequantizeNode(node).Scale;
+            params[1] := TKCLDequantizeNode(node).ZeroPoint;
+                        var pOut : PDouble := pRes;
+            var pIntermediate : PDouble := nil;
+            if hasFusion and fusion.HasMultipleConsumers then begin
+               pOut := AllocateNodeBuffer(FNodeToBufferIdx[fusion.ActivationNode], total);
+               pIntermediate := pRes;
+            end;
+            if TKCLWin64JITBackend.ExecuteMap(FKernel, node, p1, pOut, nil, @params[0], pIntermediate, total, act) then executed := True;
+         end;
       end;
    end;
-   FlushMapBatch;
-   inherited ProcessMap(n, node);
+
+   if executed then begin
+      if hasFusion and (fusion.ActivationNode <> nil) then begin
+         var actIdx := FNodeToBufferIdx[fusion.ActivationNode];
+         FNodeDims[actIdx] := FNodeDims[n];
+         FNodeTotalElements[actIdx] := FNodeTotalElements[n];
+         if not fusion.HasMultipleConsumers then begin
+            FNodeBuffers[actIdx] := FNodeBuffers[n]; FNodePtrs[actIdx] := FNodePtrs[n];
+         end;
+      end;
+   end else begin
+      FlushMapBatch;
+      inherited ProcessMap(n, node);
+   end;
 end;
 
 end.

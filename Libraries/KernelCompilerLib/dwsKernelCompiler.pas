@@ -206,6 +206,10 @@ type
       procedure Execute(info : TProgramInfo; var externalObject : TObject); override;
    end;
 
+   TJITCompilerDumpGraphMethod = class(TInternalMethod)
+      procedure Execute(info : TProgramInfo; var externalObject : TObject); override;
+   end;
+
    TKernelCompilerDispatchMethod = class(TInternalMagicProcedure)
    protected
       procedure ExecuteDispatch(AKernel : TKCLKernel; const ABuffers : array of TKCLStridedBufferDescriptor); virtual;
@@ -236,7 +240,7 @@ implementation
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
 
-uses dwsDynamicArrays;
+uses dwsDynamicArrays, dwsKernelCompilerBackend.JIT;
 
 type
    PInt8 = ^ShortInt;
@@ -1112,6 +1116,19 @@ begin
 end;
 
 // ------------------
+// ------------------ TJITCompilerDumpGraphMethod ------------------
+// ------------------
+
+// Execute
+//
+procedure TJITCompilerDumpGraphMethod.Execute(info : TProgramInfo; var externalObject : TObject);
+begin
+   var kernelObj : IScriptObj := info.ParamAsScriptObj[0];
+   var kernel := TKCLKernelWrapper(kernelObj.ExternalObject);
+   info.ResultAsString := TKCLWin64JITBackend.DumpGraph(kernel.FKernel);
+end;
+
+// ------------------
 // ------------------ TKernelCompilerDispatchMethod ------------------
 // ------------------
 
@@ -1241,6 +1258,7 @@ begin
    var clsJIT := TClassSymbol.Create(SYS_KCL_JITCOMPILER, clsKernelCompiler);
    unitTable.AddSymbol(clsJIT);
    TJITCompilerDispatchMethod.Create(unitTable, 'Dispatch', ['kernel', SYS_KCL_KERNEL, 'buffers', 'array of ' + SYS_KCL_STRIDEDBUFFER], '', [iffStaticMethod], clsJIT);
+   TJITCompilerDumpGraphMethod.Create(mkClassFunction, [], 'DumpGraph', ['kernel', SYS_KCL_KERNEL], 'String', clsJIT, cvPublic, unitTable, True);
    {$ENDIF}
 end;
 
