@@ -969,8 +969,6 @@ var
    p1, p2, pRes : PDouble;
    args : TDoubleDynArray;
    dims : TKCLDimensions;
-   fusion : TKCLFusionInfo;
-   hasFusion : Boolean;
 begin
    in1 := FNodeToBufferIdx[node.Inputs[0]];
    dims := Copy(FNodeDims[in1]);
@@ -1024,18 +1022,6 @@ begin
             for i := 0 to total-1 do begin args[0] := FNodeBuffers[in1][i]; args[1] := FNodeBuffers[in2][i]; pRes[i] := node.Eval(args); end;
          end;
       end else ProcessMapFallback(n, node);
-   end;
-
-   // Apply fused activation for element-wise + activation patterns
-   hasFusion := (FFusionMap <> nil) and FFusionMap.TryGetValue(node, fusion);
-   if hasFusion then begin
-      ApplyActivationInPlace(pRes, total, fusion.Activation);
-      if fusion.ActivationNode <> nil then begin
-         var actIdx := FNodeToBufferIdx[fusion.ActivationNode];
-         FNodeDims[actIdx] := FNodeDims[n];
-         FNodeTotalElements[actIdx] := FNodeTotalElements[n];
-         FNodeBuffers[actIdx] := FNodeBuffers[n];
-      end;
    end;
 end;
 
@@ -1216,10 +1202,8 @@ procedure TKCLSSE2Backend.ProcessDepthwiseConv2D(n : Integer; node : TKCLDepthwi
 var
    in1, inChannels, outH, outW, inH, inW, hO, wO, ny, nx, stepY, stepX, i : Integer;
    dims : TKCLDimensions;
-   pInput, pRes, pW, pB, pROut, pResidual : PDouble;
+   pInput, pRes, pW, pB, pROut : PDouble;
    pad_h, pad_top, pad_w, pad_left, h_in_start, w_in_start : Integer;
-   fusion : TKCLFusionInfo;
-   act : TKCLActivation;
 begin
    in1 := FNodeToBufferIdx[node.Inputs[0]];
    dims := Copy(FNodeDims[in1]);
@@ -1250,38 +1234,6 @@ begin
                end;
             end;
          end;
-      end;
-   end;
-
-   // Apply fused residual add and/or activation
-   act := actNone;
-   pResidual := nil;
-   if (FFusionMap <> nil) and FFusionMap.TryGetValue(node, fusion) then begin
-      act := fusion.Activation;
-      if fusion.ResidualInput <> nil then begin
-         var resIdx := FNodeToBufferIdx[fusion.ResidualInput];
-         pResidual := PDouble(Pointer(FNodeBuffers[resIdx]));
-      end;
-   end;
-
-   if pResidual <> nil then
-      SSE2_Add(pRes, pResidual, pRes, FNodeTotalElements[n]);
-   if act <> actNone then
-      ApplyActivationInPlace(pRes, FNodeTotalElements[n], act);
-
-   // Alias fused nodes to DepthwiseConv2D output
-   if (FFusionMap <> nil) and FFusionMap.TryGetValue(node, fusion) then begin
-      if fusion.AddNode <> nil then begin
-         var addIdx := FNodeToBufferIdx[fusion.AddNode];
-         FNodeDims[addIdx] := FNodeDims[n];
-         FNodeTotalElements[addIdx] := FNodeTotalElements[n];
-         FNodeBuffers[addIdx] := FNodeBuffers[n];
-      end;
-      if fusion.ActivationNode <> nil then begin
-         var actIdx := FNodeToBufferIdx[fusion.ActivationNode];
-         FNodeDims[actIdx] := FNodeDims[n];
-         FNodeTotalElements[actIdx] := FNodeTotalElements[n];
-         FNodeBuffers[actIdx] := FNodeBuffers[n];
       end;
    end;
 end;
@@ -1916,9 +1868,40 @@ begin
 end;
 
 procedure TKCLJITBackend.ProcessDepthwiseConv2D(n : Integer; node : TKCLDepthwiseConv2DNode);
+var
+   fusion : TKCLFusionInfo;
+   act : TKCLActivation;
+   pRes, pResidual : PDouble;
 begin
    FlushMapBatch;
    inherited;
+
+   // Apply fused residual add and/or activation
+   if (FFusionMap <> nil) and FFusionMap.TryGetValue(node, fusion) then begin
+      pRes := PDouble(Pointer(FNodeBuffers[n]));
+      act := fusion.Activation;
+
+      if fusion.ResidualInput <> nil then begin
+         pResidual := PDouble(Pointer(FNodeBuffers[FNodeToBufferIdx[fusion.ResidualInput]]));
+         SSE2_Add(pRes, pResidual, pRes, FNodeTotalElements[n]);
+      end;
+
+      if act <> actNone then
+         ApplyActivationInPlace(pRes, FNodeTotalElements[n], act);
+
+      if fusion.AddNode <> nil then begin
+         var addIdx := FNodeToBufferIdx[fusion.AddNode];
+         FNodeDims[addIdx] := FNodeDims[n];
+         FNodeTotalElements[addIdx] := FNodeTotalElements[n];
+         FNodeBuffers[addIdx] := FNodeBuffers[n];
+      end;
+      if fusion.ActivationNode <> nil then begin
+         var actIdx := FNodeToBufferIdx[fusion.ActivationNode];
+         FNodeDims[actIdx] := FNodeDims[n];
+         FNodeTotalElements[actIdx] := FNodeTotalElements[n];
+         FNodeBuffers[actIdx] := FNodeBuffers[n];
+      end;
+   end;
 end;
 
 procedure TKCLJITBackend.ProcessSoftMax(n : Integer; node : TKCLSoftMaxNode);
@@ -1953,15 +1936,31 @@ var
    optData : TKCLOptimizationData;
    compiled : TKCLCompiledKernel;
    params : array[0..1] of Double;
+   fusion : TKCLFusionInfo;
    hasFusedActivation : Boolean;
 begin
-   // Check if this node has a fused activation — if so, skip batch path
-   // and fall through to inherited which handles fusion in-place
-   hasFusedActivation := (FFusionMap <> nil) and FFusionMap.ContainsKey(node);
+   // Check if this node has a fused activation
+   hasFusedActivation := (FFusionMap <> nil) and FFusionMap.TryGetValue(node, fusion);
+
+   // For fused element-wise nodes, compute the element-wise op then apply activation
+   if hasFusedActivation then begin
+      FlushMapBatch;
+      inherited ProcessMap(n, node);
+      pRes := PDouble(Pointer(FNodeBuffers[n]));
+      total := FNodeTotalElements[n];
+      ApplyActivationInPlace(pRes, total, fusion.Activation);
+      if fusion.ActivationNode <> nil then begin
+         var actIdx := FNodeToBufferIdx[fusion.ActivationNode];
+         FNodeDims[actIdx] := FNodeDims[n];
+         FNodeTotalElements[actIdx] := FNodeTotalElements[n];
+         FNodeBuffers[actIdx] := FNodeBuffers[n];
+      end;
+      Exit;
+   end;
 
    // Try batch path: if kernel is pre-compiled, enqueue instead of full dispatch
    optData := TKCLOptimizationData(FKernel.OptimizationData);
-   if not hasFusedActivation and (optData <> nil) and optData.Prepared and optData.CompiledKernels.TryGetValue(node, compiled) then begin
+   if (optData <> nil) and optData.Prepared and optData.CompiledKernels.TryGetValue(node, compiled) then begin
       if (node is TKCLAddNode) or (node is TKCLSubNode) or (node is TKCLMulNode) then begin
          in1 := FNodeToBufferIdx[node.Inputs[0]];
          in2 := FNodeToBufferIdx[node.Inputs[1]];
@@ -1995,8 +1994,8 @@ begin
       // It falls through to the individual dispatch path below.
    end;
 
-   // Fall back to individual JIT dispatch (skip if node has fused activation)
-   if not hasFusedActivation and ((node is TKCLAddNode) or (node is TKCLSubNode) or (node is TKCLMulNode)) then begin
+   // Fall back to individual JIT dispatch
+   if (node is TKCLAddNode) or (node is TKCLSubNode) or (node is TKCLMulNode) then begin
       in1 := FNodeToBufferIdx[node.Inputs[0]];
       in2 := FNodeToBufferIdx[node.Inputs[1]];
       if (FNodeTotalElements[in1] > 0) and (FNodeTotalElements[in1] = FNodeTotalElements[in2]) then begin
