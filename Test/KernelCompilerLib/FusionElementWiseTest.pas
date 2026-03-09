@@ -1,7 +1,5 @@
 // Test: Element-wise (Add/Sub/Mul) + Activation fusion patterns
-// Verifies that standalone Add/Sub/Mul fused with ReLU/ReLU6/HardSwish
-// produces identical results to running them as separate operations.
-// This reduces the "dispatch noise" from 150+ element-wise nodes.
+// Covers standalone Add/Sub/Mul fused with ReLU/ReLU6/HardSwish.
 
 function RoundedStr(v : Float) : String;
 begin
@@ -26,8 +24,6 @@ var bi1a := TKCLStridedBuffer.Create(TKCLDataType.Float32, [1, 6, 1]);
 var bi1b := TKCLStridedBuffer.Create(TKCLDataType.Float32, [1, 6, 1]);
 var bo1 := TKCLStridedBuffer.Create(TKCLDataType.Float32, [1, 6, 1]);
 
-// a = [-3, -1, 0, 1, 3, 5], b = [1, -1, -1, 1, -1, 1]
-// add = [-2, -2, -1, 2, 2, 6], relu = [0, 0, 0, 2, 2, 6]
 var va : array of Float := [-3, -1, 0, 1, 3, 5];
 var vb : array of Float := [1, -1, -1, 1, -1, 1];
 for var i := 0 to 5 do begin
@@ -53,8 +49,6 @@ var bi2a := TKCLStridedBuffer.Create(TKCLDataType.Float32, [1, 6, 1]);
 var bi2b := TKCLStridedBuffer.Create(TKCLDataType.Float32, [1, 6, 1]);
 var bo2 := TKCLStridedBuffer.Create(TKCLDataType.Float32, [1, 6, 1]);
 
-// a = [-2, 0, 2, 4, 6, 8], b = [0, 1, 1, 1, 1, 1]
-// add = [-2, 1, 3, 5, 7, 9], relu6 = [0, 1, 3, 5, 6, 6]
 var v2a : array of Float := [-2, 0, 2, 4, 6, 8];
 var v2b : array of Float := [0, 1, 1, 1, 1, 1];
 for var i := 0 to 5 do begin
@@ -80,8 +74,6 @@ var bi3a := TKCLStridedBuffer.Create(TKCLDataType.Float32, [1, 5, 1]);
 var bi3b := TKCLStridedBuffer.Create(TKCLDataType.Float32, [1, 5, 1]);
 var bo3 := TKCLStridedBuffer.Create(TKCLDataType.Float32, [1, 5, 1]);
 
-// a = [-2, -1, 0, 2, 3], b = [3, -2, 5, 2, -1]
-// mul = [-6, 2, 0, 4, -3], relu = [0, 2, 0, 4, 0]
 var v3a : array of Float := [-2, -1, 0, 2, 3];
 var v3b : array of Float := [3, -2, 5, 2, -1];
 for var i := 0 to 4 do begin
@@ -107,13 +99,6 @@ var bi4a := TKCLStridedBuffer.Create(TKCLDataType.Float32, [1, 5, 1]);
 var bi4b := TKCLStridedBuffer.Create(TKCLDataType.Float32, [1, 5, 1]);
 var bo4 := TKCLStridedBuffer.Create(TKCLDataType.Float32, [1, 5, 1]);
 
-// a = [-5, -3, 0, 2, 5], b = [0, 0, 0, 0, 0]
-// add = [-5, -3, 0, 2, 5]
-// HS(-5) = -5 * max(0,min(6,-2))/6 = 0
-// HS(-3) = -3 * max(0,min(6,0))/6 = 0
-// HS(0) = 0 * max(0,min(6,3))/6 = 0
-// HS(2) = 2 * max(0,min(6,5))/6 = 2*5/6 = 1.6667
-// HS(5) = 5 * max(0,min(6,8))/6 = 5*6/6 = 5
 var v4a : array of Float := [-5, -3, 0, 2, 5];
 var v4b : array of Float := [0, 0, 0, 0, 0];
 for var i := 0 to 4 do begin
@@ -139,8 +124,6 @@ var bi5a := TKCLStridedBuffer.Create(TKCLDataType.Float32, [1, 4, 1]);
 var bi5b := TKCLStridedBuffer.Create(TKCLDataType.Float32, [1, 4, 1]);
 var bo5 := TKCLStridedBuffer.Create(TKCLDataType.Float32, [1, 4, 1]);
 
-// a = [1, 3, 2, 5], b = [2, 1, 4, 3]
-// sub = [-1, 2, -2, 2], relu = [0, 2, 0, 2]
 var v5a : array of Float := [1, 3, 2, 5];
 var v5b : array of Float := [2, 1, 4, 3];
 for var i := 0 to 3 do begin
@@ -168,9 +151,6 @@ var bi6b := TKCLStridedBuffer.Create(TKCLDataType.Float32, [1, 4, 1]);
 var bo6a := TKCLStridedBuffer.Create(TKCLDataType.Float32, [1, 4, 1]);
 var bo6b := TKCLStridedBuffer.Create(TKCLDataType.Float32, [1, 4, 1]);
 
-// a = [-2, 1, -3, 4], b = [1, -2, 1, -1]
-// add = [-1, -1, -2, 3]
-// relu = [0, 0, 0, 3]
 var v6a : array of Float := [-2, 1, -3, 4];
 var v6b : array of Float := [1, -2, 1, -1];
 for var i := 0 to 3 do begin
@@ -204,10 +184,6 @@ var bi7b := TKCLStridedBuffer.Create(TKCLDataType.Float32, [1, 4, 1]);
 var bi7c := TKCLStridedBuffer.Create(TKCLDataType.Float32, [1, 4, 1]);
 var bo7 := TKCLStridedBuffer.Create(TKCLDataType.Float32, [1, 4, 1]);
 
-// a = [-1, 2, 3, 1], b = [-1, 1, 1, 2]
-// add = [-2, 3, 4, 3], relu = [0, 3, 4, 3]
-// c = [2, 3, 2, 3]
-// mul = [0, 9, 8, 9], relu6 = [0, 6, 6, 6]
 var v7a : array of Float := [-1, 2, 3, 1];
 var v7b : array of Float := [-1, 1, 1, 2];
 var v7c : array of Float := [2, 3, 2, 3];

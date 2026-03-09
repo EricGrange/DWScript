@@ -1,7 +1,5 @@
 // Test: DepthwiseConv2D + Activation fusion patterns
-// Verifies that DepthwiseConv2D fused with ReLU/ReLU6/HardSwish produces
-// identical results to running them as separate operations.
-// Also tests DepthwiseConv2D + Add + Activation (residual) fusion.
+// Covers DepthwiseConv2D fused with ReLU/ReLU6/HardSwish and residual variants.
 
 function RoundedStr(v : Float) : String;
 begin
@@ -17,7 +15,6 @@ end;
 PrintLn('=== Depthwise 3x3 + ReLU ===');
 var k1 := TKCLKernel.Create;
 var in1 := k1.AddInput('in');
-// 3x3 depthwise kernel, all ones, with negative bias to create negative outputs
 var w1 : array of Float;
 w1.SetLength(9 * 2);  // 3x3 x 2 channels
 for var i := 0 to 17 do w1[i] := 1.0;
@@ -29,7 +26,6 @@ k1.MarkOutput(relu1);
 var bi1 := TKCLStridedBuffer.Create(TKCLDataType.Float32, [3, 3, 2]);
 var bo1 := TKCLStridedBuffer.Create(TKCLDataType.Float32, [3, 3, 2]);
 
-// Fill with 1.0 for both channels
 for var y := 0 to 2 do
    for var x := 0 to 2 do begin
       bi1.SetData([y, x, 0], 1.0);
@@ -38,10 +34,6 @@ for var y := 0 to 2 do
 
 TKCLKernelCompiler.Dispatch(k1, [bi1, bo1]);
 
-// Depthwise 3x3 with all-ones kernel sums the 3x3 neighborhood per channel.
-// Corner: 4 neighbors -> sum=4, bias=-5/-3 -> -1/1, ReLU -> 0/1
-// Edge: 6 neighbors -> sum=6, bias=-5/-3 -> 1/3, ReLU -> 1/3
-// Center: 9 neighbors -> sum=9, bias=-5/-3 -> 4/6, ReLU -> 4/6
 for var y := 0 to 2 do begin
    var line := '';
    for var x := 0 to 2 do begin
@@ -58,8 +50,8 @@ var in2 := k2.AddInput('in');
 var w2 : array of Float;
 w2.SetLength(9);  // 3x3 x 1 channel
 for var i := 0 to 8 do w2[i] := 2.0;
-var b2_ : array of Float := [-5.0];
-var dw2 := k2.AddDepthwiseConv2D(in2, w2, b2_, 3, 1);
+var b2 : array of Float := [-5.0];
+var dw2 := k2.AddDepthwiseConv2D(in2, w2, b2, 3, 1);
 var relu6_2 := k2.AddReLU6(dw2);
 k2.MarkOutput(relu6_2);
 
@@ -72,7 +64,6 @@ for var y := 0 to 2 do
 
 TKCLKernelCompiler.Dispatch(k2, [bi2, bo2]);
 
-// weight=2.0: corner=4*2-5=3, edge=6*2-5=7->6, center=9*2-5=13->6
 for var y := 0 to 2 do begin
    var line := '';
    for var x := 0 to 2 do begin
@@ -103,11 +94,6 @@ for var y := 0 to 2 do
 
 TKCLKernelCompiler.Dispatch(k3, [bi3, bo3]);
 
-// corner=4-4=0, edge=6-4=2, center=9-4=5
-// HardSwish(x) = x * max(0, min(6, x+3)) / 6
-// HS(0) = 0 * min(6,3)/6 = 0
-// HS(2) = 2 * min(6,5)/6 = 2*5/6 = 1.6667
-// HS(5) = 5 * min(6,8)/6 = 5*6/6 = 5
 for var y := 0 to 2 do begin
    var line := '';
    for var x := 0 to 2 do begin
@@ -139,11 +125,6 @@ for var y := 0 to 2 do
 
 TKCLKernelCompiler.Dispatch(k4, [bi4, bo4]);
 
-// dw: corner=4-8=-4, edge=6-8=-2, center=9-8=1
-// residual add: input=1 everywhere
-// corner: -4+1=-3 -> ReLU -> 0
-// edge: -2+1=-1 -> ReLU -> 0
-// center: 1+1=2 -> ReLU -> 2
 for var y := 0 to 2 do begin
    var line := '';
    for var x := 0 to 2 do begin
@@ -175,8 +156,6 @@ for var y := 0 to 2 do
 
 TKCLKernelCompiler.Dispatch(k5, [bi5, bo5]);
 
-// dw: corner=4, edge=6, center=9
-// add: corner=4+1=5, edge=6+1=7->6, center=9+1=10->6
 for var y := 0 to 2 do begin
    var line := '';
    for var x := 0 to 2 do begin

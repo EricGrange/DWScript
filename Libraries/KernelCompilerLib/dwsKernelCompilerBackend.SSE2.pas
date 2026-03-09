@@ -719,16 +719,14 @@ begin
          end;
       end;
 
-      // Detect fusion patterns for Conv2D and DepthwiseConv2D nodes
+      // Detect fusion patterns
       for i := 0 to FSortedNodes.Count - 1 do begin
          node := FSortedNodes[i];
 
-         // Patterns 1-2: Conv2D fusion
-         if node is TKCLConv2DNode then begin
-            // Check if Conv2D has exactly one consumer
+         if (node is TKCLConv2DNode) or (node is TKCLDepthwiseConv2DNode) then begin
             if not consumers.TryGetValue(node, consumer) then Continue;
 
-            // Pattern 1: Conv2D + Activation
+            // Conv/Depthwise + Activation
             act := NodeToActivation(consumer);
             if act <> actNone then begin
                fusion.Activation := act;
@@ -740,7 +738,7 @@ begin
                Continue;
             end;
 
-            // Pattern 2: Conv2D + Add + Activation
+            // Conv/Depthwise + Add + Activation
             if consumer is TKCLAddNode then begin
                var addNode := TKCLAddNode(consumer);
                var residualInput : TKCLNode;
@@ -769,54 +767,8 @@ begin
             end;
          end
 
-         // Patterns 3-4: DepthwiseConv2D fusion
-         else if node is TKCLDepthwiseConv2DNode then begin
-            if not consumers.TryGetValue(node, consumer) then Continue;
-
-            // Pattern 3: DepthwiseConv2D + Activation
-            act := NodeToActivation(consumer);
-            if act <> actNone then begin
-               fusion.Activation := act;
-               fusion.ActivationNode := consumer;
-               fusion.AddNode := nil;
-               fusion.ResidualInput := nil;
-               FFusionMap.Add(node, fusion);
-               FFusedNodes.Add(consumer, True);
-               Continue;
-            end;
-
-            // Pattern 4: DepthwiseConv2D + Add + Activation
-            if consumer is TKCLAddNode then begin
-               var addNode := TKCLAddNode(consumer);
-               var residualInput : TKCLNode;
-               if addNode.Inputs[0] = node then
-                  residualInput := addNode.Inputs[1]
-               else if addNode.Inputs[1] = node then
-                  residualInput := addNode.Inputs[0]
-               else Continue;
-
-               var resPos := FSortedNodes.IndexOf(residualInput);
-               if resPos >= i then Continue;
-
-               if not consumers.TryGetValue(addNode, addConsumer) then Continue;
-               if IsOutputNode(addNode) then Continue;
-
-               act := NodeToActivation(addConsumer);
-               if act <> actNone then begin
-                  fusion.Activation := act;
-                  fusion.ActivationNode := addConsumer;
-                  fusion.AddNode := addNode;
-                  fusion.ResidualInput := residualInput;
-                  FFusionMap.Add(node, fusion);
-                  FFusedNodes.Add(addNode, True);
-                  FFusedNodes.Add(addConsumer, True);
-               end;
-            end;
-         end
-
-         // Pattern 5: Element-wise (Add/Sub/Mul) + Activation
+         // Element-wise (Add/Sub/Mul) + Activation
          else if (node is TKCLAddNode) or (node is TKCLSubNode) or (node is TKCLMulNode) then begin
-            // Skip nodes already fused as part of a Conv2D/Depthwise residual pattern
             if FFusedNodes.ContainsKey(node) then Continue;
             if not consumers.TryGetValue(node, consumer) then Continue;
 
@@ -1870,24 +1822,19 @@ end;
 procedure TKCLJITBackend.ProcessDepthwiseConv2D(n : Integer; node : TKCLDepthwiseConv2DNode);
 var
    fusion : TKCLFusionInfo;
-   act : TKCLActivation;
-   pRes, pResidual : PDouble;
+   pRes : PDouble;
 begin
    FlushMapBatch;
    inherited;
 
-   // Apply fused residual add and/or activation
    if (FFusionMap <> nil) and FFusionMap.TryGetValue(node, fusion) then begin
       pRes := PDouble(Pointer(FNodeBuffers[n]));
-      act := fusion.Activation;
 
-      if fusion.ResidualInput <> nil then begin
-         pResidual := PDouble(Pointer(FNodeBuffers[FNodeToBufferIdx[fusion.ResidualInput]]));
-         SSE2_Add(pRes, pResidual, pRes, FNodeTotalElements[n]);
-      end;
+      if fusion.ResidualInput <> nil then
+         SSE2_Add(pRes, PDouble(Pointer(FNodeBuffers[FNodeToBufferIdx[fusion.ResidualInput]])), pRes, FNodeTotalElements[n]);
 
-      if act <> actNone then
-         ApplyActivationInPlace(pRes, FNodeTotalElements[n], act);
+      if fusion.Activation <> actNone then
+         ApplyActivationInPlace(pRes, FNodeTotalElements[n], fusion.Activation);
 
       if fusion.AddNode <> nil then begin
          var addIdx := FNodeToBufferIdx[fusion.AddNode];
