@@ -719,54 +719,115 @@ begin
          end;
       end;
 
-      // Detect fusion patterns for Conv2D nodes
+      // Detect fusion patterns for Conv2D and DepthwiseConv2D nodes
       for i := 0 to FSortedNodes.Count - 1 do begin
          node := FSortedNodes[i];
-         if not (node is TKCLConv2DNode) then Continue;
 
-         // Check if Conv2D has exactly one consumer
-         if not consumers.TryGetValue(node, consumer) then Continue;
+         // Patterns 1-2: Conv2D fusion
+         if node is TKCLConv2DNode then begin
+            // Check if Conv2D has exactly one consumer
+            if not consumers.TryGetValue(node, consumer) then Continue;
 
-         // Pattern 1: Conv2D + Activation
-         act := NodeToActivation(consumer);
-         if act <> actNone then begin
-            fusion.Activation := act;
-            fusion.ActivationNode := consumer;
-            fusion.AddNode := nil;
-            fusion.ResidualInput := nil;
-            FFusionMap.Add(node, fusion);
-            FFusedNodes.Add(consumer, True);
-            Continue;
-         end;
-
-         // Pattern 2: Conv2D + Add + Activation
-         if consumer is TKCLAddNode then begin
-            // Determine which Add input is the Conv2D and which is the residual
-            var addNode := TKCLAddNode(consumer);
-            var residualInput : TKCLNode;
-            if addNode.Inputs[0] = node then
-               residualInput := addNode.Inputs[1]
-            else if addNode.Inputs[1] = node then
-               residualInput := addNode.Inputs[0]
-            else Continue;
-
-            // Residual must be computed before the Conv2D in topological order
-            var resPos := FSortedNodes.IndexOf(residualInput);
-            if resPos >= i then Continue;
-
-            // The Add must also be a single-use node (not an output itself)
-            if not consumers.TryGetValue(addNode, addConsumer) then Continue;
-            if IsOutputNode(addNode) then Continue;
-
-            act := NodeToActivation(addConsumer);
+            // Pattern 1: Conv2D + Activation
+            act := NodeToActivation(consumer);
             if act <> actNone then begin
                fusion.Activation := act;
-               fusion.ActivationNode := addConsumer;
-               fusion.AddNode := addNode;
-               fusion.ResidualInput := residualInput;
+               fusion.ActivationNode := consumer;
+               fusion.AddNode := nil;
+               fusion.ResidualInput := nil;
                FFusionMap.Add(node, fusion);
-               FFusedNodes.Add(addNode, True);
-               FFusedNodes.Add(addConsumer, True);
+               FFusedNodes.Add(consumer, True);
+               Continue;
+            end;
+
+            // Pattern 2: Conv2D + Add + Activation
+            if consumer is TKCLAddNode then begin
+               var addNode := TKCLAddNode(consumer);
+               var residualInput : TKCLNode;
+               if addNode.Inputs[0] = node then
+                  residualInput := addNode.Inputs[1]
+               else if addNode.Inputs[1] = node then
+                  residualInput := addNode.Inputs[0]
+               else Continue;
+
+               var resPos := FSortedNodes.IndexOf(residualInput);
+               if resPos >= i then Continue;
+
+               if not consumers.TryGetValue(addNode, addConsumer) then Continue;
+               if IsOutputNode(addNode) then Continue;
+
+               act := NodeToActivation(addConsumer);
+               if act <> actNone then begin
+                  fusion.Activation := act;
+                  fusion.ActivationNode := addConsumer;
+                  fusion.AddNode := addNode;
+                  fusion.ResidualInput := residualInput;
+                  FFusionMap.Add(node, fusion);
+                  FFusedNodes.Add(addNode, True);
+                  FFusedNodes.Add(addConsumer, True);
+               end;
+            end;
+         end
+
+         // Patterns 3-4: DepthwiseConv2D fusion
+         else if node is TKCLDepthwiseConv2DNode then begin
+            if not consumers.TryGetValue(node, consumer) then Continue;
+
+            // Pattern 3: DepthwiseConv2D + Activation
+            act := NodeToActivation(consumer);
+            if act <> actNone then begin
+               fusion.Activation := act;
+               fusion.ActivationNode := consumer;
+               fusion.AddNode := nil;
+               fusion.ResidualInput := nil;
+               FFusionMap.Add(node, fusion);
+               FFusedNodes.Add(consumer, True);
+               Continue;
+            end;
+
+            // Pattern 4: DepthwiseConv2D + Add + Activation
+            if consumer is TKCLAddNode then begin
+               var addNode := TKCLAddNode(consumer);
+               var residualInput : TKCLNode;
+               if addNode.Inputs[0] = node then
+                  residualInput := addNode.Inputs[1]
+               else if addNode.Inputs[1] = node then
+                  residualInput := addNode.Inputs[0]
+               else Continue;
+
+               var resPos := FSortedNodes.IndexOf(residualInput);
+               if resPos >= i then Continue;
+
+               if not consumers.TryGetValue(addNode, addConsumer) then Continue;
+               if IsOutputNode(addNode) then Continue;
+
+               act := NodeToActivation(addConsumer);
+               if act <> actNone then begin
+                  fusion.Activation := act;
+                  fusion.ActivationNode := addConsumer;
+                  fusion.AddNode := addNode;
+                  fusion.ResidualInput := residualInput;
+                  FFusionMap.Add(node, fusion);
+                  FFusedNodes.Add(addNode, True);
+                  FFusedNodes.Add(addConsumer, True);
+               end;
+            end;
+         end
+
+         // Pattern 5: Element-wise (Add/Sub/Mul) + Activation
+         else if (node is TKCLAddNode) or (node is TKCLSubNode) or (node is TKCLMulNode) then begin
+            // Skip nodes already fused as part of a Conv2D/Depthwise residual pattern
+            if FFusedNodes.ContainsKey(node) then Continue;
+            if not consumers.TryGetValue(node, consumer) then Continue;
+
+            act := NodeToActivation(consumer);
+            if act <> actNone then begin
+               fusion.Activation := act;
+               fusion.ActivationNode := consumer;
+               fusion.AddNode := nil;
+               fusion.ResidualInput := nil;
+               FFusionMap.Add(node, fusion);
+               FFusedNodes.Add(consumer, True);
             end;
          end;
       end;
@@ -908,6 +969,8 @@ var
    p1, p2, pRes : PDouble;
    args : TDoubleDynArray;
    dims : TKCLDimensions;
+   fusion : TKCLFusionInfo;
+   hasFusion : Boolean;
 begin
    in1 := FNodeToBufferIdx[node.Inputs[0]];
    dims := Copy(FNodeDims[in1]);
@@ -961,6 +1024,18 @@ begin
             for i := 0 to total-1 do begin args[0] := FNodeBuffers[in1][i]; args[1] := FNodeBuffers[in2][i]; pRes[i] := node.Eval(args); end;
          end;
       end else ProcessMapFallback(n, node);
+   end;
+
+   // Apply fused activation for element-wise + activation patterns
+   hasFusion := (FFusionMap <> nil) and FFusionMap.TryGetValue(node, fusion);
+   if hasFusion then begin
+      ApplyActivationInPlace(pRes, total, fusion.Activation);
+      if fusion.ActivationNode <> nil then begin
+         var actIdx := FNodeToBufferIdx[fusion.ActivationNode];
+         FNodeDims[actIdx] := FNodeDims[n];
+         FNodeTotalElements[actIdx] := FNodeTotalElements[n];
+         FNodeBuffers[actIdx] := FNodeBuffers[n];
+      end;
    end;
 end;
 
@@ -1141,8 +1216,10 @@ procedure TKCLSSE2Backend.ProcessDepthwiseConv2D(n : Integer; node : TKCLDepthwi
 var
    in1, inChannels, outH, outW, inH, inW, hO, wO, ny, nx, stepY, stepX, i : Integer;
    dims : TKCLDimensions;
-   pInput, pRes, pW, pB, pROut : PDouble;
+   pInput, pRes, pW, pB, pROut, pResidual : PDouble;
    pad_h, pad_top, pad_w, pad_left, h_in_start, w_in_start : Integer;
+   fusion : TKCLFusionInfo;
+   act : TKCLActivation;
 begin
    in1 := FNodeToBufferIdx[node.Inputs[0]];
    dims := Copy(FNodeDims[in1]);
@@ -1173,6 +1250,38 @@ begin
                end;
             end;
          end;
+      end;
+   end;
+
+   // Apply fused residual add and/or activation
+   act := actNone;
+   pResidual := nil;
+   if (FFusionMap <> nil) and FFusionMap.TryGetValue(node, fusion) then begin
+      act := fusion.Activation;
+      if fusion.ResidualInput <> nil then begin
+         var resIdx := FNodeToBufferIdx[fusion.ResidualInput];
+         pResidual := PDouble(Pointer(FNodeBuffers[resIdx]));
+      end;
+   end;
+
+   if pResidual <> nil then
+      SSE2_Add(pRes, pResidual, pRes, FNodeTotalElements[n]);
+   if act <> actNone then
+      ApplyActivationInPlace(pRes, FNodeTotalElements[n], act);
+
+   // Alias fused nodes to DepthwiseConv2D output
+   if (FFusionMap <> nil) and FFusionMap.TryGetValue(node, fusion) then begin
+      if fusion.AddNode <> nil then begin
+         var addIdx := FNodeToBufferIdx[fusion.AddNode];
+         FNodeDims[addIdx] := FNodeDims[n];
+         FNodeTotalElements[addIdx] := FNodeTotalElements[n];
+         FNodeBuffers[addIdx] := FNodeBuffers[n];
+      end;
+      if fusion.ActivationNode <> nil then begin
+         var actIdx := FNodeToBufferIdx[fusion.ActivationNode];
+         FNodeDims[actIdx] := FNodeDims[n];
+         FNodeTotalElements[actIdx] := FNodeTotalElements[n];
+         FNodeBuffers[actIdx] := FNodeBuffers[n];
       end;
    end;
 end;
@@ -1844,10 +1953,15 @@ var
    optData : TKCLOptimizationData;
    compiled : TKCLCompiledKernel;
    params : array[0..1] of Double;
+   hasFusedActivation : Boolean;
 begin
+   // Check if this node has a fused activation — if so, skip batch path
+   // and fall through to inherited which handles fusion in-place
+   hasFusedActivation := (FFusionMap <> nil) and FFusionMap.ContainsKey(node);
+
    // Try batch path: if kernel is pre-compiled, enqueue instead of full dispatch
    optData := TKCLOptimizationData(FKernel.OptimizationData);
-   if (optData <> nil) and optData.Prepared and optData.CompiledKernels.TryGetValue(node, compiled) then begin
+   if not hasFusedActivation and (optData <> nil) and optData.Prepared and optData.CompiledKernels.TryGetValue(node, compiled) then begin
       if (node is TKCLAddNode) or (node is TKCLSubNode) or (node is TKCLMulNode) then begin
          in1 := FNodeToBufferIdx[node.Inputs[0]];
          in2 := FNodeToBufferIdx[node.Inputs[1]];
@@ -1881,8 +1995,8 @@ begin
       // It falls through to the individual dispatch path below.
    end;
 
-   // Fall back to individual JIT dispatch
-   if (node is TKCLAddNode) or (node is TKCLSubNode) or (node is TKCLMulNode) then begin
+   // Fall back to individual JIT dispatch (skip if node has fused activation)
+   if not hasFusedActivation and ((node is TKCLAddNode) or (node is TKCLSubNode) or (node is TKCLMulNode)) then begin
       in1 := FNodeToBufferIdx[node.Inputs[0]];
       in2 := FNodeToBufferIdx[node.Inputs[1]];
       if (FNodeTotalElements[in1] > 0) and (FNodeTotalElements[in1] = FNodeTotalElements[in2]) then begin
