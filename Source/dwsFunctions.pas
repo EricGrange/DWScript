@@ -170,6 +170,7 @@ type
          procedure UnLock;
 
          procedure AddInternalFunction(rif : Pointer);
+         procedure RemoveInternalFunction(const funcName : String);
          procedure AddSymbolsRegistrationProc(proc : TSymbolsRegistrationProc);
          procedure AddOperatorsRegistrationProc(proc : TOperatorsRegistrationProc);
 
@@ -213,6 +214,7 @@ procedure RegisterInternalFunction(InternalFunctionClass: TInternalFunctionClass
       const FuncType: String; const flags : TInternalFunctionFlags = [];
       const helperName : String = '';
       const deprecatedMsg : String = '');
+procedure UnregisterInternalFunction(const funcName: String);
 procedure RegisterInternalProcedure(InternalFunctionClass: TInternalFunctionClass;
       const FuncName: String; const FuncParams: array of String;
       const helperName : String = ''; const flags : TInternalFunctionFlags = []);
@@ -366,6 +368,14 @@ begin
    end;
 
    dwsInternalUnit.AddInternalFunction(rif);
+end;
+
+// UnregisterInternalFunction
+//
+procedure UnregisterInternalFunction(const funcName : String);
+begin
+   if Assigned(vInternalUnit) then
+      vInternalUnit.RemoveInternalFunction(funcName);
 end;
 
 // RegisterInternalProcedure
@@ -750,6 +760,21 @@ end;
 procedure TInternalUnit.AddInternalFunction(rif: Pointer);
 begin
    FRegisteredInternalFunctions.Add(rif);
+   ReleaseStaticSymbols;
+end;
+
+// RemoveInternalFunction
+//
+procedure TInternalUnit.RemoveInternalFunction(const funcName: String);
+begin
+   for var i := FRegisteredInternalFunctions.Count - 1 downto 0 do begin
+      var rif := PRegisteredInternalFunction(FRegisteredInternalFunctions[i]);
+      if UnicodeSameText(rif.FuncName, funcName) then begin
+         Dispose(rif);
+         FRegisteredInternalFunctions.Delete(i);
+      end;
+   end;
+   ReleaseStaticSymbols;
 end;
 
 // _AddRef

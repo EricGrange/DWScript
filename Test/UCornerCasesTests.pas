@@ -35,6 +35,8 @@ type
          procedure InvalidAddUnit;
 
       published
+         procedure RegisterUnregisterInternalFunction;
+
          procedure TokenizerErrorTransition;
 
          procedure ReleaseCompilerBeforeProg;
@@ -255,6 +257,34 @@ procedure TCornerCasesTests.TearDown;
 begin
    FUnit.Free;
    FCompiler.Free;
+end;
+
+// RegisterUnregisterInternalFunction
+//
+procedure TCornerCasesTests.RegisterUnregisterInternalFunction;
+const
+   cFuncName = 'DummyInternalFunctionToTestUnregister';
+var
+   prog : IdwsProgram;
+begin
+   // 1. Compile without the internal registered (check compile fail)
+   prog := FCompiler.Compile(cFuncName + '();');
+   CheckTrue(prog.Msgs.Count > 0, 'Should fail to compile before registration. Msgs: ' + prog.Msgs.AsInfo);
+
+   // 2. Add the internal & compile (check compile pass)
+   RegisterInternalProcedure(TInternalFunction, cFuncName, []);
+   try
+      prog := FCompiler.Compile(cFuncName + '();');
+      CheckEquals(0, prog.Msgs.Count, 'Should compile after registration. Msgs: ' + prog.Msgs.AsInfo);
+
+      // 3. Deregister the internal (check compile fails)
+      UnregisterInternalFunction(cFuncName);
+      prog := FCompiler.Compile(cFuncName + '();');
+      CheckTrue(prog.Msgs.Count > 0, 'Should fail to compile after unregistration. Msgs: ' + prog.Msgs.AsInfo);
+   finally
+      // Cleanup in case of failure
+      UnregisterInternalFunction(cFuncName);
+   end;
 end;
 
 // TokenizerErrorTransition
