@@ -359,6 +359,9 @@ begin
       exec.Debugger := profiler;
       exec.ExecuteParam(params);
 
+      if exec.Msgs.HasErrors then
+         ExitCode := 1;
+
       Writeln('Profiling results:');
       WriteProfileReport(profiler.Samplings);
       
@@ -403,8 +406,11 @@ begin
 
       exec:=prog.ExecuteParam(params);
       Writeln(exec.Result.ToString);
-      if exec.Msgs.Count>0 then
+      if exec.Msgs.Count>0 then begin
          Writeln(exec.Msgs.AsInfo);
+         if exec.Msgs.HasErrors then
+            ExitCode:=1;
+      end;
       
    finally
       exec:=nil;
