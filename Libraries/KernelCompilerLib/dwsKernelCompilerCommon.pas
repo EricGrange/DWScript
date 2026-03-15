@@ -27,8 +27,11 @@ uses
    dwsUtils, dwsXPlatform;
 
 type
-   TKCLDataType = (dtInt8, dtFloat16, dtFloat32);
+   TKCLDataType = (dtInt8, dtFloat16, dtFloat32, dtFloat64);
    TKCLDimensions = TArray<Integer>;
+
+   TSingleDynArray = TArray<Single>;
+   TDoubleDynArray = TArray<Double>;
 
    THalfFloat = Word;
    PHalfFloat = ^THalfFloat;
@@ -289,7 +292,8 @@ implementation
 //
 function HalfToFloat(h : THalfFloat) : Single;
 var
-   s, e, m : Cardinal;
+   s, m : Cardinal;
+   e : Integer;
    res : Cardinal;
 begin
    s := (h shr 15) and $00000001;
@@ -308,14 +312,14 @@ begin
          end;
          Inc(e);
          m := m and $000003FF;
-         res := (s shl 31) or ((e + 127 - 15) shl 23) or (m shl 13);
+         res := (s shl 31) or (Cardinal(e + 112) shl 23) or (m shl 13);
       end;
    end else if e = 31 then begin
       // Positive or negative infinity or NaN
       res := (s shl 31) or ($FF shl 23) or (m shl 13);
    end else begin
       // Normalized number
-      res := (s shl 31) or ((e + 127 - 15) shl 23) or (m shl 13);
+      res := (s shl 31) or (Cardinal(e + 112) shl 23) or (m shl 13);
    end;
    Result := PSingle(@res)^;
 end;
@@ -513,7 +517,7 @@ function TKCLExpNode.Eval(const AInputs : TDoubleDynArray) : Double; begin Resul
 
 // Eval
 //
-function TKCLLogNode.Eval(const AInputs : TDoubleDynArray) : Double; begin if AInputs[0] > 0 then Result := LogN(2.718281828459, AInputs[0]) else Result := -1e30; end;
+function TKCLLogNode.Eval(const AInputs : TDoubleDynArray) : Double; begin if AInputs[0] > 0 then Result := Ln(AInputs[0]) else Result := -1e30; end;
 
 // ------------------
 // ------------------ TKCLPowerNode ------------------

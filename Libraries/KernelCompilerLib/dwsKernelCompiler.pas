@@ -27,7 +27,7 @@ uses
    System.Classes, System.SysUtils, System.Variants, System.Math,
    dwsXPlatform, dwsUtils, dwsStrings,
    dwsFunctions, dwsSymbols, dwsExprs, dwsUnitSymbols, dwsComp,
-   dwsMagicExprs, dwsExprList, dwsByteBuffer,
+   dwsMagicExprs, dwsExprList, dwsByteBuffer, dwsCompilerContext,
    dwsKernelCompilerCommon, dwsKernelCompilerBackend.Reference
 {$IFDEF WIN64_ASM}
    , dwsKernelCompilerBackend.SSE2
@@ -87,6 +87,10 @@ type
    end;
 
    TStridedBufferSetBulkDataMethod = class(TInternalMethod)
+      procedure Execute(info : TProgramInfo; var externalObject : TObject); override;
+   end;
+
+   TStridedBufferDimensionsMethod = class(TInternalMethod)
       procedure Execute(info : TProgramInfo; var externalObject : TObject); override;
    end;
 
@@ -206,9 +210,16 @@ type
       procedure Execute(info : TProgramInfo; var externalObject : TObject); override;
    end;
 
+   {$IFDEF WIN64_ASM}
    TJITCompilerDumpGraphMethod = class(TInternalMethod)
       procedure Execute(info : TProgramInfo; var externalObject : TObject); override;
    end;
+
+   TJITCompilerPrepareGraphMethod = class(TInternalMethod)
+   public
+      procedure Execute(info : TProgramInfo; var externalObject : TObject); override;
+   end;
+   {$ENDIF}
 
    TKernelCompilerDispatchMethod = class(TInternalMagicProcedure)
    protected
@@ -240,7 +251,11 @@ implementation
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
 
-uses dwsDynamicArrays, dwsKernelCompilerBackend.JIT;
+uses dwsDynamicArrays
+{$IFDEF WIN64_ASM}
+   , dwsKernelCompilerBackend.JIT
+{$ENDIF}
+   ;
 
 type
    PInt8 = ^ShortInt;
@@ -402,6 +417,24 @@ begin
          end;
       end;
    end;
+end;
+
+// ------------------
+// ------------------ TStridedBufferDimensionsMethod ------------------
+// ------------------
+
+// Execute
+//
+procedure TStridedBufferDimensionsMethod.Execute(info : TProgramInfo; var externalObject : TObject);
+begin
+   var wrapper := TKCLStridedBufferWrapper(externalObject);
+   var rank := Length(wrapper.FDescriptor.Dimensions);
+   var resArr : IScriptDynArray;
+   CreateNewDynamicArray(info.CompilerContext.TypInteger, resArr);
+   resArr.ArrayLength := rank;
+   for var i := 0 to rank - 1 do
+      resArr.AsInteger[i] := wrapper.FDescriptor.Dimensions[i];
+   info.ResultAsVariant := resArr;
 end;
 
 // ------------------
@@ -1115,6 +1148,32 @@ begin
    wrapper.FKernel.MarkOutput(node.FNode);
 end;
 
+{$IFDEF WIN64_ASM}
+// ------------------
+// ------------------ TJITCompilerPrepareGraphMethod ------------------
+// ------------------
+
+// Execute
+//
+procedure TJITCompilerPrepareGraphMethod.Execute(info : TProgramInfo; var externalObject : TObject);
+begin
+   var kernelObj : IScriptObj := info.ParamAsScriptObj[0];
+   var kernel := TKCLKernelWrapper(kernelObj.ExternalObject);
+   var argBuffers := info.ParamAsScriptDynArray[1];
+   var count := argBuffers.ArrayLength;
+   var buffers : array of TKCLStridedBufferDescriptor; SetLength(buffers, count);
+   for var i := 0 to count - 1 do begin
+      var bufUnk : IUnknown; argBuffers.EvalAsInterface(i, bufUnk);
+      var bufObj : IScriptObj; bufUnk.QueryInterface(IScriptObj, bufObj);
+      buffers[i] := TKCLStridedBufferWrapper(bufObj.ExternalObject).Descriptor;
+   end;
+
+   var backend := TKCLJITBackend.Create;
+   try
+      backend.Prepare(kernel.FKernel, buffers);
+   finally backend.Free; end;
+end;
+
 // ------------------
 // ------------------ TJITCompilerDumpGraphMethod ------------------
 // ------------------
@@ -1127,6 +1186,7 @@ begin
    var kernel := TKCLKernelWrapper(kernelObj.ExternalObject);
    info.ResultAsString := TKCLWin64JITBackend.DumpGraph(kernel.FKernel);
 end;
+{$ENDIF}
 
 // ------------------
 // ------------------ TKernelCompilerDispatchMethod ------------------
@@ -1197,6 +1257,7 @@ begin
    typDataType.AddElement(TElementSymbol.Create('Int8', typDataType, Ord(dtInt8), False));
    typDataType.AddElement(TElementSymbol.Create('Float16', typDataType, Ord(dtFloat16), False));
    typDataType.AddElement(TElementSymbol.Create('Float32', typDataType, Ord(dtFloat32), False));
+   typDataType.AddElement(TElementSymbol.Create('Float64', typDataType, Ord(dtFloat64), False));
 
    var clsStridedBuffer := TClassSymbol.Create(SYS_KCL_STRIDEDBUFFER, systemTable.TypTObject);
    clsStridedBuffer.OnObjectDestroy := cleanupEvent;
@@ -1220,6 +1281,7 @@ begin
    TStridedBufferSetDataMethod.Create(mkProcedure, [], 'SetData', ['indices', 'array of Integer', 'value', 'Float'], '', clsStridedBuffer, cvPublic, unitTable, True);
    TStridedBufferSetBulkDataMethod.Create(mkProcedure, [], 'SetData', ['source', 'ByteBuffer', 'srcOffset', 'Integer', 'elementCount', 'Integer', 'dataType', SYS_KCL_DATATYPE], '', clsStridedBuffer, cvPublic, unitTable, True);
    TStridedBufferSetArrayDataMethod.Create(mkProcedure, [], 'SetData', ['source', 'array of Float'], '', clsStridedBuffer, cvPublic, unitTable, True);
+   TStridedBufferDimensionsMethod.Create(mkFunction, [], 'Dimensions', [], 'array of Integer', clsStridedBuffer, cvPublic, unitTable, True);
    TStridedBufferGetDataMethod.Create(mkFunction, [], 'GetData', ['indices', 'array of Integer'], 'Float', clsStridedBuffer, cvPublic, unitTable, True);
    TStridedBufferGetBulkDataMethod.Create(mkProcedure, [], 'GetData', ['dest', 'ByteBuffer', 'destOffset', 'Integer', 'elementCount', 'Integer', 'dataType', SYS_KCL_DATATYPE], '', clsStridedBuffer, cvPublic, unitTable, True);
    TStridedBufferGetArrayDataMethod.Create(mkProcedure, [], 'GetData', ['var dest', 'array of Float'], '', clsStridedBuffer, cvPublic, unitTable, True);
@@ -1258,6 +1320,7 @@ begin
    var clsJIT := TClassSymbol.Create(SYS_KCL_JITCOMPILER, clsKernelCompiler);
    unitTable.AddSymbol(clsJIT);
    TJITCompilerDispatchMethod.Create(unitTable, 'Dispatch', ['kernel', SYS_KCL_KERNEL, 'buffers', 'array of ' + SYS_KCL_STRIDEDBUFFER], '', [iffStaticMethod], clsJIT);
+   TJITCompilerPrepareGraphMethod.Create(mkClassProcedure, [], 'PrepareGraph', ['kernel', SYS_KCL_KERNEL, 'buffers', 'array of ' + SYS_KCL_STRIDEDBUFFER], '', clsJIT, cvPublic, unitTable, True);
    TJITCompilerDumpGraphMethod.Create(mkClassFunction, [], 'DumpGraph', ['kernel', SYS_KCL_KERNEL], 'String', clsJIT, cvPublic, unitTable, True);
    {$ENDIF}
 end;
