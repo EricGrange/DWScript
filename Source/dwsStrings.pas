@@ -96,6 +96,8 @@ const
   SWI_REGION = 'REGION';
   SWI_ENDREGION = 'ENDREGION';
   SWI_CODEGEN = 'CODEGEN';
+  SWI_PUSH = 'PUSH';
+  SWI_POP = 'POP';
 
   // COMPILER ERRORS
   //
@@ -465,6 +467,7 @@ const
   CPE_ConstantCannotBeWrittenTo = 'Constant "%s" cannot be written to';
 
   CPE_CompilerSwitchUnknown = 'Compiler switch "%s" unknown';
+  CPE_UnbalancedPushPop = 'Unbalanced PUSH/POP compiler directives';
 
   CPE_FlagEnumerationCantHaveUserValues = 'Flags enumerations cannot have user values';
   CPE_EnumerationElementOverflow = 'Enumeration element overflow';

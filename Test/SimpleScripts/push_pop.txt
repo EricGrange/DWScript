@@ -1,0 +1,9 @@
+Errors >>>>
+Hint: H1 [line: 1, column: 3]
+Warning: W1 [line: 2, column: 3]
+Hint: H2 [line: 11, column: 3]
+Warning: W2 [line: 12, column: 3]
+Warning: W3 [line: 22, column: 3]
+Hint: H3 [line: 25, column: 3]
+Warning: W4 [line: 26, column: 3]
+Result >>>>

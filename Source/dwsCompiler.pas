@@ -187,7 +187,13 @@ type
                          siHint, siHints, siWarning, siWarnings,
                          siError, siFatal,
                          siRegion, siEndRegion,
-                         siCodeGen );
+                         siCodeGen,
+                         siPush, siPop );
+
+   TdwsCompilerPushPopState = record
+      HintsLevel : TdwsHintsLevel;
+      WarningsDisabled : Boolean;
+   end;
 
    TLoopExitable = (leNotExitable, leBreak, leExit);
 
@@ -362,6 +368,7 @@ type
          FStringListPool : TSimpleStringListPool;
          FDefaultConditionals : IAutoStrings;
          FGenericSymbol : TSimpleStack<TGenericSymbol>;
+         FPushPopStack : TSimpleStack<TdwsCompilerPushPopState>;
 
          // if set we're in a setter write expression or statement
          FPendingSetterValueExpr : TVarExpr;
@@ -899,7 +906,8 @@ const
       SWI_IFDEF, SWI_IFNDEF, SWI_IF, SWI_ENDIF, SWI_ELSE,
       SWI_HINT, SWI_HINTS, SWI_WARNING, SWI_WARNINGS, SWI_ERROR, SWI_FATAL,
       SWI_REGION, SWI_ENDREGION,
-      SWI_CODEGEN
+      SWI_CODEGEN,
+      SWI_PUSH, SWI_POP
       );
 
    cAssignmentTokens : TTokenTypes = [ttASSIGN, ttPLUS_ASSIGN, ttMINUS_ASSIGN,
@@ -1236,12 +1244,14 @@ begin
    FExec:=TdwsCompilerExecution.Create(stackParams, Self);
 
    FGenericSymbol := TSimpleStack<TGenericSymbol>.Create;
+   FPushPopStack := TSimpleStack<TdwsCompilerPushPopState>.Create;
 end;
 
 // Destroy
 //
 destructor TdwsCompiler.Destroy;
 begin
+   FPushPopStack.Free;
    FGenericSymbol.Free;
 
    FPendingAttributes.Free;
@@ -1640,6 +1650,7 @@ begin
    FLoopExprs.Clear;
    FLoopExitable.Clear;
    FFinallyExprs.Clear;
+   FPushPopStack.Clear;
 end;
 
 // Compile
@@ -12808,6 +12819,24 @@ begin
       siRegion, siEndRegion : begin
 
          SkipUntilToken(ttCRIGHT);
+
+      end;
+      siPush : begin
+
+         var state : TdwsCompilerPushPopState;
+         state.HintsLevel := FMsgs.HintsLevel;
+         state.WarningsDisabled := FMsgs.WarningsDisabled;
+         FPushPopStack.Push(state);
+
+      end;
+      siPop : begin
+
+         if FPushPopStack.Count > 0 then begin
+            var state := FPushPopStack.Peek;
+            FPushPopStack.Pop;
+            FMsgs.HintsLevel := state.HintsLevel;
+            FMsgs.WarningsDisabled := state.WarningsDisabled;
+         end else FMsgs.AddCompilerError(switchPos, CPE_UnbalancedPushPop);
 
       end;
    end;
