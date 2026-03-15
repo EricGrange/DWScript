@@ -90,7 +90,16 @@ type
          procedure _vhigh_reg_vex;
          procedure _vfma;
          procedure _vzeroupper;
+         procedure _vzeroall;
          procedure _vpround;
+         procedure _shufps;
+         procedure _vfmadd231;
+         procedure _vmulps_ptr_reg;
+         procedure _shl_rax_cl;
+         procedure _imul;
+         procedure _cqo;
+         procedure _vmovshdup_hlps;
+         procedure _vextract128;
    end;
 
 // ------------------------------------------------------------------
@@ -1366,6 +1375,7 @@ begin
    FStream._set_al_flags(NegateBoolFlags(flagsO));
    FStream._set_al_flags(NegateBoolFlags(flagsP));
    FStream._set_al_flags(NegateBoolFlags(flagsS));
+   FStream._test_al_al;
 
    CheckEquals( 'setbe al'#13#10
                +'setb al'#13#10
@@ -1383,6 +1393,7 @@ begin
                +'setno al'#13#10
                +'setnp al'#13#10
                +'setns al'#13#10
+               +'test al, al'#13#10
                , DisasmStream);
 end;
 
@@ -1732,6 +1743,7 @@ begin
    FStream._vaddpd(ymm8, ymm9, ymm10);
    FStream._vmulpd(ymm15, ymm0, ymm9);
    FStream._vsubpd(ymm2, ymm11, ymm13);
+   FStream._vmulsd(xmm0, xmm1, xmm2);
    CheckEquals(  ''
                + 'vxorpd ymm0, ymm1, ymm2'#13#10
                + 'vaddpd ymm8, ymm9, ymm10'#13#10
@@ -1742,6 +1754,7 @@ begin
                + 'vaddpd ymm8, ymm9, ymm10'#13#10
                + 'vmulpd ymm15, ymm0, ymm9'#13#10
                + 'vsubpd ymm2, ymm11, ymm13'#13#10
+               + 'vmulsd xmm0, xmm1, xmm2'#13#10
                , DisasmStream);
 end;
 
@@ -1759,6 +1772,17 @@ begin
    FStream._vaddps(ymm8, ymm9, ymm10);
    FStream._vmulps(ymm15, ymm0, ymm9);
    FStream._vmaxps(ymm8, ymm0, ymm12);
+
+   FStream._vaddss(xmm0, xmm1, xmm2);
+   FStream._vaddps(xmm3, xmm4, xmm5);
+   FStream._vsubps(xmm6, xmm7, xmm8);
+   FStream._vsubps(ymm9, ymm10, ymm11);
+   FStream._vmulps(xmm12, xmm13, xmm14);
+   FStream._vdivps(xmm15, xmm0, xmm1);
+   FStream._vdivps(ymm2, ymm3, ymm4);
+   FStream._vmaxps(xmm5, xmm6, xmm7);
+   FStream._vhaddps(xmm8, xmm9, xmm10);
+
    CheckEquals(  ''
                + 'vxorps ymm0, ymm1, ymm2'#13#10
                + 'vaddps ymm8, ymm9, ymm10'#13#10
@@ -1770,6 +1794,15 @@ begin
                + 'vaddps ymm8, ymm9, ymm10'#13#10
                + 'vmulps ymm15, ymm0, ymm9'#13#10
                + 'vmaxps ymm8, ymm0, ymm12'#13#10
+               + 'vaddss xmm0, xmm1, xmm2'#13#10
+               + 'vaddps xmm3, xmm4, xmm5'#13#10
+               + 'vsubps xmm6, xmm7, xmm8'#13#10
+               + 'vsubps ymm9, ymm10, ymm11'#13#10
+               + 'vmulps xmm12, xmm13, xmm14'#13#10
+               + 'vdivps xmm15, xmm0, xmm1'#13#10
+               + 'vdivps ymm2, ymm3, ymm4'#13#10
+               + 'vmaxps xmm5, xmm6, xmm7'#13#10
+               + 'vhaddps xmm8, xmm9, xmm10'#13#10
                , DisasmStream);
 end;
 
@@ -2088,6 +2121,116 @@ begin
                + 'vroundps ymm9, ymm3, 01h'#13#10
                + 'vroundps ymm1, ymm10, 7Fh'#13#10
                + 'vroundps ymm12, ymm15, FFh'#13#10
+               , DisasmStream);
+end;
+
+// _vzeroall
+//
+procedure TJITx86_64Tests._vzeroall;
+begin
+   FStream._vzeroall;
+   CheckEquals('vzeroall'#13#10, DisasmStream);
+end;
+
+// _shufps
+//
+procedure TJITx86_64Tests._shufps;
+begin
+   FStream._shufps(xmm0, xmm1, $44);
+   FStream._shufps(xmm8, xmm9, $E4);
+   CheckEquals(  ''
+               + 'shufps xmm0, xmm1, 44h'#13#10
+               + 'shufps xmm8, xmm9, E4h'#13#10
+               , DisasmStream);
+end;
+
+// _vfmadd231
+//
+procedure TJITx86_64Tests._vfmadd231;
+begin
+   FStream._vfmadd231ss(xmm0, xmm1, xmm2);
+   FStream._vfmadd231ps(xmm3, xmm4, xmm5);
+   FStream._vfmadd231ps(ymm6, ymm7, ymm8);
+
+   FStream._vfmadd231ss_ptr_reg(xmm0, xmm1, gprRAX, 0);
+   FStream._vfmadd231ps_ptr_reg(xmm2, xmm3, gprRCX, 16);
+   FStream._vfmadd231ps_ptr_reg(ymm4, ymm5, gprR8, 32);
+
+   CheckEquals(  ''
+               + 'vfmadd231ss xmm0, xmm1, xmm2'#13#10
+               + 'vfmadd231ps xmm3, xmm4, xmm5'#13#10
+               + 'vfmadd231ps ymm6, ymm7, ymm8'#13#10
+               + 'vfmadd231ss xmm0, xmm1, xmmword ptr [rax]'#13#10
+               + 'vfmadd231ps xmm2, xmm3, xmmword ptr [rcx+10h]'#13#10
+               + 'vfmadd231ps ymm4, ymm5, ymmword ptr [r8+20h]'#13#10
+               , DisasmStream);
+end;
+
+// _vmulps_ptr_reg
+//
+procedure TJITx86_64Tests._vmulps_ptr_reg;
+begin
+   FStream._vmulps_ptr_reg(xmm0, xmm1, gprRAX, 0);
+   FStream._vmulps_ptr_reg(ymm8, ymm9, gprR8, 16);
+   CheckEquals(  ''
+               + 'vmulps xmm0, xmm1, xmmword ptr [rax]'#13#10
+               + 'vmulps ymm8, ymm9, ymmword ptr [r8+10h]'#13#10
+               , DisasmStream);
+end;
+
+// _shl_rax_cl
+//
+procedure TJITx86_64Tests._shl_rax_cl;
+begin
+   FStream._shl_rax_cl;
+   CheckEquals('shl rax, cl'#13#10, DisasmStream);
+end;
+
+// _imul
+//
+procedure TJITx86_64Tests._imul;
+begin
+   FStream._imul_reg_reg(gprRAX, gprRCX);
+   FStream._imul_reg_reg(gprR8, gprR9);
+   FStream._imul_reg_reg_imm(gprRDX, gprRBX, 123);
+   FStream._imul_reg_reg_imm(gprR10, gprR11, 456789);
+   CheckEquals(  ''
+               + 'imul rax, rcx'#13#10
+               + 'imul r8, r9'#13#10
+               + 'imul rdx, rbx, 7Bh'#13#10
+               + 'imul r10, r11, 0006F855h'#13#10
+               , DisasmStream);
+end;
+
+// _cqo
+//
+procedure TJITx86_64Tests._cqo;
+begin
+   FStream._cqo;
+   CheckEquals('cqo'#13#10, DisasmStream);
+end;
+
+// _vmovshdup_hlps
+//
+procedure TJITx86_64Tests._vmovshdup_hlps;
+begin
+   FStream._vmovshdup(xmm0, xmm1);
+   FStream._vmovhlps(xmm2, xmm3, xmm4);
+   CheckEquals(  ''
+               + 'vmovshdup xmm0, xmm1'#13#10
+               + 'vmovhlps xmm2, xmm3, xmm4'#13#10
+               , DisasmStream);
+end;
+
+// _vextract128
+//
+procedure TJITx86_64Tests._vextract128;
+begin
+   FStream._vextract128_low(xmm0, ymm1);
+   FStream._vextract128_high(xmm2, ymm3);
+   CheckEquals(  ''
+               + 'vextractf128 xmm0, ymm1, 00h'#13#10
+               + 'vextractf128 xmm2, ymm3, 01h'#13#10
                , DisasmStream);
 end;
 
