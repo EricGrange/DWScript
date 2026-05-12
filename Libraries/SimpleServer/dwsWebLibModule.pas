@@ -956,12 +956,54 @@ end;
 
 procedure TdwsWebLib.dwsWebClassesWebResponseMethodsSetHeaderFastEvalNoResult(
   baseExpr: TTypedExpr; const args: TExprBaseListExec);
+
+   function EscapeHeader(const s: String): String;
+   const
+      cHex : array[0..15] of Char = '0123456789ABCDEF';
+   var
+      pSrc, pDst: PChar;
+      len, i, ctrlCount: Integer;
+      c: Char;
+   begin
+      len := Length(s);
+      if len = 0 then
+         Exit('');
+
+      pSrc := PChar(Pointer(s));
+      ctrlCount := 0;
+      for i := 1 to len do begin
+         if pSrc^ < ' ' then
+            Inc(ctrlCount);
+         Inc(pSrc);
+      end;
+
+      if ctrlCount = 0 then
+         Exit(s);
+
+      SetLength(Result, len + ctrlCount * 2);
+      pSrc := PChar(Pointer(s));
+      pDst := PChar(Pointer(Result));
+      for i := 1 to len do begin
+         c := pSrc^;
+         if c < ' ' then begin
+            pDst[0] := '%';
+            pDst[1] := cHex[Ord(c) shr 4];
+            pDst[2] := cHex[Ord(c) and 15];
+            Inc(pDst, 3);
+         end else begin
+            pDst^ := c;
+            Inc(pDst);
+         end;
+         Inc(pSrc);
+      end;
+   end;
+
 var
    wr : TWebResponse;
 begin
    wr := args.WebResponse;
    if wr <> nil then
-      wr.Headers.Values[args.AsString[0]] := args.AsString[1];
+      wr.Headers.Values[EscapeHeader(args.AsString[0])] := EscapeHeader(args.AsString[1]);
 end;
 
 procedure TdwsWebLib.dwsWebClassesWebResponseMethodsSetLastModifiedFastEvalNoResult(

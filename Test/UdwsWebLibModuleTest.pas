@@ -29,6 +29,7 @@ type
          procedure CompilationWithMapAndSymbols;
          procedure ExecutionNonOptimized;
          procedure ExecutionOptimized;
+         procedure PreventCRLFInjectionInHeaders;
    end;
 
 // ------------------------------------------------------------------
@@ -185,6 +186,35 @@ begin
       ewr.Free;
       expectedResult.Free;
       source.Free;
+   end;
+end;
+
+// PreventCRLFInjectionInHeaders
+//
+procedure TdwsWebLibModuleTests.PreventCRLFInjectionInHeaders;
+var
+   prog : IdwsProgram;
+   exec : IdwsProgramExecution;
+   webEnv : TWebEnvironment;
+   ewr : TEmptyWebRequest;
+   ewResp : TWebResponse;
+begin
+   prog := FCompiler.Compile('WebResponse.Header[''Test''] := ''a'' + Chr(13) + Chr(10) + ''b'';');
+   CheckEquals('', prog.Msgs.AsInfo);
+   exec := prog.CreateNewExecution;
+   ewr := TEmptyWebRequest.Create;
+   ewResp := TWebResponse.Create;
+   try
+      webEnv := TWebEnvironment.Create;
+      webEnv.WebRequest := ewr;
+      webEnv.WebResponse := ewResp;
+      exec.Environment := webEnv;
+      exec.Execute(0);
+      CheckEquals(0, exec.Msgs.Count, 'Should not throw an exception');
+      CheckEquals('a%0D%0Ab', ewResp.Headers.Values['Test'], 'Expected CRLF injection to be escaped');
+   finally
+      ewResp.Free;
+      ewr.Free;
    end;
 end;
 
