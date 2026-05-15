@@ -1,0 +1,2 @@
+OK out-of-bounds raised for 2^32
+OK out-of-bounds raised for 2^32 + 4
