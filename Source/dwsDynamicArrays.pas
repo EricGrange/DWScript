@@ -81,7 +81,7 @@ type
 
          function ScriptTypeName : String; override;
 
-         function BoundsCheckPassed(index : NativeInt) : Boolean; inline;
+         function BoundsCheckPassed(index : Int64) : Boolean; inline;
 
          procedure Delete(index, count : NativeInt);
          procedure Insert(index : NativeInt);
@@ -147,7 +147,7 @@ type
 
          class function InterfaceOffsets : TDynamicArrayInterfaceToOffsets; virtual; abstract;
 
-         function BoundsCheckPassed(index : NativeInt) : Boolean; inline;
+         function BoundsCheckPassed(index : Int64) : Boolean; inline;
 
          property ElementTyp : TTypeSymbol read FElementTyp;
          property ArrayLength : NativeInt read FArrayLength;
@@ -707,9 +707,9 @@ end;
 
 // BoundsCheckPassed
 //
-function TScriptDynamicDataArray.BoundsCheckPassed(index : NativeInt) : Boolean;
+function TScriptDynamicDataArray.BoundsCheckPassed(index : Int64) : Boolean;
 begin
-   Result := Cardinal(index) < Cardinal(FArrayLength);
+   Result := UInt64(index) < UInt64(FArrayLength);
 end;
 
 // GetAsInteger
@@ -1145,9 +1145,9 @@ end;
 
 // BoundsCheckPassed
 //
-function TScriptDynamicNativeArray.BoundsCheckPassed(index : NativeInt) : Boolean;
+function TScriptDynamicNativeArray.BoundsCheckPassed(index : Int64) : Boolean;
 begin
-   Result := Cardinal(index) < Cardinal(FArrayLength);
+   Result := UInt64(index) < UInt64(FArrayLength);
 end;
 
 // GetElementSize

@@ -2312,7 +2312,7 @@ type
       procedure SetArrayLength(n : NativeInt);
       property ArrayLength : NativeInt read GetArrayLength write SetArrayLength;
 
-      function BoundsCheckPassed(index : NativeInt) : Boolean;
+      function BoundsCheckPassed(index : Int64) : Boolean;
 
       function ToStringArray : TStringDynArray;
       function ToInt64Array : TInt64DynArray;

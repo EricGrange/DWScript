@@ -88,11 +88,11 @@ type
    // Array expressions x[index] for static arrays
    TStaticArrayExpr = class (TArrayExpr)
       private
-         FLowBound : Integer;
-         FCount : Integer;
+         FLowBound : Int64;
+         FCount : Int64;
 
       protected
-         function GetIndex(exec : TdwsExecution) : Integer; virtual;
+         function GetIndex(exec : TdwsExecution) : Int64; virtual;
 
          function GetIsConstant : Boolean; override;
 
@@ -117,14 +117,14 @@ type
 
          procedure GetDataPtr(exec : TdwsExecution; var result : IDataContext); override;
 
-         property LowBound : Integer read FLowBound write FLowBound;
-         property Count : Integer read FCount write FCount;
+         property LowBound : Int64 read FLowBound write FLowBound;
+         property Count : Int64 read FCount write FCount;
    end;
 
    // Array expressions x[bool] for static arrays
    TStaticArrayBoolExpr = class (TStaticArrayExpr)
       protected
-         function GetIndex(exec : TdwsExecution) : Integer; override;
+         function GetIndex(exec : TdwsExecution) : Int64; override;
    end;
 
    // Array expression where the BaseExpr is a TConstExpr
@@ -1247,18 +1247,18 @@ end;
 
 // GetIndex
 //
-function TStaticArrayExpr.GetIndex(exec : TdwsExecution) : Integer;
+function TStaticArrayExpr.GetIndex(exec : TdwsExecution) : Int64;
 begin
    // Get index
-   Result:=FIndexExpr.EvalAsInteger(exec)-FLowBound;
+   Result := FIndexExpr.EvalAsInteger(exec) - FLowBound;
 
-   if Cardinal(Result)>=Cardinal(FCount) then begin
-      if Result>=FCount then
-         RaiseUpperExceeded(exec, Result+FLowBound)
-      else RaiseLowerExceeded(exec, Result+FLowBound);
+   if NativeUInt(Result) >= NativeUInt(FCount) then begin
+      if Result >= FCount then
+         RaiseUpperExceeded(exec, Result + FLowBound)
+      else RaiseLowerExceeded(exec, Result + FLowBound);
    end;
 
-   Result:=Result*FElementSize;
+   Result := Result * FElementSize;
 end;
 
 // ------------------
@@ -1267,11 +1267,11 @@ end;
 
 // GetIndex
 //
-function TStaticArrayBoolExpr.GetIndex(exec : TdwsExecution) : Integer;
+function TStaticArrayBoolExpr.GetIndex(exec : TdwsExecution) : Int64;
 begin
    if FIndexExpr.EvalAsBoolean(exec) then
-      Result:=FElementSize
-   else Result:=0;
+      Result := FElementSize
+   else Result := 0;
 end;
 
 // ------------------
@@ -1367,7 +1367,7 @@ end;
 function TDynamicArrayExpr.EvalAsInteger(exec : TdwsExecution) : Int64;
 var
    dyn : IScriptDynArray;
-   index : Integer;
+   index : Int64;
 begin
    FBaseExpr.EvalAsScriptDynArray(exec, dyn);
 
@@ -1383,7 +1383,7 @@ end;
 function TDynamicArrayExpr.EvalAsBoolean(exec : TdwsExecution) : Boolean;
 var
    dyn : IScriptDynArray;
-   index : Integer;
+   index : Int64;
 begin
    FBaseExpr.EvalAsScriptDynArray(exec, dyn);
 
@@ -1399,7 +1399,7 @@ end;
 function TDynamicArrayExpr.EvalAsFloat(exec : TdwsExecution) : Double;
 var
    dyn : IScriptDynArray;
-   index : Integer;
+   index : Int64;
 begin
    FBaseExpr.EvalAsScriptDynArray(exec, dyn);
 
@@ -1415,7 +1415,7 @@ end;
 procedure TDynamicArrayExpr.EvalAsVariant(exec : TdwsExecution; var result : Variant);
 var
    dyn : IScriptDynArray;
-   index : Integer;
+   index : Int64;
 begin
    FBaseExpr.EvalAsScriptDynArray(exec, dyn);
 
@@ -1431,7 +1431,7 @@ end;
 procedure TDynamicArrayExpr.EvalAsString(exec : TdwsExecution; var result : String);
 var
    dyn : IScriptDynArray;
-   index : Integer;
+   index : Int64;
 begin
    FBaseExpr.EvalAsScriptDynArray(exec, dyn);
 
@@ -1447,7 +1447,7 @@ end;
 procedure TDynamicArrayExpr.EvalAsInterface(exec : TdwsExecution; var result : IUnknown);
 var
    dyn : IScriptDynArray;
-   index : Integer;
+   index : Int64;
 begin
    FBaseExpr.EvalAsScriptDynArray(exec, dyn);
 
@@ -1463,7 +1463,7 @@ end;
 procedure TDynamicArrayExpr.AssignValue(exec : TdwsExecution; const Value: Variant);
 var
    dyn : IScriptDynArray;
-   index : Integer;
+   index : Int64;
 begin
    FBaseExpr.EvalAsScriptDynArray(exec, dyn);
 
@@ -1496,7 +1496,7 @@ procedure TDynamicArrayExpr.CreateArrayElementDataContext(
       exec : TdwsExecution; var result : IDataContext);
 var
    dyn : IScriptDynArray;
-   index : Integer;
+   index : Int64;
 begin
    FBaseExpr.EvalAsScriptDynArray(exec, dyn);
 

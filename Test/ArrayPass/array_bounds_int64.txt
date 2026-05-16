@@ -1,0 +1,6 @@
+OK out-of-bounds raised for 2^32
+OK out-of-bounds raised for 2^32 + 4
+OK out-of-bounds raised for 2^32
+OK out-of-bounds raised for 2^32 + 3
+OK out-of-bounds raised on write
+102
