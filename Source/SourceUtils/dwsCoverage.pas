@@ -480,61 +480,75 @@ begin
          Exit;
       FKnownProgObjs.Add(progObj);
 
-      // Build breakpointable lines for this program
-      bpLines := TdwsBreakpointableLines.Create(prog);
+      // Build name→location map from program's source list
+      var srcLocMap := TDictionary<String, String>.Create;
       try
-         srcList := TStringList.Create;
+         var sourceList := prog.SourceList;
+         for var si := 0 to sourceList.Count - 1 do begin
+            var sf := sourceList[si].SourceFile;
+            if sf <> nil then
+               srcLocMap.AddOrSetValue(LowerCase(sf.Name), sf.Location);
+         end;
+
+         // Build breakpointable lines for this program
+         bpLines := TdwsBreakpointableLines.Create(prog);
          try
-            bpLines.Enumerate(srcList);
-            for i := 0 to srcList.Count - 1 do begin
-               srcName := LowerCase(srcList[i]);
-               srcBits := srcList.Objects[i] as TBits;
+            srcList := TStringList.Create;
+            try
+               bpLines.Enumerate(srcList);
+               for i := 0 to srcList.Count - 1 do begin
+                  srcName := LowerCase(srcList[i]);
+                  srcBits := srcList.Objects[i] as TBits;
 
-               if not FAllLines.TryGetValue(srcName, existBits) then begin
-                  // New source: copy bits into FAllLines and FNonCovered
-                  newBits := TBits.Create;
-                  newBits.Size := srcBits.Size;
-                  for var b := 0 to srcBits.Size - 1 do
-                     if srcBits[b] then
-                        newBits[b] := True;
-                  FAllLines.Add(srcName, newBits);
+                  if not FAllLines.TryGetValue(srcName, existBits) then begin
+                     // New source: copy bits into FAllLines and FNonCovered
+                     newBits := TBits.Create;
+                     newBits.Size := srcBits.Size;
+                     for var b := 0 to srcBits.Size - 1 do
+                        if srcBits[b] then
+                           newBits[b] := True;
+                     FAllLines.Add(srcName, newBits);
 
-                  // Non-covered starts as full copy of all lines
-                  newBits := TBits.Create;
-                  newBits.Size := srcBits.Size;
-                  for var b := 0 to srcBits.Size - 1 do
-                     if srcBits[b] then
-                        newBits[b] := True;
-                  FNonCovered.Add(srcName, newBits);
+                     // Non-covered starts as full copy of all lines
+                     newBits := TBits.Create;
+                     newBits.Size := srcBits.Size;
+                     for var b := 0 to srcBits.Size - 1 do
+                        if srcBits[b] then
+                           newBits[b] := True;
+                     FNonCovered.Add(srcName, newBits);
 
-                  // Record source info using the original display name
-                  infoRec.Name     := srcList[i];
-                  infoRec.Location := srcList[i];
-                  FSourceInfo.AddOrSetValue(srcName, infoRec);
-               end else begin
-                  // Existing source: OR new executable bits into FAllLines
-                  // For FNonCovered: only add new bits (don't uncover already-covered lines)
-                  if srcBits.Size > existBits.Size then
-                     existBits.Size := srcBits.Size;
-                  FNonCovered.TryGetValue(srcName, ncBits);
-                  if (ncBits <> nil) and (srcBits.Size > ncBits.Size) then
-                     ncBits.Size := srcBits.Size;
+                     // Record source info: Name = display name, Location = file path
+                     infoRec.Name := srcList[i];
+                     if not srcLocMap.TryGetValue(srcName, infoRec.Location) then
+                        infoRec.Location := srcList[i];
+                     FSourceInfo.AddOrSetValue(srcName, infoRec);
+                  end else begin
+                     // Existing source: OR new executable bits into FAllLines
+                     // For FNonCovered: only add new bits (don't uncover already-covered lines)
+                     if srcBits.Size > existBits.Size then
+                        existBits.Size := srcBits.Size;
+                     FNonCovered.TryGetValue(srcName, ncBits);
+                     if (ncBits <> nil) and (srcBits.Size > ncBits.Size) then
+                        ncBits.Size := srcBits.Size;
 
-                  for var b := 0 to srcBits.Size - 1 do begin
-                     if srcBits[b] and not existBits[b] then begin
-                        // New executable line
-                        existBits[b] := True;
-                        if ncBits <> nil then
-                           ncBits[b] := True;
+                     for var b := 0 to srcBits.Size - 1 do begin
+                        if srcBits[b] and not existBits[b] then begin
+                           // New executable line
+                           existBits[b] := True;
+                           if ncBits <> nil then
+                              ncBits[b] := True;
+                        end;
                      end;
                   end;
                end;
+            finally
+               srcList.Free;
             end;
          finally
-            srcList.Free;
+            bpLines.Free;
          end;
       finally
-         bpLines.Free;
+         srcLocMap.Free;
       end;
 
       // Enumerate function infos for this program
