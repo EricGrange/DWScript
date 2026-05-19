@@ -59,6 +59,7 @@
 /Libraries/SymbolsLib/backup
 /Source/jitter/backup
 __recovery
+/.claude/
 
 /Source/SourceUtils/__history
 /Test/__history
