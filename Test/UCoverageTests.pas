@@ -135,18 +135,13 @@ begin
       aggregate.EnsureProgram(prog);
 
       tracker := TdwsCoverageExecutionTracker.Create(aggregate);
-      try
-         exec := prog.CreateNewExecution;
-         exec.Debugger := tracker;
-         exec.BeginProgram;
-         exec.RunProgram(0);
-         exec.EndProgram;
-         exec.Debugger := nil;
-
-         aggregate.MergeExecution(tracker.CoveredBits);
-      finally
-         tracker.Free;
-      end;
+      exec := prog.CreateNewExecution;
+      exec.Debugger := tracker;
+      exec.BeginProgram;
+      exec.RunProgram(0);
+      exec.EndProgram;
+      aggregate.MergeExecution(tracker.CoveredBits);
+      exec.Debugger := nil;
 
       report := aggregate.CreateCCGReport('TestProject');
       // Report header checks
@@ -194,18 +189,13 @@ begin
       aggregate.EnsureProgram(prog);
 
       tracker := TdwsCoverageExecutionTracker.Create(aggregate);
-      try
-         exec := prog.CreateNewExecution;
-         exec.Debugger := tracker;
-         exec.BeginProgram;
-         exec.RunProgram(0);
-         exec.EndProgram;
-         exec.Debugger := nil;
-
-         aggregate.MergeExecution(tracker.CoveredBits);
-      finally
-         tracker.Free;
-      end;
+      exec := prog.CreateNewExecution;
+      exec.Debugger := tracker;
+      exec.BeginProgram;
+      exec.RunProgram(0);
+      exec.EndProgram;
+      aggregate.MergeExecution(tracker.CoveredBits);
+      exec.Debugger := nil;
 
       report := aggregate.CreateCCGReport('TestProject');
       // Method should be labeled as METH: with ClassName.MethodName
@@ -247,18 +237,13 @@ begin
       aggregate.EnsureProgram(prog);
 
       tracker := TdwsCoverageExecutionTracker.Create(aggregate);
-      try
-         exec := prog.CreateNewExecution;
-         exec.Debugger := tracker;
-         exec.BeginProgram;
-         exec.RunProgram(0);
-         exec.EndProgram;
-         exec.Debugger := nil;
-
-         aggregate.MergeExecution(tracker.CoveredBits);
-      finally
-         tracker.Free;
-      end;
+      exec := prog.CreateNewExecution;
+      exec.Debugger := tracker;
+      exec.BeginProgram;
+      exec.RunProgram(0);
+      exec.EndProgram;
+      aggregate.MergeExecution(tracker.CoveredBits);
+      exec.Debugger := nil;
 
       report := aggregate.CreateCCGReport('TestProject');
       // Inner should appear as Outer.Inner in the report
@@ -296,17 +281,13 @@ begin
 
       // First execution: x=1, so else branch not covered
       tracker := TdwsCoverageExecutionTracker.Create(aggregate);
-      try
-         exec := prog.CreateNewExecution;
-         exec.Debugger := tracker;
-         exec.BeginProgram;
-         exec.RunProgram(0);
-         exec.EndProgram;
-         exec.Debugger := nil;
-         aggregate.MergeExecution(tracker.CoveredBits);
-      finally
-         tracker.Free;
-      end;
+      exec := prog.CreateNewExecution;
+      exec.Debugger := tracker;
+      exec.BeginProgram;
+      exec.RunProgram(0);
+      exec.EndProgram;
+      aggregate.MergeExecution(tracker.CoveredBits);
+      exec.Debugger := nil;
 
       report1 := aggregate.CreateCCGReport('TestProject');
       CheckTrue(Pos('GAPS:', report1) > 0, 'has gaps after first exec');
@@ -349,17 +330,13 @@ begin
 
       // Run once
       tracker := TdwsCoverageExecutionTracker.Create(aggregate);
-      try
-         exec := prog.CreateNewExecution;
-         exec.Debugger := tracker;
-         exec.BeginProgram;
-         exec.RunProgram(0);
-         exec.EndProgram;
-         exec.Debugger := nil;
-         aggregate.MergeExecution(tracker.CoveredBits);
-      finally
-         tracker.Free;
-      end;
+      exec := prog.CreateNewExecution;
+      exec.Debugger := tracker;
+      exec.BeginProgram;
+      exec.RunProgram(0);
+      exec.EndProgram;
+      aggregate.MergeExecution(tracker.CoveredBits);
+      exec.Debugger := nil;
 
       report := aggregate.CreateCCGReport('TestProject');
       var hasCoverage := Pos('GLOBAL_STATS:', report) > 0;
@@ -400,17 +377,13 @@ begin
       aggregate.EnsureProgram(prog);
 
       tracker := TdwsCoverageExecutionTracker.Create(aggregate);
-      try
-         exec := prog.CreateNewExecution;
-         exec.Debugger := tracker;
-         exec.BeginProgram;
-         exec.RunProgram(0);
-         exec.EndProgram;
-         exec.Debugger := nil;
-         aggregate.MergeExecution(tracker.CoveredBits);
-      finally
-         tracker.Free;
-      end;
+      exec := prog.CreateNewExecution;
+      exec.Debugger := tracker;
+      exec.BeginProgram;
+      exec.RunProgram(0);
+      exec.EndProgram;
+      aggregate.MergeExecution(tracker.CoveredBits);
+      exec.Debugger := nil;
 
       report := aggregate.CreateCCGReport('TestProject');
       // Fully covered: no UNIT: section should appear

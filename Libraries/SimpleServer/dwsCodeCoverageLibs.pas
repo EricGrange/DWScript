@@ -261,32 +261,18 @@ end;
 
 function TdwsCoverageManager.GetStatusJSON : String;
 var
-   allBits, ncBits  : TBits;
-   totalRunnable    : Int64;
-   totalNonCovered  : Int64;
-   i                : Integer;
+   covered, total : Int64;
+   enabledStr     : String;
 begin
-   totalRunnable   := 0;
-   totalNonCovered := 0;
+   FAggregate.GetStatusCounts(covered, total);
 
-   for var pair in FAggregate.AllLines do begin
-      allBits := pair.Value;
-      for i := 0 to allBits.Size - 1 do
-         if allBits[i] then Inc(totalRunnable);
-   end;
-   for var pair in FAggregate.NonCovered do begin
-      ncBits := pair.Value;
-      for i := 0 to ncBits.Size - 1 do
-         if ncBits[i] then Inc(totalNonCovered);
-   end;
-
-   var enabledStr := 'false';
+   enabledStr := 'false';
    if FEnabled then enabledStr := 'true';
    Result := Format('{"enabled":%s,"project":%s,"covered":%d,"total":%d}',
       [enabledStr,
        '"' + StringReplace(FProjectName, '"', '\"', [rfReplaceAll]) + '"',
-       totalRunnable - totalNonCovered,
-       totalRunnable]);
+       covered,
+       total]);
 end;
 
 // ------------------

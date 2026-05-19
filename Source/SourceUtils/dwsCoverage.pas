@@ -137,6 +137,7 @@ type
          procedure Reset;
 
          function CreateCCGReport(const projectName : String) : String;
+         procedure GetStatusCounts(out covered, total : Int64);
 
          property AllLines   : TObjectDictionary<String, TBits> read FAllLines;
          property NonCovered : TObjectDictionary<String, TBits> read FNonCovered;
@@ -701,6 +702,36 @@ begin
 
    // Recurse into nested functions via the proc's local symbol table
    CollectFuncInfosFromTable(proc.Table, displayName);
+end;
+
+// GetStatusCounts
+//
+procedure TdwsCoverageAggregate.GetStatusCounts(out covered, total : Int64);
+var
+   allBits, ncBits : TBits;
+   totalRunnable   : Int64;
+   totalNonCovered : Int64;
+   i               : Integer;
+begin
+   totalRunnable   := 0;
+   totalNonCovered := 0;
+   FLock.Enter;
+   try
+      for var pair in FAllLines do begin
+         allBits := pair.Value;
+         for i := 0 to allBits.Size - 1 do
+            if allBits[i] then Inc(totalRunnable);
+      end;
+      for var pair in FNonCovered do begin
+         ncBits := pair.Value;
+         for i := 0 to ncBits.Size - 1 do
+            if ncBits[i] then Inc(totalNonCovered);
+      end;
+   finally
+      FLock.Leave;
+   end;
+   total   := totalRunnable;
+   covered := totalRunnable - totalNonCovered;
 end;
 
 // CompressLineRanges
