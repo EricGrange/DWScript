@@ -20,9 +20,9 @@ unit dwsCoverage;
 interface
 
 uses
-   System.Classes, System.SysUtils,
+   System.Classes, System.SysUtils, System.Generics.Collections,
    dwsUtils, dwsSymbols, dwsDebugger, dwsExprs, dwsErrors, dwsXPlatform,
-   dwsScriptSource, dwsXXHash;
+   dwsScriptSource, dwsXXHash, dwsUnitSymbols;
 
 type
 
@@ -84,6 +84,92 @@ type
          procedure GetCoverageLines(const fileName : String; var breakpointable, covered : TInt64DynArray);
 
    end;
+
+   // --------------------------------------------------
+   // CCG coverage format support
+   // --------------------------------------------------
+
+   TdwsFuncCoverageKind = (fckFunc, fckMeth);
+
+   TdwsFuncCoverageInfo = record
+      DisplayName : String;
+      Kind        : TdwsFuncCoverageKind;
+      SourceKey   : String;   // lowercase key into FAllLines / FNonCovered
+      StartLine   : Integer;
+      EndLine     : Integer;
+   end;
+
+   TdwsSourceInfoRec = record
+      Name     : String;   // display name
+      Location : String;   // file path / location
+   end;
+
+   TdwsCoverageAggregate = class;
+
+   // Helper for collecting max line in a function body
+   TFuncMaxLineCollector = class
+      public
+         MaxLine     : Integer;
+         SourceFile  : TSourceFile;
+         procedure EnumCallback(parent, expr : TExprBase; var abort : Boolean);
+   end;
+
+   // Thread-safe accumulator of coverage data across multiple executions
+   TdwsCoverageAggregate = class
+      private
+         FAllLines    : TObjectDictionary<String, TBits>;   // owned
+         FNonCovered  : TObjectDictionary<String, TBits>;   // owned
+         FSourceInfo  : TDictionary<String, TdwsSourceInfoRec>;
+         FFuncInfos   : TList<TdwsFuncCoverageInfo>;
+         FKnownProgObjs : TList<TObject>;
+         FLock        : TdwsCriticalSection;
+
+         procedure EnumerateFuncInfosFromProg(const prog : IdwsProgram);
+         procedure CollectFuncInfosFromTable(table : TSymbolTable; const namePrefix : String);
+         procedure AddFuncInfo(funcSym : TFuncSymbol; const namePrefix : String);
+
+      public
+         constructor Create;
+         destructor  Destroy; override;
+
+         procedure EnsureProgram(const prog : IdwsProgram);
+         procedure MergeExecution(coveredBits : TObjectDictionary<String, TBits>);
+         procedure Reset;
+
+         function CreateCCGReport(const projectName : String) : String;
+
+         property AllLines   : TObjectDictionary<String, TBits> read FAllLines;
+         property NonCovered : TObjectDictionary<String, TBits> read FNonCovered;
+   end;
+
+   // Lightweight IDebugger that records covered lines per execution
+   TdwsCoverageExecutionTracker = class (TInterfacedObject, IDebugger)
+      private
+         FAggregate       : TdwsCoverageAggregate;
+         FCoveredBits     : TObjectDictionary<String, TBits>;
+         FLastSourceFile  : TSourceFile;
+         FLastCoveredBits : TBits;
+         FLastAllBits     : TBits;  // reference into FAggregate.FAllLines (not owned)
+
+      protected
+         // IDebugger
+         procedure StartDebug(exec : TdwsExecution);
+         procedure DoDebug(exec : TdwsExecution; expr : TExprBase);
+         procedure StopDebug(exec : TdwsExecution);
+         procedure EnterFunc(exec : TdwsExecution; funcExpr : TExprBase);
+         procedure LeaveFunc(exec : TdwsExecution; funcExpr : TExprBase);
+         function  LastDebugStepExpr : TExprBase;
+         procedure DebugMessage(const msg : UnicodeString);
+         procedure NotifyException(exec : TdwsExecution; const exceptObj : IScriptObj);
+
+      public
+         constructor Create(aggregate : TdwsCoverageAggregate);
+         destructor  Destroy; override;
+
+         property CoveredBits : TObjectDictionary<String, TBits> read FCoveredBits;
+   end;
+
+function CompressLineRanges(lines : TList<Integer>) : String;
 
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
@@ -324,6 +410,600 @@ begin
    end;
    SetLength(breakpointable, nBP);
    SetLength(covered, nCovered);
+end;
+
+// ------------------
+// ------------------ TFuncMaxLineCollector ------------------
+// ------------------
+
+procedure TFuncMaxLineCollector.EnumCallback(parent, expr : TExprBase; var abort : Boolean);
+var
+   p : TScriptPos;
+begin
+   p := expr.ScriptPos;
+   if (p.SourceFile <> nil) and (p.SourceFile = SourceFile) then
+      if p.Line > MaxLine then
+         MaxLine := p.Line;
+end;
+
+// ------------------
+// ------------------ TdwsCoverageAggregate ------------------
+// ------------------
+
+// Create
+//
+constructor TdwsCoverageAggregate.Create;
+begin
+   inherited;
+   FAllLines      := TObjectDictionary<String, TBits>.Create([doOwnsValues]);
+   FNonCovered    := TObjectDictionary<String, TBits>.Create([doOwnsValues]);
+   FSourceInfo    := TDictionary<String, TdwsSourceInfoRec>.Create;
+   FFuncInfos     := TList<TdwsFuncCoverageInfo>.Create;
+   FKnownProgObjs := TList<TObject>.Create;
+   FLock          := TdwsCriticalSection.Create;
+end;
+
+// Destroy
+//
+destructor TdwsCoverageAggregate.Destroy;
+begin
+   FLock.Free;
+   FKnownProgObjs.Free;
+   FFuncInfos.Free;
+   FSourceInfo.Free;
+   FNonCovered.Free;
+   FAllLines.Free;
+   inherited;
+end;
+
+// EnsureProgram
+//
+procedure TdwsCoverageAggregate.EnsureProgram(const prog : IdwsProgram);
+var
+   progObj    : TObject;
+   bpLines    : TdwsBreakpointableLines;
+   srcList    : TStringList;
+   i          : Integer;
+   srcName    : String;
+   srcBits    : TBits;
+   existBits  : TBits;
+   newBits    : TBits;
+   ncBits     : TBits;
+   infoRec    : TdwsSourceInfoRec;
+begin
+   progObj := prog.ProgramObject;
+   FLock.Enter;
+   try
+      // Deduplicate: skip if this program object was already seen
+      if FKnownProgObjs.IndexOf(progObj) >= 0 then
+         Exit;
+      FKnownProgObjs.Add(progObj);
+
+      // Build breakpointable lines for this program
+      bpLines := TdwsBreakpointableLines.Create(prog);
+      try
+         srcList := TStringList.Create;
+         try
+            bpLines.Enumerate(srcList);
+            for i := 0 to srcList.Count - 1 do begin
+               srcName := LowerCase(srcList[i]);
+               srcBits := srcList.Objects[i] as TBits;
+
+               if not FAllLines.TryGetValue(srcName, existBits) then begin
+                  // New source: copy bits into FAllLines and FNonCovered
+                  newBits := TBits.Create;
+                  newBits.Size := srcBits.Size;
+                  for var b := 0 to srcBits.Size - 1 do
+                     if srcBits[b] then
+                        newBits[b] := True;
+                  FAllLines.Add(srcName, newBits);
+
+                  // Non-covered starts as full copy of all lines
+                  newBits := TBits.Create;
+                  newBits.Size := srcBits.Size;
+                  for var b := 0 to srcBits.Size - 1 do
+                     if srcBits[b] then
+                        newBits[b] := True;
+                  FNonCovered.Add(srcName, newBits);
+
+                  // Record source info using the original display name
+                  infoRec.Name     := srcList[i];
+                  infoRec.Location := srcList[i];
+                  FSourceInfo.AddOrSetValue(srcName, infoRec);
+               end else begin
+                  // Existing source: OR new executable bits into FAllLines
+                  // For FNonCovered: only add new bits (don't uncover already-covered lines)
+                  if srcBits.Size > existBits.Size then
+                     existBits.Size := srcBits.Size;
+                  FNonCovered.TryGetValue(srcName, ncBits);
+                  if (ncBits <> nil) and (srcBits.Size > ncBits.Size) then
+                     ncBits.Size := srcBits.Size;
+
+                  for var b := 0 to srcBits.Size - 1 do begin
+                     if srcBits[b] and not existBits[b] then begin
+                        // New executable line
+                        existBits[b] := True;
+                        if ncBits <> nil then
+                           ncBits[b] := True;
+                     end;
+                  end;
+               end;
+            end;
+         finally
+            srcList.Free;
+         end;
+      finally
+         bpLines.Free;
+      end;
+
+      // Enumerate function infos for this program
+      EnumerateFuncInfosFromProg(prog);
+   finally
+      FLock.Leave;
+   end;
+end;
+
+// MergeExecution
+//
+procedure TdwsCoverageAggregate.MergeExecution(coveredBits : TObjectDictionary<String, TBits>);
+var
+   ncBits : TBits;
+   i      : Integer;
+begin
+   if coveredBits = nil then Exit;
+   FLock.Enter;
+   try
+      for var pair in coveredBits do begin
+         if FNonCovered.TryGetValue(pair.Key, ncBits) then begin
+            for i := 0 to pair.Value.Size - 1 do
+               if pair.Value[i] and (i < ncBits.Size) then
+                  ncBits[i] := False;
+         end;
+      end;
+   finally
+      FLock.Leave;
+   end;
+end;
+
+// Reset
+//
+procedure TdwsCoverageAggregate.Reset;
+var
+   allBits, ncBits : TBits;
+begin
+   FLock.Enter;
+   try
+      // Restore non-covered to full copy of all lines
+      for var pair in FAllLines do begin
+         allBits := pair.Value;
+         if FNonCovered.TryGetValue(pair.Key, ncBits) then begin
+            ncBits.Size := allBits.Size;
+            for var i := 0 to allBits.Size - 1 do
+               ncBits[i] := allBits[i];
+         end;
+      end;
+      // Force re-enumeration of functions on next EnsureProgram
+      FFuncInfos.Clear;
+      FKnownProgObjs.Clear;
+   finally
+      FLock.Leave;
+   end;
+end;
+
+// EnumerateFuncInfosFromProg
+//
+procedure TdwsCoverageAggregate.EnumerateFuncInfosFromProg(const prog : IdwsProgram);
+var
+   unitMains : TUnitMainSymbols;
+   i         : Integer;
+   ums       : TUnitMainSymbol;
+begin
+   // Walk unit main symbols
+   unitMains := prog.UnitMains;
+   for i := 0 to unitMains.Count - 1 do begin
+      ums := unitMains[i];
+      CollectFuncInfosFromTable(ums.Table, '');
+      if ums.ImplementationTable <> nil then
+         CollectFuncInfosFromTable(ums.ImplementationTable, '');
+   end;
+
+   // Walk the main program table
+   CollectFuncInfosFromTable(prog.Table, '');
+end;
+
+// CollectFuncInfosFromTable
+//
+procedure TdwsCoverageAggregate.CollectFuncInfosFromTable(table : TSymbolTable; const namePrefix : String);
+var
+   sym       : TSymbol;
+   funcSym   : TFuncSymbol;
+   structSym : TStructuredTypeSymbol;
+begin
+   for sym in table do begin
+      funcSym := sym.AsFuncSymbol;
+      if funcSym <> nil then begin
+         AddFuncInfo(funcSym, namePrefix);
+      end else if sym is TStructuredTypeSymbol then begin
+         structSym := TStructuredTypeSymbol(sym);
+         // Methods of this struct (no namePrefix - they use StructSymbol.Name)
+         CollectFuncInfosFromTable(structSym.Members, '');
+      end;
+   end;
+end;
+
+// AddFuncInfo
+//
+procedure TdwsCoverageAggregate.AddFuncInfo(funcSym : TFuncSymbol; const namePrefix : String);
+var
+   execSelf    : TObject;
+   proc        : TdwsProcedure;
+   implPos     : TScriptPos;
+   displayName : String;
+   key         : String;
+   info        : TdwsFuncCoverageInfo;
+   collector   : TFuncMaxLineCollector;
+begin
+   if funcSym.Executable = nil then Exit;
+   execSelf := funcSym.Executable.GetSelf;
+   if not (execSelf is TdwsProcedure) then Exit;
+   proc := TdwsProcedure(execSelf);
+
+   implPos := funcSym.ImplementationPosition;
+   if implPos.SourceFile = nil then Exit;
+
+   // Build display name
+   if funcSym is TMethodSymbol then begin
+      var methSym := TMethodSymbol(funcSym);
+      displayName := methSym.StructSymbol.Name + '.' + funcSym.Name;
+      info.Kind := fckMeth;
+   end else begin
+      if funcSym.IsLambda then begin
+         if namePrefix <> '' then
+            displayName := namePrefix + '.<lambda>'
+         else displayName := '<lambda>';
+      end else begin
+         if namePrefix <> '' then
+            displayName := namePrefix + '.' + funcSym.Name
+         else displayName := funcSym.Name;
+      end;
+      info.Kind := fckFunc;
+   end;
+
+   // Compute source key
+   var srcName := implPos.SourceFile.Name;
+   if srcName = '' then
+      srcName := implPos.SourceFile.Location;
+   key := LowerCase(srcName);
+
+   // Only track if we know this source
+   if not FAllLines.ContainsKey(key) then Exit;
+
+   // Walk steppable exprs of the proc to find max line
+   collector := TFuncMaxLineCollector.Create;
+   try
+      collector.MaxLine    := implPos.Line;
+      collector.SourceFile := implPos.SourceFile;
+
+      proc.Expr.RecursiveEnumerateSubExprs(collector.EnumCallback);
+
+      if proc.InitExpr.SubExprCount > 0 then
+         proc.InitExpr.RecursiveEnumerateSubExprs(collector.EnumCallback);
+
+      info.DisplayName := displayName;
+      info.SourceKey   := key;
+      info.StartLine   := implPos.Line;
+      info.EndLine     := collector.MaxLine;
+   finally
+      collector.Free;
+   end;
+
+   FFuncInfos.Add(info);
+
+   // Recurse into nested functions via the proc's local symbol table
+   CollectFuncInfosFromTable(proc.Table, displayName);
+end;
+
+// CompressLineRanges
+//
+function CompressLineRanges(lines : TList<Integer>) : String;
+var
+   i, rangeStart, rangeEnd : Integer;
+   sb : TStringBuilder;
+begin
+   if lines.Count = 0 then Exit('');
+
+   lines.Sort;
+
+   sb := TStringBuilder.Create;
+   try
+      rangeStart := lines[0];
+      rangeEnd   := lines[0];
+
+      for i := 1 to lines.Count - 1 do begin
+         if lines[i] = rangeEnd + 1 then begin
+            rangeEnd := lines[i];
+         end else begin
+            if sb.Length > 0 then sb.Append(', ');
+            if rangeStart = rangeEnd then
+               sb.Append(IntToStr(rangeStart))
+            else
+               sb.Append(IntToStr(rangeStart) + '-' + IntToStr(rangeEnd));
+            rangeStart := lines[i];
+            rangeEnd   := lines[i];
+         end;
+      end;
+      // Flush last range
+      if sb.Length > 0 then sb.Append(', ');
+      if rangeStart = rangeEnd then
+         sb.Append(IntToStr(rangeStart))
+      else
+         sb.Append(IntToStr(rangeStart) + '-' + IntToStr(rangeEnd));
+
+      Result := sb.ToString;
+   finally
+      sb.Free;
+   end;
+end;
+
+// CreateCCGReport
+//
+function TdwsCoverageAggregate.CreateCCGReport(const projectName : String) : String;
+var
+   sb             : TStringBuilder;
+   allKeys        : TList<String>;
+   key            : String;
+   allBits, ncBits : TBits;
+   totalRunnable   : Int64;
+   totalNonCovered : Int64;
+   unitRunnable    : Integer;
+   unitNonCovered  : Integer;
+   funcsForKey     : TList<TdwsFuncCoverageInfo>;
+   fi              : TdwsFuncCoverageInfo;
+   gapLines        : TList<Integer>;
+   gaps            : String;
+   i, j            : Integer;
+   pct             : Double;
+   infoRec         : TdwsSourceInfoRec;
+begin
+   FLock.Enter;
+   try
+      sb := TStringBuilder.Create;
+      try
+         // Compute global totals
+         totalRunnable   := 0;
+         totalNonCovered := 0;
+         for var pair in FAllLines do begin
+            allBits := pair.Value;
+            for i := 0 to allBits.Size - 1 do
+               if allBits[i] then Inc(totalRunnable);
+         end;
+         for var pair in FNonCovered do begin
+            ncBits := pair.Value;
+            for i := 0 to ncBits.Size - 1 do
+               if ncBits[i] then Inc(totalNonCovered);
+         end;
+
+         // Header
+         sb.AppendLine('PROJECT: ' + projectName);
+         sb.AppendLine('TIMESTAMP: ' + FormatDateTime('yyyy-mm-dd"T"hh:nn:ss"Z"', Now));
+         if totalRunnable > 0 then
+            pct := (totalRunnable - totalNonCovered) / totalRunnable * 100.0
+         else
+            pct := 100.0;
+         sb.AppendLine(Format('TOTAL_COVERAGE: %.1f%%', [pct]));
+         sb.AppendLine(Format('GLOBAL_STATS: %d/%d', [totalRunnable - totalNonCovered, totalRunnable]));
+
+         // Collect and sort keys
+         allKeys := TList<String>.Create;
+         try
+            for var pair in FAllLines do
+               allKeys.Add(pair.Key);
+            allKeys.Sort;
+
+            for key in allKeys do begin
+               // Compute unit coverage
+               unitRunnable   := 0;
+               unitNonCovered := 0;
+               allBits := nil;
+               ncBits  := nil;
+               FAllLines.TryGetValue(key, allBits);
+               FNonCovered.TryGetValue(key, ncBits);
+               if allBits <> nil then
+                  for i := 0 to allBits.Size - 1 do
+                     if allBits[i] then Inc(unitRunnable);
+               if ncBits <> nil then
+                  for i := 0 to ncBits.Size - 1 do
+                     if ncBits[i] then Inc(unitNonCovered);
+
+               // Skip 100% covered units
+               if unitNonCovered = 0 then Continue;
+
+               // Get source info
+               if not FSourceInfo.TryGetValue(key, infoRec) then begin
+                  infoRec.Name     := key;
+                  infoRec.Location := key;
+               end;
+
+               if unitRunnable > 0 then
+                  pct := (unitRunnable - unitNonCovered) / unitRunnable * 100.0
+               else
+                  pct := 100.0;
+
+               sb.AppendLine('');
+               sb.AppendLine('UNIT: ' + infoRec.Name + ' | ' + infoRec.Location);
+               sb.AppendLine(Format('  COVERAGE: %.1f%% (%d/%d lines)',
+                  [pct, unitRunnable - unitNonCovered, unitRunnable]));
+
+               // Collect funcs for this source key, sorted by StartLine
+               funcsForKey := TList<TdwsFuncCoverageInfo>.Create;
+               try
+                  for j := 0 to FFuncInfos.Count - 1 do
+                     if FFuncInfos[j].SourceKey = key then
+                        funcsForKey.Add(FFuncInfos[j]);
+
+                  funcsForKey.Sort(TComparer<TdwsFuncCoverageInfo>.Construct(
+                     function(const L, R : TdwsFuncCoverageInfo) : Integer
+                     begin
+                        Result := L.StartLine - R.StartLine;
+                     end
+                  ));
+
+                  gapLines := TList<Integer>.Create;
+                  try
+                     for fi in funcsForKey do begin
+                        // Compute gaps for this function
+                        gapLines.Clear;
+                        if (allBits <> nil) and (ncBits <> nil) then begin
+                           for i := fi.StartLine to fi.EndLine do begin
+                              if (i < allBits.Size) and allBits[i] then
+                                 if (i < ncBits.Size) and ncBits[i] then
+                                    gapLines.Add(i);
+                           end;
+                        end;
+
+                        if gapLines.Count = 0 then Continue;
+
+                        gaps := CompressLineRanges(gapLines);
+                        sb.AppendLine('');
+                        if fi.Kind = fckMeth then
+                           sb.AppendLine(Format('  METH: %d-%d %s',
+                              [fi.StartLine, fi.EndLine, fi.DisplayName]))
+                        else
+                           sb.AppendLine(Format('  FUNC: %d-%d %s',
+                              [fi.StartLine, fi.EndLine, fi.DisplayName]));
+                        sb.AppendLine('    GAPS: ' + gaps);
+                     end;
+                  finally
+                     gapLines.Free;
+                  end;
+               finally
+                  funcsForKey.Free;
+               end;
+            end;
+         finally
+            allKeys.Free;
+         end;
+
+         Result := sb.ToString;
+      finally
+         sb.Free;
+      end;
+   finally
+      FLock.Leave;
+   end;
+end;
+
+// ------------------
+// ------------------ TdwsCoverageExecutionTracker ------------------
+// ------------------
+
+// Create
+//
+constructor TdwsCoverageExecutionTracker.Create(aggregate : TdwsCoverageAggregate);
+begin
+   inherited Create;
+   FAggregate   := aggregate;
+   FCoveredBits := TObjectDictionary<String, TBits>.Create([doOwnsValues]);
+end;
+
+// Destroy
+//
+destructor TdwsCoverageExecutionTracker.Destroy;
+begin
+   FCoveredBits.Free;
+   inherited;
+end;
+
+// StartDebug
+//
+procedure TdwsCoverageExecutionTracker.StartDebug(exec : TdwsExecution);
+begin
+   FLastSourceFile  := nil;
+   FLastCoveredBits := nil;
+   FLastAllBits     := nil;
+end;
+
+// DoDebug
+//
+procedure TdwsCoverageExecutionTracker.DoDebug(exec : TdwsExecution; expr : TExprBase);
+var
+   p        : TScriptPos;
+   srcName  : String;
+   key      : String;
+   allBits  : TBits;
+   covBits  : TBits;
+begin
+   p := expr.ScriptPos;
+   if p.SourceFile = nil then Exit;
+
+   if p.SourceFile <> FLastSourceFile then begin
+      FLastSourceFile := p.SourceFile;
+      srcName := p.SourceFile.Name;
+      if srcName = '' then
+         srcName := p.SourceFile.Location;
+      key := LowerCase(srcName);
+
+      // Get allBits for size reference (no lock - acceptable minor race)
+      if not FAggregate.AllLines.TryGetValue(key, allBits) then begin
+         FLastCoveredBits := nil;
+         FLastAllBits     := nil;
+         Exit;
+      end;
+      FLastAllBits := allBits;
+
+      // Get or create covBits
+      if not FCoveredBits.TryGetValue(key, covBits) then begin
+         covBits := TBits.Create;
+         covBits.Size := allBits.Size;
+         FCoveredBits.Add(key, covBits);
+      end;
+      FLastCoveredBits := covBits;
+   end;
+
+   if (FLastCoveredBits <> nil) and (p.Line < FLastCoveredBits.Size) then
+      FLastCoveredBits[p.Line] := True;
+end;
+
+// StopDebug
+//
+procedure TdwsCoverageExecutionTracker.StopDebug(exec : TdwsExecution);
+begin
+   // Nothing: caller merges via MergeExecution(tracker.CoveredBits)
+end;
+
+// EnterFunc
+//
+procedure TdwsCoverageExecutionTracker.EnterFunc(exec : TdwsExecution; funcExpr : TExprBase);
+begin
+   // no-op
+end;
+
+// LeaveFunc
+//
+procedure TdwsCoverageExecutionTracker.LeaveFunc(exec : TdwsExecution; funcExpr : TExprBase);
+begin
+   // no-op
+end;
+
+// LastDebugStepExpr
+//
+function TdwsCoverageExecutionTracker.LastDebugStepExpr : TExprBase;
+begin
+   Result := nil;
+end;
+
+// DebugMessage
+//
+procedure TdwsCoverageExecutionTracker.DebugMessage(const msg : UnicodeString);
+begin
+   // no-op
+end;
+
+// NotifyException
+//
+procedure TdwsCoverageExecutionTracker.NotifyException(exec : TdwsExecution; const exceptObj : IScriptObj);
+begin
+   // no-op
 end;
 
 end.

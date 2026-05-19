@@ -39,6 +39,7 @@ uses
   UCOMConnectorTests in 'UCOMConnectorTests.pas',
   UTestDispatcher in 'UTestDispatcher.pas',
   UDebuggerTests in 'UDebuggerTests.pas',
+  UCoverageTests in 'UCoverageTests.pas',
   UdwsUtilsTests in 'UdwsUtilsTests.pas',
   UMemoryTests in 'UMemoryTests.pas',
   UBuildTests in 'UBuildTests.pas',

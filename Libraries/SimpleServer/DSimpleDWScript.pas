@@ -51,7 +51,8 @@ uses
    dwsEncodingLibModule, dwsComConnector, dwsXXHash, dwsHTTPSysServer,
    dwsBigIntegerFunctions.GMP, dwsMPIR.Bundle, dwsTurboJPEG.Bundle,
    dwsCompilerContext, dwsFilter, dwsByteBufferFunctions,
-   dwsKernelCompilerLibModule
+   dwsKernelCompilerLibModule,
+   dwsCodeCoverageLibs
    ;
 
 type
@@ -140,6 +141,8 @@ type
 
       FErrorLogDirectory : String;
       FExceptionLogDirectory : String;
+
+      FCoverageManager : TdwsCoverageManager;
 
       FFlushMask : TMask;
       FCheckDirectoryChanges : ITimer;
@@ -417,6 +420,8 @@ begin
    FPathVariables.Free;
 
    FExecutingScriptsLock.Free;
+
+   FreeAndNil(FCoverageManager);
 end;
 
 // HandleDWS
@@ -462,6 +467,7 @@ var
    webenv : TWebEnvironment;
    executing : TExecutingScript;
    staticCache : TWebStaticCacheEntry;
+   coverageTracker : TdwsCoverageExecutionTracker;
 begin
    if (CPUUsageLimit>0) and not WaitForCPULimit then begin
       Handle503(response);
@@ -488,6 +494,13 @@ begin
    executing.Exec := @exec;
    executing.Options := options;
    executing.ID := AtomicIncrement(FExecutingID);
+
+   // Attach coverage tracker if coverage is enabled
+   coverageTracker := nil;
+   if FCoverageManager <> nil then begin
+      coverageTracker := FCoverageManager.AcquireTracker(prog);
+      exec.Debugger := coverageTracker;
+   end;
 
    webenv := TWebEnvironment.Create;
    webenv.WebRequest := request;
@@ -521,6 +534,15 @@ begin
       exec.EndProgram;
    finally
       exec.Environment := nil;
+      // Merge coverage and release tracker
+      if FCoverageManager <> nil then begin
+         // Merge first (before clearing exec.Debugger releases the interface ref)
+         FCoverageManager.ReleaseTracker(coverageTracker);
+         // Setting Debugger to nil decrements refcount; if it hits 0, tracker is freed
+         // via TInterfacedObject._Release, so do NOT call coverageTracker.Free after
+         exec.Debugger := nil;
+         // Do not call coverageTracker.Free - it was freed by interface release above
+      end;
    end;
 
    if exec.Msgs.Count>0 then begin
@@ -738,6 +760,9 @@ begin
    finally
       FCompiledProgramsLock.EndWrite;
    end;
+
+   if FCoverageManager <> nil then
+      FCoverageManager.Reset;
 end;
 
 // LoadCPUOptions
@@ -856,6 +881,16 @@ begin
 
       if dws['COM'].AsBoolean then
          dwsComConnector.Script:=DelphiWebScript;
+
+      // Coverage support
+      var coverageConfig := dws['Coverage'];
+      if (coverageConfig.ValueType <> jvtUndefined) and coverageConfig['Enabled'].AsBoolean then begin
+         var projName := coverageConfig['Project'].AsString;
+         if projName = '' then
+            projName := 'DWScript';
+         FCoverageManager := TdwsCoverageManager.Create(projName);
+         RegisterCodeCoverageLib(DelphiWebScript, FCoverageManager);
+      end;
    finally
       dws.Free;
    end;
