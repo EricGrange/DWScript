@@ -394,8 +394,10 @@ type
    TBreakpointBits = class(TBits)
       private
          FSourceName : String;
+         FLocation   : String;
       public
          property SourceName : String read FSourceName write FSourceName;
+         property Location   : String read FLocation   write FLocation;
    end;
 
    TNamesBitsHash = TSimpleNameObjectHash<TBreakpointBits>;
@@ -1772,6 +1774,7 @@ begin
       if FLastBreakpointLines = nil then begin
          FLastBreakpointLines := TBreakpointBits.Create;
          FLastBreakpointLines.SourceName := FLastSourceFile.Name;
+         FLastBreakpointLines.Location   := FLastSourceFile.Location;
          FSources.AddObject(locationLC, FLastBreakpointLines);
          FLastBreakpointLines.Size := CountLines(scriptPos.SourceFile.Code) + 1;
       end;

@@ -38,6 +38,7 @@ type
          procedure DoToggleBreakpointEnabled(info : TProgramInfo);
 
          function  DoNeedUnit(const unitName : String; var unitSource : String) : IdwsUnit;
+         procedure DoIncludeExForLocationTest(const scriptName : String; var scriptSource, scriptLocation : String);
 
          function ReportBreakpointables(breakpointables : TdwsBreakpointableLines) : String;
 
@@ -60,6 +61,7 @@ type
 
          procedure ExecutableLines;
          procedure ExecutableLinesVzOptimize;
+         procedure BreakpointableLinesLocation;
 
          procedure ExecutableCoverage;
 
@@ -258,6 +260,16 @@ begin
                   + 'end;'
    else if unitName = 'MyType' then
       unitSource := 'unit MyType; type MyEnum = (myEnumValue = 123);'
+end;
+
+// DoIncludeExForLocationTest
+//
+procedure TDebuggerTests.DoIncludeExForLocationTest(const scriptName : String; var scriptSource, scriptLocation : String);
+begin
+   if scriptName = 'myfile.inc' then begin
+      scriptSource   := 'PrintLn(99);';
+      scriptLocation := '/virtual/path/myfile.inc';
+   end;
 end;
 
 // ReportBreakpointables
@@ -749,6 +761,55 @@ begin
       else CheckEquals('*MainModule*: 1,3,4,6,7,', ReportBreakpointables(breakpointables), 'unoptimized');
    finally
       breakpointables.Free;
+   end;
+end;
+
+// BreakpointableLinesLocation
+//
+procedure TDebuggerTests.BreakpointableLinesLocation;
+var
+   prog         : IdwsProgram;
+   breakpoints  : TdwsBreakpointableLines;
+   sourceNames  : TStringList;
+   bits         : TBreakpointBits;
+   i            : Integer;
+   foundInclude : Boolean;
+begin
+   FCompiler.OnIncludeEx := DoIncludeExForLocationTest;
+   try
+      prog := FCompiler.Compile('{$include ''myfile.inc''}'#10'PrintLn(1);');
+      CheckEquals('', prog.Msgs.AsInfo, 'compile errors');
+
+      breakpoints := TdwsBreakpointableLines.Create(prog);
+      try
+         // SourceName is still accessible (backward compat)
+         CheckTrue(breakpoints.IsExecutable('*MainModule*', 2), 'main module executable');
+
+         sourceNames := TStringList.Create;
+         try
+            breakpoints.Enumerate(sourceNames);
+
+            // Main module: Name set, Location empty for inline compilation
+            foundInclude := False;
+            for i := 0 to sourceNames.Count - 1 do begin
+               bits := sourceNames.Objects[i] as TBreakpointBits;
+               if bits.SourceName = 'myfile.inc' then begin
+                  foundInclude := True;
+                  CheckEquals('myfile.inc', bits.SourceName, 'include SourceName');
+                  CheckEquals('/virtual/path/myfile.inc', bits.Location, 'include Location');
+               end else if bits.SourceName = MSG_MainModule then begin
+                  CheckEquals('', bits.Location, 'main module Location empty for inline compile');
+               end;
+            end;
+            CheckTrue(foundInclude, 'included file found in breakpointables');
+         finally
+            sourceNames.Free;
+         end;
+      finally
+         breakpoints.Free;
+      end;
+   finally
+      FCompiler.OnIncludeEx := nil;
    end;
 end;
 
