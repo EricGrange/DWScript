@@ -4,3 +4,11 @@ OK out-of-bounds raised for 2^32
 OK out-of-bounds raised for 2^32 + 3
 OK out-of-bounds raised on write
 102
+OK out-of-bounds raised on dynamic write
+201
+OK out-of-bounds raised for Delete
+OK out-of-bounds raised for Insert
+OK out-of-bounds raised for Swap
+OK out-of-bounds raised for Move
+OK out-of-bounds raised for Copy
+5

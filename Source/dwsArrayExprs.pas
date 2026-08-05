@@ -778,14 +778,14 @@ type
    // this needs to be in a helper (or more precisely implemented at the top of this unit)
    // otherwise inlining won't work
    TBoundsHelper = class helper for TProgramExpr
-      procedure BoundsCheck(exec : TdwsExecution; aLength, index : Integer); inline;
+      procedure BoundsCheck(exec : TdwsExecution; aLength, index : Int64); inline;
    end;
 
 // BoundsCheck
 //
-procedure TBoundsHelper.BoundsCheck(exec : TdwsExecution; aLength, index : Integer);
+procedure TBoundsHelper.BoundsCheck(exec : TdwsExecution; aLength, index : Int64);
 begin
-   if Cardinal(index)>=Cardinal(aLength) then
+   if UInt64(index)>=UInt64(aLength) then
       BoundsCheckFailed(exec, index);
 end;
 
@@ -1252,7 +1252,7 @@ begin
    // Get index
    Result := FIndexExpr.EvalAsInteger(exec) - FLowBound;
 
-   if NativeUInt(Result) >= NativeUInt(FCount) then begin
+   if UInt64(Result) >= UInt64(FCount) then begin
       if Result >= FCount then
          RaiseUpperExceeded(exec, Result + FLowBound)
       else RaiseLowerExceeded(exec, Result + FLowBound);
@@ -1333,7 +1333,7 @@ end;
 //
 procedure TOpenArrayExpr.GetDataPtr(exec : TdwsExecution; var result : IDataContext);
 var
-   index : Integer;
+   index : Int64;
 begin
    index := FIndexExpr.EvalAsInteger(exec);
 
@@ -1647,11 +1647,13 @@ end;
 procedure TDynamicArraySetExpr.EvalNoResult(exec : TdwsExecution);
 var
    dyn : IScriptDynArray;
-   index : Integer;
+   index : Int64;
 begin
    ArrayExpr.EvalAsScriptDynArray(exec, dyn);
    index := IndexExpr.EvalAsInteger(exec);
-   if not dyn.SetFromExpr(index, exec, ValueExpr) then
+   // bounds-checked here rather than through SetFromExpr: the index is Int64,
+   // but SetFromExpr takes NativeInt, which truncates on 32 bit targets
+   if (not dyn.BoundsCheckPassed(index)) or (not dyn.SetFromExpr(index, exec, ValueExpr)) then
       BoundsCheckFailed(exec, index);
 end;
 
@@ -1696,11 +1698,12 @@ end;
 procedure TDynamicArraySetVarExpr.EvalNoResult(exec : TdwsExecution);
 var
    p : PIUnknown;
-   index : Integer;
+   index : Int64;
 begin
    p := exec.Stack.PointerToInterfaceValue_BaseRelative(TObjectVarExpr(ArrayExpr).StackAddr);
    index := IndexExpr.EvalAsInteger(exec);
-   if not IScriptDynArray(p^).SetFromExpr(index, exec, ValueExpr) then
+   if (not IScriptDynArray(p^).BoundsCheckPassed(index))
+      or (not IScriptDynArray(p^).SetFromExpr(index, exec, ValueExpr)) then
       BoundsCheckFailed(exec, index);
 end;
 
@@ -1713,7 +1716,7 @@ end;
 procedure TDynamicArraySetDataExpr.EvalNoResult(exec : TdwsExecution);
 var
    dynDataArray : TScriptDynamicDataArray;
-   index : Integer;
+   index : Int64;
    base : IScriptDynArray;
    dataExpr : TDataExpr;
 begin
@@ -2095,7 +2098,7 @@ end;
 //
 procedure TArraySwapExpr.EvalAsScriptDynArray(exec : TdwsExecution; var result : IScriptDynArray);
 var
-   i1, i2 : Integer;
+   i1, i2 : Int64;
 begin
    BaseExpr.EvalAsScriptDynArray(exec, result);
    i1 := Index1Expr.EvalAsInteger(exec);
@@ -3057,7 +3060,7 @@ end;
 procedure TArrayDeleteExpr.EvalNoResult(exec : TdwsExecution);
 var
    base : IScriptDynArray;
-   index, count : Integer;
+   index, count : Int64;
 begin
    BaseExpr.EvalAsScriptDynArray(exec, base);
 
@@ -3132,7 +3135,7 @@ end;
 procedure TArrayCopyExpr.EvalAsScriptDynArray(exec : TdwsExecution; var result : IScriptDynArray);
 var
    base : IScriptDynArray;
-   index, count : Integer;
+   index, count : Int64;
 begin
    BaseExpr.EvalAsScriptDynArray(exec, base);
    if IndexExpr <> nil then begin
@@ -3197,7 +3200,8 @@ end;
 procedure TArrayInsertExpr.EvalNoResult(exec : TdwsExecution);
 var
    base : IScriptDynArray;
-   n, index, elemSize : Integer;
+   n, index : Int64;
+   elemSize : Integer;
    buf : Variant;
 begin
    BaseExpr.EvalAsScriptDynArray(exec, base);
@@ -3268,7 +3272,7 @@ end;
 procedure TArrayMoveExpr.EvalNoResult(exec : TdwsExecution);
 var
    base : IScriptDynArray;
-   indexOrigin, indexDest : Integer;
+   indexOrigin, indexDest : Int64;
 begin
    BaseExpr.EvalAsScriptDynArray(exec, base);
 

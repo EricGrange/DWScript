@@ -709,9 +709,9 @@ type
          procedure AssignValueAsScriptObj(exec : TdwsExecution; const value : IScriptObj); override;
          procedure AssignValueAsScriptDynArray(exec : TdwsExecution; const value : IScriptDynArray); override;
 
-         procedure RaiseUpperExceeded(exec : TdwsExecution; index : Integer);
-         procedure RaiseLowerExceeded(exec : TdwsExecution; index : Integer);
-         procedure BoundsCheckFailed(exec : TdwsExecution; index : Integer);
+         procedure RaiseUpperExceeded(exec : TdwsExecution; index : Int64);
+         procedure RaiseLowerExceeded(exec : TdwsExecution; index : Int64);
+         procedure BoundsCheckFailed(exec : TdwsExecution; index : Int64);
 
          procedure CheckScriptObject(exec : TdwsExecution; const scriptObj : IScriptObj);
 
@@ -3948,21 +3948,21 @@ end;
 
 // RaiseUpperExceeded
 //
-procedure TProgramExpr.RaiseUpperExceeded(exec : TdwsExecution; index : Integer);
+procedure TProgramExpr.RaiseUpperExceeded(exec : TdwsExecution; index : Int64);
 begin
    RaiseScriptError(exec, EScriptOutOfBounds.CreateFmt(RTE_ArrayUpperBoundExceeded, [index]));
 end;
 
 // RaiseLowerExceeded
 //
-procedure TProgramExpr.RaiseLowerExceeded(exec : TdwsExecution; index : Integer);
+procedure TProgramExpr.RaiseLowerExceeded(exec : TdwsExecution; index : Int64);
 begin
    RaiseScriptError(exec, EScriptOutOfBounds.CreateFmt(RTE_ArrayLowerBoundExceeded, [index]));
 end;
 
 // BoundsCheckFailed
 //
-procedure TProgramExpr.BoundsCheckFailed(exec : TdwsExecution; index : Integer);
+procedure TProgramExpr.BoundsCheckFailed(exec : TdwsExecution; index : Int64);
 begin
    if index < 0 then
       RaiseLowerExceeded(exec, index)

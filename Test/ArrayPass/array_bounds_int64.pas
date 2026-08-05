@@ -48,3 +48,54 @@ except
 end;
 
 PrintLn(a[2]);
+
+var d : array of Integer;
+d.SetLength(5);
+for var i := 0 to 4 do
+   d[i] := 200 + i;
+
+try
+   d[base + 1] := 999;
+   PrintLn('FAIL no exception on dynamic write (d[2^32 + 1])');
+except
+   on E: Exception do PrintLn('OK out-of-bounds raised on dynamic write');
+end;
+
+PrintLn(d[1]);
+
+try
+   d.Delete(base);
+   PrintLn('FAIL no exception (d.Delete(2^32))');
+except
+   on E: Exception do PrintLn('OK out-of-bounds raised for Delete');
+end;
+
+try
+   d.Insert(base, 1);
+   PrintLn('FAIL no exception (d.Insert(2^32))');
+except
+   on E: Exception do PrintLn('OK out-of-bounds raised for Insert');
+end;
+
+try
+   d.Swap(base, 1);
+   PrintLn('FAIL no exception (d.Swap(2^32, 1))');
+except
+   on E: Exception do PrintLn('OK out-of-bounds raised for Swap');
+end;
+
+try
+   d.Move(base, 1);
+   PrintLn('FAIL no exception (d.Move(2^32, 1))');
+except
+   on E: Exception do PrintLn('OK out-of-bounds raised for Move');
+end;
+
+try
+   PrintLn(d.Copy(base, 1).Length);
+   PrintLn('FAIL no exception (d.Copy(2^32, 1))');
+except
+   on E: Exception do PrintLn('OK out-of-bounds raised for Copy');
+end;
+
+PrintLn(d.Length);
