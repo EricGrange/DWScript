@@ -1256,7 +1256,7 @@ function THttpApi2Server.GetRequestContentBody(request : PHTTP_REQUEST_V2; respo
 const
    cChunkedReadBufferSize = 65536; // 64 KB per ReceiveRequestEntityBody call
 var
-   inContentLength, inContentLengthRead, bytesRead : Cardinal;
+   inContentLength, inContentLengthRead, bytesRead, capacity : Cardinal;
    bufRead : PAnsiChar;
    flags, errCode : Integer;
    i, n : Integer;
@@ -1264,8 +1264,11 @@ var
    contentEncoding : PHTTP_KNOWN_HEADER;
    transferEncoding : RawByteString;
    chunked : Boolean;
-   inputCap : Cardinal;
+   inputCap, maxBodyLength : Cardinal;
 begin
+   if Win32MajorVersion>5 then // speed optimization for Vista+
+      flags := HTTP_RECEIVE_REQUEST_ENTITY_BODY_FLAG_FILL_BUFFER
+   else flags := 0;
    with request^.Headers.KnownHeaders[reqContentLength] do
       inContentLength := GetCardinal(pRawValue, pRawValue+RawValueLength);
    // QuBES patch #1333: chunked transfer-encoding support
@@ -1279,19 +1282,26 @@ begin
       if MaxInputCountLength>0 then
          inputCap := MaxInputCountLength
       else inputCap := cDefaultMaxChunkedInputLength;
+      maxBodyLength := inputCap;
       inContentLengthRead := 0;
+      capacity := cChunkedReadBufferSize;
+      SetLength(inContent, capacity);
       repeat
-         SetLength(inContent, inContentLengthRead+cChunkedReadBufferSize);
+         // grow geometrically to avoid O(n^2) reallocations on large bodies
+         if capacity-inContentLengthRead < cChunkedReadBufferSize then begin
+            capacity := capacity*2;
+            SetLength(inContent, capacity);
+         end;
          bufRead := PAnsiChar(Pointer(inContent))+inContentLengthRead;
          bytesRead := 0;
-         if Win32MajorVersion>5 then // speed optimization for Vista+
-            flags := HTTP_RECEIVE_REQUEST_ENTITY_BODY_FLAG_FILL_BUFFER
-         else flags := 0;
          errCode := HttpAPI.ReceiveRequestEntityBody(FReqQueue, request^.RequestId, flags,
             bufRead, cChunkedReadBufferSize, bytesRead);
          inc(inContentLengthRead, bytesRead); // ERROR_HANDLE_EOF may carry final bytes
          if inContentLengthRead>inputCap then begin
+            // send the 413 first so the client gets a clean status, then cancel to stop
+            // the remaining (unread) body from flooding the connection
             SendError(request, response, 413, 'Payload Too Large');
+            HttpAPI.CancelHttpRequest(FReqQueue, request^.RequestId, nil);
             Exit(False);
          end;
          if (errCode=NO_ERROR) and (bytesRead=0) then
@@ -1303,6 +1313,7 @@ begin
       end;
       SetLength(inContent, inContentLengthRead);
    end else begin
+      maxBodyLength := MaxInputCountLength; // 0 = historical unbounded behavior
       if (MaxInputCountLength>0) and (inContentLength>MaxInputCountLength) then begin
          // ideally SendError(412, 'Content-Length too large');
          // but if we don't cancel the request, it'll eat all the
@@ -1315,9 +1326,6 @@ begin
       inContentLengthRead := 0;
       repeat
          bytesRead := 0;
-         if Win32MajorVersion>5 then // speed optimization for Vista+
-            flags := HTTP_RECEIVE_REQUEST_ENTITY_BODY_FLAG_FILL_BUFFER
-         else flags := 0;
          errCode := HttpAPI.ReceiveRequestEntityBody(FReqQueue, request^.RequestId, flags,
             bufRead, inContentLength-inContentLengthRead, bytesRead);
          inc(inContentLengthRead, BytesRead);
@@ -1346,6 +1354,12 @@ begin
             if     (compressRec.NameLength=n)
                and CompareMem(Pointer(compressRec.Name), contentEncoding.pRawValue, n) then begin
                compressRec.Func(inContent, false); // uncompress
+               // QuBES patch #1333: guard against decompression bombs -- the cap above
+               // only bounds the compressed bytes read off the wire, not the output
+               if (maxBodyLength>0) and (Cardinal(Length(inContent))>maxBodyLength) then begin
+                  SendError(request, response, 413, 'Payload Too Large');
+                  Exit(False);
+               end;
                break;
             end;
          end;
