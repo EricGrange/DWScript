@@ -366,6 +366,8 @@ uses dwsUTF8;
 
 const
    cDefaultMaxInputCountLength = 10*1024*1024; // 10 MB
+   // QuBES patch #1333: default cumulative cap for bodies of unknown length (chunked)
+   cDefaultMaxChunkedInputLength = 100*1024*1024; // 100 MB
 
 var
    vWsaDataOnce : TWSADATA;
@@ -627,6 +629,7 @@ begin
    end;
    FServerEvents := From.FServerEvents;
    FURLRewriter := From.URLRewriter;
+   FMaxInputCountLength := From.FMaxInputCountLength; // QuBES patch #1333
 end;
 
 // SendStaticFile
@@ -1250,17 +1253,67 @@ end;
 //
 function THttpApi2Server.GetRequestContentBody(request : PHTTP_REQUEST_V2; response : PHTTP_RESPONSE_V2;
                                                var inContent : RawByteString) : Boolean;
+const
+   cChunkedReadBufferSize = 65536; // 64 KB per ReceiveRequestEntityBody call
 var
-   inContentLength, inContentLengthRead, bytesRead : Cardinal;
+   inContentLength, inContentLengthRead, bytesRead, capacity : Cardinal;
    bufRead : PAnsiChar;
    flags, errCode : Integer;
    i, n : Integer;
    compressRec : PHttpSocketCompressRec;
    contentEncoding : PHTTP_KNOWN_HEADER;
+   transferEncoding : RawByteString;
+   chunked : Boolean;
+   inputCap, maxBodyLength : Cardinal;
 begin
+   if Win32MajorVersion>5 then // speed optimization for Vista+
+      flags := HTTP_RECEIVE_REQUEST_ENTITY_BODY_FLAG_FILL_BUFFER
+   else flags := 0;
    with request^.Headers.KnownHeaders[reqContentLength] do
       inContentLength := GetCardinal(pRawValue, pRawValue+RawValueLength);
-   if inContentLength<>0 then begin
+   // QuBES patch #1333: chunked transfer-encoding support
+   // http.sys de-chunks natively, the body just has to be read until ERROR_HANDLE_EOF
+   // without assuming a known Content-Length
+   with request^.Headers.KnownHeaders[reqTransferEncoding] do
+      SetString(transferEncoding, pRawValue, RawValueLength);
+   chunked := (transferEncoding<>'') and (Pos('chunked', LowerCase(String(transferEncoding)))>0);
+   if chunked or (inContentLength=0) then begin
+      // unknown body length: cumulative size cap enforced while reading
+      if MaxInputCountLength>0 then
+         inputCap := MaxInputCountLength
+      else inputCap := cDefaultMaxChunkedInputLength;
+      maxBodyLength := inputCap;
+      inContentLengthRead := 0;
+      capacity := cChunkedReadBufferSize;
+      SetLength(inContent, capacity);
+      repeat
+         // grow geometrically to avoid O(n^2) reallocations on large bodies
+         if capacity-inContentLengthRead < cChunkedReadBufferSize then begin
+            capacity := capacity*2;
+            SetLength(inContent, capacity);
+         end;
+         bufRead := PAnsiChar(Pointer(inContent))+inContentLengthRead;
+         bytesRead := 0;
+         errCode := HttpAPI.ReceiveRequestEntityBody(FReqQueue, request^.RequestId, flags,
+            bufRead, cChunkedReadBufferSize, bytesRead);
+         inc(inContentLengthRead, bytesRead); // ERROR_HANDLE_EOF may carry final bytes
+         if inContentLengthRead>inputCap then begin
+            // send the 413 first so the client gets a clean status, then cancel to stop
+            // the remaining (unread) body from flooding the connection
+            SendError(request, response, 413, 'Payload Too Large');
+            HttpAPI.CancelHttpRequest(FReqQueue, request^.RequestId, nil);
+            Exit(False);
+         end;
+         if (errCode=NO_ERROR) and (bytesRead=0) then
+            break; // no progress means end of body
+      until errCode<>NO_ERROR;
+      if (errCode<>ERROR_HANDLE_EOF) and (errCode<>NO_ERROR) then begin
+         SendError(request, response, 406, SysErrorMessage(errCode));
+         Exit(False);
+      end;
+      SetLength(inContent, inContentLengthRead);
+   end else begin
+      maxBodyLength := MaxInputCountLength; // 0 = historical unbounded behavior
       if (MaxInputCountLength>0) and (inContentLength>MaxInputCountLength) then begin
          // ideally SendError(412, 'Content-Length too large');
          // but if we don't cancel the request, it'll eat all the
@@ -1273,9 +1326,6 @@ begin
       inContentLengthRead := 0;
       repeat
          bytesRead := 0;
-         if Win32MajorVersion>5 then // speed optimization for Vista+
-            flags := HTTP_RECEIVE_REQUEST_ENTITY_BODY_FLAG_FILL_BUFFER
-         else flags := 0;
          errCode := HttpAPI.ReceiveRequestEntityBody(FReqQueue, request^.RequestId, flags,
             bufRead, inContentLength-inContentLengthRead, bytesRead);
          inc(inContentLengthRead, BytesRead);
@@ -1293,7 +1343,9 @@ begin
          SendError(request, response, 406, SysErrorMessage(errCode));
          Exit(False);
       end;
-      // attempt to decompress if necessary
+   end;
+   // attempt to decompress if necessary (QuBES patch #1333: common to both read paths)
+   if inContent<>'' then begin
       contentEncoding:=@request^.Headers.KnownHeaders[reqContentEncoding];
       n:=contentEncoding.RawValueLength;
       if n>0 then begin
@@ -1302,6 +1354,12 @@ begin
             if     (compressRec.NameLength=n)
                and CompareMem(Pointer(compressRec.Name), contentEncoding.pRawValue, n) then begin
                compressRec.Func(inContent, false); // uncompress
+               // QuBES patch #1333: guard against decompression bombs -- the cap above
+               // only bounds the compressed bytes read off the wire, not the output
+               if (maxBodyLength>0) and (Cardinal(Length(inContent))>maxBodyLength) then begin
+                  SendError(request, response, 413, 'Payload Too Large');
+                  Exit(False);
+               end;
                break;
             end;
          end;
